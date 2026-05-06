@@ -1,0 +1,38 @@
+# whill_lab0_ros2 docs
+
+Project-level documentation for the noetic → humble migration. Browse from
+this index or jump straight to a milestone document.
+
+## Strategy
+
+- [Migration plan](migration-plan.md) — package inventory, Group A/B/C
+  classification, branch / PR convention.
+
+## Milestones
+
+| | Document | Status |
+|--|----------|--------|
+| M1 | [Environment setup](m1-environment-setup.md) | done |
+| M2 | [WHILL core driver on real hardware](m2-whill-core.md) | done |
+| M3 | [Sensor stack](m3-sensors.md) | planned |
+| M4 | (Localization — FAST-LIO + slam_localization) | not yet drafted |
+| M5 | (Navigation — pedestrian flow / route / obstacle detection) | not yet drafted |
+| M6 | (Bringup integration + on-vehicle validation) | not yet drafted |
+
+## Session logs
+
+Time-stamped narrative records of investigation work — kept so future
+contributors don't repeat the same dead ends.
+
+- [2026-05-06](session-2026-05-06.md) — M2 wrap-up: cold-boot quirk on
+  Model CR2, fork patch, end-to-end verification.
+
+## Conventions
+
+- One document per milestone, named `mN-<slug>.md`. Each ends with a
+  `Status` table that PR review can check off.
+- Session logs are dated `session-YYYY-MM-DD.md` and capture the *path*
+  taken (including misdiagnoses), not just the conclusion.
+- External authoritative references (vendor PDFs, upstream READMEs) are
+  linked, not copied — but their *interpretation* lives here so we own the
+  understanding.
