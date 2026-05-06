@@ -10,8 +10,8 @@ on the actual WHILL hardware running on the Utsunomiya University campus.
 
 | Milestone | Title | Status |
 |-----------|-------|--------|
-| M1 | ROS 2 humble environment setup on host | in progress |
-| M2 | WHILL core driver + teleop on real hardware | pending |
+| M1 | ROS 2 humble environment setup on host | done |
+| M2 | WHILL core driver on real hardware (Model CR2 / USB) | in progress |
 | M3 | Sensor stack (Velodyne / RealSense / IMU) | pending |
 | M4 | Localization (FAST-LIO + custom localization) | pending |
 | M5 | Navigation (pedestrian-flow navigator etc.) | pending |
@@ -34,10 +34,13 @@ After ROS 2 humble is installed and `source /opt/ros/humble/setup.bash` is in ef
 
 ```bash
 cd ~/whill_lab0_ros2
-rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install
+./scripts/import_upstream.sh         # vcs import + rosdep install
+colcon build --packages-up-to whill --symlink-install
 source install/setup.bash
 ```
+
+Upstream packages declared in [`whill_lab.repos`](whill_lab.repos) are cloned
+into `src/third_party/` (gitignored). Edit that file to pin different versions.
 
 ## Reference
 
