@@ -1,0 +1,45 @@
+# whill_lab0_ros2
+
+ROS 2 humble port of [whill_lab0](https://github.com/Iruazu/whill_lab0) (originally ROS noetic).
+
+The goal of this repository is to migrate the WHILL mobility robot stack — driver, sensors,
+localization, and navigation — from ROS noetic to ROS 2 humble, and to validate the result
+on the actual WHILL hardware running on the Utsunomiya University campus.
+
+## Status
+
+| Milestone | Title | Status |
+|-----------|-------|--------|
+| M1 | ROS 2 humble environment setup on host | in progress |
+| M2 | WHILL core driver + teleop on real hardware | pending |
+| M3 | Sensor stack (Velodyne / RealSense / IMU) | pending |
+| M4 | Localization (FAST-LIO + custom localization) | pending |
+| M5 | Navigation (pedestrian-flow navigator etc.) | pending |
+| M6 | Bringup integration + on-vehicle validation | pending |
+
+Each milestone is delivered through its own `mN/...` branch and a pull request into `main`.
+
+## Layout
+
+```
+whill_lab0_ros2/
+├── src/         # colcon source space — ROS 2 packages
+├── docs/        # migration plan, per-milestone notes
+└── scripts/     # one-shot setup / utility scripts
+```
+
+## Build
+
+After ROS 2 humble is installed and `source /opt/ros/humble/setup.bash` is in effect:
+
+```bash
+cd ~/whill_lab0_ros2
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install
+source install/setup.bash
+```
+
+## Reference
+
+- Source repo (noetic): https://github.com/Iruazu/whill_lab0
+- Migration plan: [docs/migration-plan.md](docs/migration-plan.md)
