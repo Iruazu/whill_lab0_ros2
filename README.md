@@ -11,7 +11,7 @@ on the actual WHILL hardware running on the Utsunomiya University campus.
 | Milestone | Title | Status |
 |-----------|-------|--------|
 | M1 | ROS 2 humble environment setup on host | done |
-| M2 | WHILL core driver on real hardware (Model CR2 / USB) | in progress |
+| M2 | WHILL core driver on real hardware (Model CR2 / USB) | done |
 | M3 | Sensor stack (Velodyne / RealSense / IMU) | pending |
 | M4 | Localization (FAST-LIO + custom localization) | pending |
 | M5 | Navigation (pedestrian-flow navigator etc.) | pending |
@@ -42,7 +42,13 @@ source install/setup.bash
 Upstream packages declared in [`whill_lab.repos`](whill_lab.repos) are cloned
 into `src/third_party/` (gitignored). Edit that file to pin different versions.
 
+## Documentation
+
+Full project documentation lives under [`docs/`](docs/README.md) — milestone
+notes, the migration plan, and session logs.
+
 ## Reference
 
 - Source repo (noetic): https://github.com/Iruazu/whill_lab0
+- Docs index: [docs/README.md](docs/README.md)
 - Migration plan: [docs/migration-plan.md](docs/migration-plan.md)

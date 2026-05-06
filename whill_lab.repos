@@ -1,7 +1,10 @@
 repositories:
   third_party/ros2_whill:
     type: git
-    url: https://github.com/whill-labs/ros2_whill.git
+    # Iruazu fork tracks whill-labs/ros2_whill humble plus the cold-boot init
+    # patch (SetPower + SendSetJoystickCommandWithLocal in WhillNode::Initialize).
+    # See docs/m2-whill-core.md "Cold-boot quirk and patch" for context.
+    url: https://github.com/Iruazu/ros2_whill.git
     version: humble
   third_party/ros2_whill_interfaces:
     type: git
