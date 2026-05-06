@@ -1,0 +1,9 @@
+repositories:
+  third_party/ros2_whill:
+    type: git
+    url: https://github.com/whill-labs/ros2_whill.git
+    version: humble
+  third_party/ros2_whill_interfaces:
+    type: git
+    url: https://github.com/whill-labs/ros2_whill_interfaces.git
+    version: humble
