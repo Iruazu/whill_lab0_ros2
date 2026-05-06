@@ -17,8 +17,11 @@ initialize_rosdep() {
     echo "ERROR: rosdep not found. Install ros-dev-tools first." >&2
     exit 1
   fi
+  # rosdep init/update fetch from raw.githubusercontent.com — if the host is
+  # behind a proxy, HTTP_PROXY / HTTPS_PROXY must be set in the env. Use
+  # `sudo -E` so the proxy variables survive into the privileged process.
   if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]]; then
-    sudo rosdep init
+    sudo -E rosdep init
   fi
   rosdep update
 }

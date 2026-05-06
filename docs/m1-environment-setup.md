@@ -80,9 +80,10 @@ The listener should print "I heard: …" messages emitted by the talker.
 |------|--------|
 | Apt proxy configured | done |
 | SSH-via-proxy to GitHub working | done |
-| `ros-humble-desktop` installed | in progress (PR open) |
-| `ros2 talker/listener` round-trip | pending |
-| `~/ros2_ws` initialized | pending |
-| `.bashrc` sourcing in place | pending |
+| `ros-humble-desktop` installed | done (`/opt/ros/humble/setup.bash` present) |
+| `ros2 talker/listener` round-trip | done (verified) |
+| `~/ros2_ws` initialized | done |
+| `rosdep` initialized and cache populated | done |
+| `.bashrc` sourcing in place | done |
 
-This document will be updated as remaining steps complete.
+`ros2 pkg list` reports 273 packages on the verified install.
