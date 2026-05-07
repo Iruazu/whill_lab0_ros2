@@ -165,22 +165,34 @@ of `/imu/data_raw`, see `scripts/check_static.py` for the script):
 i.e. the bag is clean enough to use as the reference noise floor and
 as the warm-up region for FAST-LIO bias estimation in M4.
 
-### `m3_chair_motion_2026-05-07/` — 64.5 s drive bag (FAST-LIO test data)
+### `m3_chair_motion_2026-05-07/` — 96.85 s drive bag (FAST-LIO test data)
 
-Captured while the user joystick-drove the chair (3 s static at the
-start for IMU bias, then ~60 s slow forward + turns). `3.5 GiB`,
-17412 messages.
+Captured while the user joystick-drove the chair: 5 s static at the
+start (IMU bias warm-up) followed by ~90 s of motion through a hallway
+and a room with chairs and desks, returning toward the start point for
+loop-closure evaluation. `5.3 GiB`, 26137 messages.
 
 | Topic | Type | Count | Rate |
 |-------|------|-------|------|
-| `/imu/data_raw` | `sensor_msgs/Imu` | 6452 | 100.0 Hz |
-| `/imu/mag` | `sensor_msgs/MagneticField` | 6452 | 100.0 Hz |
-| `/velodyne_points` | `sensor_msgs/PointCloud2` | 636 | 9.86 Hz |
-| `/camera/camera/color/image_raw` | `sensor_msgs/Image` | 1934 | 29.98 Hz |
-| `/camera/camera/depth/image_rect_raw` | `sensor_msgs/Image` | 1934 | 29.98 Hz |
+| `/imu/data_raw` | `sensor_msgs/Imu` | 9687 | 100.0 Hz |
+| `/imu/mag` | `sensor_msgs/MagneticField` | 9687 | 100.0 Hz |
+| `/velodyne_points` | `sensor_msgs/PointCloud2` | 951 | 9.82 Hz |
+| `/camera/camera/color/image_raw` | `sensor_msgs/Image` | 2904 | 29.98 Hz |
+| `/camera/camera/depth/image_rect_raw` | `sensor_msgs/Image` | 2904 | 29.98 Hz |
 | `/tf_static` | `tf2_msgs/TFMessage` | 4 | latched |
 
 This is the canonical FAST-LIO replay input for M4 — replay it with
 `ros2 bag play m3_chair_motion_2026-05-07 --clock` against an
 unconfigured FAST-LIO node to dial in the LiDAR↔IMU extrinsic before
 moving the chair again.
+
+**Leading 5 s static window verified** with `scripts/check_static.py
+docs/m3-bench-data/m3_chair_motion_2026-05-07 5.0`: 0 of 25 windows
+flagged as motion bursts, gyro RMS 0.020 rad/s and DC bias on omega_x
+of -0.020 rad/s — consistent with the dedicated static bag, so FAST-LIO
+will get a clean bias estimation window before the chair starts moving.
+
+A previous 64.5 s drive captured immediately before this one was
+discarded — the user noted afterwards that the time budget had
+slipped (motion vs static phases not as cleanly separated as
+intended). The 96.85 s redo above replaces it.

@@ -4,11 +4,17 @@
 Reads `/imu/data_raw` from the bag and prints angular-velocity and
 linear-acceleration statistics, plus a count of "motion burst" 0.2 s windows
 where the gyro RMS exceeds 0.05 rad/s. Used to validate the M3 chair-mounted
-static reference bag (`m3_chair_static_*`).
+static reference bag (`m3_chair_static_*`) and the leading static window
+of the drive bag (`m3_chair_motion_*`, first 5 s before the chair starts
+moving).
 
 Usage:
     source /opt/ros/humble/setup.bash
-    python3 scripts/check_static.py docs/m3-bench-data/m3_chair_static_2026-05-07
+    python3 scripts/check_static.py <bag_directory> [seconds]
+
+If `seconds` is given, only the first that many seconds of /imu/data_raw
+are analysed (handy for verifying the leading static window of a
+motion bag without scanning the whole drive).
 """
 
 import math
@@ -29,7 +35,7 @@ def stats(values):
     )
 
 
-def main(bag_path: str) -> int:
+def main(bag_path: str, max_seconds: float | None = None) -> int:
     reader = rosbag2_py.SequentialReader()
     reader.open(
         rosbag2_py.StorageOptions(uri=bag_path, storage_id="sqlite3"),
@@ -39,12 +45,19 @@ def main(bag_path: str) -> int:
     gyr_mag, acc_mag = [], []
     gx, gy, gz = [], [], []
     ax, ay, az = [], [], []
+    t0 = None
 
     while reader.has_next():
         topic, data, _ = reader.read_next()
         if topic != "/imu/data_raw":
             continue
         m = deserialize_message(data, Imu)
+        if max_seconds is not None:
+            t = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+            if t0 is None:
+                t0 = t
+            if t - t0 > max_seconds:
+                break
         gxv, gyv, gzv = (
             m.angular_velocity.x,
             m.angular_velocity.y,
@@ -98,7 +111,9 @@ def main(bag_path: str) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <bag_directory>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(f"Usage: {sys.argv[0]} <bag_directory> [seconds]", file=sys.stderr)
         raise SystemExit(2)
-    raise SystemExit(main(sys.argv[1]))
+    bag = sys.argv[1]
+    secs = float(sys.argv[2]) if len(sys.argv) == 3 else None
+    raise SystemExit(main(bag, secs))
