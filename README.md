@@ -34,6 +34,7 @@ After ROS 2 humble is installed and `source /opt/ros/humble/setup.bash` is in ef
 
 ```bash
 cd ~/whill_lab0_ros2
+./scripts/install_udev_rules.sh      # /dev/whill, /dev/imu stable symlinks (one-time)
 ./scripts/import_upstream.sh         # vcs import + rosdep install
 colcon build --packages-up-to whill --symlink-install
 source install/setup.bash
@@ -41,6 +42,11 @@ source install/setup.bash
 
 Upstream packages declared in [`whill_lab.repos`](whill_lab.repos) are cloned
 into `src/third_party/` (gitignored). Edit that file to pin different versions.
+
+The udev rule (tracked at [`udev/99-whill-stack.rules`](udev/99-whill-stack.rules))
+identifies WHILL and the RT 9-axis IMU by their USB VID:PIDs, so they always
+appear at `/dev/whill` and `/dev/imu` regardless of which port they are plugged
+into.
 
 ## Documentation
 

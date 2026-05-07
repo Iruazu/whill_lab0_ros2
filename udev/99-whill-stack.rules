@@ -1,0 +1,15 @@
+# WHILL stack: stable /dev/* symlinks via VID:PID (port-agnostic)
+#
+# Identifies devices by their USB Vendor:Product IDs rather than USB bus path,
+# so plugging WHILL or the IMU into any port on this host produces the same
+# /dev/whill and /dev/imu symlinks. The two devices belong to disjoint kernel
+# tty classes (usb-serial vs cdc-acm), so the underlying ttyUSB / ttyACM
+# numbers also stay stable across reboots.
+#
+# Install with: ./scripts/install_udev_rules.sh
+
+# WHILL CR2 (Prolific PL2303 USB-Serial)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", SYMLINK+="whill", GROUP="dialout", MODE="0660"
+
+# RT Corporation USB 9-axis IMU (RT-USB-9axisIMU2; CDC-ACM, not usb-serial)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2b72", ATTRS{idProduct}=="0003", SYMLINK+="imu", GROUP="dialout", MODE="0660"
