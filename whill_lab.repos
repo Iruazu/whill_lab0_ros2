@@ -18,8 +18,9 @@ repositories:
     type: git
     url: https://github.com/ros-drivers/velodyne.git
     version: 2.5.1
-  # Intel RealSense D455 (USB 3). Requires librealsense2 system package
-  # from Intel apt repo before colcon build will succeed.
+  # Intel RealSense D435 (USB 3, VID:PID 8086:0b07). Requires librealsense2
+  # system package before colcon build will succeed; ros-humble-librealsense2
+  # from the standard ROS apt repo is sufficient.
   # See docs/m3-sensors.md for the install snippet.
   third_party/realsense-ros:
     type: git

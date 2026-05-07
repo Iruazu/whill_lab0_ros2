@@ -38,7 +38,7 @@ confirmed by the user 2026-05-07 — so model and topology are fixed:
 | Sensor | Model | Interface | Notes |
 |--------|-------|-----------|-------|
 | LiDAR | Velodyne **VLP-16** | UDP 2368, 10 Hz (RPM 600), unicast | `frame_id: velodyne`, no IP override on the noetic side |
-| Depth camera | Intel RealSense **D455** | USB 3 | No project-specific launch on the noetic side — was driven with upstream defaults |
+| Depth camera | Intel RealSense **D435** | USB 3 (VID:PID `8086:0b07`) | Confirmed by physical side-label and `dmesg` product string 2026-05-07. Earlier handover note saying "D455" was wrong — the actual unit is D435. The same `realsense-ros` driver supports both, so no upstream change is needed. No project-specific launch on the noetic side — was driven with upstream defaults |
 | IMU | RT 9-axis (`rt_usb_9axisimu_driver`) | USB | May share `/dev/ttyUSB*` numbering with WHILL — `udev` rule needed |
 
 Source of truth for the noetic values:
@@ -82,7 +82,7 @@ sudo apt install -y \
 ```
 
 `ros-humble-librealsense2` (currently 2.57.7) is the ROS-packaged build of
-Intel's `librealsense2`, sufficient for the D455 driver to find headers
+Intel's `librealsense2`, sufficient for the D435 driver to find headers
 and libraries at build time. If a future requirement forces a newer
 librealsense than the ROS package ships, switch to Intel's apt repo at
 that point — until then, the standard repos are enough.
@@ -134,7 +134,10 @@ files.
 - Whether the IMU enumerates as `/dev/ttyUSB1` (same family as the WHILL
   `/dev/ttyUSB0`) — if so, write a `udev` rule to give it a stable name to
   avoid rotation between ports across reboots.
-- Whether RealSense D455 fits within the available USB 3 bandwidth alongside
-  the WHILL USB-serial cable on the host's USB controllers.
+- ~~Whether RealSense D435 fits within the available USB 3 bandwidth alongside
+  the WHILL USB-serial cable on the host's USB controllers.~~ — confirmed
+  2026-05-07: D435 enumerates at SuperSpeed (5 Gbps) on Bus 2 of this host
+  via a Genesys Logic USB3.1 hub; WHILL only consumes a Full-speed (12 Mbps)
+  port on Bus 3, so they do not contend for bandwidth.
 - Confirm the IMU's actual published topic and remap to `/imu/data_raw` if
   the upstream driver publishes elsewhere (FAST-LIO expects `/imu/data_raw`).
