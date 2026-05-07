@@ -13,6 +13,7 @@ from launch.actions import (
     EmitEvent,
     LogInfo,
     RegisterEventHandler,
+    TimerAction,
 )
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
@@ -53,15 +54,30 @@ def generate_launch_description():
         transition_id=Transition.TRANSITION_CONFIGURE,
     ))
 
-    activate_on_inactive = RegisterEventHandler(OnStateTransition(
-        target_lifecycle_node=imu_node,
-        goal_state='inactive',
-        entities=[
-            LogInfo(msg="rt_usb_9axisimu_driver reached 'inactive', activating."),
+    # Wait briefly after `configure` before issuing `activate`. The driver's
+    # first readSensorData() call happens during the `activate` callback,
+    # and if the serial port has not yet buffered a full ASCII frame from
+    # the device the read returns FAILURE and the node bounces to errorprocessing.
+    # 1.5 s is enough margin at 100 Hz frame rate (~10 ms per frame) plus
+    # the device's initial sync window.
+    activate_after_settle = TimerAction(
+        period=1.5,
+        actions=[
             EmitEvent(event=ChangeState(
                 lifecycle_node_matcher=matches_action(imu_node),
                 transition_id=Transition.TRANSITION_ACTIVATE,
             )),
+        ],
+    )
+
+    activate_on_inactive = RegisterEventHandler(OnStateTransition(
+        target_lifecycle_node=imu_node,
+        goal_state='inactive',
+        entities=[
+            LogInfo(msg="rt_usb_9axisimu_driver reached 'inactive', "
+                        'waiting 1.5 s before activate to let the serial '
+                        'port buffer a frame.'),
+            activate_after_settle,
         ],
     ))
 

@@ -87,3 +87,84 @@ ros2 bag record -o m3_smoke_$(date +%Y-%m-%d) \
 - **RealSense topics are namespaced `/camera/camera/...`** by `rs_launch.py`
   defaults (parent ns `camera`, node name `camera`). M4 / M5 launch files
   should remap or accept this prefix instead of the bare `/camera/`.
+
+---
+
+## 2026-05-07 (later) — first chair-mounted bringup + drive
+
+After moving the laptop, RealSense, USB-Ethernet adapter, and IMU from
+the bench to their chair mounts (with the user seated in the WHILL CR2),
+re-ran the M3 bringup and recorded a static + a 60 s drive bag.
+
+### USB topology survived the move
+
+The chair-mount cable routing pushed the RealSense and the RTL8153
+USB-Ethernet adapter from Bus 002 to Bus 004, but `/dev/whill` and
+`/dev/imu` still resolved to the right tty devices on first try — the
+VID:PID-based udev rule (`udev/99-whill-stack.rules`) is doing what it
+was designed to do.
+
+```
+WHILL    /dev/whill -> ttyUSB0   (Prolific 067b:2303, Bus 003)
+IMU      /dev/imu   -> ttyACM0   (RT 2b72:0003, Bus 003)
+D435     Bus 004 (was Bus 002 on the bench)
+RTL8153  Bus 004 (was Bus 002 on the bench)
+Velodyne carrier=1, ping 192.168.1.201 0% loss
+```
+
+### IMU race condition between `on_configure` and `on_activate`
+
+The first two attempts to `ros2 launch whill_sensors_bringup
+sensors_launch.py` both produced an immediate `readSensorData() returns
+FAILURE` and bounced the IMU back to `unconfigured`. Direct `cat /dev/imu`
+showed the device itself was producing healthy ASCII frames, so the
+problem was in the bringup, not the hardware.
+
+Cause: with the original `imu_launch.py`, the `OnStateTransition →
+inactive → activate` chain fired ~22 ms after `on_configure` returned.
+At 100 Hz the device emits a frame every 10 ms, but `on_configure` only
+opens the serial port — there is no guarantee a complete frame is
+already in the kernel buffer when `on_activate`'s very first
+`readSensorData()` call runs. If it isn't, the driver returns FAILURE
+and lifecycle bounces to `errorprocessing`.
+
+Fix: insert a `TimerAction(period=1.5)` between the `inactive`-reached
+event and the `activate` event in `imu_launch.py`. After the change the
+log now reads:
+
+```
+on_configure() is called.
+reached 'inactive', waiting 1.5 s before activate ...
+on_activate() is called.
+ros2 lifecycle get /rt_usb_9axisimu_driver  →  active [3]
+```
+
+This pattern (configure-then-wait-then-activate) likely also applies
+to other USB-serial / CDC-ACM lifecycle drivers; keep it in mind for M4.
+
+### `m3_chair_static_2026-05-07/` — 11.85 s static reference bag
+
+Captured with the user seated and the chair stationary (`655 MiB`, 3193
+messages). Same topic set as the 2026-05-07 bench bag plus the four
+`/tf_static` entries from `static_tf_launch.py`. Useful as a "noise
+floor" baseline for IMU bias and PointCloud2 stability.
+
+### `m3_chair_motion_2026-05-07/` — 64.5 s drive bag (FAST-LIO test data)
+
+Captured while the user joystick-drove the chair (3 s static at the
+start for IMU bias, then ~60 s slow forward + turns). `3.5 GiB`,
+17412 messages.
+
+| Topic | Type | Count | Rate |
+|-------|------|-------|------|
+| `/imu/data_raw` | `sensor_msgs/Imu` | 6452 | 100.0 Hz |
+| `/imu/mag` | `sensor_msgs/MagneticField` | 6452 | 100.0 Hz |
+| `/velodyne_points` | `sensor_msgs/PointCloud2` | 636 | 9.86 Hz |
+| `/camera/camera/color/image_raw` | `sensor_msgs/Image` | 1934 | 29.98 Hz |
+| `/camera/camera/depth/image_rect_raw` | `sensor_msgs/Image` | 1934 | 29.98 Hz |
+| `/tf_static` | `tf2_msgs/TFMessage` | 4 | latched |
+
+This is the canonical FAST-LIO replay input for M4 — replay it with
+`ros2 bag play m3_chair_motion_2026-05-07 --clock` against an
+unconfigured FAST-LIO node to dial in the LiDAR↔IMU extrinsic before
+moving the chair again.
