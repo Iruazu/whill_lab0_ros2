@@ -125,8 +125,8 @@ files.
 | `vcs import` + `colcon build` for sensor packages | done — 15/15 packages clean (2026-05-07) |
 | Stable device paths (`/dev/whill`, `/dev/imu`) via repo-tracked udev rule | done (2026-05-07) |
 | Host-side static IP for Velodyne (`192.168.1.100/24`) via repo-tracked netplan template | done (2026-05-07) — config in place, link verification pending hardware |
-| `tf_imus` ported to ament | pending |
-| `whill_sensors_bringup` package created | pending |
+| `tf_imus` ported to ament | superseded — replaced by `whill_sensors_bringup/launch/static_tf_launch.py` (placeholder identity TFs; calibration values still TODO) |
+| `whill_sensors_bringup` package created | done (2026-05-07) — `ros2 launch whill_sensors_bringup sensors_launch.py` brings up all three sensors and the `base_link`-rooted static TF, including auto `configure → activate` for the IMU lifecycle node. See [`src/whill_sensors_bringup/README.md`](../src/whill_sensors_bringup/README.md). |
 | Per-sensor topic verified on the bench | done (2026-05-07) — see [`m3-bench-data/README.md`](m3-bench-data/README.md) |
 | TF tree verified | partial (2026-05-07) — RealSense subtree captured in [`m3-bench-data/frames-2026-05-07.pdf`](m3-bench-data/frames-2026-05-07.pdf); `velodyne` and `imu_link` still need a static parent (deferred to `whill_sensors_bringup`) |
 | Per-sensor rosbag captured on the chair | done on the bench (2026-05-07) — `m3_smoke_2026-05-07/` (gitignored, 437 MiB). Pending repeat on the actual chair under motion. |
