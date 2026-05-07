@@ -8,13 +8,19 @@ this index or jump straight to a milestone document.
 - [Migration plan](migration-plan.md) — package inventory, Group A/B/C
   classification, branch / PR convention.
 
+## Carry-over from the noetic stack
+
+- [LiDAR ↔ IMU extrinsics inherited from noetic](m3-extrinsics-from-noetic.md)
+  — calibration values from `whill_lab0/FAST_LIO/config/velodyne.yaml`,
+  used as the M4 starting point.
+
 ## Milestones
 
 | | Document | Status |
 |--|----------|--------|
 | M1 | [Environment setup](m1-environment-setup.md) | done |
 | M2 | [WHILL core driver on real hardware](m2-whill-core.md) | done |
-| M3 | [Sensor stack](m3-sensors.md) | planned |
+| M3 | [Sensor stack](m3-sensors.md) | in progress |
 | M4 | (Localization — FAST-LIO + slam_localization) | not yet drafted |
 | M5 | (Navigation — pedestrian flow / route / obstacle detection) | not yet drafted |
 | M6 | (Bringup integration + on-vehicle validation) | not yet drafted |

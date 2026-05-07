@@ -30,27 +30,62 @@ localization yet — those are M4/M5.
 - `velodyne_camera_calibration` — kept as a one-shot tool, not a runtime
   dependency
 
-## Hardware (to be confirmed on the chair)
+## Hardware
+
+The chair carries the same physical sensors that the noetic stack used —
+confirmed by the user 2026-05-07 — so model and topology are fixed:
 
 | Sensor | Model | Interface | Notes |
 |--------|-------|-----------|-------|
-| LiDAR | Velodyne (model TBD — VLP-16?) | Ethernet | Power source on the chair TBD |
-| Depth camera | Intel RealSense (D435 / D435i?) | USB 3 | Confirm USB hub bandwidth |
-| IMU | RT 9-axis (`rt_usb_9axisimu_driver`) | USB | May share `/dev/ttyUSB*` numbering with WHILL — check `udev` rules |
+| LiDAR | Velodyne **VLP-16** | UDP 2368, 10 Hz (RPM 600), unicast | `frame_id: velodyne`, no IP override on the noetic side |
+| Depth camera | Intel RealSense **D455** | USB 3 | No project-specific launch on the noetic side — was driven with upstream defaults |
+| IMU | RT 9-axis (`rt_usb_9axisimu_driver`) | USB | May share `/dev/ttyUSB*` numbering with WHILL — `udev` rule needed |
 
-The exact models and bus assignments need to be read off the chair before
-the first launch attempt — the noetic-side `whill_lab0` repo contains hints
-in its launch files.
+Source of truth for the noetic values:
+[`whill_lab0/FAST_LIO/config/velodyne.yaml`](https://github.com/Iruazu/whill_lab0/blob/main/FAST_LIO/config/velodyne.yaml)
+and [`whill_lab0/velodyne-mast/velodyne_pointcloud/launch/VLP16_points.launch`](https://github.com/Iruazu/whill_lab0/blob/main/velodyne-mast/velodyne_pointcloud/launch/VLP16_points.launch).
+
+Topic conventions inherited from the noetic stack (M4/M5 expect these):
+
+- `/velodyne_points` — VLP-16 point cloud
+- `/imu/data_raw` — RT 9-axis raw IMU (FAST-LIO input)
+- RealSense topics: upstream defaults (`/camera/...`)
+
+LiDAR↔IMU extrinsic calibration carried over from the noetic stack is
+captured in [m3-extrinsics-from-noetic.md](m3-extrinsics-from-noetic.md) so
+M4 can reuse it.
 
 ## Upstream packages (Group A)
 
-Pin in [`whill_lab.repos`](../whill_lab.repos) once M3 starts:
+Pinned in [`whill_lab.repos`](../whill_lab.repos):
 
-| Package | URL | Branch |
-|---------|-----|--------|
-| `realsense-ros` | `IntelRealSense/realsense-ros` | `ros2-master` (current) |
-| `velodyne` | `ros-drivers/velodyne` | `ros2` |
-| `rt_usb_9axisimu_driver` | upstream repo | `ros2` branch |
+| Package | URL | Pinned ref | Notes |
+|---------|-----|------------|-------|
+| `velodyne` | `ros-drivers/velodyne` | tag `2.5.1` | Latest 2.x release on the `ros2` line |
+| `realsense-ros` | `IntelRealSense/realsense-ros` | tag `4.55.1` | Mature humble baseline; needs `librealsense2` system pkg |
+| `rt_usb_9axisimu_driver` | `rt-net/rt_usb_9axisimu_driver` | branch `humble-devel` | Vendor's official humble branch |
+
+### System dependencies
+
+The following apt packages are needed before the first `colcon build` —
+all of them resolve through the standard ROS 2 / Ubuntu archives, so the
+Intel-published apt repo is **not** required for our use:
+
+```bash
+sudo apt install -y \
+  ros-humble-xacro \
+  ros-humble-diagnostic-updater \
+  ros-humble-librealsense2 \
+  ros-humble-launch-pytest \
+  python3-tqdm \
+  libpcap0.8-dev
+```
+
+`ros-humble-librealsense2` (currently 2.57.7) is the ROS-packaged build of
+Intel's `librealsense2`, sufficient for the D455 driver to find headers
+and libraries at build time. If a future requirement forces a newer
+librealsense than the ROS package ships, switch to Intel's apt repo at
+that point — until then, the standard repos are enough.
 
 ## Custom packages (Group B in this milestone)
 
@@ -82,21 +117,24 @@ files.
 
 | Step | Status |
 |------|--------|
-| Hardware inventory confirmed on the chair | pending |
-| `realsense-ros` pinned and built | pending |
-| `velodyne` pinned and built | pending |
-| `rt_usb_9axisimu_driver` pinned and built | pending |
+| Hardware inventory confirmed (same as noetic stack) | done |
+| `velodyne` pinned in `whill_lab.repos` | done |
+| `realsense-ros` pinned in `whill_lab.repos` | done |
+| `rt_usb_9axisimu_driver` pinned in `whill_lab.repos` | done |
+| System apt deps installed on the host | done (2026-05-07) |
+| `vcs import` + `colcon build` for sensor packages | done — 15/15 packages clean (2026-05-07) |
 | `tf_imus` ported to ament | pending |
 | `whill_sensors_bringup` package created | pending |
-| Per-sensor topic verified on the bench | pending |
-| TF tree verified | pending |
-| Per-sensor rosbag captured on the chair | pending |
+| Per-sensor topic verified on the bench | pending (needs hardware) |
+| TF tree verified | pending (needs hardware) |
+| Per-sensor rosbag captured on the chair | pending (needs hardware) |
 
-## Open questions (to resolve before opening the M3 PR)
+## Open questions (still pending hardware access)
 
-- Velodyne model and IP / multicast configuration on the chair.
 - Whether the IMU enumerates as `/dev/ttyUSB1` (same family as the WHILL
   `/dev/ttyUSB0`) — if so, write a `udev` rule to give it a stable name to
   avoid rotation between ports across reboots.
-- Whether RealSense fits within the available USB 3 bandwidth alongside the
-  WHILL USB-serial cable on the host's USB controllers.
+- Whether RealSense D455 fits within the available USB 3 bandwidth alongside
+  the WHILL USB-serial cable on the host's USB controllers.
+- Confirm the IMU's actual published topic and remap to `/imu/data_raw` if
+  the upstream driver publishes elsewhere (FAST-LIO expects `/imu/data_raw`).
