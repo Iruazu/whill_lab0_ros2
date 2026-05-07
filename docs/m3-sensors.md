@@ -129,7 +129,7 @@ files.
 | `whill_sensors_bringup` package created | done (2026-05-07) — `ros2 launch whill_sensors_bringup sensors_launch.py` brings up all three sensors and the `base_link`-rooted static TF, including auto `configure → activate` for the IMU lifecycle node. See [`src/whill_sensors_bringup/README.md`](../src/whill_sensors_bringup/README.md). |
 | Per-sensor topic verified on the bench | done (2026-05-07) — see [`m3-bench-data/README.md`](m3-bench-data/README.md) |
 | TF tree verified | partial (2026-05-07) — RealSense subtree captured in [`m3-bench-data/frames-2026-05-07.pdf`](m3-bench-data/frames-2026-05-07.pdf); `velodyne` and `imu_link` still need a static parent (deferred to `whill_sensors_bringup`) |
-| Per-sensor rosbag captured on the chair | done (2026-05-07) — `m3_chair_static_2026-05-07/` (655 MiB, 11.85 s, stationary) and `m3_chair_motion_2026-05-07/` (3.5 GiB, 64.5 s, joystick-driven). Both gitignored. See [`m3-bench-data/README.md`](m3-bench-data/README.md) for topic counts and the IMU race-condition fix that turned up during the chair bringup. |
+| Per-sensor rosbag captured on the chair | done (2026-05-07) — `m3_chair_static_2026-05-07/` (1.1 GiB, 19.85 s, stationary; verified via IMU gyro stats — 0 motion bursts, RMS 0.020 rad/s consistent with sensor bias + noise) and `m3_chair_motion_2026-05-07/` (3.5 GiB, 64.5 s, joystick-driven). Both gitignored. See [`m3-bench-data/README.md`](m3-bench-data/README.md) for the verification methodology and the IMU race-condition fix that turned up during the chair bringup. |
 
 ## Velodyne network setup
 

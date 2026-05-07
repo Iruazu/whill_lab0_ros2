@@ -142,12 +142,28 @@ ros2 lifecycle get /rt_usb_9axisimu_driver  →  active [3]
 This pattern (configure-then-wait-then-activate) likely also applies
 to other USB-serial / CDC-ACM lifecycle drivers; keep it in mind for M4.
 
-### `m3_chair_static_2026-05-07/` — 11.85 s static reference bag
+### `m3_chair_static_2026-05-07/` — 19.85 s static reference bag
 
-Captured with the user seated and the chair stationary (`655 MiB`, 3193
-messages). Same topic set as the 2026-05-07 bench bag plus the four
-`/tf_static` entries from `static_tf_launch.py`. Useful as a "noise
-floor" baseline for IMU bias and PointCloud2 stability.
+Captured with the user seated and the chair stationary (`1.1 GiB`,
+5362 messages, 19.85 s). Same topic set as the 2026-05-07 bench bag
+plus the four `/tf_static` entries from `static_tf_launch.py`.
+
+A first 11.85 s capture taken right before this one was discarded —
+the user noticed it likely contained some unintended residual motion.
+The redo was sanity-checked from the IMU stream itself (1986 samples
+of `/imu/data_raw`, see `scripts/check_static.py` for the script):
+
+| metric | value |
+|--------|-------|
+| `\|omega\|` max / RMS | **0.0256 / 0.0200 rad/s** — within typical RT IMU gyro noise + bias floor |
+| `omega_x` mean | -0.0198 rad/s — DC gyro bias (FAST-LIO will estimate this on startup) |
+| `omega_y` / `omega_z` RMS | 0.0019 / 0.0013 rad/s — pure noise floor |
+| `\|a\|` RMS | **10.00 m/s²** — clean gravity vector |
+| Linear-acc components | `z=-9.70, y=-2.40, x=-0.40` → IMU mounted at ~14° tilt on the chair |
+| Motion bursts (gyro RMS > 0.05 rad/s in 0.2 s windows) | **0 of 99** — no detectable motion the entire bag |
+
+i.e. the bag is clean enough to use as the reference noise floor and
+as the warm-up region for FAST-LIO bias estimation in M4.
 
 ### `m3_chair_motion_2026-05-07/` — 64.5 s drive bag (FAST-LIO test data)
 
