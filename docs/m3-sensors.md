@@ -124,11 +124,35 @@ files.
 | System apt deps installed on the host | done (2026-05-07) |
 | `vcs import` + `colcon build` for sensor packages | done — 15/15 packages clean (2026-05-07) |
 | Stable device paths (`/dev/whill`, `/dev/imu`) via repo-tracked udev rule | done (2026-05-07) |
+| Host-side static IP for Velodyne (`192.168.1.100/24`) via repo-tracked netplan template | done (2026-05-07) — config in place, link verification pending hardware |
 | `tf_imus` ported to ament | pending |
 | `whill_sensors_bringup` package created | pending |
 | Per-sensor topic verified on the bench | pending (needs hardware) |
 | TF tree verified | pending (needs hardware) |
 | Per-sensor rosbag captured on the chair | pending (needs hardware) |
+
+## Velodyne network setup
+
+The VLP-16 is reached over Ethernet rather than USB. The factory-default
+LiDAR IP is `192.168.1.201`, so the host-side USB-Ethernet adapter needs
+to be on the same `/24` subnet. Repo-tracked netplan template
+[`network/01-velodyne-static.yaml.template`](../network/01-velodyne-static.yaml.template)
+gives the host `192.168.1.100/24` on the chosen interface and disables
+DHCP / gateway / DNS on that NIC (general internet stays on Wi-Fi).
+
+```bash
+ip -br link show | grep -E '^(enx|eth|enp)'         # find your USB-Ethernet iface
+./scripts/install_velodyne_network.sh enx00e04c6808dc   # substitute and apply
+```
+
+The script renders `${IFACE}` from the template, installs the config to
+`/etc/netplan/01-velodyne-static.yaml` (mode 600, root:root — netplan
+rejects loose permissions on recent releases), and runs `netplan apply`.
+Verify with `ping -c 3 192.168.1.201`.
+
+If your VLP-16 was reprogrammed to a different subnet (Velodyne web UI
+at the LiDAR's own IP), edit the addresses block in the template before
+running the installer.
 
 ## Stable device paths (resolved 2026-05-07)
 

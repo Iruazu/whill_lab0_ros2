@@ -48,6 +48,18 @@ identifies WHILL and the RT 9-axis IMU by their USB VID:PIDs, so they always
 appear at `/dev/whill` and `/dev/imu` regardless of which port they are plugged
 into.
 
+For the Velodyne VLP-16 (reached over Ethernet, not USB), put the host-side
+USB-Ethernet adapter on the LiDAR subnet:
+
+```bash
+ip -br link show | grep -E '^(enx|eth|enp)'              # find your iface
+./scripts/install_velodyne_network.sh enxAABBCCDDEEFF    # substitute your iface name
+```
+
+This renders [`network/01-velodyne-static.yaml.template`](network/01-velodyne-static.yaml.template)
+into `/etc/netplan/` and applies it. See [docs/m3-sensors.md](docs/m3-sensors.md)
+for the rationale and how to retarget the subnet if your unit was reprogrammed.
+
 ## Documentation
 
 Full project documentation lives under [`docs/`](docs/README.md) — milestone
