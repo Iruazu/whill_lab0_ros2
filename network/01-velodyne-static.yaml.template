@@ -1,0 +1,28 @@
+# Static IP for the host-side USB-Ethernet adapter talking to the
+# Velodyne VLP-16. The LiDAR's factory default IP is 192.168.1.201, so
+# the host needs an address on the same /24 subnet. This config
+# deliberately omits a gateway / DNS — Velodyne traffic is local-link
+# only on this NIC; the user's general internet path stays on Wi-Fi.
+#
+# `${IFACE}` is substituted by scripts/install_velodyne_network.sh with
+# the predictable USB-Ethernet interface name on the host (find via:
+#   ip -br link show | grep -E '^(enx|eth)'
+# ). On the development host this is the Realtek RTL8153 adapter
+# `enx00e04c6808dc`.
+#
+# Renderer: NetworkManager — matches Ubuntu Desktop's default
+# (`/etc/netplan/01-network-manager-all.yaml` ships with `renderer:
+# NetworkManager`, and netplan rejects mixed renderers across files).
+# On a systemd-networkd-only host (Ubuntu Server, etc.) change this
+# to `networkd` and remove or adjust the NM file.
+
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    ${IFACE}:
+      dhcp4: false
+      dhcp6: false
+      addresses:
+        - 192.168.1.100/24
+      optional: true

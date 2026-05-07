@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>whill_sensors_bringup</name>
+  <version>0.1.0</version>
+  <description>
+    Top-level launch + static TF chain for the WHILL M3 sensor stack
+    (Velodyne VLP-16, Intel RealSense D435, RT 9-axis USB IMU).
+    Includes a lifecycle-aware bringup of the RT IMU driver and a
+    base_link-rooted static TF tree.
+  </description>
+
+  <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>velodyne</exec_depend>
+  <exec_depend>realsense2_camera</exec_depend>
+  <exec_depend>rt_usb_9axisimu_driver</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>lifecycle_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

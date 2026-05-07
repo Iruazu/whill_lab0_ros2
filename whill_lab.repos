@@ -10,3 +10,24 @@ repositories:
     type: git
     url: https://github.com/whill-labs/ros2_whill_interfaces.git
     version: humble
+
+  # --- M3 sensor drivers (Group A, official ROS 2 upstreams) ---
+  # Velodyne VLP-16, port 2368, 10 Hz (RPM 600), frame_id "velodyne".
+  # Defaults inherited from the noetic stack — no IP override (unicast UDP).
+  third_party/velodyne:
+    type: git
+    url: https://github.com/ros-drivers/velodyne.git
+    version: 2.5.1
+  # Intel RealSense D435 (USB 3, VID:PID 8086:0b07). Requires librealsense2
+  # system package before colcon build will succeed; ros-humble-librealsense2
+  # from the standard ROS apt repo is sufficient.
+  # See docs/m3-sensors.md for the install snippet.
+  third_party/realsense-ros:
+    type: git
+    url: https://github.com/IntelRealSense/realsense-ros.git
+    version: 4.55.1
+  # RT 9-axis USB IMU. Lab uses /imu/data_raw as FAST-LIO input topic.
+  third_party/rt_usb_9axisimu_driver:
+    type: git
+    url: https://github.com/rt-net/rt_usb_9axisimu_driver.git
+    version: humble-devel
