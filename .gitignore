@@ -38,3 +38,9 @@ __pycache__/
 *~
 *.bak
 *.orig
+
+# Captured bench data — rosbag directories are large; keep only descriptive
+# artifacts (READMEs, frames.pdf) under docs/m3-bench-data/.
+docs/m3-bench-data/*/
+!docs/m3-bench-data/*.md
+!docs/m3-bench-data/*.pdf

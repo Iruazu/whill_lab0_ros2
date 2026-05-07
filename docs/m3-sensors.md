@@ -127,9 +127,9 @@ files.
 | Host-side static IP for Velodyne (`192.168.1.100/24`) via repo-tracked netplan template | done (2026-05-07) — config in place, link verification pending hardware |
 | `tf_imus` ported to ament | pending |
 | `whill_sensors_bringup` package created | pending |
-| Per-sensor topic verified on the bench | pending (needs hardware) |
-| TF tree verified | pending (needs hardware) |
-| Per-sensor rosbag captured on the chair | pending (needs hardware) |
+| Per-sensor topic verified on the bench | done (2026-05-07) — see [`m3-bench-data/README.md`](m3-bench-data/README.md) |
+| TF tree verified | partial (2026-05-07) — RealSense subtree captured in [`m3-bench-data/frames-2026-05-07.pdf`](m3-bench-data/frames-2026-05-07.pdf); `velodyne` and `imu_link` still need a static parent (deferred to `whill_sensors_bringup`) |
+| Per-sensor rosbag captured on the chair | done on the bench (2026-05-07) — `m3_smoke_2026-05-07/` (gitignored, 437 MiB). Pending repeat on the actual chair under motion. |
 
 ## Velodyne network setup
 
@@ -172,12 +172,34 @@ Install with `./scripts/install_udev_rules.sh` (idempotent). Launch files
 under `whill_sensors_bringup` should point at `/dev/whill` and `/dev/imu`,
 not the underlying tty paths.
 
-## Open questions (still pending hardware access)
+## Open questions
+
+All previously-listed open questions resolved on 2026-05-07. The full
+on-host smoke-test capture — topic rates, frame_ids, TF snapshot, and
+rosbag2 details — lives in
+[`m3-bench-data/README.md`](m3-bench-data/README.md).
+
+Closed:
 
 - ~~Whether RealSense D435 fits within the available USB 3 bandwidth alongside
-  the WHILL USB-serial cable on the host's USB controllers.~~ — confirmed
-  2026-05-07: D435 enumerates at SuperSpeed (5 Gbps) on Bus 2 of this host
-  via a Genesys Logic USB3.1 hub; WHILL only consumes a Full-speed (12 Mbps)
-  port on Bus 3, so they do not contend for bandwidth.
-- Confirm the IMU's actual published topic and remap to `/imu/data_raw` if
-  the upstream driver publishes elsewhere (FAST-LIO expects `/imu/data_raw`).
+  the WHILL USB-serial cable on the host's USB controllers.~~ — D435
+  enumerates at SuperSpeed (5 Gbps) on Bus 2 of this host via a Genesys
+  Logic USB3.1 hub; WHILL only consumes a Full-speed (12 Mbps) port on
+  Bus 3, so they do not contend for bandwidth.
+- ~~Confirm the IMU's actual published topic and remap to `/imu/data_raw` if
+  the upstream driver publishes elsewhere.~~ — the upstream driver
+  publishes `/imu/data_raw` directly, matching FAST-LIO's expected input.
+  No remap needed. **Important nuance:** the driver is a `LifecycleNode`;
+  plain `ros2 run` leaves it `unconfigured` with no topics. Bringup must
+  drive `configure → activate` before subscribers see data.
+
+## New observations from the smoke test
+
+- **RealSense topic prefix is `/camera/camera/...`** (parent namespace
+  `camera`, node name `camera`, both from `rs_launch.py` defaults).
+  Downstream M4/M5 launches should remap or accept this prefix instead of
+  the bare `/camera/`.
+- **Velodyne driver uses sensor-data QoS** (best-effort). `ros2 topic hz`
+  in humble does not auto-detect it — verify Velodyne liveness with
+  `ros2 topic echo --once /velodyne_points` or with a sensor-data-QoS
+  subscriber in code.
