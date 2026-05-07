@@ -9,10 +9,16 @@
 #   ip -br link show | grep -E '^(enx|eth)'
 # ). On the development host this is the Realtek RTL8153 adapter
 # `enx00e04c6808dc`.
+#
+# Renderer: NetworkManager — matches Ubuntu Desktop's default
+# (`/etc/netplan/01-network-manager-all.yaml` ships with `renderer:
+# NetworkManager`, and netplan rejects mixed renderers across files).
+# On a systemd-networkd-only host (Ubuntu Server, etc.) change this
+# to `networkd` and remove or adjust the NM file.
 
 network:
   version: 2
-  renderer: networkd
+  renderer: NetworkManager
   ethernets:
     ${IFACE}:
       dhcp4: false
