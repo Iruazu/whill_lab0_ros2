@@ -92,12 +92,12 @@ arrives within tolerance.
 |------|--------|
 | Branch `m5/navigation` cut from main | done (2026-05-08) |
 | Milestone doc stub authored | done (this file) |
-| TF bridge `camera_init -> body` ↔ `map -> odom -> base_link` | pending |
-| Saved map for the test area | pending |
-| `whill_navigation` package | pending |
-| `nav2_params.yaml` chair-tuned | pending |
-| Live goal-following on the chair | pending |
-| Tuning notes captured | pending |
+| **M5-a — TF bridge** `map → camera_init → body → base_link → sensors` | **done (2026-05-08)** — `whill_navigation/launch/tf_bridge_launch.py` adds two static identities (`map → camera_init`, `body → base_link`); `tf2_tools view_frames` against a run2 replay confirms the full chain (snapshot in [`m3-bench-data/frames-m5a-2026-05-08.pdf`](m3-bench-data/frames-m5a-2026-05-08.pdf)). |
+| `whill_navigation` package skeleton + `nav_launch.py` composer | done (2026-05-08) |
+| Saved map for the test area | pending — M5-b |
+| `nav2_params.yaml` chair-tuned | pending — M5-c |
+| Live goal-following on the chair | pending — M5-d |
+| Tuning notes captured | pending — M5-e |
 
 ## Open questions (to be answered as M5 progresses)
 
