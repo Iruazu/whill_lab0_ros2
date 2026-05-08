@@ -31,3 +31,20 @@ repositories:
     type: git
     url: https://github.com/rt-net/rt_usb_9axisimu_driver.git
     version: humble-devel
+
+  # --- M4 LiDAR-Inertial Odometry ---
+  # FAST-LIO (HKU-MaRS), ROS2 branch. The branch name is `ROS2` (capital).
+  # Same authors as the noetic version we ran in whill_lab0/FAST_LIO.
+  # Has a hard dep on `livox_ros_driver2` even when running with Velodyne,
+  # so the upstream Livox driver is pulled in below.
+  third_party/FAST_LIO:
+    type: git
+    url: https://github.com/hku-mars/FAST_LIO.git
+    version: ROS2
+  # Required because fast_lio's package.xml lists livox_ros_driver2 as a
+  # hard <depend>, even though we drive FAST-LIO from /velodyne_points
+  # rather than a Livox. No runtime cost (we never start a Livox node).
+  third_party/livox_ros_driver2:
+    type: git
+    url: https://github.com/Livox-SDK/livox_ros_driver2.git
+    version: master
