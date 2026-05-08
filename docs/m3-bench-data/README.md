@@ -196,3 +196,70 @@ A previous 64.5 s drive captured immediately before this one was
 discarded — the user noted afterwards that the time budget had
 slipped (motion vs static phases not as cleanly separated as
 intended). The 96.85 s redo above replaces it.
+
+---
+
+## 2026-05-08 — M4 reproducibility study
+
+Recorded three back-to-back 60 s drives along the same simple route
+(approximately a corridor + a turn into a room and back) at WHILL
+speed mode 2. Goal: quantify how reliably FAST-LIO can localise the
+chair from the bench point of view, given sensors that are not
+re-calibrated between runs.
+
+Each run was: kill all nodes → `ros2 launch whill_localization
+localization_launch.py` (fresh FAST-LIO state) → wait 12 s for IMU
+configure → activate → kdtree init → 60 s `ros2 bag record` of the
+sensor topics + the live `/Odometry` and `/tf` → kill the launch.
+
+Bags (gitignored, on disk only):
+
+| File | Notes |
+|------|-------|
+| `m4_chair_live_2026-05-08_run1/` | static start was contaminated — user mistimed the recording start vs their phone stopwatch |
+| `m4_chair_live_2026-05-08_run2/` | clean static start, no dynamic obstacles in view |
+| `m4_chair_live_2026-05-08_run3/` | a pedestrian crossed the front-left FOV during the second half of the drive |
+
+Live `/Odometry` was sparse (~1.5 Hz instead of the expected ~10 Hz):
+the live `fastlio_mapping` was running concurrently with RViz, the
+RealSense / Velodyne / IMU drivers, the static TF broadcasters, and
+`ros2 bag record` writing 3.3 GiB to disk. The host became
+CPU-bound; offline replay against just `fast_lio_launch.py` recovers
+the full ~7 Hz output.
+
+### Replay outcomes (with the final config — see `whill_localization/README.md`)
+
+| Run | Total path | Max disp | End pose | Loop-closure error | Verdict |
+|-----|-----------|----------|----------|-------------------|---------|
+| run1 | 887 m | 841 m | (-783, +174, +252) | 95 % | diverges from the start; the ill-formed static window starves the iESKF of an IMU bias estimate |
+| **run2** | **40.78 m** | **14.46 m** | **(-6.65, +3.18, -1.24)** | **18 %** | **bounded; trajectory shape matches the recorded drive** |
+| run3 | 679 m | 631 m | (-409, +471, +101) | 93 % | diverges as the pedestrian enters the front-180° hemisphere — moving features in the world map break registration |
+
+Replaying run2 a second time reproduces the bounded shape with end
+pose (-11.0, +2.2, -2.7) m, 50.81 m path, 22.7 % loop-closure error
+— i.e. across two replays of the same bag, the same FAST-LIO
+binary produces ~10 m end-pose variation. That residual is from
+FAST-LIO's multi-threaded kdtree updates being non-deterministic;
+the trajectory shape and rough magnitude are reproducible.
+
+### Lessons captured for M4 / M5
+
+- **Capture quality dominates** under FAST-LIO. With this config a
+  clean 60 s drive is fine; a contaminated static window or an
+  unannounced pedestrian in front of the LiDAR breaks localisation
+  irrecoverably. Future drives should announce themselves and run
+  during quieter intervals.
+- **The 2026-05-07 "identity extrinsic worked" finding was a
+  multi-threading lucky outcome.** Running the same `m3_chair_motion`
+  bag with identity extrinsics multiple times today produced
+  divergence in every retry — yesterday's bounded result happened
+  once and could not be reproduced. The noetic-inherited
+  `extrinsic_T = [0.104, 0.412, 0.324]` matches the user-confirmed
+  physical layout (LiDAR mounted on the chair's left, IMU under the
+  seat cushion ~30 cm below) and is the right value going forward.
+- **Loose `gyr_cov` is needed** because joystick-driven sharp turns
+  produce angular rates the upstream default (0.1) over-trusts the
+  IMU prediction for. 0.5 was the smallest value that kept the
+  filter stable through the t ≈ 30 s in-place rotation in run2;
+  tighter values reproduced today's "diverges at the first turn"
+  failures.
