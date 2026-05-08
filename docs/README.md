@@ -22,7 +22,7 @@ this index or jump straight to a milestone document.
 | M2 | [WHILL core driver on real hardware](m2-whill-core.md) | done |
 | M3 | [Sensor stack](m3-sensors.md) | done (PR #4 merged 2026-05-07) |
 | M4 | [Localization — FAST-LIO](m4-localization.md) | done (PR #6 merged 2026-05-08) |
-| M5 | (Navigation — pedestrian flow / route / obstacle detection) | not yet drafted |
+| M5 | [Navigation — Nav2](m5-navigation.md) | in progress (branch `m5/navigation`) |
 | M6 | (Bringup integration + on-vehicle validation) | not yet drafted |
 
 ## Session logs
