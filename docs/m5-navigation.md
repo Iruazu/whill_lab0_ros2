@@ -94,7 +94,8 @@ arrives within tolerance.
 | Milestone doc stub authored | done (this file) |
 | **M5-a — TF bridge** `map → camera_init → body → base_link → sensors` | **done (2026-05-08)** — `whill_navigation/launch/tf_bridge_launch.py` adds two static identities (`map → camera_init`, `body → base_link`); `tf2_tools view_frames` against a run2 replay confirms the full chain (snapshot in [`m3-bench-data/frames-m5a-2026-05-08.pdf`](m3-bench-data/frames-m5a-2026-05-08.pdf)). |
 | `whill_navigation` package skeleton + `nav_launch.py` composer | done (2026-05-08) |
-| Saved map for the test area | pending — M5-b |
+| **M5-b — Saved map (PCD)** | **done (2026-05-08)** — `docs/m5-maps/lab.pcd`, 256,478 points, 8.2 MB, captured by replaying `m4_chair_live_2026-05-08_run2` with `pcd_save.pcd_save_en: true` + `publish.map_en: true` and calling the `/map_save` service. **Caveat: includes scattered points from FAST-LIO drift segments** (XY range hits ±350 m even though the bounded trajectory stayed within ~15 m of origin). M5-c's PCD → occupancy-grid conversion must clip / outlier-filter aggressively before `nav2_map_server` can consume it. |
+| 2D occupancy grid (.pgm + .yaml) for `nav2_map_server` | pending — M5-c |
 | `nav2_params.yaml` chair-tuned | pending — M5-c |
 | Live goal-following on the chair | pending — M5-d |
 | Tuning notes captured | pending — M5-e |
