@@ -21,7 +21,7 @@ this index or jump straight to a milestone document.
 | M1 | [Environment setup](m1-environment-setup.md) | done |
 | M2 | [WHILL core driver on real hardware](m2-whill-core.md) | done |
 | M3 | [Sensor stack](m3-sensors.md) | done (PR #4 merged 2026-05-07) |
-| M4 | (Localization — FAST-LIO + slam_localization) | not yet drafted |
+| M4 | [Localization — FAST-LIO](m4-localization.md) | done (PR #6 merged 2026-05-08) |
 | M5 | (Navigation — pedestrian flow / route / obstacle detection) | not yet drafted |
 | M6 | (Bringup integration + on-vehicle validation) | not yet drafted |
 
@@ -36,6 +36,9 @@ contributors don't repeat the same dead ends.
   three-sensor bringup, IMU lifecycle race fix, RealSense model
   correction (D455 → D435), Velodyne netplan, static + drive bags
   for M4 input.
+- [2026-05-08](session-2026-05-08.md) — M4 baseline: FAST-LIO
+  bringup, the identity-extrinsic detour and recovery, three-run
+  reproducibility study showing capture quality dominates.
 
 ## Conventions
 
