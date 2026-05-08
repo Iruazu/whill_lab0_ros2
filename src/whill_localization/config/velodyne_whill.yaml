@@ -19,7 +19,7 @@
         max_iteration: 3
         filter_size_surf: 0.5
         filter_size_map: 0.5
-        cube_side_length: 1000.0
+        cube_side_length: 200.0           # reduced from upstream 1000.0 because that causes "Leaf size is too small for the input dataset. Integer indices would overflow." in pcl::VoxelGrid::applyFilter (1000^3 / 0.5^3 voxels = 8e9 > INT32_MAX). 200^3 keeps the count well under int32. Visible symptom of the overflow is FAST-LIO dropping into a "No Effective Points!" loop with no pose updates.
         runtime_pos_log_enable: false
         map_file_path: "./test.pcd"
 
@@ -37,38 +37,26 @@
             blind: 0.5                   # ignore returns within 0.5 m (inherited from noetic tuning)
 
         mapping:
+            # IMU noise covariances. Loosened from upstream defaults
+            # (0.1 / 0.1) to give the iESKF room to absorb the higher
+            # angular rates that a chair-mounted joystick spin produces.
+            # With the default 0.1 / 0.1 the filter over-trusts its
+            # predicted orientation and registration fails ~30 s into a
+            # drive that includes a sharp turn (run2 replay 2026-05-08).
             acc_cov: 0.1
-            gyr_cov: 0.1
+            gyr_cov: 0.5
             b_acc_cov: 0.0001
             b_gyr_cov: 0.0001
             fov_degree: 180.0            # front hemisphere only — the back half of the VLP-16 sweep sees the chair body and seated user, both of which are rigidly attached to the LiDAR and would corrupt the world map. Initial 360.0 caused divergence within ~30 s of replay (see docs/m4-...). The noetic stack used 180.0 for the same reason.
             det_range: 100.0
-            extrinsic_est_en: false      # do not let FAST-LIO re-estimate the LiDAR <-> IMU extrinsic on top of our values
+            extrinsic_est_en: false      # match the noetic default — let FAST-LIO trust the initial values rather than refining online. The values below were calibrated by the noetic-era lab and are still valid because the LiDAR / IMU mounting on the chair has not been physically changed (user confirmed 2026-05-08).
             # Inherited LiDAR <-> IMU extrinsic from the noetic stack — see
             # docs/m3-extrinsics-from-noetic.md. Translation = LiDAR origin
             # in IMU frame; rotation = LiDAR -> IMU.
-            # Identity for now. The inherited noetic values (preserved below
-            # for reference) were calibrated for an earlier mounting of the
-            # LiDAR / IMU on the chair; on the 2026-05-08 replay against
-            # m3_chair_motion the noetic values caused FAST-LIO to diverge
-            # within ~30 s (exponential explosion to >1000 m), while
-            # identity produced a bounded ~50 m trajectory roughly tracing
-            # the recorded drive (loop-closure ~9 m / 18 % of path length).
-            # The IMU is now mounted at ~14 deg tilt on the chair (see
-            # docs/m3-bench-data/README.md), so the noetic 9 deg extrinsic
-            # rotation is approximately wrong. Recalibrate (LI-Init or a
-            # one-shot extrinsic estimation) before improving on this
-            # baseline.
-            #
-            # Reference (noetic, stale):
-            #   extrinsic_T: [0.104136, 0.411548, 0.323704]
-            #   extrinsic_R: [ 0.987688,  0.000000,  0.156434,
-            #                 -0.005459,  0.999391,  0.034470,
-            #                 -0.156339, -0.034900,  0.987087]
-            extrinsic_T: [0.0, 0.0, 0.0]
-            extrinsic_R: [1.0, 0.0, 0.0,
-                          0.0, 1.0, 0.0,
-                          0.0, 0.0, 1.0]
+            extrinsic_T: [0.104136, 0.411548, 0.323704]
+            extrinsic_R: [ 0.987688,  0.000000,  0.156434,
+                          -0.005459,  0.999391,  0.034470,
+                          -0.156339, -0.034900,  0.987087]
 
         publish:
             path_en: true                # enabled so we can visualise the trajectory in RViz

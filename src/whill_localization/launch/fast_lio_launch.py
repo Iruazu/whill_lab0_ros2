@@ -14,7 +14,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -22,20 +22,22 @@ def generate_launch_description():
     whill_loc_share = get_package_share_directory('whill_localization')
     fast_lio_share = get_package_share_directory('fast_lio')
 
-    default_config = os.path.join(whill_loc_share, 'config', 'velodyne_whill.yaml')
+    # The FAST-LIO yaml is hardcoded rather than exposed through a
+    # `config_file` LaunchArgument: when this launch is wrapped by another
+    # via `IncludeLaunchDescription`, `LaunchConfiguration('config_file')`
+    # silently resolves to an empty string and the params file is dropped
+    # from the fastlio_mapping command line, causing the node to fall back
+    # to upstream defaults (`lidar_type=AVIA`, Livox topics, ...) and
+    # SIGSEGV when fed Velodyne PointCloud2 messages. Resolving the path
+    # at launch-description generation time avoids that quirk.
+    config_file = os.path.join(whill_loc_share, 'config', 'velodyne_whill.yaml')
     default_rviz = os.path.join(fast_lio_share, 'rviz', 'fastlio.rviz')
 
-    config_file = LaunchConfiguration('config_file')
     rviz_use = LaunchConfiguration('rviz')
     rviz_cfg = LaunchConfiguration('rviz_cfg')
     use_sim_time = LaunchConfiguration('use_sim_time')
 
     return LaunchDescription([
-        DeclareLaunchArgument(
-            'config_file',
-            default_value=default_config,
-            description='FAST-LIO yaml config. Defaults to the chair-tuned '
-                        'velodyne_whill.yaml from this package.'),
         DeclareLaunchArgument(
             'rviz',
             default_value='true',
