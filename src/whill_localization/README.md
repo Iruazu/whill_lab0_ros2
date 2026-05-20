@@ -68,8 +68,13 @@ Notable overrides:
   scope (M5). FAST-LIO publishes `/Odometry` and a `camera_init` frame
   by default — the M5 bringup should remap these into Nav2's expected
   TF tree.
-- Save a PCD map by flipping `pcd_save.pcd_save_en` to true and
-  rerunning a drive — currently disabled to keep replay runs cheap.
+- Save a PCD map by setting both `pcd_save.pcd_save_en: true` **and**
+  `publish.map_en: true` (the latter is what actually populates
+  `pcl_wait_pub`; `pcd_save_en` alone does not because the historical
+  in-loop save path in upstream FAST-LIO's `publish_frame_world` is
+  commented out). With both flags on, call
+  `ros2 service call /map_save std_srvs/srv/Trigger` to dump
+  `pcl_wait_pub` to `map_file_path`. Used in M5-b.
 - Long drives (the 96 s `m3_chair_motion_2026-05-07` bag) still
   diverge after ~30 s with this config. Either further loosen the
   filter, run LI-Init for a per-environment calibration, or accept

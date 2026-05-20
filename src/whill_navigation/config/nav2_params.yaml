@@ -1,0 +1,271 @@
+# Nav2 parameters for the WHILL CR2 chair (M5-c).
+#
+# Conservative first-cut tuning. Knobs marked CONSERVATIVE are below the
+# chair's mechanical limits on purpose so the first autonomous goal does
+# not overrun; they should be raised in M5-e once we've watched the chair
+# drive a few goals and know how it actually behaves on this floor.
+#
+# What this file deliberately does NOT do (deferred to M5-e):
+# - No dynamic obstacle layer. VLP-16 publishes /velodyne_points with
+#   best-effort sensor-data QoS, and nav2_costmap_2d in humble defaults
+#   to reliable QoS on observation sources — they don't connect without
+#   an explicit republisher or a pointcloud_to_laserscan bridge. Static
+#   map is the only obstacle source for now.
+# - No velocity_smoother. Letting controller_server's regulated PP output
+#   go straight to /whill/controller/cmd_vel keeps the chain debuggable
+#   on the first goal; a smoother can be inserted later if motion looks
+#   jerky on the chair.
+# - No AMCL. FAST-LIO is the global localizer via the M5-a TF bridge
+#   (map → camera_init → body → base_link). Adding AMCL on top is an
+#   open question for M5-e, not a default.
+#
+# Topic plumbing summary:
+#   /Odometry              <- FAST-LIO (whill_localization)
+#   /map                   <- map_server below, lab.pgm + lab.yaml
+#   /whill/controller/cmd_vel  -> WHILL driver (M2). controller_server's
+#                                 /cmd_vel is remapped to this in
+#                                 nav_launch.py.
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: false
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /Odometry
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    # No separate odom frame in this stack — FAST-LIO publishes
+    # map → base_link directly through the M5-a TF bridge. Transform
+    # tolerance is loose because live FAST-LIO runs ~7 Hz on this host.
+    transform_tolerance: 0.5
+    # Canonical Nav2 humble plugin set. The default BT XML files
+    # bt_navigator loads (navigate_to_pose + navigate_through_poses,
+    # both with replanning + recovery) reference nodes scattered
+    # across all of these libraries — trimming the list (e.g. removing
+    # RemovePassedGoals) makes the XML loader throw at activate time
+    # and the lifecycle bringup aborts. Match nav2_bringup verbatim.
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_smooth_path_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_assisted_teleop_action_bt_node
+      - nav2_back_up_action_bt_node
+      - nav2_drive_on_heading_bt_node
+      - nav2_clear_costmap_service_bt_node
+      - nav2_is_stuck_condition_bt_node
+      - nav2_goal_reached_condition_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_globally_updated_goal_condition_bt_node
+      - nav2_is_path_valid_condition_bt_node
+      - nav2_initial_pose_received_condition_bt_node
+      - nav2_reinitialize_global_localization_service_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_distance_controller_bt_node
+      - nav2_speed_controller_bt_node
+      - nav2_truncate_path_action_bt_node
+      - nav2_truncate_path_local_action_bt_node
+      - nav2_goal_updater_node_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+      - nav2_round_robin_node_bt_node
+      - nav2_transform_available_condition_bt_node
+      - nav2_time_expired_condition_bt_node
+      - nav2_path_expiring_timer_condition
+      - nav2_distance_traveled_condition_bt_node
+      - nav2_single_trigger_bt_node
+      - nav2_goal_updated_controller_bt_node
+      - nav2_is_battery_low_condition_bt_node
+      - nav2_navigate_through_poses_action_bt_node
+      - nav2_navigate_to_pose_action_bt_node
+      - nav2_remove_passed_goals_action_bt_node
+      - nav2_planner_selector_bt_node
+      - nav2_controller_selector_bt_node
+      - nav2_goal_checker_selector_bt_node
+      - nav2_controller_cancel_bt_node
+      - nav2_path_longer_on_approach_bt_node
+      - nav2_wait_cancel_bt_node
+      - nav2_spin_cancel_bt_node
+      - nav2_back_up_cancel_bt_node
+      - nav2_assisted_teleop_cancel_bt_node
+      - nav2_drive_on_heading_cancel_bt_node
+      - nav2_is_battery_charging_condition_bt_node
+
+controller_server:
+  ros__parameters:
+    use_sim_time: false
+    controller_frequency: 10.0       # FAST-LIO is ~7 Hz live; 10 Hz is the realistic ceiling.
+    odom_topic: /Odometry
+    min_x_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    progress_checker_plugin: progress_checker
+    goal_checker_plugins: [general_goal_checker]
+    controller_plugins: [FollowPath]
+
+    progress_checker:
+      plugin: nav2_controller::SimpleProgressChecker
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+
+    general_goal_checker:
+      plugin: nav2_controller::SimpleGoalChecker
+      xy_goal_tolerance: 0.25        # ~ half the chair's width — anything tighter risks the goal-checker oscillating.
+      yaw_goal_tolerance: 0.5
+      stateful: true
+
+    FollowPath:
+      # Regulated Pure Pursuit — simpler to reason about than DWB for the
+      # first chair test. It also handles diff-drive-style motion well,
+      # which matches WHILL's two-rear-wheel drive.
+      plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+      # RPP in humble does NOT enforce max_linear_accel itself — it just
+      # commands desired_linear_vel directly, causing a 0 → target step on
+      # the cmd_vel topic. The chair felt this as a dangerous lurch on the
+      # first live M5-d. Real acceleration limiting now happens in
+      # velocity_smoother below; these RPP values stay conservative so even
+      # if the smoother is bypassed the target speed is gentle.
+      desired_linear_vel: 0.3        # was 0.5 — felt unsafe to a seated rider.
+      max_linear_accel: 0.3          # documentation only (see comment above).
+      max_linear_decel: 0.6
+      lookahead_dist: 0.6
+      min_lookahead_dist: 0.3
+      max_lookahead_dist: 0.9
+      lookahead_time: 1.5
+      rotate_to_heading_angular_vel: 0.8
+      transform_tolerance: 0.5
+      use_velocity_scaled_lookahead_dist: true
+      min_approach_linear_velocity: 0.05
+      approach_velocity_scaling_dist: 0.6
+      # Collision detection temporarily disabled while the static map still has
+      # phantom obstacles from M5-b drive contamination. Re-enable in M5-e once
+      # we re-capture a clean map (and ideally add a dynamic obstacle layer so
+      # we're not relying solely on the static map for collision avoidance).
+      use_collision_detection: false
+      max_allowed_time_to_collision_up_to_carrot: 1.0
+      use_regulated_linear_velocity_scaling: true
+      use_cost_regulated_linear_velocity_scaling: false
+      regulated_linear_scaling_min_radius: 0.9
+      regulated_linear_scaling_min_speed: 0.25
+      use_rotate_to_heading: true
+      allow_reversing: false         # The chair has no rear obstacle awareness yet.
+      rotate_to_heading_min_angle: 0.785
+      max_angular_accel: 1.0         # CONSERVATIVE.
+      max_robot_pose_search_dist: 10.0
+      cost_scaling_dist: 0.3
+      cost_scaling_gain: 1.0
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      # global_frame: map (not odom) — no separate odom frame in this stack.
+      # rolling_window keeps the costmap centered on the chair regardless.
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: false
+      rolling_window: true
+      width: 6
+      height: 6
+      resolution: 0.05
+      # Circumscribed radius around base_link. The actual chair is roughly
+      # 1.0 m long × 0.6 m wide; a 0.45 m circle conservatively covers it.
+      # Switch to a polygon footprint in M5-e once we know what clearances
+      # the chair actually needs in this lab.
+      robot_radius: 0.45
+      plugins: [static_layer, inflation_layer]
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        map_subscribe_transient_local: true
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.5        # tightened from 0.6 while phantom obstacles in static map persist.
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: false
+      resolution: 0.05
+      track_unknown_space: true
+      robot_radius: 0.45
+      plugins: [static_layer, inflation_layer]
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        map_subscribe_transient_local: true
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.5        # tightened from 0.6 while phantom obstacles in static map persist.
+
+map_server:
+  ros__parameters:
+    use_sim_time: false
+    # yaml_filename is injected at launch from nav_launch.py so this file
+    # stays host-portable. Default override path is
+    # ~/whill_lab0_ros2/docs/m5-maps/lab.yaml.
+    yaml_filename: ""
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 1.0
+    use_sim_time: false
+    planner_plugins: [GridBased]
+    GridBased:
+      plugin: nav2_navfn_planner/NavfnPlanner
+      tolerance: 0.5
+      use_astar: false
+      # M5-b PCD captured beyond the trajectory's bounded region, so
+      # large parts of lab.pgm are "unknown" (205). Allowing unknown
+      # lets the planner route through never-observed cells; revisit
+      # in M5-e if planner cuts corners into walls.
+      allow_unknown: true
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: false
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: [spin, backup, wait]
+    spin:
+      plugin: nav2_behaviors/Spin
+    backup:
+      plugin: nav2_behaviors/BackUp
+    wait:
+      plugin: nav2_behaviors/Wait
+    # No separate odom frame; use map for consistency with the costmaps.
+    global_frame: map
+    robot_base_frame: base_link
+    transform_tolerance: 0.5
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 0.8
+    min_rotational_vel: 0.2
+    rotational_acc_lim: 1.0
+
+# Inserted between controller_server (publishes /cmd_vel) and the WHILL
+# driver (subscribes /whill/controller/cmd_vel). RPP doesn't ramp velocity
+# itself so without a smoother the chair gets a 0 → 0.3 m/s step that the
+# rider feels as a lurch. OPEN_LOOP feedback means the smoother integrates
+# commanded velocity through its own accel limits without needing
+# /Odometry to close the loop.
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: false
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: OPEN_LOOP
+    max_velocity: [0.3, 0.0, 0.8]       # [vx_max, vy_max, vyaw_max], matches RPP desired_linear_vel.
+    min_velocity: [-0.1, 0.0, -0.8]     # small reverse band for backup recovery.
+    max_accel: [0.3, 0.0, 1.0]          # 0.3 m/s² forward — ~1 s to reach 0.3 m/s.
+    max_decel: [-0.5, 0.0, -1.0]        # faster decel than accel for safety.
+    odom_topic: /Odometry
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0

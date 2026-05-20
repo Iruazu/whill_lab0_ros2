@@ -21,7 +21,7 @@
         filter_size_map: 0.5
         cube_side_length: 200.0           # reduced from upstream 1000.0 because that causes "Leaf size is too small for the input dataset. Integer indices would overflow." in pcl::VoxelGrid::applyFilter (1000^3 / 0.5^3 voxels = 8e9 > INT32_MAX). 200^3 keeps the count well under int32. Visible symptom of the overflow is FAST-LIO dropping into a "No Effective Points!" loop with no pose updates.
         runtime_pos_log_enable: false
-        map_file_path: "./test.pcd"
+        map_file_path: "/home/systemlab/whill_lab0_ros2/docs/m5-maps/lab.pcd"
 
         common:
             lid_topic: "/velodyne_points"
@@ -63,7 +63,8 @@
             scan_publish_en: true
             dense_publish_en: true
             scan_bodyframe_pub_en: true
+            map_en: true                 # required for /map_save service to have data: when true, publish_map() runs each scan and accumulates the world-frame points into pcl_wait_pub. The /map_save service then pcd_writer's pcl_wait_pub to map_file_path. (Upstream FAST-LIO leaves this off by default and the historical pcd_save_en write path in publish_frame_world is commented out, so this is the only way to actually save a PCD without forking the source.)
 
         pcd_save:
-            pcd_save_en: false           # disable by default; flip to true when authoring a saved map
-            interval: -1
+            pcd_save_en: true            # M5-b: save all accumulated points to a single PCD on shutdown for offline conversion to a 2D occupancy grid. The actual write happens in FAST-LIO's signal handler so launches must be SIGINT-stopped, not SIGKILL'd.
+            interval: -1                 # -1 = accumulate the entire run into one file
