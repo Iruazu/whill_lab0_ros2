@@ -1,8 +1,9 @@
 # M5 — Autonomous navigation on ROS 2 humble
 
-> **Status**: not yet started. This document is a planning stub
-> created at the M4 → M5 transition (2026-05-08); fill out
-> "Procedure" / "Status" / "Open questions" as the work lands.
+> **Status**: in progress. M5-a (TF bridge) and M5-b (saved PCD)
+> landed 2026-05-08; M5-c (occupancy-grid conversion) landed
+> 2026-05-20 — Nav2 lifecycle bringup + chair-tuned params still
+> pending under the same M5-c sub-milestone.
 
 ## Goal
 
@@ -63,7 +64,9 @@ arrives within tolerance.
    `whill_localization/config/velodyne_whill.yaml`, drive a slow
    loop covering the test area. Save the resulting PCD under
    `docs/m5-maps/<env>.pcd`. Convert to an occupancy grid via
-   `pcd_to_pgm` (or `octomap_server` for a 3D-aware costmap).
+   [`scripts/pcd_to_occupancy_grid.py`](../scripts/pcd_to_occupancy_grid.py)
+   (numpy-only, crops drift outliers and slices Z to chair-relevant
+   obstacle band before rasterising).
 
 3. **Add Nav2 to `whill_lab.repos`** if a forked Nav2 is needed —
    otherwise the apt `ros-humble-nav2-*` packages are enough.
@@ -95,8 +98,10 @@ arrives within tolerance.
 | **M5-a — TF bridge** `map → camera_init → body → base_link → sensors` | **done (2026-05-08)** — `whill_navigation/launch/tf_bridge_launch.py` adds two static identities (`map → camera_init`, `body → base_link`); `tf2_tools view_frames` against a run2 replay confirms the full chain (snapshot in [`m3-bench-data/frames-m5a-2026-05-08.pdf`](m3-bench-data/frames-m5a-2026-05-08.pdf)). |
 | `whill_navigation` package skeleton + `nav_launch.py` composer | done (2026-05-08) |
 | **M5-b — Saved map (PCD)** | **done (2026-05-08)** — `docs/m5-maps/lab.pcd`, 256,478 points, 8.2 MB, captured by replaying `m4_chair_live_2026-05-08_run2` with `pcd_save.pcd_save_en: true` + `publish.map_en: true` and calling the `/map_save` service. **Caveat: includes scattered points from FAST-LIO drift segments** (XY range hits ±350 m even though the bounded trajectory stayed within ~15 m of origin). M5-c's PCD → occupancy-grid conversion must clip / outlier-filter aggressively before `nav2_map_server` can consume it. |
-| 2D occupancy grid (.pgm + .yaml) for `nav2_map_server` | pending — M5-c |
-| `nav2_params.yaml` chair-tuned | pending — M5-c |
+| **2D occupancy grid (.pgm + .yaml) for `nav2_map_server`** | **done (2026-05-20)** — [`scripts/pcd_to_occupancy_grid.py`](../scripts/pcd_to_occupancy_grid.py) converts `lab.pcd` → [`docs/m5-maps/lab.pgm`](m5-maps/lab.pgm) + [`docs/m5-maps/lab.yaml`](m5-maps/lab.yaml). Defaults: XY crop ±20 m (kills the drift outliers from M5-b), Z slice [0.1, 1.5] m, 0.05 m / cell → 800×800. Bresenham ray-cast from origin marks free space; unreached cells stay unknown. Commit `3270336`. |
+| `nav2_params.yaml` chair-tuned | pending — M5-c (next) |
+| Nav2 lifecycle bringup (`map_server` + `planner_server` + `controller_server` + `bt_navigator` + `lifecycle_manager_navigation`) in `nav_launch.py` | pending — M5-c |
+| RViz2 dry-run: map + costmaps render without the chair | pending — M5-c |
 | Live goal-following on the chair | pending — M5-d |
 | Tuning notes captured | pending — M5-e |
 
