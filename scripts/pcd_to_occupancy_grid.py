@@ -120,6 +120,16 @@ def main():
                    help='metres per grid cell (default 0.05)')
     p.add_argument('--no-free-cast', action='store_true',
                    help="skip Bresenham free-cell marking (only occupied + unknown)")
+    p.add_argument('--outlier-window', type=int, default=5,
+                   help='window size (cells, odd) for occupied-cell density check (default 5)')
+    p.add_argument('--min-cluster-size', type=int, default=5,
+                   help='an occupied cell needs >=N occupied neighbours in the window to survive; '
+                        'isolated points below this become free (default 5)')
+    p.add_argument('--no-outlier-filter', action='store_true',
+                   help='skip the density-based outlier removal step')
+    p.add_argument('--clear-radius', type=float, default=1.5,
+                   help='radius (m) around world origin to force-clear of occupied cells '
+                        '(removes chair self-returns at the M5-b drive start point); 0 disables')
     args = p.parse_args()
 
     xyz = read_pcd_xyz(args.pcd_path)
@@ -168,6 +178,48 @@ def main():
         bresenham_free_cells(grid, origin_px, unique_hits)
 
     grid[rows, cols] = PIX_OCCUPIED
+
+    # Density-based outlier removal. People walking through the lab during the
+    # M5-b drive and FAST-LIO drift segments leave isolated occupied cells that
+    # the planner treats as phantom walls. Real structures (walls, furniture)
+    # produce dense clusters of occupied cells; transient noise produces 1–3
+    # cell blobs. For each occupied cell, count the surrounding occupied cells
+    # in a window; cells below the cluster-size threshold are reclassified as
+    # free (the ray reached them so we know they're traversable).
+    if not args.no_outlier_filter:
+        from scipy.ndimage import convolve
+        k = args.outlier_window
+        if k % 2 == 0:
+            k += 1  # force odd so the window is symmetric around each cell
+        occ_mask = (grid == PIX_OCCUPIED).astype(np.int32)
+        n_before = int(occ_mask.sum())
+        kernel = np.ones((k, k), dtype=np.int32)
+        nbr = convolve(occ_mask, kernel, mode='constant', cval=0)
+        isolated = (occ_mask == 1) & (nbr < args.min_cluster_size)
+        grid[isolated] = PIX_FREE
+        n_removed = int(isolated.sum())
+        print(f'Outlier filter ({k}x{k} window, min cluster {args.min_cluster_size}): '
+              f'removed {n_removed} of {n_before} occupied cells '
+              f'({100*n_removed/max(n_before, 1):.1f}%)', file=sys.stderr)
+
+    # Force-clear a disk around the world origin. The M5-b drive started at
+    # (0, 0) in the FAST-LIO frame, so any returns from the chair body itself
+    # (LiDAR can see the chair's footrest / seat back at close range) end up
+    # baked here as phantom walls in the middle of the room. Nav2 then can't
+    # spawn the robot footprint without colliding.
+    if args.clear_radius > 0:
+        r_cells = int(np.ceil(args.clear_radius / res))
+        ox, oy = origin_px
+        yy, xx = np.ogrid[:side, :side]
+        disk = (xx - ox) ** 2 + (yy - oy) ** 2 <= r_cells ** 2
+        n_cleared = int(((grid == PIX_OCCUPIED) & disk).sum())
+        grid[disk & (grid == PIX_OCCUPIED)] = PIX_FREE
+        # Also stamp the disk's unknowns as free so the planner has room to
+        # spawn the robot footprint at startup.
+        grid[disk & (grid == PIX_UNKNOWN)] = PIX_FREE
+        print(f'Clear-radius ({args.clear_radius:.2f} m around origin): '
+              f'cleared {n_cleared} occupied cells inside the disk',
+              file=sys.stderr)
 
     n_occ = int((grid == PIX_OCCUPIED).sum())
     n_free = int((grid == PIX_FREE).sum())
