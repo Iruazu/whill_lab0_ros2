@@ -19,10 +19,12 @@
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <!-- Pulled in lazily once Nav2 is wired up; left commented for now so
-       the package can build on hosts that don't yet have ros-humble-nav2-* installed. -->
-  <!-- <exec_depend>nav2_bringup</exec_depend> -->
-  <!-- <exec_depend>nav2_lifecycle_manager</exec_depend> -->
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_planner</exec_depend>
+  <exec_depend>nav2_controller</exec_depend>
+  <exec_depend>nav2_behaviors</exec_depend>
+  <exec_depend>nav2_bt_navigator</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
