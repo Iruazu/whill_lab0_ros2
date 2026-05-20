@@ -120,8 +120,14 @@ controller_server:
       # first chair test. It also handles diff-drive-style motion well,
       # which matches WHILL's two-rear-wheel drive.
       plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
-      desired_linear_vel: 0.5        # CONSERVATIVE. WHILL Mode 2 tops out near ~1.1 m/s.
-      max_linear_accel: 0.5          # CONSERVATIVE.
+      # RPP in humble does NOT enforce max_linear_accel itself — it just
+      # commands desired_linear_vel directly, causing a 0 → target step on
+      # the cmd_vel topic. The chair felt this as a dangerous lurch on the
+      # first live M5-d. Real acceleration limiting now happens in
+      # velocity_smoother below; these RPP values stay conservative so even
+      # if the smoother is bypassed the target speed is gentle.
+      desired_linear_vel: 0.3        # was 0.5 — felt unsafe to a seated rider.
+      max_linear_accel: 0.3          # documentation only (see comment above).
       max_linear_decel: 0.6
       lookahead_dist: 0.6
       min_lookahead_dist: 0.3
@@ -242,3 +248,24 @@ behavior_server:
     max_rotational_vel: 0.8
     min_rotational_vel: 0.2
     rotational_acc_lim: 1.0
+
+# Inserted between controller_server (publishes /cmd_vel) and the WHILL
+# driver (subscribes /whill/controller/cmd_vel). RPP doesn't ramp velocity
+# itself so without a smoother the chair gets a 0 → 0.3 m/s step that the
+# rider feels as a lurch. OPEN_LOOP feedback means the smoother integrates
+# commanded velocity through its own accel limits without needing
+# /Odometry to close the loop.
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: false
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: OPEN_LOOP
+    max_velocity: [0.3, 0.0, 0.8]       # [vx_max, vy_max, vyaw_max], matches RPP desired_linear_vel.
+    min_velocity: [-0.1, 0.0, -0.8]     # small reverse band for backup recovery.
+    max_accel: [0.3, 0.0, 1.0]          # 0.3 m/s² forward — ~1 s to reach 0.3 m/s.
+    max_decel: [-0.5, 0.0, -1.0]        # faster decel than accel for safety.
+    odom_topic: /Odometry
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0

@@ -11,10 +11,14 @@ Composition order:
      controller_server + behavior_server + bt_navigator behind a
      lifecycle_manager that autostarts them in order.
 
-cmd_vel routing: controller_server's default /cmd_vel topic is remapped
-to /whill/controller/cmd_vel (the M2 WHILL driver's input topic) so the
-chair receives Nav2 velocity commands directly. No velocity_smoother
-in the chain yet — see nav2_params.yaml for the rationale.
+cmd_vel routing:
+  controller_server  ─┐
+                      ├─> /cmd_vel ─> velocity_smoother ─> /whill/controller/cmd_vel
+  behavior_server    ─┘                              (remapped from /cmd_vel_smoothed)
+
+velocity_smoother enforces real acceleration limits — RPP itself doesn't
+ramp, so without the smoother the chair gets a 0 → desired_linear_vel
+step which felt dangerous to a seated rider on the first M5-d run.
 
 For offline replay (no chair, no live FAST-LIO), use
 `whill_localization/fast_lio_launch.py` separately and include only
@@ -52,6 +56,7 @@ def generate_launch_description():
         'controller_server',
         'behavior_server',
         'bt_navigator',
+        'velocity_smoother',
     ]
 
     return LaunchDescription([
@@ -88,9 +93,8 @@ def generate_launch_description():
             name='controller_server',
             output='screen',
             parameters=[nav2_params],
-            # WHILL driver subscribes to /whill/controller/cmd_vel; route
-            # Nav2's velocity output there instead of the default /cmd_vel.
-            remappings=[('/cmd_vel', '/whill/controller/cmd_vel')],
+            # Publishes raw /cmd_vel; velocity_smoother picks it up and
+            # produces the rate-limited stream the chair actually consumes.
         ),
         Node(
             package='nav2_behaviors',
@@ -98,7 +102,6 @@ def generate_launch_description():
             name='behavior_server',
             output='screen',
             parameters=[nav2_params],
-            remappings=[('/cmd_vel', '/whill/controller/cmd_vel')],
         ),
         Node(
             package='nav2_bt_navigator',
@@ -106,6 +109,17 @@ def generate_launch_description():
             name='bt_navigator',
             output='screen',
             parameters=[nav2_params],
+        ),
+        Node(
+            package='nav2_velocity_smoother',
+            executable='velocity_smoother',
+            name='velocity_smoother',
+            output='screen',
+            parameters=[nav2_params],
+            # Smoother subscribes /cmd_vel (default) and publishes
+            # /cmd_vel_smoothed. Remap the output straight to the WHILL
+            # driver's input topic so we don't need a separate relay.
+            remappings=[('/cmd_vel_smoothed', '/whill/controller/cmd_vel')],
         ),
         Node(
             package='nav2_lifecycle_manager',
