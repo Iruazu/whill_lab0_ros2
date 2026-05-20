@@ -55,8 +55,15 @@ def generate_launch_description():
             parameters=[{
                 'input_topic': '/velodyne_points',
                 'output_topic': '/velodyne_points_filtered',
-                'z_min': -0.10,
-                'z_max': 100.0,
+                # Default is a no-op pass-through (self_radius=0) so the
+                # filter does not break FAST-LIO until you opt in to a
+                # specific exclusion cylinder. Use `rqt` or set these here
+                # to e.g. (0.6, -0.3, 0.05) once you've eyeballed the raw
+                # cloud in RViz and know where the mount actually sits.
+                'self_radius': 0.0,
+                'self_z_min': -0.5,
+                'self_z_max': 0.1,
+                'stats_every_n': 100,
             }],
         ),
     ])
