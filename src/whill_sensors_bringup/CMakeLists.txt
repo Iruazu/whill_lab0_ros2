@@ -8,4 +8,9 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(
+  PROGRAMS scripts/velodyne_self_filter.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()

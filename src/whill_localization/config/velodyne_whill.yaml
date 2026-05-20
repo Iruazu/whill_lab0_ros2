@@ -24,7 +24,13 @@
         map_file_path: "/home/systemlab/whill_lab0_ros2/docs/m5-maps/lab.pcd"
 
         common:
-            lid_topic: "/velodyne_points"
+            # M5-e (2026-05-20): subscribe to the self-filtered cloud, not raw.
+            # whill_sensors_bringup runs velodyne_self_filter that strips mount /
+            # chair-body returns (z < -0.10 m in the velodyne frame) before
+            # FAST-LIO sees them — those points were producing trailing phantom
+            # walls in the world map. To temporarily disable the filter, set
+            # lid_topic back to /velodyne_points.
+            lid_topic: "/velodyne_points_filtered"
             imu_topic: "/imu/data_raw"
             time_sync_en: false
             time_offset_lidar_to_imu: 0.0
