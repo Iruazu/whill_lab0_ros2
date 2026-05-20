@@ -1,9 +1,11 @@
 # M5 — Autonomous navigation on ROS 2 humble
 
-> **Status**: in progress. M5-a (TF bridge) and M5-b (saved PCD)
-> landed 2026-05-08; M5-c (occupancy-grid conversion) landed
-> 2026-05-20 — Nav2 lifecycle bringup + chair-tuned params still
-> pending under the same M5-c sub-milestone.
+> **Status**: M5-d **done** (2026-05-20). First successful autonomous
+> goal-to-pose on the WHILL CR2: 1.6 m forward goal reached cleanly
+> in ~6 s, smooth 0 → 0.3 m/s ramp at 0.3 m/s² (velocity_smoother),
+> `bt_navigator: Goal succeeded`. Closing conditions for M5 are met;
+> M5-e (further tuning + long-distance goals + dynamic obstacles)
+> remains optional.
 
 ## Goal
 
@@ -98,12 +100,12 @@ arrives within tolerance.
 | **M5-a — TF bridge** `map → camera_init → body → base_link → sensors` | **done (2026-05-08)** — `whill_navigation/launch/tf_bridge_launch.py` adds two static identities (`map → camera_init`, `body → base_link`); `tf2_tools view_frames` against a run2 replay confirms the full chain (snapshot in [`m3-bench-data/frames-m5a-2026-05-08.pdf`](m3-bench-data/frames-m5a-2026-05-08.pdf)). |
 | `whill_navigation` package skeleton + `nav_launch.py` composer | done (2026-05-08) |
 | **M5-b — Saved map (PCD)** | **done (2026-05-08)** — `docs/m5-maps/lab.pcd`, 256,478 points, 8.2 MB, captured by replaying `m4_chair_live_2026-05-08_run2` with `pcd_save.pcd_save_en: true` + `publish.map_en: true` and calling the `/map_save` service. **Caveat: includes scattered points from FAST-LIO drift segments** (XY range hits ±350 m even though the bounded trajectory stayed within ~15 m of origin). M5-c's PCD → occupancy-grid conversion must clip / outlier-filter aggressively before `nav2_map_server` can consume it. |
-| **2D occupancy grid (.pgm + .yaml) for `nav2_map_server`** | **done (2026-05-20)** — [`scripts/pcd_to_occupancy_grid.py`](../scripts/pcd_to_occupancy_grid.py) converts `lab.pcd` → [`docs/m5-maps/lab.pgm`](m5-maps/lab.pgm) + [`docs/m5-maps/lab.yaml`](m5-maps/lab.yaml). Defaults: XY crop ±20 m (kills the drift outliers from M5-b), Z slice [0.1, 1.5] m, 0.05 m / cell → 800×800. Bresenham ray-cast from origin marks free space; unreached cells stay unknown. Commit `3270336`. |
-| `nav2_params.yaml` chair-tuned | pending — M5-c (next) |
-| Nav2 lifecycle bringup (`map_server` + `planner_server` + `controller_server` + `bt_navigator` + `lifecycle_manager_navigation`) in `nav_launch.py` | pending — M5-c |
-| RViz2 dry-run: map + costmaps render without the chair | pending — M5-c |
-| Live goal-following on the chair | pending — M5-d |
-| Tuning notes captured | pending — M5-e |
+| **2D occupancy grid (.pgm + .yaml) for `nav2_map_server`** | **done (2026-05-20)** — [`scripts/pcd_to_occupancy_grid.py`](../scripts/pcd_to_occupancy_grid.py) converts `lab.pcd` → [`docs/m5-maps/lab.pgm`](m5-maps/lab.pgm) + [`docs/m5-maps/lab.yaml`](m5-maps/lab.yaml). Defaults: XY crop ±20 m, Z slice [0.1, 1.5] m, 0.05 m / cell → 800×800. Density outlier filter (5×5 window, min cluster 5) + 1.5 m clear-disk around origin remove people-pass spikes and chair self-returns. Bresenham ray-cast from origin marks free space; unreached cells stay unknown. Commits `3270336`, `53d691f`. |
+| **`nav2_params.yaml` chair-tuned** | **done (2026-05-20)** — RPP with `desired_linear_vel: 0.3 m/s`, `use_collision_detection: false` (static map still has phantoms), `robot_radius: 0.45`, `inflation_radius: 0.5`. Canonical 47-plugin bt_navigator list. Commits `262772f`, `98e0c65`, `53d691f`, `8cd7fe5`. |
+| **Nav2 lifecycle bringup in `nav_launch.py`** | **done (2026-05-20)** — `map_server` + `planner_server` + `controller_server` + `behavior_server` + `bt_navigator` + **`velocity_smoother`** + `lifecycle_manager_navigation`. velocity_smoother enforces real accel limits (0.3 m/s² fwd, 1.0 rad/s² rot) that RPP itself doesn't ramp; remap `/cmd_vel_smoothed → /whill/controller/cmd_vel`. Commits `262772f`, `8cd7fe5`. |
+| RViz2 dry-run: map + costmaps render without the chair | superseded — went straight to live M5-d on the chair |
+| **Live goal-following on the chair** | **done (2026-05-20)** — 1.6 m forward goal from (0.08, 0.03) → (1.59, 0.00). Begin → `Goal succeeded` in ~6 s. cmd_vel ramp 0 → 0.3 m/s in 1 s (matches `velocity_smoother.max_accel: 0.3`), no recovery behaviour fired, FAST-LIO stayed tracked the whole run. User feedback: "結構いい感じ". |
+| Tuning notes captured | pending — M5-e (optional follow-up: longer goals, dynamic obstacle layer, re-enable collision detection on a re-captured clean map) |
 
 ## Open questions (to be answered as M5 progresses)
 
