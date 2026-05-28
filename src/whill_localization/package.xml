@@ -17,9 +17,21 @@
 
   <exec_depend>fast_lio</exec_depend>
   <exec_depend>whill_sensors_bringup</exec_depend>
+  <!-- Phase A: state_estimation_launch.py includes whill_odometry to turn
+       /whill/states/model_cr2 (ModelCr2State) into /whill/odom (Odometry)
+       for ekf_odom. The upstream ros2_whill/whill_driver does not emit a
+       nav_msgs/Odometry of its own. -->
+  <exec_depend>whill_odometry</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <!-- Phase A: two-stage EKF (ekf_odom + ekf_map) wired up in
+       state_estimation_launch.py. See docs/decisions/0001-wheel-odom-lio-ekf-fusion.md. -->
+  <exec_depend>robot_localization</exec_depend>
+  <!-- Phase A bridge: identity static TF map -> camera_init in
+       state_estimation_launch.py, so ekf_map can accept FAST-LIO /Odometry
+       samples stamped with frame_id=camera_init. Removed in Phase B. -->
+  <exec_depend>tf2_ros</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>whill_odometry</name>
+  <version>0.1.0</version>
+  <description>
+    Wheel-odometry wrapper for the upstream ros2_whill/whill_driver, which
+    only publishes /whill/states/model_cr2 (whill_msgs/ModelCr2State) and
+    not a nav_msgs/Odometry. This node integrates the differential drive
+    kinematics from the noetic ros_whill driver and republishes the result
+    on /whill/odom, so Phase A's ekf_odom can fuse wheel + IMU into the
+    Nav2-standard odom -> base_link TF chain.
+    See docs/legacy-findings/whill-wheel-odometry.md and ADR-0001.
+  </description>
+
+  <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>whill_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

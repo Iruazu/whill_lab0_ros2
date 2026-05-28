@@ -44,3 +44,9 @@ __pycache__/
 docs/m3-bench-data/*/
 !docs/m3-bench-data/*.md
 !docs/m3-bench-data/*.pdf
+
+# tf2_tools view_frames generates timestamped artifacts in CWD.
+frames_*.gv
+frames_*.pdf
+frames.gv
+frames.pdf

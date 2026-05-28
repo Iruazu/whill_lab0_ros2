@@ -1,0 +1,122 @@
+# ekf_odom — local (continuous) state estimator.
+#
+# Role in the Phase A two-stage EKF (see ADR-0001):
+#   - input  : /whill/odom            (wheel odometry, vx + vyaw)
+#              /imu/data_raw          (RT 9-axis IMU, yaw rate only)
+#   - output : odom -> base_link  TF  (publish_tf: true)
+#              /odometry/filtered     (nav_msgs/Odometry, world_frame = odom)
+#
+# The role split is the Nav2 / r_l reference setup: ekf_odom never sees the
+# FAST-LIO absolute pose, so a LIO jump (e.g. on relocalization) cannot
+# discontinuously move base_link relative to odom. Controllers and the local
+# costmap see a smooth, monotonically increasing pose in `odom`, which is what
+# Nav2's local planner assumes.
+#
+# Topic remap is done in state_estimation_launch.py (the default r_l output
+# topic name is "odometry/filtered"; we keep that for ekf_odom and remap the
+# global EKF in the launch to avoid a topic collision).
+#
+# _config arrays are 15-bool masks, indices:
+#   [ x,  y,  z,  roll, pitch, yaw,
+#     vx, vy, vz, vroll, vpitch, vyaw,
+#     ax, ay, az ]
+#
+# Covariance values are initial guesses; the WHILL SDK does not currently
+# populate /whill/odom covariance, so the EKF falls back to these. Once we
+# have live data, retune (see Phase A risk fallback in the plan).
+
+ekf_odom:
+    ros__parameters:
+        frequency: 30.0
+        sensor_timeout: 0.1
+        # If /whill/odom stops arriving (driver crash, USB disconnect, or
+        # simply never wired up — see README "Runtime prerequisites"), the
+        # EKF keeps running on IMU yaw rate alone for up to sensor_timeout
+        # seconds before falling back to dead-reckoning the prediction step.
+        # In practice this means the chair still gets an odom -> base_link
+        # TF, just one whose linear velocity is whatever the IMU's noisy
+        # accelerometer integrates to (≈ random walk). Acceptable for
+        # short-term Nav2 sanity but unusable for actual driving.
+        # Wheelchair drives on flat building floors and outdoor paving; pitch
+        # and roll are negligible. two_d_mode forces z, roll, pitch, vz,
+        # vroll, vpitch, az to zero, which prevents IMU acceleration noise
+        # from polluting horizontal state.
+        two_d_mode: true
+        transform_time_offset: 0.0
+        transform_timeout: 0.0
+        print_diagnostics: true
+        debug: false
+        publish_tf: true
+        publish_acceleration: false
+
+        # Standard Nav2 frame chain. world_frame == odom means this EKF
+        # publishes odom -> base_link.
+        map_frame: map
+        odom_frame: odom
+        base_link_frame: base_link
+        world_frame: odom
+
+        # ---- odom0: wheel odometry from ros2_whill ----
+        # Convention from the noetic ros_whill driver carried into ROS 2:
+        # header.frame_id = odom, child_frame_id = base_link. We trust only
+        # the velocities — wheel encoders integrate position correctly over
+        # short horizons but accumulate yaw drift, so absolute pose is left
+        # to FAST-LIO via ekf_map.
+        odom0: /whill/odom
+        # Trust: vx (index 6) and vyaw (index 11).
+        odom0_config: [false, false, false,
+                       false, false, false,
+                       true,  false, false,
+                       false, false, true,
+                       false, false, false]
+        odom0_queue_size: 10
+        # differential/relative are no-ops for a velocity-only config — they
+        # only affect how r_l treats absolute pose measurements, and odom0
+        # here ignores x/y/yaw entirely (see odom0_config above).
+        odom0_differential: false
+        odom0_relative: false
+        odom0_nodelay: false
+
+        # ---- imu0: RT 9-axis IMU ----
+        # Use only yaw rate. The RT module has decent gyro stability but
+        # the accelerometer is noisy and biased; with two_d_mode on, ax/ay
+        # would only fight the wheel-odom velocity estimate. Absolute
+        # orientation from the IMU is not trusted either: the magnetometer
+        # is uncalibrated indoors, and the local EKF should not produce
+        # an absolute heading anyway (that is ekf_map's job via FAST-LIO).
+        imu0: /imu/data_raw
+        # Trust: vyaw (index 11) only.
+        imu0_config: [false, false, false,
+                      false, false, false,
+                      false, false, false,
+                      false, false, true,
+                      false, false, false]
+        imu0_queue_size: 10
+        # Same reasoning as odom0: velocity-only config makes differential
+        # and relative no-ops, since x/y/yaw indices are already false above.
+        imu0_differential: false
+        imu0_relative: false
+        imu0_nodelay: false
+        # /imu/data_raw includes gravity in linear_acceleration; we do not
+        # subscribe to ax/ay here, but keep this true to match r_l's
+        # documented expectation when an IMU publishes raw acceleration.
+        imu0_remove_gravitational_acceleration: true
+
+        # Process noise covariance Q (15x15 diagonal). Defaults match the
+        # robot_localization template; tighten vx / vyaw once we have a
+        # live drive and can measure /whill/odom noise.
+        process_noise_covariance: [0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.05, 0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.025,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.04,   0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.01,   0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.01,   0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.02,   0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.01,   0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.01,   0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.015]

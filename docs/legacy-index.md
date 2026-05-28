@@ -138,7 +138,8 @@
 
 | 機能 | 詳細ファイル | 調査日 |
 |------|------------|--------|
-| — | — | — |
+| 学内自律走行 (キャンパス) | `docs/legacy-findings/campus-autonomous-navigation.md` | 2026-05-28 |
+| WHILL 車輪オドメトリ計算 | `docs/legacy-findings/whill-wheel-odometry.md` | 2026-05-28 |
 
 ---
 

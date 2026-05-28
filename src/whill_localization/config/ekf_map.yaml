@@ -1,0 +1,108 @@
+# ekf_map — global (drift-corrected) state estimator.
+#
+# Role in the Phase A two-stage EKF (see ADR-0001):
+#   - input  : /odometry/filtered/local  (= ekf_odom output, vx + vyaw — continuous;
+#                                          renamed in launch so ekf_map's remap on
+#                                          its own publisher does not retarget the
+#                                          subscription as well)
+#              /Odometry                 (FAST-LIO absolute pose in `camera_init`,
+#                                          treated as `map` here. Trust x/y/yaw.)
+#   - output : map -> odom  TF           (publish_tf: true)
+#              /odometry/filtered/global (nav_msgs/Odometry, remapped in launch)
+#
+# Why a separate EKF instead of feeding LIO straight into ekf_odom:
+#   FAST-LIO can jump (especially after future loop closure / relocalization in
+#   Phase B). If those jumps reached odom -> base_link the local costmap and
+#   controller would see a discontinuous robot pose. The r_l two-stage pattern
+#   absorbs LIO jumps into map -> odom only; odom -> base_link stays smooth.
+#
+# Phase A caveat: FAST-LIO publishes /Odometry with frame_id `camera_init`,
+# not `map`. robot_localization rejects samples whose header frame differs
+# from world_frame unless it can TF-resolve the difference, so we wire up an
+# identity static TF `map -> camera_init` in state_estimation_launch.py
+# (option (b) — alias `camera_init` to `map` via static TF). This is a
+# Phase A bridge and is scheduled for removal in Phase B once
+# FASTLIO2_SAM_LC publishes natively in `map`. See module-level docstring of
+# state_estimation_launch.py and the Phase B "出力" section in
+# docs/plans/2026-05-28-campus-autonomous-navigation.md.
+#
+# _config arrays are 15-bool masks, indices:
+#   [ x,  y,  z,  roll, pitch, yaw,
+#     vx, vy, vz, vroll, vpitch, vyaw,
+#     ax, ay, az ]
+
+ekf_map:
+    ros__parameters:
+        frequency: 30.0
+        sensor_timeout: 0.1
+        two_d_mode: true
+        # 50 ms forward extrapolation when stamping the published TF. r_l's
+        # canned example for the dual-EKF setup uses this exact value — it
+        # buys a margin for the LIO callback latency (FAST-LIO emits at ~7 Hz)
+        # without making the TF look "from the future" to Nav2's tf2 buffer.
+        transform_time_offset: 0.05
+        transform_timeout: 0.0
+        print_diagnostics: true
+        debug: false
+        publish_tf: true
+        publish_acceleration: false
+
+        map_frame: map
+        odom_frame: odom
+        base_link_frame: base_link
+        # world_frame == map means this EKF publishes map -> odom.
+        world_frame: map
+
+        # ---- odom0: continuous local state from ekf_odom ----
+        # We trust velocities here so that map-frame integration between LIO
+        # updates is smooth. Position / yaw absolute values from ekf_odom are
+        # not used (they would just re-introduce wheel drift).
+        # Topic is /odometry/filtered/local (renamed in state_estimation_launch.py
+        # to keep ekf_map's own publisher remap from looping back here).
+        odom0: /odometry/filtered/local
+        odom0_config: [false, false, false,
+                       false, false, false,
+                       true,  false, false,
+                       false, false, true,
+                       false, false, false]
+        odom0_queue_size: 10
+        odom0_differential: false
+        odom0_relative: false
+        odom0_nodelay: false
+
+        # ---- odom1: FAST-LIO absolute pose ----
+        # Trust x, y, yaw. z is forced to 0 by two_d_mode. roll/pitch from
+        # LIO are unreliable on a planar chair and are ignored. Velocities
+        # from /Odometry are not trusted — they alias the wheel velocity in
+        # the LIO integration and would double-count.
+        odom1: /Odometry
+        odom1_config: [true,  true,  false,
+                       false, false, true,
+                       false, false, false,
+                       false, false, false,
+                       false, false, false]
+        odom1_queue_size: 10
+        # differential:false because /Odometry already publishes absolute
+        # pose in `camera_init`; r_l treats it as an absolute reading.
+        odom1_differential: false
+        odom1_relative: false
+        odom1_nodelay: false
+
+        # Process noise covariance Q. Slightly larger position terms than
+        # ekf_odom because this filter has to absorb LIO jumps without
+        # oscillating.
+        process_noise_covariance: [0.10, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.10, 0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.025,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.04,   0.0,    0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.01,   0.0,    0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.01,   0.0,    0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.02,   0.0,    0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.01,   0.0,    0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.01,   0.0,
+                                   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.015]

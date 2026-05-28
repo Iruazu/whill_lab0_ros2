@@ -2,12 +2,17 @@
 
 Composition order:
   1. M4 localization (whill_localization/localization_launch.py) —
-     sensors + FAST-LIO + RViz, producing /Odometry and the
-     camera_init -> body TF.
-  2. M5-a TF bridge (this package) — map -> camera_init and
-     body -> base_link static transforms so Nav2 sees a Nav2-shaped
-     TF chain.
-  3. Nav2 lifecycle bringup (M5-c) — map_server + planner_server +
+     sensors + FAST-LIO + RViz, producing /Odometry and FAST-LIO's
+     native `camera_init -> body` TF (dangling; Nav2 ignores it).
+  2. Phase A state estimation (whill_localization/state_estimation_launch.py) —
+     robot_localization two-stage EKF producing the Nav2-standard
+     `map -> odom -> base_link` chain from /whill/odom + /imu/data_raw +
+     /Odometry. Replaces the M5-a `tf_bridge_launch.py` identity hack.
+     See docs/decisions/0001-wheel-odom-lio-ekf-fusion.md.
+  3. Legacy tf_bridge (this package) — kept as a no-op include for one
+     more Phase, to avoid churning the launch graph. Will be removed in
+     Phase B cleanup.
+  4. Nav2 lifecycle bringup (M5-c) — map_server + planner_server +
      controller_server + behavior_server + bt_navigator behind a
      lifecycle_manager that autostarts them in order.
 
@@ -29,9 +34,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -46,8 +50,12 @@ def generate_launch_description():
     nav2_params = os.path.join(nav_share, 'config', 'nav2_params.yaml')
 
     # The saved map yaml is workspace-relative (not installed under any
-    # package share), so allow override via the `map` launch arg.
-    default_map_yaml = os.path.expanduser(
+    # package share). Hardcoded at launch description build time for the
+    # same reason as nav2_params above — a LaunchConfiguration substitution
+    # would resolve to empty when this file is wrapped by
+    # IncludeLaunchDescription (Phase F's campus_autonomous launch). Edit
+    # this path directly if you need a different map.
+    map_yaml = os.path.expanduser(
         '~/whill_lab0_ros2/docs/m5-maps/lab.yaml')
 
     lifecycle_nodes = [
@@ -60,14 +68,34 @@ def generate_launch_description():
     ]
 
     return LaunchDescription([
-        DeclareLaunchArgument(
-            'map',
-            default_value=default_map_yaml,
-            description='Absolute path to the map yaml consumed by map_server.'),
-
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(loc_share, 'launch', 'localization_launch.py'))),
+        # Phase A: two-stage EKF replaces the old identity tf_bridge. Must
+        # come after localization_launch so /whill/odom + /imu/data_raw +
+        # /Odometry are already being published when the EKFs start probing
+        # for sensor data (queue_size=10 absorbs the startup race).
+        #
+        # Force use_sim_time=false here: nav_launch.py is the live-chair
+        # entry point and consumes the wall clock. Without this explicit
+        # pass-through, state_estimation_launch.py's DeclareLaunchArgument
+        # default fires only when *invoked* (not when included), so an
+        # outer launch that sets use_sim_time=true (e.g. a future bag-replay
+        # wrapper around nav_launch) would silently propagate `true` into
+        # the EKFs while whill_odometry still stamps with wall now() —
+        # producing the diverging-stamp pathology robot_localization swallows
+        # silently. Bag replay must invoke state_estimation_launch.py
+        # directly, not via nav_launch.py.
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(loc_share, 'launch', 'state_estimation_launch.py')),
+            launch_arguments={'use_sim_time': 'false'}.items()),
+        # TODO(Phase-B): drop this include and delete tf_bridge_launch.py
+        # itself. It is an empty LaunchDescription left here so the Phase A
+        # change didn't have to also churn the top-level launch graph;
+        # Phase B's FASTLIO2_SAM_LC switchover is the right time to clean
+        # both up. Tracked in docs/plans/2026-05-28-campus-autonomous-
+        # navigation.md (Phase B "出力" section).
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(nav_share, 'launch', 'tf_bridge_launch.py'))),
@@ -78,7 +106,7 @@ def generate_launch_description():
             name='map_server',
             output='screen',
             parameters=[nav2_params,
-                        {'yaml_filename': LaunchConfiguration('map')}],
+                        {'yaml_filename': map_yaml}],
         ),
         Node(
             package='nav2_planner',

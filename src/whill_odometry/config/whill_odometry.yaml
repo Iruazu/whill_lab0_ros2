@@ -1,0 +1,27 @@
+# whill_odometry parameter defaults.
+#
+# These mirror what the node declares in OdometryNode::OdometryNode(); the
+# yaml exists so live retuning (especially of the covariance stddevs) does
+# not require a rebuild — `colcon build --symlink-install` installs this
+# file as a symlink, so edits take effect on the next launch.
+#
+# wheel_radius / tread are pulled from the noetic WHILL.h hardcoded values
+# (see docs/legacy-findings/whill-wheel-odometry.md). publish_tf is *off*
+# in Phase A: ekf_odom (whill_localization/config/ekf_odom.yaml) owns the
+# odom -> base_link TF, and racing two publishers would make Nav2's TF
+# buffer extrapolation oscillate.
+
+whill_odometry:
+    ros__parameters:
+        wheel_radius: 0.1325
+        tread: 0.496
+        publish_tf: false
+        # Starting covariances — see legacy-findings doc section C. Tighten
+        # these once we have a live drive log and can characterise the
+        # encoder noise floor.
+        pose_stddev_xy: 0.0316
+        pose_stddev_yaw: 0.0316
+        twist_stddev_vx: 0.0316
+        twist_stddev_vyaw: 0.1
+        frame_id: odom
+        child_frame_id: base_link

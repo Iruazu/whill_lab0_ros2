@@ -8,11 +8,52 @@ This package provides:
   by carrying the calibrated LiDAR↔IMU extrinsic and the IMU noise
   parameters forward from the noetic stack and aligning topic names
   with what `whill_sensors_bringup` publishes.
-- Two launch files:
+- A two-stage `robot_localization` EKF (Phase A, ADR-0001):
+  - `config/ekf_odom.yaml` — fuses `/whill/odom` + `/imu/data_raw`,
+    publishes `odom -> base_link` and `/odometry/filtered`. World frame
+    is `odom`; LIO jumps cannot reach this filter.
+  - `config/ekf_map.yaml` — fuses `/odometry/filtered` (from ekf_odom)
+    with FAST-LIO `/Odometry`, publishes `map -> odom` and
+    `/odometry/filtered/global`. World frame is `map`; this is where
+    drift correction lives.
+- Three launch files:
   - `fast_lio_launch.py` — FAST-LIO node alone, for offline replay
     against a recorded rosbag (defaults `use_sim_time:=true`).
   - `localization_launch.py` — sensors (via `whill_sensors_bringup`)
     plus FAST-LIO, for live operation on the chair.
+  - `state_estimation_launch.py` — both EKFs. Composed into
+    `whill_navigation/launch/nav_launch.py`; not normally launched
+    standalone.
+
+## TF tree (Phase A)
+
+```
+map ─(ekf_map)──> odom ─(ekf_odom)──> base_link ─(URDF)──> imu_link
+                                                       └──> velodyne
+                                                       └──> camera_link
+camera_init ─(FAST-LIO)──> body          [dangling subtree, Nav2 ignores]
+```
+
+FAST-LIO's `camera_init -> body` chain still exists at runtime but is
+no longer attached to `map` (the old `tf_bridge_launch.py` identity
+hack is gone). FAST-LIO's pose reaches Nav2 only via the `/Odometry`
+topic that `ekf_map` subscribes to.
+
+Phase B will replace FAST-LIO with FASTLIO2_SAM_LC which natively
+publishes in `map`/`base_link` and removes the dangling subtree.
+
+## Runtime prerequisites
+
+- `ros-humble-robot-localization` (apt) — declared as `exec_depend` in
+  `package.xml`; install with
+  `sudo apt-get install ros-humble-robot-localization`.
+- A node that actually publishes `/whill/odom` as `nav_msgs/Odometry`
+  with `frame_id=odom`, `child_frame_id=base_link`. The upstream
+  `ros2_whill` (`humble` branch) does **not** publish this topic —
+  only `/whill/states/model_cr2`. Phase A's EKF will still run without
+  this input (it will just fall back to the IMU yaw rate), but the
+  local estimate quality is degraded. See the plan's Phase A risk
+  fallback for a wrapper-node sketch.
 
 ## Quick start (offline replay)
 
