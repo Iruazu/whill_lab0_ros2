@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "claude-opus-4-7",
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Read(~/whill_lab0/**)",
+      "Edit(./src/**)",
+      "Edit(./docs/**)",
+      "Edit(./scripts/**)",
+      "Edit(./CLAUDE.md)",
+      "Write(./src/**)",
+      "Write(./docs/**)",
+      "Write(./scripts/**)",
+      "Bash(colcon *)",
+      "Bash(source *)",
+      "Bash(ros2 *)",
+      "Bash(rosdep *)",
+      "Bash(vcs *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git switch*)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(rg *)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Edit(./src/third_party/**)",
+      "Write(./src/third_party/**)",
+      "Bash(sudo rm *)",
+      "Bash(rm -rf *)",
+      "Bash(git push *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

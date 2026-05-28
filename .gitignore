@@ -44,3 +44,5 @@ __pycache__/
 docs/m3-bench-data/*/
 !docs/m3-bench-data/*.md
 !docs/m3-bench-data/*.pdf
+
+.claude/settings.local.json
