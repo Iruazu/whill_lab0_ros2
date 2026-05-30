@@ -48,3 +48,18 @@ FASTLIO2_SAM_LC with loop closure.
 
 This patch should be folded into the M5-e Phase B fork of FAST-LIO
 when that lands.
+
+### 2026-05-30-fastlio-sam-self-exclusion.patch
+
+Phase B-3b port of the same chair-body self-return exclusion into
+`RightTr/FAST-LIO-SAM` (`src/third_party/FAST_LIO_SAM`). Mechanics
+mirror the 2026-05-29 FAST-LIO patch — same three params
+(`preprocess.self_radius`, `self_z_min`, `self_z_max`, `self_sectors`),
+same fail-loud parser, same defaults-no-op so a stock yaml leaves
+upstream behaviour intact.
+
+The matching yaml lives in
+`src/whill_localization/config/fast_lio_sam_velodyne.yaml`.
+
+Files touched: `src/preprocess.h`, `src/preprocess.cpp`,
+`src/laserMapping.cpp`.

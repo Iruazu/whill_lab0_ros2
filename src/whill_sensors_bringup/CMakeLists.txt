@@ -9,7 +9,9 @@ install(
 )
 
 install(
-  PROGRAMS scripts/velodyne_self_filter.py
+  PROGRAMS
+    scripts/velodyne_self_filter.py
+    scripts/imu_sign_flip.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

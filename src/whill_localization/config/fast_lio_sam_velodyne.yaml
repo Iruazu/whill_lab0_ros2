@@ -1,0 +1,123 @@
+# FAST-LIO-SAM config for the WHILL chair stack (VLP-16 derivation).
+#
+# Derived from FAST_LIO_SAM/config/mapping/mid360.yaml on 2026-05-30.
+# Only the LiDAR-specific knobs (preprocess, extrinsic) and the topic/
+# frame names are overridden; loop-closure (lio_sam.*), publish, ZUPT,
+# and result_save sections inherit upstream defaults so behaviour stays
+# close to the reference. The extrinsic comes from the noetic-era
+# calibration (docs/m3-extrinsics-from-noetic.md), same source the
+# stock FAST-LIO yaml uses.
+#
+# Upstream FAST-LIO-SAM does NOT carry the Phase 3 in-process
+# self-return exclusion (preprocess.self_radius / self_sectors). The
+# mount-strut and armrest reflections will therefore appear in this
+# SLAM's map until the patch is ported across (tracked as a follow-up).
+
+common:
+    lid_topic:  "/velodyne_points"
+    # /imu/data_corrected is the rt_usb_9axisimu_driver output republished
+    # by whill_sensors_bringup's imu_sign_flip with both linear acceleration
+    # and angular velocity sign-flipped. PCMK-G3X reports the gravity
+    # vector itself (not the REP-145 reaction force), so without the flip
+    # grav_align decides "+Z is down" and the resulting map buries the
+    # environment underground (observed 2026-05-30).
+    imu_topic:  "/imu/data_corrected"
+    map_frame: "map"
+    odom_frame: "odom"
+    base_frame: "base_link"
+    high_freq_base_frame: "base_hf_link"
+    time_sync_en: false
+    time_offset_lidar_to_imu: 0.0
+    grav_align: true
+
+preprocess:
+    lidar_type: 2                # 2 = Velodyne
+    scan_line: 16                # VLP-16
+    blind: 0.5                   # inherited from the noetic stack
+    # Chair-body / mount self-return exclusion — same geometry the stock
+    # FAST-LIO yaml uses (settled by the 2026-05-29 bisect: cylinder +
+    # the two inner sectors hold, the outer-right r=1.85–2.15 sector
+    # starves registration). Disabled by default in the upstream
+    # FAST-LIO-SAM source so a no-self_sectors yaml matches stock
+    # behaviour. ROS 2 humble can't decode `[]` as a string array — a
+    # single empty string is treated as "no sectors" by the laserMapping
+    # parser if you ever need to turn them off.
+    self_radius: 1.2
+    self_z_min: -0.3
+    self_z_max: 0.2
+    self_sectors:
+        - "-125, -60, 1.20, 1.50, -0.30, 0.35"   # right inner cluster
+        - "25, 65, 1.20, 1.60, -0.30, 0.35"      # left-front mount-arm cluster
+
+mapping:
+    # IMU noise — same loosened values the stock FAST-LIO yaml uses.
+    # The noetic-era default 0.1 / 0.1 over-trusts predicted
+    # orientation and registration fails ~30 s into a sharp turn
+    # (replay 2026-05-08). FAST-LIO-SAM's mid360 yaml ships 0.1 / 0.1;
+    # keep the WHILL-tuned values here.
+    acc_cov: 0.1
+    gyr_cov: 0.5
+    b_acc_cov: 0.0001
+    b_gyr_cov: 0.0001
+    fov_degree: 180.0            # front hemisphere only (chair body fills the back)
+    det_range:  100.0
+    extrinsic_est_en: false
+    # Inherited LiDAR↔IMU extrinsic — see docs/m3-extrinsics-from-noetic.md.
+    # Translation = LiDAR origin in IMU frame; rotation = LiDAR -> IMU.
+    extrinsic_T: [0.104136, 0.411548, 0.323704]
+    extrinsic_R: [ 0.987688,  0.000000,  0.156434,
+                  -0.005459,  0.999391,  0.034470,
+                  -0.156339, -0.034900,  0.987087]
+
+lio_sam:
+    numberOfCores: 4
+
+    # Surrounding map / keyframe addition. Tighter thresholds suit a
+    # slow-moving chair than the upstream MID-360 drone use case.
+    surroundingkeyframeAddingDistThreshold: 0.5   # m
+    surroundingkeyframeAddingAngleThreshold: 0.15 # rad (~8.6°)
+    surroundingKeyframeDensity: 1.5
+    surroundingKeyframeSearchRadius: 30.0         # m (indoor lab / short outdoor route)
+
+    # Loop closure — KEEP ENABLED. This is the headline reason we are on
+    # FAST-LIO-SAM in the first place.
+    loopClosureEnableFlag: true
+    loopClosureFrequency: 1.0
+    surroundingKeyframeSize: 50
+    historyKeyframeSearchRadius: 10.0             # m, lab-scale loops
+    historyKeyframeSearchTimeDiff: 20.0           # s, faster revisit on a slow chair
+    historyKeyframeSearchAngleThreshold: 0.5
+    historyKeyframeSearchNum: 25
+    historyKeyframeFitnessScore: 0.3
+
+    globalMapVisualizationSearchRadius: 500.0
+    globalMapVisualizationPoseDensity: 5.0
+    globalMapVisualizationLeafSize: 0.5
+
+    keyframe_export_en: true
+    keyframe_global_pcd_en: true
+
+publish:
+    path_en: true                # trajectory visualised in RViz for drift inspection
+    scan_publish_en: true
+    dense_publish_en: true
+    scan_bodyframe_pub_en: true
+
+result_save:
+    feat_accum_save_en: true     # accumulate world-frame points → PCD on shutdown
+    interval: -1
+    imu_pose_save_en: true
+    scan_frame_save_en: false    # per-frame dump bloats disk; keep off until needed
+
+zupt:
+    use_zupt: true
+    zupt_acc_var_threshold:  0.0001
+    zupt_gyro_var_threshold: 0.00001
+    zupt_confidence_min: 0.05
+    zupt_r_min: 1.0e-5
+    zupt_r_max: 1.0
+    lidar_cov_static_scale: 5.0
+    lidar_residual_ref: 0.05
+    cov_inflate_start: 200
+    cov_inflate_pos:  1.0e-7
+    cov_inflate_rot:  1.0e-8

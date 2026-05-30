@@ -1,0 +1,153 @@
+diff --git a/src/laserMapping.cpp b/src/laserMapping.cpp
+index 7039566..1ca3da1 100644
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -1015,6 +1015,52 @@ int main(int argc, char** argv)
+     rosparam_get("preprocess/scan_line", p_pre->N_SCANS, 16);
+     rosparam_get("preprocess/timestamp_unit", p_pre->time_unit, (int)US);
+     rosparam_get("preprocess/scan_rate", p_pre->SCAN_RATE, 10);
++    // WHILL self-return exclusion (whill_lab0_ros2 fork). Defaults are
++    // no-op so a stock yaml ignores this block. self_sectors holds CSV
++    // strings "az_min, az_max, r_min, r_max, z_min, z_max" (deg/m) —
++    // parsed into preprocess::self_sectors with deg→rad + r² applied so
++    // the per-point check is tight. Failing loud on a malformed sector
++    // (instead of silently skipping it) was the explicit lesson from the
++    // 2026-05-29 stock-FAST-LIO bisect.
++    rosparam_get("preprocess/self_radius", p_pre->self_radius, 0.0);
++    rosparam_get("preprocess/self_z_min", p_pre->self_z_min, -0.5);
++    rosparam_get("preprocess/self_z_max", p_pre->self_z_max, 0.1);
++    {
++        std::vector<std::string> sector_specs;
++        rosparam_get("preprocess/self_sectors", sector_specs,
++                     std::vector<std::string>{});
++        p_pre->self_sectors.clear();
++        for (const auto & spec : sector_specs) {
++            if (spec.empty()) continue;
++            double v[6];
++            int n = std::sscanf(spec.c_str(), "%lf,%lf,%lf,%lf,%lf,%lf",
++                                &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]);
++            if (n != 6) {
++                std::cerr << "[fast_lio_sam] preprocess/self_sectors entry "
++                          << spec << " must be 6 comma-separated values; got "
++                          << n << std::endl;
++                throw std::runtime_error("invalid self_sectors entry");
++            }
++            if (v[0] >= v[1] || v[2] >= v[3] || v[2] < 0.0 || v[4] >= v[5]) {
++                std::cerr << "[fast_lio_sam] preprocess/self_sectors entry "
++                          << spec << " violates az_min<az_max, "
++                          << "0<=r_min<r_max, z_min<z_max" << std::endl;
++                throw std::runtime_error("invalid self_sectors range");
++            }
++            p_pre->self_sectors.push_back({
++                v[0] * M_PI / 180.0,
++                v[1] * M_PI / 180.0,
++                v[2] * v[2],
++                v[3] * v[3],
++                v[4],
++                v[5],
++            });
++        }
++        std::cout << "[fast_lio_sam] WHILL self-exclusion: cylinder r<"
++                  << p_pre->self_radius << " z in [" << p_pre->self_z_min
++                  << ", " << p_pre->self_z_max << "]; "
++                  << p_pre->self_sectors.size() << " sector(s)" << std::endl;
++    }
+     rosparam_get("point_filter_num", p_pre->point_filter_num, 2);
+     rosparam_get("feature_extract_enable", p_pre->feature_enabled, false);
+     rosparam_get("runtime_pos_log_enable", runtime_pos_log, false);
+diff --git a/src/preprocess.cpp b/src/preprocess.cpp
+index 8f038f2..61c0686 100644
+--- a/src/preprocess.cpp
++++ b/src/preprocess.cpp
+@@ -27,6 +27,15 @@ Preprocess::Preprocess()
+   smallp_ratio = 1.2;
+   given_offset_time = false;
+ 
++  // WHILL self-return exclusion defaults to off so a stock launch is
++  // byte-identical to upstream FAST-LIO-SAM. laserMapping reads the
++  // params from the flattened yaml ("preprocess/self_radius" etc.)
++  // and assigns them after construction; see preprocess.h.
++  self_radius = 0.0;
++  self_z_min = -0.5;
++  self_z_max = 0.1;
++  // self_sectors is default-constructed (empty).
++
+   jump_up_limit = cos(jump_up_limit/180*M_PI);
+   jump_down_limit = cos(jump_down_limit/180*M_PI);
+   cos160 = cos(cos160/180*M_PI);
+@@ -466,8 +475,38 @@ void Preprocess::velodyne_handler(const Pcl2MsgConstPtr &msg)
+ 
+         if (i % point_filter_num == 0)
+         {
+-          if(added_pt.x*added_pt.x+added_pt.y*added_pt.y+added_pt.z*added_pt.z > (blind * blind))
++          const double rxy2 = added_pt.x * added_pt.x + added_pt.y * added_pt.y;
++          const double rxyz2 = rxy2 + added_pt.z * added_pt.z;
++          if (rxyz2 > (blind * blind))
+           {
++            // WHILL self-return exclusion (whill_lab0_ros2 fork). Cylinder
++            // catches the near-LiDAR mount strut; sectors catch the chair-
++            // body clusters that sit outside the cylinder at fixed bearings.
++            // The check is structured so a stock build (self_radius=0,
++            // empty sectors) skips both branches and matches upstream.
++            if (self_radius > 0.0
++                && rxy2 < self_radius * self_radius
++                && added_pt.z > self_z_min
++                && added_pt.z < self_z_max)
++            {
++              continue;
++            }
++            if (!self_sectors.empty())
++            {
++              const double az = std::atan2(added_pt.y, added_pt.x);
++              bool in_sector = false;
++              for (const auto & s : self_sectors)
++              {
++                if (az >= s[0] && az < s[1]
++                    && rxy2 >= s[2] && rxy2 < s[3]
++                    && added_pt.z > s[4] && added_pt.z < s[5])
++                {
++                  in_sector = true;
++                  break;
++                }
++              }
++              if (in_sector) continue;
++            }
+             pl_surf.points.push_back(added_pt);
+           }
+         }
+diff --git a/src/preprocess.h b/src/preprocess.h
+index d883b6e..b6f2dbf 100644
+--- a/src/preprocess.h
++++ b/src/preprocess.h
+@@ -4,6 +4,9 @@
+ #include <pcl_conversions/pcl_conversions.h>
+ #include "ros_utils.h"
+ 
++#include <array>
++#include <vector>
++
+ using namespace std;
+ 
+ #define IS_VALID(a)  ((abs(a)>1e8) ? true : false)
+@@ -151,6 +154,21 @@ class Preprocess
+   int lidar_type, point_filter_num, N_SCANS, SCAN_RATE, time_unit;
+   double blind;
+   bool feature_enabled, given_offset_time;
++
++  // WHILL chair-body self-return exclusion (whill_lab0_ros2 fork,
++  // 2026-05-30). Same in-process filter we landed on stock FAST-LIO
++  // in Phase 3 — keeping the geometry inside velodyne_handler avoids
++  // the Python-republish latency that broke FAST-LIO's IMU↔LiDAR
++  // motion compensation. Defaults (self_radius=0, empty self_sectors)
++  // are no-ops so upstream behaviour is preserved if our laserMapping
++  // parameter-loading is ever skipped.
++  // Each sector stores [az_min_rad, az_max_rad, r_min^2, r_max^2,
++  //                     z_min, z_max] — sqrt and deg→rad are
++  // precomputed at parse time so the per-point check is tight.
++  double self_radius;
++  double self_z_min;
++  double self_z_max;
++  std::vector<std::array<double, 6>> self_sectors;
+     
+   Pcl2Publisher pub_full, pub_surf, pub_corn;
+ 

@@ -119,4 +119,30 @@ def generate_launch_description():
                 ],
             }],
         ),
+        # imu_sign_flip — see scripts/imu_sign_flip.py for the rationale.
+        # PCMK-G3X reports the gravity vector itself in
+        # linear_acceleration, not the REP-145 -gravity reaction force,
+        # so static-state z is -9.8 m/s² and FAST-LIO's grav_align
+        # decides "+Z is down" without this republish.
+        #
+        # flip_gyro=False after 2026-05-30 outdoor 2-round test: a
+        # straight+back run reconstructed perfectly (translation OK,
+        # accel flip confirmed) but the rotate leg drifted hard. The
+        # symptom matches "EKF prediction and LiDAR registration
+        # disagree on rotation sign", which means the gyro was already
+        # right-handed (REP-145) and we were inverting a correct sign.
+        # Keep flip_accel=True (gravity convention) but leave gyro
+        # untouched.
+        Node(
+            package='whill_sensors_bringup',
+            executable='imu_sign_flip.py',
+            name='imu_sign_flip',
+            output='screen',
+            parameters=[{
+                'input_topic': '/imu/data_raw',
+                'output_topic': '/imu/data_corrected',
+                'flip_accel': True,
+                'flip_gyro': False,
+            }],
+        ),
     ])
