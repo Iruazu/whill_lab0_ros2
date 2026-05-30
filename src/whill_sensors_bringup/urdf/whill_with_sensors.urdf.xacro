@@ -131,6 +131,29 @@
   <xacro:property name="camera_pitch" value="0.0"/>
   <xacro:property name="camera_yaw"   value="0.0"/>
 
+  <!-- GNSS antenna (u-blox NEO-M8P) pose in base_link.
+       Phase C-3 (2026-05-30): TEMPORARY placement. The user moved the
+       antenna out of the under-chair bucket and onto the rider's
+       footrest to improve sky view (the bucket roof obscured nearly
+       half the hemisphere). The footrest sits in front of base_link
+       and roughly at floor height, so x ≈ +0.40 m forward, y = 0
+       centerline, z ≈ -0.10 m (just above the ground plane at
+       z=-0.1175 m).
+
+       The antenna is NOT mechanically fixed yet — these values are
+       a stand-in good to about ±0.1 m. Re-measure with a tape before
+       Phase C-6 (long-distance drift verification). Once a permanent
+       mount is decided, narrow these values and remove this comment.
+       robot_localization's navsat_transform_node absorbs antenna
+       offset error into its EKF covariance, so a rough initial value
+       is acceptable for Phase C-4 wiring. -->
+  <xacro:property name="gnss_x"     value="0.40"/>
+  <xacro:property name="gnss_y"     value="0.0"/>
+  <xacro:property name="gnss_z"     value="-0.10"/>
+  <xacro:property name="gnss_roll"  value="0.0"/>
+  <xacro:property name="gnss_pitch" value="0.0"/>
+  <xacro:property name="gnss_yaw"   value="0.0"/>
+
   <!-- ====================================================================
        Links and joints
        ==================================================================== -->
@@ -208,6 +231,27 @@
     <child  link="camera_link"/>
     <origin xyz="${camera_x} ${camera_y} ${camera_z}"
             rpy="${camera_roll} ${camera_pitch} ${camera_yaw}"/>
+  </joint>
+
+  <!-- GNSS antenna. Visual is a small magenta cylinder so it stands
+       out from imu_link (orange) and the other sensors in RViz.
+       Frame name `gnss_link` matches the frame_id ublox_gps_node
+       stamps on /fix (whill_localization/config/ublox_m8p_rover.yaml). -->
+  <link name="gnss_link">
+    <visual>
+      <geometry>
+        <cylinder length="0.025" radius="0.030"/>
+      </geometry>
+      <material name="gnss_magenta">
+        <color rgba="0.9 0.2 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="base_link_to_gnss" type="fixed">
+    <parent link="base_link"/>
+    <child  link="gnss_link"/>
+    <origin xyz="${gnss_x} ${gnss_y} ${gnss_z}"
+            rpy="${gnss_roll} ${gnss_pitch} ${gnss_yaw}"/>
   </joint>
 
 </robot>

@@ -1,0 +1,96 @@
+# NEO-M8P rover configuration for the WHILL CR2 chair.
+#
+# Derived from ublox_gps's c94_m8p_rover.yaml (the upstream template
+# for u-blox C94-M8P application board in rover mode). Adjusted for
+# the chair use case:
+#
+#   - device kept at /dev/ttyACM0 (M8P enumerates as USB CDC ACM,
+#     same path as the lsusb-confirmed Bus 003 Device with VID 0x1546)
+#   - frame_id renamed to `gnss_link`; the matching URDF link is
+#     added in Phase C-3 (urdf/whill_with_sensors.urdf.xacro)
+#   - dynamic_model: pedestrian — better fit than `portable` for a
+#     chair walking at ~0.3-1 m/s. pedestrian's assumed envelope is
+#     max v=30 m/s, max alt=9 km, max v_z=20 m/s
+#   - save.device: 0 — do NOT persist this config to the receiver's
+#     EEPROM during iterative development. Default template uses 4
+#     (save to EEPROM); we keep changes session-local until the
+#     configuration stabilises
+#   - dgnss_mode: 0 — autonomous fix only for initial bring-up.
+#     Switch to 3 (RTK fixed) once an NTRIP client / external RTCM
+#     stream is wired up
+#   - GLONASS + QZSS kept active (QZSS is the Japanese SBAS — useful
+#     in Utsunomiya University outdoor work). Beidou stays off; the
+#     M8P max channel count splits across constellations and Beidou
+#     does not noticeably help in our region
+
+ublox_gps_node:
+  ros__parameters:
+    debug: 1                    # 0-4. INFO logs only at 1; raise for binary frame dumps
+
+    # Skip CFG-* configuration writes on startup. The chair's NEO-M8P-2
+    # ships with a working factory/EEPROM constellation set
+    # (GPS+GLO+BDS+QZSS active, see startup banner) and the driver's
+    # field-by-field comparison kept declaring BeiDou's per-constellation
+    # fields "different" even when our yaml asked for the same enable
+    # bits, triggering a CFG-GNSS write that the receiver NACK'd
+    # (observed 2026-05-30). Setting this false leaves the receiver's
+    # persisted config untouched and just opens the port to read.
+    # Trade-off: dynamic_model / nav_rate / dgnss_mode below are
+    # ignored. Re-enable when we own a clean configuration baseline,
+    # ideally after a manual factory reset via u-center.
+    config_on_startup: false
+
+    save:
+      mask: 3103                # Save I/O, Message, INF, Nav, RxMgr, Antenna, Logging
+      device: 0                 # 0 = do not write to EEPROM (dev mode). 4 = EEPROM
+
+    device: /dev/ttyACM0
+    frame_id: gnss_link         # Phase C-3 adds this link to the URDF
+    rate: 1.0                   # Measurement rate, Hz
+    nav_rate: 1                 # Solutions per measurement (1 = 1 Hz)
+    dynamic_model: pedestrian   # Max v=30 m/s, max alt=9 km — fits a wheelchair
+    fix_mode: auto              # 2D/3D auto-selected by satellite geometry
+    enable_ppp: false           # M8P does not support PPP
+    dr_limit: 0                 # No dead-reckoning timeout
+
+    # TMODE3 — Time Mode 3. tmode3=0 is "Disabled" = rover.
+    tmode3: 0
+    sv_in:
+      reset: false
+      min_dur: 300
+      acc_lim: 3.0
+
+    # UART1 settings — only matter once we feed RTCM corrections in
+    # over UART1 (Phase C+ RTK). USB CDC ACM ignores baudrate.
+    uart1:
+      baudrate: 19200
+      in: 32                    # RTCM 3 input
+      out: 0                    # No UART1 output for a rover
+
+    gnss:
+      # Constellation enable bits — these must match the receiver's
+      # current CFG-GNSS state, otherwise ublox_gps_node triggers a
+      # GNSS sub-system restart on the receiver and the CFG read-back
+      # times out → FATAL "Failed to read the GNSS config" (observed
+      # 2026-05-30 with the WHILL chair's NEO-M8P-2; the receiver
+      # reported GPS;GLO;BDS+QZSS active at startup, so we keep all
+      # four enabled to avoid the restart). To actually change the
+      # constellation set later, flip the value, set save.device: 4
+      # to persist, run once, then drop save.device back to 0.
+      glonass: true
+      beidou: true
+      qzss: true
+
+    dgnss_mode: 0               # Phase C-1: autonomous fix. Move to 3 once RTCM in.
+
+    inf:
+      all: true                 # All u-blox INF messages mirror to console at startup
+
+    # Publish toggles — leave all on for the first bring-up so RViz / ros2 topic
+    # have something to look at. Trim later for bandwidth.
+    publish:
+      all: true
+      aid:
+        hui: false              # AID-HUI is health data we don't need
+      nav:
+        posecef: false          # ECEF position duplicates posllh in NavSatFix
