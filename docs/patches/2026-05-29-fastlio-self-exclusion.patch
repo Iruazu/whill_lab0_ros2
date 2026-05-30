@@ -1,0 +1,177 @@
+diff --git a/src/laserMapping.cpp b/src/laserMapping.cpp
+index e5d9950..a7d4924 100644
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -833,6 +833,16 @@ public:
+         this->declare_parameter<int>("pcd_save.interval", -1);
+         this->declare_parameter<vector<double>>("mapping.extrinsic_T", vector<double>());
+         this->declare_parameter<vector<double>>("mapping.extrinsic_R", vector<double>());
++        // WHILL self-return exclusion (whill_lab0_ros2 fork). All params
++        // default to no-op so stock launches see no behaviour change.
++        // self_sectors holds CSV strings "az_min, az_max, r_min, r_max,
++        // z_min, z_max" (deg/m); parsed below into Preprocess::self_sectors
++        // with deg→rad + r² already applied so the per-point check is tight.
++        this->declare_parameter<double>("preprocess.self_radius", 0.0);
++        this->declare_parameter<double>("preprocess.self_z_min", -0.5);
++        this->declare_parameter<double>("preprocess.self_z_max", 0.1);
++        this->declare_parameter<vector<string>>(
++            "preprocess.self_sectors", vector<string>{});
+ 
+         this->get_parameter_or<bool>("publish.path_en", path_en, true);
+         this->get_parameter_or<bool>("publish.effect_map_en", effect_pub_en, false);
+@@ -870,6 +880,55 @@ public:
+         this->get_parameter_or<vector<double>>("mapping.extrinsic_T", extrinT, vector<double>());
+         this->get_parameter_or<vector<double>>("mapping.extrinsic_R", extrinR, vector<double>());
+ 
++        // WHILL self-return exclusion — read the three scalars and parse
++        // each CSV sector spec into preprocess::self_sectors. Failing loud
++        // on a malformed sector (instead of silently skipping it) was the
++        // explicit lesson from the 2026-05-29 "filter wasn't actually
++        // running" debug — see docs/legacy-findings/velodyne-self-return-
++        // mitigation.md.
++        this->get_parameter_or<double>("preprocess.self_radius", p_pre->self_radius, 0.0);
++        this->get_parameter_or<double>("preprocess.self_z_min", p_pre->self_z_min, -0.5);
++        this->get_parameter_or<double>("preprocess.self_z_max", p_pre->self_z_max, 0.1);
++        {
++            vector<string> sector_specs;
++            this->get_parameter_or<vector<string>>(
++                "preprocess.self_sectors", sector_specs, vector<string>{});
++            p_pre->self_sectors.clear();
++            for (const auto & spec : sector_specs) {
++                if (spec.empty()) continue;
++                double v[6];
++                int n = std::sscanf(spec.c_str(), "%lf,%lf,%lf,%lf,%lf,%lf",
++                                    &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]);
++                if (n != 6) {
++                    RCLCPP_ERROR(this->get_logger(),
++                        "preprocess.self_sectors entry %s must be 6 comma-"
++                        "separated values; got %d. Skipping FAST-LIO startup.",
++                        spec.c_str(), n);
++                    throw std::runtime_error("invalid self_sectors entry");
++                }
++                if (v[0] >= v[1] || v[2] >= v[3] || v[2] < 0.0 || v[4] >= v[5]) {
++                    RCLCPP_ERROR(this->get_logger(),
++                        "preprocess.self_sectors entry %s violates "
++                        "az_min<az_max, 0<=r_min<r_max, z_min<z_max.",
++                        spec.c_str());
++                    throw std::runtime_error("invalid self_sectors range");
++                }
++                p_pre->self_sectors.push_back({
++                    v[0] * M_PI / 180.0,
++                    v[1] * M_PI / 180.0,
++                    v[2] * v[2],
++                    v[3] * v[3],
++                    v[4],
++                    v[5],
++                });
++            }
++            RCLCPP_INFO(this->get_logger(),
++                "WHILL self-exclusion: cylinder r<%.2f z in [%.2f, %.2f]; "
++                "%zu sector(s)",
++                p_pre->self_radius, p_pre->self_z_min, p_pre->self_z_max,
++                p_pre->self_sectors.size());
++        }
++
+         RCLCPP_INFO(this->get_logger(), "p_pre->lidar_type %d", p_pre->lidar_type);
+ 
+         path.header.stamp = this->get_clock()->now();
+diff --git a/src/preprocess.cpp b/src/preprocess.cpp
+index 9015782..8aa5019 100644
+--- a/src/preprocess.cpp
++++ b/src/preprocess.cpp
+@@ -26,6 +26,14 @@ Preprocess::Preprocess() : feature_enabled(0), lidar_type(AVIA), blind(0.01), po
+   smallp_ratio = 1.2;
+   given_offset_time = false;
+ 
++  // WHILL self-return exclusion defaults to off so stock launches behave
++  // identically. laserMapping.cpp reads the params from yaml and assigns
++  // them after construction; see preprocess.h for the rationale.
++  self_radius = 0.0;
++  self_z_min = -0.5;
++  self_z_max = 0.1;
++  // self_sectors is default-constructed (empty).
++
+   jump_up_limit = cos(jump_up_limit / 180 * M_PI);
+   jump_down_limit = cos(jump_down_limit / 180 * M_PI);
+   cos160 = cos(cos160 / 180 * M_PI);
+@@ -464,8 +472,41 @@ void Preprocess::velodyne_handler(const sensor_msgs::msg::PointCloud2::UniquePtr
+ 
+       if (i % point_filter_num == 0)
+       {
+-        if (added_pt.x * added_pt.x + added_pt.y * added_pt.y + added_pt.z * added_pt.z > (blind * blind))
++        const double rxy2 = added_pt.x * added_pt.x + added_pt.y * added_pt.y;
++        const double rxyz2 = rxy2 + added_pt.z * added_pt.z;
++        if (rxyz2 > (blind * blind))
+         {
++          // WHILL self-return exclusion (whill_lab0_ros2 fork). Cylinder
++          // catches the near-LiDAR mount strut; sectors catch the chair-
++          // body clusters that sit outside the cylinder at fixed bearings.
++          // The check is structured so a stock build (self_radius=0,
++          // empty sectors) skips both branches and matches upstream.
++          if (self_radius > 0.0
++              && rxy2 < self_radius * self_radius
++              && added_pt.z > self_z_min
++              && added_pt.z < self_z_max)
++          {
++            continue;
++          }
++          if (!self_sectors.empty())
++          {
++            // atan2 is only computed when at least one sector is configured,
++            // so the per-point cost stays at one sqrt-free comparison in
++            // stock mode.
++            const double az = std::atan2(added_pt.y, added_pt.x);
++            bool in_sector = false;
++            for (const auto & s : self_sectors)
++            {
++              if (az >= s[0] && az < s[1]
++                  && rxy2 >= s[2] && rxy2 < s[3]
++                  && added_pt.z > s[4] && added_pt.z < s[5])
++              {
++                in_sector = true;
++                break;
++              }
++            }
++            if (in_sector) continue;
++          }
+           pl_surf.points.push_back(added_pt);
+         }
+       }
+diff --git a/src/preprocess.h b/src/preprocess.h
+index d4d6ddc..a67892d 100644
+--- a/src/preprocess.h
++++ b/src/preprocess.h
+@@ -4,6 +4,9 @@
+ #include <sensor_msgs/msg/point_cloud2.hpp>
+ #include <livox_ros_driver2/msg/custom_msg.hpp>
+ 
++#include <array>
++#include <vector>
++
+ using namespace std;
+ 
+ #define IS_VALID(a) ((abs(a) > 1e8) ? true : false)
+@@ -152,6 +155,23 @@ class Preprocess
+   int lidar_type, point_filter_num, N_SCANS, SCAN_RATE, time_unit;
+   double blind;
+   bool feature_enabled, given_offset_time;
++
++  // WHILL chair-body self-return exclusion (whill_lab0_ros2 fork,
++  // 2026-05-29). Filtering the cloud out-of-process via a Python
++  // republish broke FAST-LIO with "No Effective Points" + VoxelGrid
++  // overflow — the extra ms of Python+IPC latency desynced the
++  // IMU↔LiDAR motion compensation. The mount strut and armrest
++  // reflections still need to be culled before they are baked into the
++  // world map, so the cylinder + forward-arc sectors are applied
++  // directly inside velodyne_handler. Default values (self_radius=0,
++  // empty self_sectors) match stock FAST-LIO behaviour.
++  // Each sector stores [az_min_rad, az_max_rad, r_min^2, r_max^2,
++  //                     z_min, z_max] — sqrt and deg→rad are precomputed
++  // at parse time to keep the per-point check tight.
++  double self_radius;
++  double self_z_min;
++  double self_z_max;
++  std::vector<std::array<double, 6>> self_sectors;
+   // ros::Publisher pub_full, pub_surf, pub_corn;
+ 
+ private:

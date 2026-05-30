@@ -24,14 +24,19 @@
         map_file_path: "/home/systemlab/whill_lab0_ros2/docs/m5-maps/lab.pcd"
 
         common:
-            # M5-e WIP (2026-05-20): the naive z-only filter on
-            # /velodyne_points_filtered also stripped legitimate floor / lower-
-            # wall returns that FAST-LIO needs for scan registration —
-            # "No Effective Points!" floods within a second and base_link
-            # drifts unbounded. FAST-LIO stays on /velodyne_points (raw) for
-            # now; the filter is still launched so we can compare the two
-            # topics side-by-side in RViz before deciding on the final
-            # geometry of the self-exclusion mask.
+            # 2026-05-29: subscribing to /velodyne_points_filtered (Python
+            # republish path) re-triggered the documented "Leaf size is
+            # too small ... Integer indices would overflow" + "No
+            # Effective Points!" loop even when the filter dropped just
+            # ~4% of points — same shape as the 2026-05-20 z-only filter
+            # crash. The Python+IPC latency was desyncing IMU/LiDAR
+            # motion compensation. The workaround is to keep FAST-LIO on
+            # the raw stream and apply the chair-self exclusion inside
+            # velodyne_handler (see preprocess.self_radius/self_sectors
+            # below, and the WHILL fork patch in src/preprocess.cpp).
+            # /velodyne_points_filtered is still published by
+            # velodyne_self_filter so RViz can A/B the geometry, but no
+            # SLAM consumer reads from it.
             lid_topic: "/velodyne_points"
             imu_topic: "/imu/data_raw"
             time_sync_en: false
@@ -43,6 +48,40 @@
             scan_rate: 10                # Hz
             timestamp_unit: 0            # 0=second; matches the velodyne ROS2 driver output (see docs/m3-bench-data/README.md)
             blind: 0.5                   # ignore returns within 0.5 m (inherited from noetic tuning)
+            # Chair-body / mount self-return exclusion. The Python
+            # velodyne_self_filter taught us this has to be applied
+            # in-process or FAST-LIO's IMU/LiDAR sync breaks (see the
+            # common.lid_topic comment above). The geometry below mirrors
+            # what's already declared in whill_sensors_bringup's
+            # sensors_launch.py for the parallel /velodyne_points_filtered
+            # topic — keeping them in sync keeps the RViz A/B view honest.
+            #
+            # Cylinder: drops the near-LiDAR mount strut (r ≈ 1.0 m,
+            #           z in [-0.30, 0.20] m, all azimuths).
+            # Settled 2026-05-29 after a bisect: cylinder + the two
+            # inner sectors hold; adding a third sector for the outer
+            # right arc at r=1.85-2.15 immediately starved FAST-LIO
+            # ("No Effective Points" within seconds, even on a static
+            # chair). The outer ring contains too many registration
+            # features in this environment. The user-visible outer arc
+            # remains in the cloud; revisit once FASTLIO2_SAM_LC
+            # (M5-e Phase B) brings loop closure and a wider tolerance
+            # for sparse local maps.
+            #
+            # Outdoor mapping with this configuration also showed
+            # severe drift (z range -24m..+36m on a single trip), so
+            # the M5-d lab.pcd workflow is on hold until Phase B
+            # lands a loop-closure-equipped LIO.
+            #
+            # ROS 2 humble fails to decode `[]` as a string array — a
+            # single empty string is treated as "no sectors" by the
+            # laserMapping parser if you ever need to disable them.
+            self_radius: 1.2
+            self_z_min: -0.3
+            self_z_max: 0.2
+            self_sectors:
+                - "-125, -60, 1.20, 1.50, -0.30, 0.35"   # right inner cluster
+                - "25, 65, 1.20, 1.60, -0.30, 0.35"      # left-front mount-arm cluster
 
         mapping:
             # IMU noise covariances. Loosened from upstream defaults
