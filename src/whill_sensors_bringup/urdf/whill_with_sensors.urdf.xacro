@@ -1,0 +1,213 @@
+<?xml version="1.0"?>
+<!--
+  WHILL CR2 + sensor stack URDF.
+
+  Wraps the upstream `whill_description/urdf/whill_model_cr2.urdf` (chassis,
+  wheels, seat, sensor support arms, backrest) with the four frames the
+  upstream URDF does not provide:
+
+    base_footprint   ground-projection of base_link, required by Nav2
+    imu_link         RT 9-axis IMU pose in chair frame
+    velodyne         VLP-16 LiDAR pose in chair frame
+    camera_link      Intel RealSense D435 pose, rigidly mounted to the LiDAR
+
+  Why a wrapper (instead of editing the upstream URDF):
+    The upstream URDF lives under `third_party/ros2_whill/whill_description/`
+    and we want it to stay untouched so the fork stays close to the WHILL
+    Inc. baseline. Adding frames here keeps our local extensions in one
+    repository-owned file.
+
+  Why the existing identities are wrong:
+    `whill_sensors_bringup/launch/static_tf_launch.py` publishes the three
+    sensor frames as identity children of base_link. That is mechanically
+    fine for FAST-LIO (which carries its own `extrinsic_T` / `extrinsic_R`
+    inside `velodyne_whill.yaml`) but it lies to every other consumer:
+    Nav2 costmap inflation, footprint clearance, RViz overlays, downstream
+    VLM/VLA agents that need to ground camera observations in the chair
+    frame. This file fixes that.
+
+  Coordinate conventions:
+    Frame convention follows REP-103 (X forward, Y left, Z up).
+    The current TF bridge (`whill_navigation/launch/tf_bridge_launch.py`)
+    maps FAST-LIO's `body` frame to `base_link` with an identity
+    transform, so the SLAM consumes IMU/LiDAR data in the same world
+    frame robot_state_publisher exposes. imu_link is NOT identity —
+    Phase A-1 finalization (2026-05-30) sets imu_pitch = +0.286 rad
+    based on static gravity measurement; see the imu_* block below.
+
+  Source of truth for the noetic-inherited extrinsic:
+    `docs/m3-extrinsics-from-noetic.md` — translation [0.104, 0.412, 0.323] m
+    (LiDAR origin in IMU frame), rotation matrix decomposes to ~9° pitch
+    about Y (the doc's "yaw" wording is misleading; R[2,0] = -0.156 is the
+    pitch sign-carrier, not R[1,0]). Pitch sign in URDF is +9° (= +0.157 rad)
+    because the URDF joint origin is "parent -> child" (IMU -> LiDAR) which
+    is the inverse of FAST-LIO's "LiDAR -> IMU" matrix.
+
+  TUNABLE — every numeric below is a xacro:property. Re-measure on the
+  chair (see docs/tf-measurement.md once authored) and overwrite the
+  property values; do not patch raw <origin> tags.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="whill_cr2_with_sensors">
+
+  <!-- Pull in the upstream chassis URDF as-is. xacro can include plain
+       URDFs since 1.13; the <robot> tags are merged at expansion time. -->
+  <xacro:include filename="$(find whill_description)/urdf/whill_model_cr2.urdf"/>
+
+  <!-- ====================================================================
+       Geometry — every offset lives here so future re-measurement only
+       touches this block.
+       ==================================================================== -->
+
+  <!-- Ground projection. base_floor (the chassis box) is offset +0.3 m
+       forward from base_link, and the rear wheels live at z = +0.015 m in
+       base_floor with radius 0.1325 m, putting the ground at z = -0.1175 m
+       in base_link.  base_footprint is the conventional Nav2 robot frame —
+       the costmap inflation radius is measured from the footprint polygon
+       on the ground, not from base_link in the air. -->
+  <xacro:property name="base_link_to_ground_z" value="-0.1175"/>
+
+  <!-- IMU pose in base_link.
+       Phase A-2 (2026-05-22): on-chair tape-measurement by user. The
+       IMU sits on the seat top, on the chair centerline, in the
+       forward direction of the seat. The user reported "approximately
+       22 cm from the inner face of the left armrest"; the inner face
+       is at Y = +0.21 in base_link (seat Y +0.245 minus arm box
+       half-width 0.035), so the IMU Y ≈ 0.21 - 0.22 = -0.01 ≈ 0
+       (centerline). X is the seat-box origin (front-of-chair direction
+       per user), Z is the top of the seat box (0.215 + 0.20 = 0.415,
+       rounded).
+
+       Phase A-1 finalization (2026-05-30): imu_pitch is +0.286 rad
+       (16.37°, nose-down) derived from a 5 s static measurement on a
+       confirmed-flat floor — 500 samples on /imu/data_corrected (the
+       sign-corrected republish, see scripts/imu_sign_flip.py) gave
+       roll = -0.20° and pitch = +16.37° with accel std ≈ 0.02 m/s².
+       Roll ≈ 0 on flat ground rules out "chair on a slope" and
+       "y-axis accel bias", so the 16° is the board's physical mount
+       tilt. The IMU is bolted to a sloped bracket on the seat top.
+       See docs/session-2026-05-30.md for the diagnosis chain. -->
+  <xacro:property name="imu_x"     value="0.20"/>
+  <xacro:property name="imu_y"     value="0.0"/>
+  <xacro:property name="imu_z"     value="0.42"/>
+  <xacro:property name="imu_roll"  value="0.0"/>
+  <xacro:property name="imu_pitch" value="0.286"/>
+  <xacro:property name="imu_yaw"   value="0.0"/>
+
+  <!-- Velodyne VLP-16 pose in base_link.
+       Phase A-2 (2026-05-22): values derived from the user's on-chair
+       tape measurement, NOT the noetic-inherited extrinsic any more.
+         - User: LiDAR center is ~8 cm horizontal + ~10 cm vertical from
+           the outer face of the left armrest.
+         - Outer face of the armrest box sits at Y = 0.245 + 0.035 = 0.28
+           in base_link (Y is unchanged by the armrest's 1.0 rad pitch
+           rotation about its own Y axis).
+         - The armrest's highest point after the 57° pitch ends up at
+           Z ≈ 0.66 (joint_z 0.515 + box_z/2 * cos(57°) ≈ 0.145).
+         - Therefore LiDAR Y = 0.28 + 0.08 = 0.36 and
+                     LiDAR Z = 0.66 + 0.10 = 0.78.
+         - X was not measured by the user. The 3D-printed
+           camera/LiDAR bracket sits at the forward tip of the rotated
+           armrest, so X ≈ 0.20 (arm joint) + 0.535/2 * sin(57°) ≈ 0.42.
+       The +9° downward pitch comes from the noetic FAST-LIO calibration
+       (rotation matrix in docs/m3-extrinsics-from-noetic.md); the user
+       did not re-measure it. Keep until a fresh calibration disagrees. -->
+  <xacro:property name="velodyne_x"     value="0.42"/>
+  <xacro:property name="velodyne_y"     value="0.36"/>
+  <xacro:property name="velodyne_z"     value="0.78"/>
+  <xacro:property name="velodyne_roll"  value="0.0"/>
+  <xacro:property name="velodyne_pitch" value="0.157"/>
+  <xacro:property name="velodyne_yaw"   value="0.0"/>
+
+  <!-- RealSense D435 pose in the velodyne frame.
+       Phase A-2 (2026-05-22): user confirmed the LiDAR and camera are
+       held as a single unit by a 3D-printed bracket roughly 103 mm × 103
+       mm; the camera sits directly below the LiDAR with the bracket
+       spanning that 103 mm. The XY offset is therefore ~0 and the Z
+       offset is the bracket span (camera below LiDAR → -0.103 m). -->
+  <xacro:property name="camera_x"     value="0.0"/>
+  <xacro:property name="camera_y"     value="0.0"/>
+  <xacro:property name="camera_z"     value="-0.103"/>
+  <xacro:property name="camera_roll"  value="0.0"/>
+  <xacro:property name="camera_pitch" value="0.0"/>
+  <xacro:property name="camera_yaw"   value="0.0"/>
+
+  <!-- ====================================================================
+       Links and joints
+       ==================================================================== -->
+
+  <!-- base_footprint: zero-thickness frame at ground level, kept dependent
+       on base_link rather than the other way around because the upstream
+       URDF anchors everything at base_link and the FAST-LIO -> base_link
+       bridge is identity. Nav2 will look up the transform in either
+       direction via tf2 so the parent/child ordering only affects which
+       frame is the "root" of the tree. -->
+  <link name="base_footprint"/>
+  <joint name="base_link_to_base_footprint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="base_footprint"/>
+    <origin xyz="0 0 ${base_link_to_ground_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- IMU: RT 9-axis USB IMU. Visual is a small orange box so the chair
+       model shows clearly where the IMU sits in RViz. -->
+  <link name="imu_link">
+    <visual>
+      <geometry>
+        <box size="0.04 0.04 0.02"/>
+      </geometry>
+      <material name="imu_orange">
+        <color rgba="1.0 0.55 0.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="base_link_to_imu" type="fixed">
+    <parent link="base_link"/>
+    <child  link="imu_link"/>
+    <origin xyz="${imu_x} ${imu_y} ${imu_z}"
+            rpy="${imu_roll} ${imu_pitch} ${imu_yaw}"/>
+  </joint>
+
+  <!-- Velodyne VLP-16. Frame name is `velodyne` (no _link suffix) to match
+       the frame_id the velodyne_pointcloud driver stamps on
+       /velodyne_points; mismatching would force every consumer to add
+       remappings. Visual is a 10 cm tall red cylinder roughly the size of
+       the real VLP-16 puck. -->
+  <link name="velodyne">
+    <visual>
+      <geometry>
+        <cylinder length="0.072" radius="0.054"/>
+      </geometry>
+      <material name="velodyne_red">
+        <color rgba="0.9 0.1 0.1 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="base_link_to_velodyne" type="fixed">
+    <parent link="base_link"/>
+    <child  link="velodyne"/>
+    <origin xyz="${velodyne_x} ${velodyne_y} ${velodyne_z}"
+            rpy="${velodyne_roll} ${velodyne_pitch} ${velodyne_yaw}"/>
+  </joint>
+
+  <!-- RealSense D435 camera_link. The driver fills in the rest of the
+       camera_* subtree. Parented to velodyne because the mount is rigid;
+       if you remount the camera, only the camera_* properties above
+       change. -->
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <box size="0.090 0.025 0.025"/>
+      </geometry>
+      <material name="camera_black">
+        <color rgba="0.1 0.1 0.1 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="velodyne_to_camera" type="fixed">
+    <parent link="velodyne"/>
+    <child  link="camera_link"/>
+    <origin xyz="${camera_x} ${camera_y} ${camera_z}"
+            rpy="${camera_roll} ${camera_pitch} ${camera_yaw}"/>
+  </joint>
+
+</robot>
