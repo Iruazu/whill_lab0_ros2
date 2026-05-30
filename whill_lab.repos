@@ -48,3 +48,20 @@ repositories:
     type: git
     url: https://github.com/Livox-SDK/livox_ros_driver2.git
     version: master
+
+  # --- M5-e Phase B (2026-05-30): loop-closure-equipped LIO ---
+  # FAST-LIO-SAM (RightTr fork) — FAST-LIO2 frontend + LIO-SAM-style
+  # factor-graph backend with loop closure, relocalization via
+  # /reloc_topic, and Nav2-standard `map → odom → base_link` TF tree.
+  # Picked over GLIM because it runs CPU-only (this host has no CUDA
+  # toolkit) and shares the FAST-LIO frontend we already understand.
+  # VLP-16 launch / yaml are derived from the bundled mid360 config
+  # (Velodyne is not part of the upstream extended-LiDAR list).
+  # Depends on GTSAM (apt: libgtsam-dev libgtsam-unstable-dev on 22.04
+  # via the borglab/gtsam-release-4.1 PPA). License: unspecified
+  # upstream as of 2026-05-17 — treat as research-only and confirm with
+  # the author before any redistribution.
+  third_party/FAST_LIO_SAM:
+    type: git
+    url: https://github.com/RightTr/FAST-LIO-SAM.git
+    version: main
