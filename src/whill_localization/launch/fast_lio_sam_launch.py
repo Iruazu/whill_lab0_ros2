@@ -71,9 +71,22 @@ def generate_launch_description():
         flat,
     ]
 
+    # WHILL-tuned RViz config (whill_localization/rviz/fast_lio_sam.rviz).
+    # Derived from upstream sam_ros2.rviz with three behavior changes:
+    #   1. All PointCloud2 / Path / Odometry / MarkerArray displays use
+    #      Reliability Policy: Best Effort, matching FAST-LIO-SAM's
+    #      publishers and silencing the "incompatible QoS" warnings that
+    #      previously caused the displays to drop every message.
+    #   2. Points_accumulated group enabled by default with Color Transformer
+    #      AxisColor and Decay Time 60 s, so the live RViz view shows the
+    #      same height-coloured accumulated cloud as the offline PCD render
+    #      rather than the single-scan green stripes that the stock config
+    #      produced (observed 2026-06-04).
+    #   3. The fast_lio_sam package's own rviz_cfg is left untouched —
+    #      we don't fork the upstream graph, just point at our copy.
     rviz_cfg = os.path.join(
-        get_package_share_directory('fast_lio_sam'),
-        'rviz_cfg', 'sam_ros2.rviz',
+        get_package_share_directory('whill_localization'),
+        'rviz', 'fast_lio_sam.rviz',
     )
 
     return LaunchDescription([
