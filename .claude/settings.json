@@ -35,8 +35,6 @@
       "Read(./.env.*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
-      "Edit(./src/third_party/**)",
-      "Write(./src/third_party/**)",
       "Bash(sudo rm *)",
       "Bash(rm -rf *)",
       "Bash(git push *)",
