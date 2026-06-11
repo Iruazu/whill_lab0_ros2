@@ -46,3 +46,6 @@ docs/m3-bench-data/*/
 !docs/m3-bench-data/*.pdf
 
 .claude/settings.local.json
+# Map artifacts — PCD point clouds are large; track only pgm/yaml/metadata.
+docs/m5-maps/*.pcd
+docs/maps/**/*.pcd

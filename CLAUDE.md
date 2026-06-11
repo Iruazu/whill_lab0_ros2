@@ -11,20 +11,29 @@
 
 ## アーキテクチャ層
 
+「マップ作成 (オフライン・母艦)」と「運用 (オンライン・車載)」を分離する二相構成を採用する。
+詳細と選定理由は `docs/plans/2026-06-11-platform-pivot.md` の 3 章。
+
 ```
-whill_sensors_bringup (M3)   ─ Velodyne VLP-16 + RealSense D435 + RT 9-axis IMU
-        │
-        ▼
-whill_localization (M4)      ─ FAST-LIO (LiDAR-Inertial Odometry)
-        │
-        ▼
-whill_navigation (M5)        ─ Nav2 lifecycle, RPP controller, velocity_smoother
-        │
-        ▼
-whill_bringup (M6)           ─ 統合 launch、on-vehicle 検証 (未着手)
+[マップ作成フェーズ (オフライン, 母艦)]
+  手動走行 bag → ループクロージャ付き SLAM → 動的物体除去
+    → docs/maps/<site>/ に静的 PCD + 2D 占有格子 + メタデータを保存
+  (FAST-LIO はランタイム localizer ではなく、この層の「マップ作成ツール」として扱う)
+
+[運用フェーズ (オンライン, 車載) — REP-105 準拠の TF 構造]
+  map -> odom         : scan-to-map localizer (保存済み地図への補正。飛びを含んでよい)
+  odom -> base_link   : robot_localization EKF (/whill/odom + IMU。連続・滑らか)
+  base_link -> sensors: 実測 extrinsic の static TF
+                ↓
+        Nav2 (経路計画・追従) + フェイルセーフ (発散検知 → cmd_vel 遮断)
+                ↓
+        whill_dispatch (配車ゲートウェイ: NavigateToPose wrapper, ジョブキュー, 状態 publish)
+                ↓
+        Web / タブレット UI (rosbridge 経由)
 ```
 
-詳細は各パッケージの `README.md`。**Claude は必ず関連パッケージの README を読んでから実装に入る**こと。
+**Claude は必ず関連パッケージの README を読んでから実装に入る**こと。
+パッケージ実装の詳細は各 `README.md`、フェーズ計画は `docs/plans/` を参照。
 
 ## コーディング規約 (絶対)
 
@@ -63,6 +72,7 @@ whill_bringup (M6)           ─ 統合 launch、on-vehicle 検証 (未着手)
 
 | 状況 | 起動すべきエージェント |
 |------|-----------------------|
+| 方針判断・新フェーズ着手 | まず `docs/plans/2026-06-11-platform-pivot.md` を参照 |
 | 「〇〇機能を移植したい」「〇〇を作りたい」 | まず `pm-orchestrator` |
 | 「旧実装はどうやっていたか」「noetic 側の挙動を知りたい」 | `legacy-archaeologist` |
 | 「ROS 2 で〇〇を実装したい」(計画済み) | `ros2-implementer` |
@@ -72,12 +82,18 @@ whill_bringup (M6)           ─ 統合 launch、on-vehicle 検証 (未着手)
 
 ## 進行中の既知課題
 
-これらは `docs/` の該当ファイルにも書いてあるが、Claude が頻繁に参照する内容なので転載:
+`docs/plans/2026-06-11-platform-pivot.md` 2 章の診断 (P1〜P5) を要約転記する。詳細根拠と
+解消経路は同文書の 3 章 (アーキテクチャ) と 4 章 (マイルストーン M4-R 以降) を参照:
 
-- **FAST-LIO のループクロージャ不在**: 60 秒ドライブで 18% のドリフト。`map -> camera_init` を identity でつないでいるため、長距離では破綻する。M5-e の TODO
-- **車輪オドメトリ未統合**: M2 で動いている `ros2_whill` の `/whill/odom` が未使用。`odom -> base_link` を車輪駆動、`map -> odom` を Fast-LIO 補正という標準 Nav2 構成への移行が pending
-- **M5-b 静的マップにゴースト障害物**: 再キャプチャ必要。それまでは `use_collision_detection: false` で凌いでいる
+- **P1: 運用時の自己位置に補正経路がない** (`map -> camera_init` identity 固定で FAST-LIO ドリフトがそのまま map 誤差化、60s で 18%)。M6-R で scan-to-map localizer に置換予定
+- **P2: 初期位置合わせ機構がない** (起動位置 = camera_init 前提)。M6-R の initial pose 運用で解消予定
+- **P3: 発散を検知も回復もしない** (歩行者横断で破綻しても TF は出続け Nav2 は走行継続。run3 実測)。M6-R のフェイルセーフノードで遮断する
+- **P4: odom フレーム不在・車輪オドメトリ未使用** (`ros2_whill` の `/whill/odom` が未統合)。M4-R で robot_localization EKF を導入し `odom -> base_link` を構築、`map -> odom` を後段の localizer に分離する
+- **P5: 地図品質の問題が安全機能を連鎖停止** (ゴースト障害物 → `use_collision_detection: false`、QoS 不一致 → obstacle layer なし)。M5-R のマップパイプライン + M6-R の obstacle layer 復活で解消予定
+
+旧 M5-d (goal-following) / M5-e (tuning) は本方針下で**凍結**。`tf_bridge_launch.py` の identity 構成を前提とした新機能追加と、FAST-LIO のランタイム localizer 強化は禁止 (本文書 5 章)。
 
 ## Import
 
+@docs/plans/2026-06-11-platform-pivot.md
 @docs/legacy-index.md

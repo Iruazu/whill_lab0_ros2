@@ -27,7 +27,16 @@
       "Bash(grep *)",
       "Bash(find *)",
       "Bash(rg *)",
-      "WebSearch",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git fetch*)",
+      "Bash(git pull*)",
+      "Bash(gh issue *)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr comment *)""WebSearch",
       "WebFetch"
     ],
     "deny": [
@@ -40,7 +49,11 @@
       "Bash(sudo rm *)",
       "Bash(rm -rf *)",
       "Bash(git push *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)""Bash(git push origin main*)",
+      "Bash(git push --force*)",
+      "Bash(git push * --force*)",
+      "Bash(git push -f*)",
+      "Bash(gh pr merge *)"
     ]
   }
 }
