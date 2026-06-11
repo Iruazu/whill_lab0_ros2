@@ -5,8 +5,30 @@ this index or jump straight to a milestone document.
 
 ## Strategy
 
-- [Migration plan](migration-plan.md) — package inventory, Group A/B/C
-  classification, branch / PR convention.
+The authoritative forward-planning document is the platform-pivot policy
+([`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md)).
+It defines the post-pivot phases M4-R through M9, the prohibited directions
+(frozen M5-d/M5-e, identity-`tf_bridge` re-use, runtime FAST-LIO hardening),
+and the per-phase acceptance criteria.
+
+The earlier [migration plan](migration-plan.md) remains as the execution
+record of the initial M1–M3 noetic → humble port; it is no longer the
+source of truth for what to build next.
+
+## Planning, research, and decisions
+
+The subdirectories under `docs/` separate three different kinds of writing:
+
+- [`plans/`](plans/) — multi-phase plans authored by `pm-orchestrator`. Each
+  plan states acceptance criteria and prohibitions. New phases start here.
+  - [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md)
+- [`research/`](research/) — technical surveys authored by `research-analyst`,
+  used as input to ADRs and plans.
+  - [`research/2026-06-11-localization-survey.md`](research/2026-06-11-localization-survey.md)
+- `decisions/` — Architecture Decision Records (`NNNN-*.md`). Drafts may come
+  from agents but the human authors the `accepted` line. No ADRs have been
+  filed yet; the open ADR candidates are listed in
+  [the platform-pivot policy §7](plans/2026-06-11-platform-pivot.md).
 
 ## Carry-over from the noetic stack
 
@@ -16,14 +38,18 @@ this index or jump straight to a milestone document.
 
 ## Milestones
 
+Initial roadmap (M1–M5) is complete; the post-pivot roadmap (M4-R through
+M9) is tracked in the platform-pivot policy §4 and on the README. Per-phase
+documents below are the historical execution records.
+
 | | Document | Status |
 |--|----------|--------|
 | M1 | [Environment setup](m1-environment-setup.md) | done |
 | M2 | [WHILL core driver on real hardware](m2-whill-core.md) | done |
-| M3 | [Sensor stack](m3-sensors.md) | done (PR #4 merged 2026-05-07) |
+| M3 | [Sensor stack](m3-sensors.md) | done (PR #4 merged 2026-05-07, PR #5 wrap-up merged 2026-05-08) |
 | M4 | [Localization — FAST-LIO](m4-localization.md) | done (PR #6 merged 2026-05-08) |
-| M5 | [Navigation — Nav2](m5-navigation.md) | in progress (branch `m5/navigation`) |
-| M6 | (Bringup integration + on-vehicle validation) | not yet drafted |
+| M5 | [Navigation — Nav2](m5-navigation.md) | M5-a/b/c/d done (PR #7 merged 2026-05-20); M5-d continuation and M5-e frozen by the 2026-06-11 platform pivot |
+| M4-R … M9 | — (per-phase docs not yet drafted) | see [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) §4 |
 
 ## Session logs
 
