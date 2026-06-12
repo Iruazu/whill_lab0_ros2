@@ -57,14 +57,14 @@
 | マイルストーン文書 | `docs/m{N}-*.md` |
 | セッションログ・意思決定 | `docs/session-YYYY-MM-DD.md` |
 | ADR (Architecture Decision Record) | `docs/decisions/NNNN-*.md` |
-| 旧実装の調査結果 | `docs/legacy-index.md` および `docs/legacy-findings/` |
+| 旧実装の調査結果 | `docs/ja/legacy-index.md` および `docs/legacy-findings/` |
 | ベンチデータ | `docs/m3-bench-data/` (実バグは gitignore、README/PDF のみ commit) |
 
 ## 旧 noetic リポジトリ
 
 - パス: `~/whill_lab0/` (環境によって変えるならここを書き換え + `legacy-archaeologist.md` も更新)
 - このリポはサイズが膨大かつ整理されておらず、Claude の context window を圧迫する
-- **`legacy-archaeologist` エージェント以外は旧リポを直接読まない**。必要な情報は `docs/legacy-index.md` 経由で参照する
+- **`legacy-archaeologist` エージェント以外は旧リポを直接読まない**。必要な情報は `docs/ja/legacy-index.md` 経由で参照する
 
 ## チーム体制 (.claude/agents)
 
@@ -96,4 +96,4 @@
 ## Import
 
 @docs/ja/plans/2026-06-11-platform-pivot.md
-@docs/legacy-index.md
+@docs/ja/legacy-index.md
