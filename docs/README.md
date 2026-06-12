@@ -25,10 +25,11 @@ The subdirectories under `docs/` separate three different kinds of writing:
 - [`research/`](research/) — technical surveys authored by `research-analyst`,
   used as input to ADRs and plans.
   - [`research/2026-06-11-localization-survey.md`](research/2026-06-11-localization-survey.md)
-- `decisions/` — Architecture Decision Records (`NNNN-*.md`). Drafts may come
-  from agents but the human authors the `accepted` line. No ADRs have been
-  filed yet; the open ADR candidates are listed in
-  [the platform-pivot policy §7](plans/2026-06-11-platform-pivot.md).
+- [`decisions/`](decisions/) — Architecture Decision Records (`NNNN-*.md`). Drafts may
+  come from agents but the human authors the `accepted` line. Open ADR candidates
+  are listed in [the platform-pivot policy §7](plans/2026-06-11-platform-pivot.md).
+  Filed ADRs:
+  - [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md) — docs bilingualisation policy
 
 ## Carry-over from the noetic stack
 
@@ -75,3 +76,7 @@ contributors don't repeat the same dead ends.
 - External authoritative references (vendor PDFs, upstream READMEs) are
   linked, not copied — but their *interpretation* lives here so we own the
   understanding.
+- Language-specific docs are placed in parallel under `docs/ja/` and `docs/en/`
+  (policy: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md)). The
+  migration is in progress; documents not yet migrated remain under `docs/` until
+  Issues #14 and #15 close.
