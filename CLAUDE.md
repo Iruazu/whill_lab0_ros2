@@ -12,7 +12,7 @@
 ## アーキテクチャ層
 
 「マップ作成 (オフライン・母艦)」と「運用 (オンライン・車載)」を分離する二相構成を採用する。
-詳細と選定理由は `docs/plans/2026-06-11-platform-pivot.md` の 3 章。
+詳細と選定理由は `docs/ja/plans/2026-06-11-platform-pivot.md` の 3 章。
 
 ```
 [マップ作成フェーズ (オフライン, 母艦)]
@@ -72,7 +72,7 @@
 
 | 状況 | 起動すべきエージェント |
 |------|-----------------------|
-| 方針判断・新フェーズ着手 | まず `docs/plans/2026-06-11-platform-pivot.md` を参照 |
+| 方針判断・新フェーズ着手 | まず `docs/ja/plans/2026-06-11-platform-pivot.md` を参照 |
 | 「〇〇機能を移植したい」「〇〇を作りたい」 | まず `pm-orchestrator` |
 | 「旧実装はどうやっていたか」「noetic 側の挙動を知りたい」 | `legacy-archaeologist` |
 | 「ROS 2 で〇〇を実装したい」(計画済み) | `ros2-implementer` |
@@ -82,7 +82,7 @@
 
 ## 進行中の既知課題
 
-`docs/plans/2026-06-11-platform-pivot.md` 2 章の診断 (P1〜P5) を要約転記する。詳細根拠と
+`docs/ja/plans/2026-06-11-platform-pivot.md` 2 章の診断 (P1〜P5) を要約転記する。詳細根拠と
 解消経路は同文書の 3 章 (アーキテクチャ) と 4 章 (マイルストーン M4-R 以降) を参照:
 
 - **P1: 運用時の自己位置に補正経路がない** (`map -> camera_init` identity 固定で FAST-LIO ドリフトがそのまま map 誤差化、60s で 18%)。M6-R で scan-to-map localizer に置換予定
@@ -95,5 +95,5 @@
 
 ## Import
 
-@docs/plans/2026-06-11-platform-pivot.md
+@docs/ja/plans/2026-06-11-platform-pivot.md
 @docs/legacy-index.md
