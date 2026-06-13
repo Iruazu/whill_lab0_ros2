@@ -10,7 +10,7 @@ $ARGUMENTS
 
 ## 手順
 
-1. `docs/plans/2026-06-11-platform-pivot.md` と、該当フェーズの詳細計画
+1. `docs/ja/plans/2026-06-11-platform-pivot.md` と、該当フェーズの詳細計画
    (`docs/plans/` 配下) を読む。詳細計画が無ければ先に `pm-orchestrator` で
    計画を作るようユーザーに提案して止まる
 2. 1 Issue = 1 ブランチ = 1 PR で完結する粒度に分解する
