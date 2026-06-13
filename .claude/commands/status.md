@@ -14,7 +14,7 @@ argument-hint: (引数なし)
    - `git log --oneline -10 origin/main`
 2. **「ユーザーの判断待ち」を先頭に列挙する**: レビュー / マージ待ちの PR、
    実機検証待ちの項目、未回答の質問、未決の ADR
-   (`docs/plans/2026-06-11-platform-pivot.md` 7 章)
+   (`docs/ja/plans/2026-06-11-platform-pivot.md` 7 章)
 3. 方針文書 4 章のフェーズ (M4-R〜M9) ごとに状態を表で示す:
    未着手 / 計画済 / 実装中 (Issue 番号) / PR 中 (PR 番号) / 完了
 4. 滞留 (7 日以上動きのない open Issue / draft PR) があれば指摘する
