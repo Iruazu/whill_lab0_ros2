@@ -27,6 +27,10 @@ noetic → humble 移植のプロジェクトレベル文書を集約する。�
 - [LiDAR ↔ IMU 外部パラメータ (noetic 由来)](m3-extrinsics-from-noetic.md) — `whill_lab0/FAST_LIO/config/velodyne.yaml` の校正値。M4 の出発点として使用した。
 - [旧リポインデックス](legacy-index.md) — `~/whill_lab0/` のエントリポイント・マップ。`legacy-archaeologist` エージェントの起点。
 
+## M5-R 前置作業
+
+- [CUDA Toolkit 12.4 と cuDNN 8 のセットアップ](m5r-cuda-setup.md) — GLIM (M5-R で第一候補) のビルド前提
+
 ## マイルストーン
 
 初期ロードマップ (M1〜M5) は完了済。転換後のロードマップ (M4-R 〜 M9) は方針文書 §4 とリポ直下 README で追跡する。下表のフェーズ別文書は歴史的な実行記録という位置付け。
