@@ -49,3 +49,13 @@ docs/m3-bench-data/*/
 # Map artifacts — PCD point clouds are large; track only pgm/yaml/metadata.
 docs/m5-maps/*.pcd
 docs/maps/**/*.pcd
+
+# tf2_tools view_frames and RViz write diagnostic / session files to the
+# repo root as a side effect of normal development (each `ros2 run tf2_tools
+# view_frames` adds two more files). Excluding them here, rather than
+# relying on a global ignore, keeps the rule visible to every contributor.
+# The leading slash pins the pattern to the repo root so package-internal
+# rviz configs (e.g. src/whill_navigation/config/*.rviz) are not swept up.
+/frames_*.gv
+/frames_*.pdf
+/*.rviz
