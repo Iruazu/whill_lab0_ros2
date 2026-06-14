@@ -41,6 +41,10 @@ The subdirectories under `docs/` separate three different kinds of writing:
 - [Legacy repo index](legacy-index.md) — entry-point map to `~/whill_lab0/`,
   used as the starting point of the `legacy-archaeologist` agent.
 
+## M4-R prerequisites
+
+- [ModelCr2State unit pinning](m4r-whill-units.md) — required before M4R-1 (case 1: add `/whill/odom` publisher to the ros2_whill fork). Determines motor_angle/motor_speed units on real hardware.
+
 ## M5-R prerequisites
 
 - [CUDA Toolkit 12.4 and cuDNN 8 setup](m5r-cuda-setup.md) — required to build GLIM (M5-R first candidate)
