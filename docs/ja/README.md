@@ -27,6 +27,10 @@ noetic → humble 移植のプロジェクトレベル文書を集約する。�
 - [LiDAR ↔ IMU 外部パラメータ (noetic 由来)](m3-extrinsics-from-noetic.md) — `whill_lab0/FAST_LIO/config/velodyne.yaml` の校正値。M4 の出発点として使用した。
 - [旧リポインデックス](legacy-index.md) — `~/whill_lab0/` のエントリポイント・マップ。`legacy-archaeologist` エージェントの起点。
 
+## M4-R 前置作業
+
+- [ModelCr2State の単位曖昧性確定](m4r-whill-units.md) — M4R-1 (案 1: ros2_whill fork に `/whill/odom` publisher 追加) の前提として、motor_angle/motor_speed の単位を実機検証で確定
+
 ## M5-R 前置作業
 
 - [CUDA Toolkit 12.4 と cuDNN 8 のセットアップ](m5r-cuda-setup.md) — GLIM (M5-R で第一候補) のビルド前提
