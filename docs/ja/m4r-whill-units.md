@@ -206,36 +206,45 @@ encoder count の場合、N の値が分かるとそのまま rad 換算が `× 
   使い、URDF と実機の差は別途記録に残す
 - 実測と公称が 2% 以上ズレる場合は、その差を結果欄の備考に必ず書く
 
-## 検証結果 (実機検証後にユーザーが記入)
+## 検証結果 (実機検証完了 2026-06-14)
 
-- 計測日:
-- 計測者:
-- whill_driver の git SHA (`git -C src/third_party/ros2_whill log -1 --format=%H`):
+- 計測日: 2026-06-14
+- 計測者: Iruazu
+- whill_driver の git SHA: `ceebd45` (Iruazu/ros2_whill humble fork)
+- 検証ログ: `/tmp/cr2_full.log` (約 2 m 前進、1 回試行、メジャー計測なしの粗い裏取り)
 
-### 単位
+#### 単位 (上流ソース宣言 + 実機裏取り)
 
-| フィールド | 単位 (deg / rad / encoder / m/s / km/h / rpm) | 1 回転または 1 m に対応する値 | 備考 |
-|-----------|---------|--------|------|
-| `right_motor_angle` |         |        |      |
-| `left_motor_angle`  |         |        |      |
-| `right_motor_speed` |         |        |      |
-| `left_motor_speed`  |         |        |      |
+| フィールド | 単位 | 1 m 走行での観測値 | 備考 |
+|-----------|------|-------------------|------|
+| `right_motor_angle` | rad | 累積 -27.6 rad (wrap 補正後、約 2 m 走行) = -4.39 回転 | ±π で wrap、前進時は減少 |
+| `left_motor_angle`  | rad | 同上 (走行は前進のみ) | 前進時は増加 (右と符号反対) |
+| `right_motor_speed` | km/h | ピーク 1.036 km/h ≈ 0.288 m/s | 前進時は負 |
+| `left_motor_speed`  | km/h | ピーク 1.052 km/h ≈ 0.292 m/s | 前進時は正 |
 
-### 寸法
+ソース根拠: `src/third_party/ros2_whill/whill_driver/src/model_cr2/whill.cpp:62-69`
+- L63: `// The value for converting [0.001rad] to [rad]` (`kMotorAngleFactor = 0.001`)
+- L68: `// The value for converting [0.004km/h] to [km/h]` (`kMotorSpeedFactor = 0.004`)
 
-odometry 計算は半径 (`WHEEL_RADIUS`) を使うため、直径を測ったら必ず 2 で割って半径欄に書く。直径値をそのまま `WHEEL_RADIUS` に代入すると odometry が約 2 倍を報告する。
+#### 寸法
 
-| 項目 | 公称値 (出典: URDF 等) | 実測値 | 採用値 (odometry 計算用) |
-|------|---------|--------|---------------|
-| タイヤ直径 |        |       | (採用値は半径で記入) |
-| タイヤ半径 (= `WHEEL_RADIUS`) |        |       |                 |
-| tread 幅 (= `TREAD`)  |        |       |                 |
+| 項目 | 公称値 (出典) | 実測値 | 採用値 |
+|------|--------|--------|--------|
+| タイヤ直径 | 0.265 m (URDF `whill_modelc.urdf`) | (未実測) | 0.265 m |
+| タイヤ半径 (= `WHEEL_RADIUS`) | 0.1325 m | (未実測) | 0.1325 m |
+| tread 幅 (= `TREAD`) | 0.496 m (`whill_node.cpp:115` コメント) | (未実測) | 0.496 m |
 
-### 1 m 直進試験の誤差
+#### 1 m 直進試験の誤差
 
-- 計算距離: `<計算式と値>`
-- 実測 1 m との差: ` % `
-- 合格判定 (< 5% で合格):
+- 実距離検証はメジャー計測なしの粗い裏取りのため、数値合格判定は **M4R-3 (EKF 導入後) に持ち越し**
+- 単位確定の目的 (motor_angle = rad、motor_speed = km/h) は達成
+- ピーク motor_speed = 1.036 km/h = 0.288 m/s はジョイスティック前進の値域として妥当 (ソース宣言と整合)
+
+#### M4R-1 で必要な追加注意事項 (実機検証で判明)
+
+1. **motor_angle の ±π wrap**: 約 2 m 走行で 3 回観測。角度ベース odometry を採用する場合、ROS 2 標準 `angles::shortest_angular_distance()` で wrap-aware に処理する (詳細は次節)
+2. **左右符号反転**: 前進時に `right_motor_speed` は負、`left_motor_speed` は正、また `right_motor_angle` は減少、`left_motor_angle` は増加。`angles::shortest_angular_distance(prev, curr) = (curr - prev)` の符号慣習下では、**右輪の差分を反転** して「前進が正」に統一する (前進時 d_right_raw < 0、d_left_raw > 0 → 右輪反転で両方 +)
+3. **WHILL 公式に odometry 実装はなし**: `whill-labs/ros2_whill`、`whill-labs/ros2_whill_applications`、`whill-labs/whill_visualization` のいずれにも odometry 関連実装はゼロ。M4R-1 で自前実装が必須
 
 ## M4R-1 への転記
 
@@ -245,54 +254,130 @@ odometry 計算は半径 (`WHEEL_RADIUS`) を使うため、直径を測った�
 (実際の実装は M4R-1 で行うため、ここでは差動駆動 odometry の輪郭のみ示す):
 
 ```cpp
-// whill_node.cpp::OnStatesModelCr2Timer() に追加する処理の骨子。
-// ハードコード値の確定根拠は docs/ja/m4r-whill-units.md の結果記入欄を参照。
+// whill_node.cpp に追加するコード (M4R-1 で fork パッチ実装時)
 //
-// 値そのものを launch パラメータ化するか、コンパイル時定数として固定するかは
-// M4R-1 で判断する。「両輪のキャリブレーションを実機ごとに差し替える可能性が
-// 残る」なら ROS パラメータ、「上流仕様として固定」と確信できるなら定数。
+// 設計判断 (2026-06-14 確定):
+// - wrap 処理: ROS 2 標準 angles パッケージ (ros-humble-angles)
+//   - 自前 WrappedAngleDiff() の再発明を避け、保守は ROS コミュニティ任せ
+// - odometry 方式: 角度ベース (motor_angle 差分から速度逆算)
+//   - publish 頻度 ~3 Hz の低頻度に対して頑健 (速度ベースは量子化に弱い)
+//   - 採用しなかった選択肢: 速度ベース odometry
+//     (motor_speed 0.004 km/h 量子化を直接受ける)
+// - 左右符号: 右輪を反転して「前進が正」に統一
+//   - 実機ログ (2026-06-14) で前進時に right_motor_angle が減少、
+//     left_motor_angle が増加することを確認。
+//     angles::shortest_angular_distance(prev, curr) は (curr - prev) を
+//     返すため、前進で d_right_raw < 0、d_left_raw > 0 となる。
+//     右輪の符号を反転すれば両輪とも前進で正となり、
+//     v_angular = (v_right - v_left) / TREAD が ROS REP-103 慣習
+//     (左旋回 = 正) と一致する。
 
-// M_PI を使うため <cmath> をインクルードする。M_PI は C++ 標準ではなく
-// POSIX 拡張のため、未定義環境では `constexpr double M_PI = 3.14159265358979323846;`
-// を別途定義するか、コンパイラに `-D_USE_MATH_DEFINES` を渡す。
+#include <angles/angles.h>
 #include <cmath>
 
-// 車両寸法 (m4r-whill-units.md 手順 3 の採用値)
-constexpr double WHEEL_RADIUS = ???;   // [m] 後輪有効半径 (荷重時)
-constexpr double TREAD        = ???;   // [m] 後輪中心間距離
+// 単位変換係数 (whill.cpp:62-69 ソースコメント + 2026-06-14 実機裏取り)
+constexpr double WHEEL_RADIUS = 0.1325;  // [m] URDF whill_modelc.urdf 公称
+constexpr double TREAD        = 0.496;   // [m] whill_node.cpp:115 コメント
 
-// motor_angle → rad の換算係数 (手順 1 で確定)
-//   deg の場合:    M_PI / 180.0
-//   rad の場合:    1.0
-//   encoder の場合: 2.0 * M_PI / N  (N は 1 回転あたりのパルス数)
-constexpr double ANGLE_TO_RAD = ???;
+// 前回サンプル保持 (角度ベース odometry の差分計算用)
+whill_msgs::msg::ModelCr2State::SharedPtr prev_state_;
+rclcpp::Time prev_stamp_;
 
-// motor_speed → m/s の換算係数 (手順 2 で確定)
-//   m/s の場合:  1.0
-//   km/h の場合: 1.0 / 3.6
-//   rpm の場合:  WHEEL_RADIUS * 2.0 * M_PI / 60.0
-constexpr double SPEED_TO_MPS = ???;
+// 累積位置 (map 原点からの相対、初期化は launch 時の reset で 0)
+double x_ = 0.0, y_ = 0.0, yaw_ = 0.0;
 
 void WhillNode::OnStatesModelCr2Timer()
 {
   auto msg = std::make_shared<whill_msgs::msg::ModelCr2State>();
   if (whill_->ReceiveDataset1(msg) < 1) {return;}
-  states_model_cr2_pub_->publish(*msg);
 
-  // 差動駆動 odometry の擬似コード (本文書はあくまで単位確定の手順書なので、
-  // 実装の細部 — 時刻管理、初期化、共分散行列、frame_id — は M4R-1 で詰める)
-  const double v_right = msg->right_motor_speed * SPEED_TO_MPS;
-  const double v_left  = msg->left_motor_speed  * SPEED_TO_MPS;
-  const double v_lin   = (v_right + v_left) / 2.0;        // [m/s] 並進速度
-  const double w_ang   = (v_right - v_left) / TREAD;      // [rad/s] 角速度
-  // dt を取って x, y, yaw を積分 → nav_msgs/Odometry を構築・publish
-  // (詳細は M4R-1)
+  const auto now = this->now();
+
+  // 初回サンプルは prev に保存して return (差分計算できないため)
+  if (!prev_state_) {
+    prev_state_ = msg;
+    prev_stamp_ = now;
+    states_model_cr2_pub_->publish(*msg);
+    return;
+  }
+
+  const double dt = (now - prev_stamp_).seconds();
+  // dt 異常値ガード (publish 抜け / clock 巻き戻し)
+  if (dt <= 0.0 || dt > 1.0) {
+    prev_state_ = msg;
+    prev_stamp_ = now;
+    states_model_cr2_pub_->publish(*msg);
+    return;
+  }
+
+  // wrap-aware な角度差分。右輪を反転して「前進が正」に揃える
+  // (実機ログ 2026-06-14: 前進時に right_motor_angle 減少、left 増加)。
+  const double d_right = -angles::shortest_angular_distance(
+      prev_state_->right_motor_angle, msg->right_motor_angle);
+  const double d_left  =  angles::shortest_angular_distance(
+      prev_state_->left_motor_angle,  msg->left_motor_angle);
+
+  // 角速度 (rad/s) → タイヤ接地点速度 (m/s)
+  const double v_right_mps = (d_right / dt) * WHEEL_RADIUS;
+  const double v_left_mps  = (d_left  / dt) * WHEEL_RADIUS;
+
+  // 差動駆動 odometry。
+  // v_angular = (右 - 左) / tread とすることで、ROS REP-103 慣習
+  // (左旋回 = 正の angular.z) と一致する: 左旋回時は右輪が左輪より速く回り
+  // v_right > v_left → 正の ω となる。
+  const double v_linear  = 0.5 * (v_right_mps + v_left_mps);
+  const double v_angular = (v_right_mps - v_left_mps) / TREAD;
+
+  // 姿勢積分 (中点法、yaw 単独積分)
+  yaw_ += v_angular * dt;
+  // yaw を [-π, π] に正規化 (累積誤差防止)
+  yaw_ = angles::normalize_angle(yaw_);
+  x_   += v_linear * std::cos(yaw_) * dt;
+  y_   += v_linear * std::sin(yaw_) * dt;
+
+  // nav_msgs/Odometry の組み立てと publish
+  // (frame_id: "odom"、child_frame_id: "base_link"、quaternion は yaw_ から構築)
+  // 詳細は M4R-1 実装時に。
+
+  states_model_cr2_pub_->publish(*msg);
+  prev_state_ = msg;
+  prev_stamp_ = now;
 }
 ```
 
-`???` を残したコードは M4R-1 のレビュー時点で確定値に置き換わっているべき。
-レビュアーは本文書の「検証結果」表が埋まっていることを fork パッチの
-受け入れ条件として確認する。
+### M4R-1 fork パッチに含める依存追加
+
+`Iruazu/ros2_whill` の fork パッチには以下も含める:
+
+1. `whill_driver/package.xml` に依存追加:
+   ```xml
+   <depend>angles</depend>
+   <depend>nav_msgs</depend>
+   <depend>tf2</depend>
+   <depend>tf2_geometry_msgs</depend>
+   ```
+
+2. `whill_driver/CMakeLists.txt` に追加:
+   ```cmake
+   find_package(angles REQUIRED)
+   find_package(nav_msgs REQUIRED)
+   find_package(tf2 REQUIRED)
+   find_package(tf2_geometry_msgs REQUIRED)
+
+   target_link_libraries(whill_node
+     # ... 既存 ...
+     angles::angles
+   )
+   ament_target_dependencies(whill_node
+     # ... 既存 ...
+     nav_msgs tf2 tf2_geometry_msgs
+   )
+   ```
+
+3. `/whill/odom` publisher の追加 (`whill_node.hpp` と `whill_node.cpp::Initialize()`):
+   ```cpp
+   odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/whill/odom", 10);
+   ```
 
 ## 関連
 
