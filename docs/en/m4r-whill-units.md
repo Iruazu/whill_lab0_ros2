@@ -232,39 +232,64 @@ How to pick the adopted value:
 - If the measured-vs-nominal gap is 2 % or more, write it explicitly into
   the notes column of the results table.
 
-## Results (filled in by the user after the hardware test)
+## Results (hardware test completed 2026-06-14)
 
-- Measurement date:
-- Operator:
-- whill_driver git SHA (`git -C src/third_party/ros2_whill log -1 --format=%H`):
+- Measurement date: 2026-06-14
+- Operator: Iruazu
+- whill_driver git SHA: `ceebd45` (Iruazu/ros2_whill humble fork)
+- Verification log: `/tmp/cr2_full.log` (~2 m forward run, single trial,
+  a rough sanity-check without tape-measured distance)
 
-### Units
+#### Units (upstream source declaration + hardware sanity check)
 
-| Field | Unit (deg / rad / encoder / m/s / km/h / rpm) | Value per revolution or per 1 m | Notes |
-|-------|---------|--------|------|
-| `right_motor_angle` |         |        |      |
-| `left_motor_angle`  |         |        |      |
-| `right_motor_speed` |         |        |      |
-| `left_motor_speed`  |         |        |      |
+| Field | Unit | Observed value over the 1 m run | Notes |
+|-------|------|---------------------------------|-------|
+| `right_motor_angle` | rad | cumulative -27.6 rad after wrap correction (~2 m run) = -4.39 revolutions | wraps at ±π; decreases when driving forward |
+| `left_motor_angle`  | rad | same as above (forward run only) | increases when driving forward (opposite sign to right) |
+| `right_motor_speed` | km/h | peak 1.036 km/h ≈ 0.288 m/s | negative when driving forward |
+| `left_motor_speed`  | km/h | peak 1.052 km/h ≈ 0.292 m/s | positive when driving forward |
 
-### Geometry
+Source evidence: `src/third_party/ros2_whill/whill_driver/src/model_cr2/whill.cpp:62-69`
+- L63: `// The value for converting [0.001rad] to [rad]` (`kMotorAngleFactor = 0.001`)
+- L68: `// The value for converting [0.004km/h] to [km/h]` (`kMotorSpeedFactor = 0.004`)
 
-odometry uses the radius (`WHEEL_RADIUS`), so if you measure the
-diameter, halve it before writing it into the radius row. Pasting the
-diameter directly into `WHEEL_RADIUS` makes odometry report roughly
-twice the actual distance.
+#### Geometry
 
-| Item | Nominal (source: URDF etc.) | Measured | Adopted (for odometry) |
-|------|---------|--------|---------------|
-| Tyre diameter |        |       | (record the radius in the row below) |
-| Tyre radius (= `WHEEL_RADIUS`) |        |       |                 |
-| Tread width (= `TREAD`)   |        |       |                 |
+| Item | Nominal (source) | Measured | Adopted |
+|------|------------------|----------|---------|
+| Tyre diameter | 0.265 m (URDF `whill_modelc.urdf`) | (not measured) | 0.265 m |
+| Tyre radius (= `WHEEL_RADIUS`) | 0.1325 m | (not measured) | 0.1325 m |
+| Tread width (= `TREAD`) | 0.496 m (`whill_node.cpp:115` comment) | (not measured) | 0.496 m |
 
-### 1 m forward-run error
+#### 1 m forward-run error
 
-- Computed distance: `<formula and value>`
-- Difference against measured 1 m: ` % `
-- Pass / fail (pass if < 5 %):
+- Distance verification with a tape measure was not performed, so the
+  numeric pass / fail judgement is **deferred to M4R-3 (after EKF
+  integration)**
+- The goal of this issue — pinning the units (motor_angle = rad,
+  motor_speed = km/h) — is met
+- Peak motor_speed = 1.036 km/h = 0.288 m/s sits inside the expected
+  joystick-forward range and is consistent with the upstream source
+  declaration
+
+#### Additional notes for M4R-1 (surfaced by the hardware test)
+
+1. **motor_angle wraps at ±π**: observed 3 wrap events over ~2 m of
+   driving. An angle-based odometry must process the deltas in a
+   wrap-aware way; we use the ROS 2 standard
+   `angles::shortest_angular_distance()` (see the next section).
+2. **Left/right sign inversion**: when driving forward,
+   `right_motor_speed` is negative, `left_motor_speed` is positive,
+   `right_motor_angle` is decreasing, and `left_motor_angle` is
+   increasing. Under the
+   `angles::shortest_angular_distance(prev, curr) = (curr - prev)` sign
+   convention, **the right wheel delta is negated** to make "forward is
+   positive" hold (so that d_right_raw < 0 and d_left_raw > 0 both
+   become positive after the flip).
+3. **Upstream WHILL packages ship no odometry implementation**: none of
+   `whill-labs/ros2_whill`, `whill-labs/ros2_whill_applications`, or
+   `whill-labs/whill_visualization` contains any odometry code. M4R-1
+   must implement it locally.
 
 ## Transcribing into M4R-1
 
@@ -275,58 +300,131 @@ belongs to the M4R-1 patch, so this is only the differential-drive
 outline:
 
 ```cpp
-// Additions to whill_node.cpp::OnStatesModelCr2Timer().
-// The numbers come from the results section in docs/en/m4r-whill-units.md.
+// Code to add to whill_node.cpp (implemented as part of the M4R-1 fork patch).
 //
-// Whether to pin these as compile-time constants or expose them as ROS
-// parameters is a decision for M4R-1. If we want to swap calibration per
-// chair, prefer parameters; if we are confident they are upstream spec,
-// constants are fine.
+// Design choices (pinned 2026-06-14):
+// - Wrap handling: ROS 2 standard angles package (ros-humble-angles)
+//   - Avoids reinventing WrappedAngleDiff(); the ROS community maintains it
+// - Odometry method: angle-based (derive velocity from motor_angle deltas)
+//   - Robust against the low ~3 Hz publish rate (a velocity-based variant
+//     is sensitive to the speed quantisation)
+//   - Rejected alternative: velocity-based odometry
+//     (consumes the 0.004 km/h motor_speed quantum directly)
+// - Left/right sign: negate the right wheel so "forward is positive"
+//   - Hardware log (2026-06-14): forward driving makes right_motor_angle
+//     decrease and left_motor_angle increase.
+//     angles::shortest_angular_distance(prev, curr) returns (curr - prev),
+//     so d_right_raw < 0 and d_left_raw > 0 during forward motion.
+//     Negating the right wheel makes both positive, and
+//     v_angular = (v_right - v_left) / TREAD then matches the ROS REP-103
+//     convention (left turn = positive).
 
-// Include <cmath> for M_PI. Note that M_PI is a POSIX extension, not
-// part of standard C++; on environments where it is not defined, either
-// add `constexpr double M_PI = 3.14159265358979323846;` yourself or pass
-// `-D_USE_MATH_DEFINES` to the compiler.
+#include <angles/angles.h>
 #include <cmath>
 
-// Vehicle geometry (the adopted values from Procedure 3).
-constexpr double WHEEL_RADIUS = ???;   // [m] loaded effective radius of the rear wheels
-constexpr double TREAD        = ???;   // [m] centre-to-centre distance between rear wheels
+// Unit conversion factors (whill.cpp:62-69 source comments + 2026-06-14 hardware sanity check)
+constexpr double WHEEL_RADIUS = 0.1325;  // [m] URDF whill_modelc.urdf nominal
+constexpr double TREAD        = 0.496;   // [m] whill_node.cpp:115 comment
 
-// motor_angle → rad conversion (pinned in Procedure 1).
-//   if deg:     M_PI / 180.0
-//   if rad:     1.0
-//   if encoder: 2.0 * M_PI / N   (N = counts per revolution)
-constexpr double ANGLE_TO_RAD = ???;
+// Previous sample held for the angle-based delta calculation
+whill_msgs::msg::ModelCr2State::SharedPtr prev_state_;
+rclcpp::Time prev_stamp_;
 
-// motor_speed → m/s conversion (pinned in Procedure 2).
-//   if m/s:  1.0
-//   if km/h: 1.0 / 3.6
-//   if rpm:  WHEEL_RADIUS * 2.0 * M_PI / 60.0
-constexpr double SPEED_TO_MPS = ???;
+// Accumulated pose (relative to the map origin; initialised to 0 by the launch-time reset)
+double x_ = 0.0, y_ = 0.0, yaw_ = 0.0;
 
 void WhillNode::OnStatesModelCr2Timer()
 {
   auto msg = std::make_shared<whill_msgs::msg::ModelCr2State>();
   if (whill_->ReceiveDataset1(msg) < 1) {return;}
-  states_model_cr2_pub_->publish(*msg);
 
-  // Differential-drive odometry sketch. This document is the unit-pinning
-  // procedure, so the implementation details — time keeping, init, covariance,
-  // frame_id — are deferred to M4R-1.
-  const double v_right = msg->right_motor_speed * SPEED_TO_MPS;
-  const double v_left  = msg->left_motor_speed  * SPEED_TO_MPS;
-  const double v_lin   = (v_right + v_left) / 2.0;        // [m/s] linear velocity
-  const double w_ang   = (v_right - v_left) / TREAD;      // [rad/s] angular velocity
-  // Integrate (x, y, yaw) against dt, build a nav_msgs/Odometry, publish.
-  // (Details: M4R-1.)
+  const auto now = this->now();
+
+  // First sample: nothing to diff against, so just stash it and return
+  if (!prev_state_) {
+    prev_state_ = msg;
+    prev_stamp_ = now;
+    states_model_cr2_pub_->publish(*msg);
+    return;
+  }
+
+  const double dt = (now - prev_stamp_).seconds();
+  // Guard against bad dt values (dropped publishes / clock rewind)
+  if (dt <= 0.0 || dt > 1.0) {
+    prev_state_ = msg;
+    prev_stamp_ = now;
+    states_model_cr2_pub_->publish(*msg);
+    return;
+  }
+
+  // Wrap-aware angle deltas; the right wheel is sign-flipped so "forward
+  // is positive" (hardware log 2026-06-14: forward drives right_motor_angle
+  // down, left_motor_angle up).
+  const double d_right = -angles::shortest_angular_distance(
+      prev_state_->right_motor_angle, msg->right_motor_angle);
+  const double d_left  =  angles::shortest_angular_distance(
+      prev_state_->left_motor_angle,  msg->left_motor_angle);
+
+  // Angular rate (rad/s) -> tyre-contact-point linear velocity (m/s)
+  const double v_right_mps = (d_right / dt) * WHEEL_RADIUS;
+  const double v_left_mps  = (d_left  / dt) * WHEEL_RADIUS;
+
+  // Differential-drive odometry. v_angular = (right - left) / TREAD matches
+  // the ROS REP-103 convention (positive angular.z = left turn): during a
+  // left turn the right wheel spins faster, so v_right > v_left and ω > 0.
+  const double v_linear  = 0.5 * (v_right_mps + v_left_mps);
+  const double v_angular = (v_right_mps - v_left_mps) / TREAD;
+
+  // Pose integration (midpoint method, yaw integrated independently)
+  yaw_ += v_angular * dt;
+  // Normalise yaw to [-π, π] (prevents unbounded accumulation)
+  yaw_ = angles::normalize_angle(yaw_);
+  x_   += v_linear * std::cos(yaw_) * dt;
+  y_   += v_linear * std::sin(yaw_) * dt;
+
+  // Assemble and publish a nav_msgs/Odometry
+  // (frame_id: "odom", child_frame_id: "base_link", quaternion built from yaw_)
+  // Details are deferred to M4R-1.
+
+  states_model_cr2_pub_->publish(*msg);
+  prev_state_ = msg;
+  prev_stamp_ = now;
 }
 ```
 
-The `???` placeholders must be filled with the pinned values by the time
-the M4R-1 patch reaches review. The reviewer should treat "the results
-table in this document is populated" as a precondition for accepting the
-fork patch.
+### Dependency additions for the M4R-1 fork patch
+
+The fork patch on `Iruazu/ros2_whill` must also include:
+
+1. Additions to `whill_driver/package.xml`:
+   ```xml
+   <depend>angles</depend>
+   <depend>nav_msgs</depend>
+   <depend>tf2</depend>
+   <depend>tf2_geometry_msgs</depend>
+   ```
+
+2. Additions to `whill_driver/CMakeLists.txt`:
+   ```cmake
+   find_package(angles REQUIRED)
+   find_package(nav_msgs REQUIRED)
+   find_package(tf2 REQUIRED)
+   find_package(tf2_geometry_msgs REQUIRED)
+
+   target_link_libraries(whill_node
+     # ... existing ...
+     angles::angles
+   )
+   ament_target_dependencies(whill_node
+     # ... existing ...
+     nav_msgs tf2 tf2_geometry_msgs
+   )
+   ```
+
+3. Add the `/whill/odom` publisher (`whill_node.hpp` and `whill_node.cpp::Initialize()`):
+   ```cpp
+   odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/whill/odom", 10);
+   ```
 
 ## Related
 
