@@ -1,11 +1,17 @@
 repositories:
   third_party/ros2_whill:
     type: git
-    # Iruazu fork tracks whill-labs/ros2_whill humble plus the cold-boot init
-    # patch (SetPower + SendSetJoystickCommandWithLocal in WhillNode::Initialize).
-    # See docs/m2-whill-core.md "Cold-boot quirk and patch" for context.
+    # Iruazu fork. Pinned to an annotated tag rather than the humble branch so
+    # vcs import resolves to a fixed commit even if humble itself moves
+    # forward later. Bumped when a fork patch lands and is intended for
+    # downstream consumption.
+    # Diff vs the previous M2 anchor (humble@ceebd45):
+    #   - cold-boot init patch (SetPower + SendSetJoystickCommandWithLocal in
+    #     WhillNode::Initialize). See docs/m2-whill-core.md.
+    #   - /whill/odom publisher (nav_msgs/Odometry) in whill_driver, consumed
+    #     by the M4R-3 robot_localization EKF. See Iruazu/whill_lab0_ros2#35.
     url: https://github.com/Iruazu/ros2_whill.git
-    version: humble
+    version: humble-with-odom-2026-06-18
   third_party/ros2_whill_interfaces:
     type: git
     url: https://github.com/whill-labs/ros2_whill_interfaces.git
