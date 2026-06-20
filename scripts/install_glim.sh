@@ -238,11 +238,20 @@ install_gtsam() {
   #   * GTSAM_BUILD_EXAMPLES_ALWAYS=OFF / GTSAM_BUILD_TESTS=OFF — we are
   #     not validating GTSAM itself here; skipping these halves the build
   #     time on the Alienware host.
-  #   * GTSAM_BUILD_UNSTABLE=OFF — the "unstable" sublibrary is consumed by
-  #     neither gtsam_points nor GLIM. Leaving it ON drags in an extra
-  #     boost::serialization dependency and noticeably extends the build,
-  #     for headers we never link against.
-  if [[ -f /usr/local/lib/libgtsam.so ]] && [[ -f /usr/local/include/gtsam/config.h ]]; then
+  #   * GTSAM_BUILD_UNSTABLE=ON — gtsam_points' top-level CMakeLists.txt
+  #     hard-requires GTSAM_UNSTABLE >= 4.2 via find_package; building it
+  #     here also avoids CMake silently picking up the apt-PPA 4.1.1 left
+  #     under /usr/lib/cmake/GTSAM_UNSTABLE/ from any earlier gtsam-release-4.1
+  #     install on the host. (The earlier "OFF saves build time" note was
+  #     wrong — discovered during the first real install_glim.sh run; see
+  #     PR #52 follow-up.)
+  # UNSTABLE is part of the must-have surface (gtsam_points depends on it),
+  # so a 4.3a0 install without libgtsam_unstable counts as incomplete and
+  # forces a rebuild. This handles users who ran an older install_glim.sh
+  # with UNSTABLE=OFF and now need the UNSTABLE library.
+  if [[ -f /usr/local/lib/libgtsam.so ]] \
+     && [[ -f /usr/local/lib/libgtsam_unstable.so ]] \
+     && [[ -f /usr/local/include/gtsam/config.h ]]; then
     local installed
     installed="$(grep -E '^#define GTSAM_VERSION_STRING' /usr/local/include/gtsam/config.h 2>/dev/null | awk -F'"' '{print $2}')"
     if [[ "${installed}" == "4.3a0" ]] || [[ "${installed}" == "4.3."* ]]; then
@@ -250,6 +259,8 @@ install_gtsam() {
       return 0
     fi
     echo "Found stale GTSAM ${installed} at /usr/local; rebuilding to ${GTSAM_REF}."
+  elif [[ -f /usr/local/lib/libgtsam.so ]]; then
+    echo "Found GTSAM at /usr/local without libgtsam_unstable.so; rebuilding to ${GTSAM_REF} with UNSTABLE=ON."
   fi
   local src="${BUILD_CACHE}/gtsam"
   mkdir -p "${BUILD_CACHE}"
@@ -262,7 +273,7 @@ install_gtsam() {
     -DGTSAM_WITH_TBB=OFF \
     -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
     -DGTSAM_BUILD_TESTS=OFF \
-    -DGTSAM_BUILD_UNSTABLE=OFF)
+    -DGTSAM_BUILD_UNSTABLE=ON)
   cmake --build "${src}/build" --parallel "${JOBS}"
   sudo cmake --install "${src}/build"
   sudo ldconfig
