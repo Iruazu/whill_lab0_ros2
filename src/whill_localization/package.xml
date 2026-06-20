@@ -19,6 +19,9 @@
   <exec_depend>fast_lio</exec_depend>
   <exec_depend>robot_localization</exec_depend>
   <exec_depend>whill_sensors_bringup</exec_depend>
+  <!-- whill_bringup is the upstream ros2_whill launch package; -->
+  <!-- odom_bringup_launch.py (M4R-4) includes its whill_launch.py. -->
+  <exec_depend>whill_bringup</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

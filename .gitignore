@@ -45,6 +45,12 @@ docs/m3-bench-data/*/
 !docs/m3-bench-data/*.md
 !docs/m3-bench-data/*.pdf
 
+# Same policy for the M4-R odom-layer bench data captured under
+# docs/m4r-bench-data/ (see that directory's README for the protocol).
+docs/m4r-bench-data/*/
+!docs/m4r-bench-data/*.md
+!docs/m4r-bench-data/*.pdf
+
 .claude/settings.local.json
 # Map artifacts — PCD point clouds are large; track only pgm/yaml/metadata.
 docs/m5-maps/*.pcd

@@ -20,16 +20,27 @@ This package provides:
 - An M4-R EKF config (`config/ekf_odom.yaml`) — `robot_localization`'s
   `ekf_node` configured to fuse `/whill/odom` (wheel) +
   `/imu/data_raw` (RT 9-axis IMU) into `/odometry/filtered`.
-- Three launch files:
-  - `ekf_odom_launch.py` — odom-layer EKF only. Use this together with
-    a separate sensor + driver launch (M4R-4 will provide an
-    `odom_bringup_launch.py` that wires everything up).
+- Four launch files:
+  - `odom_bringup_launch.py` — **M4-R single-command bringup (Issue
+    #38)**. Composes `whill_sensors_bringup/sensors_launch.py` +
+    upstream `whill_bringup/whill_launch.py` + this package's
+    `ekf_odom_launch.py`. This is the launch you should use on the
+    chair for everything M4-R covers.
+  - `ekf_odom_launch.py` — odom-layer EKF only. Use this when you want
+    to bring sensors and the WHILL driver up by hand (debugging) or
+    swap one of the inputs (replay a `/whill/odom` bag while live
+    sensors run, etc.).
   - `fast_lio_launch.py` — FAST-LIO node alone, for offline replay
     against a recorded rosbag (defaults `use_sim_time:=true`).
   - `localization_launch.py` — sensors (via `whill_sensors_bringup`)
-    plus FAST-LIO, for live operation on the chair. Mutually exclusive
-    with `ekf_odom_launch.py`: both would try to author
-    `odom -> base_link`.
+    plus FAST-LIO, for live operation on the chair. **Mutually
+    exclusive with `odom_bringup_launch.py` / `ekf_odom_launch.py`**:
+    both branches would try to author the `odom -> base_link` TF edge
+    (the FAST-LIO branch via the pre-Issue-#38 `tf_bridge_launch.py`
+    aliases, the EKF branch directly) and the resulting TF fight
+    produces unbounded jitter that breaks downstream Nav2 / RViz. Pick
+    one branch per session. The FAST-LIO branch is retained only as a
+    map-making prerequisite for M5-R, not as a runtime localizer.
 
 ## M4-R odom-layer EKF (Issue #37)
 
@@ -37,7 +48,7 @@ This package provides:
 nothing else. It is the **only** publisher of the `odom -> base_link`
 TF edge in the new architecture; the WHILL driver was switched to
 TF-off in M4R-1, and `tf_bridge_launch.py` (FAST-LIO `map -> camera_init`
-identity) is scheduled for removal in M4R-4 / Issue #38.
+identity) was removed by M4R-4 / Issue #38.
 
 Inputs (sourced from elsewhere; this launch does NOT start them):
 
@@ -69,21 +80,29 @@ How the four Issue #37 acceptance criteria map to runtime checks:
 | (3) 10 m straight push, ≤ 0.5 m end error | record a bag of `/odometry/filtered`, then `scripts/m4r3_ekf_bench.py <bag>` | `End distance from start: ≤ 0.5 m` |
 | (4) 30 s static, ≤ 0.1 rad yaw drift | record a bag with the chair static, then `scripts/m4r3_ekf_bench.py <bag>` | `Yaw drift: ≤ 0.1 rad` |
 
-Quick start (live, M4R-3 only — drivers must already be running):
+Quick start (live, unified M4-R bringup — single terminal):
+
+```bash
+ros2 launch whill_localization odom_bringup_launch.py
+```
+
+This is the M4R-4 / Issue #38 path: sensors + `whill_driver` + EKF
+launch together; do not mix it with `localization_launch.py` (FAST-LIO)
+in the same session.
+
+For debugging individual pieces, the three-terminal variant from M4R-3
+still works:
 
 ```bash
 # Terminal 1: sensor drivers + static TFs
 ros2 launch whill_sensors_bringup sensors_launch.py
 
 # Terminal 2: WHILL driver (assumes M4R-1 wiring; topic /whill/odom)
-ros2 launch whill_driver whill_driver_launch.py     # or your local equiv.
+ros2 launch whill_bringup whill_launch.py
 
 # Terminal 3: this EKF
 ros2 launch whill_localization ekf_odom_launch.py
 ```
-
-M4R-4 will collapse the three terminals into a single
-`odom_bringup_launch.py`.
 
 Covariance tuning is intentionally left at upstream defaults for M4-R.
 If the four acceptance criteria pass with defaults the run-tuning issue

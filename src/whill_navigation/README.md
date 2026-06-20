@@ -2,85 +2,79 @@
 
 Nav2 bringup for the WHILL chair.
 
-This package is the M5 home base. It composes the M4 localization
-launch with the TF wiring + Nav2 lifecycle nodes the chair needs to
-follow a goal pose.
+This package is the M5 home base. It composes the Nav2 lifecycle nodes
+the chair needs to follow a goal pose, on top of whatever produces the
+`map -> odom -> base_link` TF chain.
 
-Status as of 2026-05-08: only the **TF bridge** (M5-a) is wired up.
-Subsequent commits on `m5/navigation` will add map building (M5-b),
-the Nav2 lifecycle launch (M5-c), and chair-tuned `nav2_params.yaml`
-(M5-c / M5-e).
+Status as of 2026-06-20 (M4-R close): `tf_bridge_launch.py` has been
+physically removed. The `map -> camera_init` identity it published was
+the FAST-LIO-as-runtime-localizer shortcut from M5-a; the platform-pivot
+plan (§5 禁止 1) requires it gone before the new architecture lands.
+`nav_launch.py` is **intentionally left in a broken state** — its Nav2
+nodes still expect a `map` frame, but no localizer is currently wired
+in. M6-R will drop a scan-to-map localizer into the include slot and
+restore working bringup. Until then this package provides only the Nav2
+lifecycle node graph; do not expect `ros2 launch whill_navigation
+nav_launch.py` to localise.
 
-## Quick start
+## TF tree check (M4-R)
 
-Live on the chair (FAST-LIO + TF bridge, no Nav2 yet):
+To verify the M4-R `odom -> base_link -> {imu_link, velodyne,
+camera_link}` chain without Nav2, use the unified odom bringup from
+`whill_localization`:
 
 ```bash
-ros2 launch whill_navigation nav_launch.py
-```
-
-Offline TF check against a recorded bag — start FAST-LIO + tf_bridge,
-then play a bag in another terminal:
-
-```bash
-# terminal 1
-ros2 launch whill_localization fast_lio_launch.py rviz:=false
-ros2 launch whill_navigation tf_bridge_launch.py
-# terminal 2
-ros2 bag play <m4 motion bag> --clock \
-    --topics /velodyne_points /imu/data_raw /imu/mag /tf_static
-# terminal 3
+ros2 launch whill_localization odom_bringup_launch.py
+# in another terminal
 ros2 run tf2_tools view_frames
 ```
 
-## TF tree this package sets up
+The output `frames.pdf` should show `odom -> base_link` (published by
+the `robot_localization` `ekf_filter_node`) and the three
+`base_link -> sensor` static edges.
+
+## Historical M5-a TF tree (removed)
+
+For context, the M5-a `tf_bridge_launch.py` set up this tree. It is no
+longer published by this package; the diagram is preserved as a record
+of what M6-R needs to replace:
 
 ```
-map                                       (whill_navigation, identity)
-└── camera_init                           (FAST-LIO, runtime)
+map                                       (whill_navigation, identity — removed)
+└── camera_init                           (FAST-LIO, runtime — frozen as a localizer)
     └── body                              (FAST-LIO, runtime)
-        └── base_link                     (whill_navigation, identity)
-            ├── imu_link                  (whill_sensors_bringup, identity)
-            ├── velodyne                  (whill_sensors_bringup, identity)
-            └── camera_link               (whill_sensors_bringup, identity)
+        └── base_link                     (whill_navigation, identity — removed)
+            ├── imu_link                  (whill_sensors_bringup, M4R-2)
+            ├── velodyne                  (whill_sensors_bringup, M4R-2)
+            └── camera_link               (whill_sensors_bringup, M4R-2)
                 ├── camera_depth_frame    (realsense2_camera)
                 ├── camera_color_frame    (realsense2_camera)
                 └── ...
 ```
 
-The two new static identities (`map -> camera_init` and `body -> base_link`)
-are aliases that connect FAST-LIO's coordinate convention to Nav2's
-expectations without any custom pose-relay code. The `body` frame in
-FAST-LIO is the IMU body frame, which is identity-equivalent to our
-`imu_link` and (because the M3 static TF makes `base_link -> imu_link`
-identity) to our `base_link`.
+The two identity hops (`map -> camera_init` and `body -> base_link`)
+were structurally incapable of fixing P1/P2/P3 in the platform-pivot
+diagnosis: a `map` frame fixed to the FAST-LIO start pose accumulates
+all of FAST-LIO's drift directly into the world frame, and there was no
+re-localization path. M6-R replaces both with a proper localizer.
 
 ## Open items / next sub-milestones
 
-- **M5-b — Build a saved map.** Drive a slow loop with FAST-LIO's
-  `pcd_save_en` flipped to true, save the resulting PCD under
-  `docs/m5-maps/<env>.pcd`, convert to a 2D occupancy grid for
-  `nav2_map_server`. Or use `octomap_server` for 3D.
-- **M5-c — Nav2 lifecycle bringup.** Add `map_server`,
-  `planner_server`, `controller_server`, `bt_navigator`,
-  `behavior_server`, `lifecycle_manager_navigation` to
-  `nav_launch.py` against a chair-tuned `config/nav2_params.yaml`.
-  Pull `ros-humble-nav2-*` apt packages and uncomment the Nav2
-  exec_depends in `package.xml`.
-- **M5-d — Live goal-following.** RViz `2D Goal Pose` → chair
-  follows path → reaches goal.
-- **M5-e — Tune costmaps and controller** to match WHILL CR2
-  Mode 2 dynamics.
+- **M6-R — scan-to-map localizer.** Pick between
+  `lidar_localization_ros2` (NDT-OMP, default candidate per the
+  platform-pivot plan §3.3) and alternatives, add the include in
+  `nav_launch.py` at the marked slot, restore initial-pose UX.
+- **M6-R — failsafe node.** Watch matching score / covariance, gate
+  `cmd_vel` on divergence (§3.3 of the plan).
+- **M6-R — obstacle layer + `use_collision_detection: true`.** Currently
+  disabled because the M5-a map quality fed ghost obstacles into the
+  costmap; depends on the M5-R map pipeline.
 
-## Caveats baked into the M5-a baseline
+## Caveats
 
-- The `map -> camera_init` identity assumes FAST-LIO's drift over the
-  test area is acceptable. For larger-scale operation, replace this
-  identity with a proper global re-localizer (AMCL on a saved map,
-  or a loop-closure-aware FAST-LIO variant), and split off the
-  `odom` frame to be driven by WHILL wheel odometry.
-- The `body -> base_link` identity is correct *only* because the M3
-  `whill_sensors_bringup/launch/static_tf_launch.py` uses identity
-  for `base_link -> imu_link`. If that changes (e.g. M5-b finds the
-  IMU is offset enough from the chair centre to matter for path
-  planning), this bridge needs the same offset reflected.
+- The M5-d (goal-following) and M5-e (tuning) milestones are frozen
+  per the platform-pivot plan. Do not add new features that assume
+  the removed `tf_bridge_launch.py` exists.
+- This README's `Open items` section reflects the M6-R plan; check
+  `docs/ja/plans/2026-06-11-platform-pivot.md` §4 for the
+  authoritative milestone definition before starting work.
