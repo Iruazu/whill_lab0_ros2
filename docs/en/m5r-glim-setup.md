@@ -173,6 +173,30 @@ The sample bag is GLIM-verification-only and is not subject to the
 `docs/maps/<site>/` convention (that convention is in M5R-7 scope). Keep
 the storage path under `/tmp/`.
 
+#### Sample-bag download status (2026-06-20, Issue #45 / PR #52 landing)
+
+Neither mirror was usable from the lab host at install time. Logged for
+posterity:
+
+- **AIST mirror**: `HEAD` returns `Content-Length: 78524908` and the
+  local download matches that exact size, but `gzip -t` fails with
+  `unexpected end of file`. The gzip header advertises an original size
+  of 2.5 GB (`modulo 2^32`), so AIST's stored archive is itself
+  truncated (`Last-Modified: 2026-06-09`, stable).
+- **zenodo**: 30-second probe averaged 36 KB/s, putting the full 426 MB
+  download at ~3.4 hours. Feasible with `systemd-inhibit`, but the AC
+  here is a smoke test and blocking the PR for three hours is poor
+  cost-benefit.
+
+Decision: **Issue #45 AC #4 (sample-bag smoke test) is rolled into
+M5R-3 (#48, "GLIM vs FAST-LIO SAM real-bag comparison")**, where the
+real indoor-loop bag exercises the same code path with stronger
+verification. PR #52 lands with this caveat recorded. If a future
+contributor needs to reproduce the smoke test, the remediation options
+are: use the university's faster LAN/VPN to widen zenodo throughput,
+switch to a GLIM github-releases mirror once upstream provides one, or
+host a mirror on the lab NAS and replace the URL in this section.
+
 ### 5. Smoke test (through to trajectory output)
 
 Run GLIM in rosbag input mode:

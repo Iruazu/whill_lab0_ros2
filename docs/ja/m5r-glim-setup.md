@@ -121,6 +121,19 @@ bag サイズは約 426 MB (ROS 2 版)。研究室の外部 NAS にミラーを�
 
 サンプル bag は GLIM の検証専用であり、本リポの `docs/maps/<site>/` 規約 (M5R-7 のスコープ) には乗らない。ストレージ位置は `/tmp/` で完結させる。
 
+#### Sample bag DL の現状 (2026-06-20、Issue #45 PR #52 着地時点)
+
+実機セットアップ時に上記 2 つの mirror のいずれも本リポ環境からは取れなかった。記録として残す:
+
+- **AIST mirror**: HTTP HEAD で `Content-Length: 78524908`、ローカル DL も完全一致 (78.5 MB)、しかし `gzip -t` が `unexpected end of file` で落ちる。展開すると 2.5 GB あるはずの archive (gzip header の `original size modulo 2^32`) なので **AIST 側のディスク上で archive が破損** (`Last-Modified: 2026-06-09` で固定)。
+- **zenodo**: HTTP 経由で 30 秒平均 36 KB/s を実測。426 MB の全量 DL は ~3.4 時間となり実用域外。`systemd-inhibit` で囲えば走り切るが、本 Issue の AC は smoke test であり、PR を 3 時間ブロックする費用対効果がない。
+
+判断: **Issue #45 の AC #4 (サンプル bag 疎通) は M5R-3 (#48 「GLIM vs FAST-LIO SAM 実 bag 比較」) で実 ループ走行 bag に対する検証を行うときに自然と充足される**。本 Issue 着地時点では DL infra 上流問題として記録に留め、PR #52 は merge する。後続で再現する場合の対処候補:
+
+- 大学の高速 LAN や AnyDesk/VPN 経由で zenodo の帯域を改善
+- GLIM の github releases に sample bag が追加されたら切替
+- 研究室 NAS 上にミラー設置 + 本節 URL を NAS 経由に書き換え
+
 ### 5. 疎通確認 (trajectory 出力まで)
 
 GLIM を rosbag 入力モードで起動する:
