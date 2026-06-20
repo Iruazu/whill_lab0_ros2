@@ -288,6 +288,10 @@ Keyring rotation is typically announced on the NVIDIA Developer Blog.
   new documents are authored in parallel under `docs/ja/` and `docs/en/`.
 - Script: [`scripts/install_cuda.sh`](../../scripts/install_cuda.sh) — the
   idempotent installer that this document is paired with.
-- Related issues: #23 (this document and script), and the upcoming M5-R
-  SLAM candidate comparison ADR (to be settled by an empirical comparison
-  against FAST-LIO SAM on real bags).
+- Downstream: [`m5r-glim-setup.md`](m5r-glim-setup.md) — source-build
+  procedure for GLIM (the M5-R first-candidate SLAM) that takes this
+  document as its entry point.
+- Related issues: #23 (this document and script), #45 (the downstream
+  GLIM source build), and the upcoming M5-R SLAM candidate comparison
+  ADR (to be settled by an empirical comparison against FAST-LIO SAM on
+  real bags).
