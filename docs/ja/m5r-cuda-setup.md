@@ -219,4 +219,5 @@ driver 595 は CUDA 12.x のいずれにも対応できる「上位互換」位�
 - 開発方針: [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) §3.3 (M5-R で GLIM を第一候補とする選定理由)、§9 (開発機材確認)
 - ADR 0001: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md) — 新規 docs は ja/en 並列で生やす
 - スクリプト: [`scripts/install_cuda.sh`](../../scripts/install_cuda.sh) — 本文書と対の冪等インストールスクリプト
-- 関連 Issue: #23 (本文書とスクリプトの整備)、後続の M5-R SLAM 候補比較 ADR (FAST-LIO SAM との実 bag 比較で確定予定)
+- 後段: [`m5r-glim-setup.md`](m5r-glim-setup.md) — 本文書を入口とした GLIM (M5-R 第一候補 SLAM) のソースビルド手順
+- 関連 Issue: #23 (本文書とスクリプトの整備)、#45 (後段の GLIM ソースビルド)、後続の M5-R SLAM 候補比較 ADR (FAST-LIO SAM との実 bag 比較で確定予定)
