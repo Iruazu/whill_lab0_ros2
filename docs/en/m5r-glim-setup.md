@@ -53,7 +53,7 @@ sample in [`m5r-cuda-setup.md`](m5r-cuda-setup.md) §4 to print
 | Component | Upstream repo | License | Alignment with policy |
 |---|---|---|---|
 | GLIM | [`koide3/glim`](https://github.com/koide3/glim) | MIT | permissive; embeddable in the operational stack |
-| glim_ros2 | [`koide3/glim_ros2`](https://github.com/koide3/glim_ros2) | MIT | same |
+| glim_ros (repo is [`koide3/glim_ros2`](https://github.com/koide3/glim_ros2)) | upstream | MIT | same. **Note**: the repo URL is `glim_ros2`, but `package.xml` declares the name as `glim_ros` (upstream naming inconsistency). Always use `glim_ros` in `colcon build --packages-select`, `ros2 run`, `ros2 pkg list`. |
 | gtsam_points | [`koide3/gtsam_points`](https://github.com/koide3/gtsam_points) | MIT | same |
 | GTSAM | [`borglab/gtsam`](https://github.com/borglab/gtsam) | BSD | permissive; embeddable |
 | Iridescence | [`koide3/iridescence`](https://github.com/koide3/iridescence) | MIT | visualisation only, outside the operational core |
@@ -110,9 +110,9 @@ script for the rationale of each step):
 5. Build Iridescence (master) for visualisation (skipped on
    `skip-iridescence`).
 6. Clone `src/third_party/glim` and `src/third_party/glim_ros2`, then run
-   `colcon build --packages-select glim glim_ros2 --symlink-install`.
+   `colcon build --packages-select glim glim_ros --symlink-install`.
 7. Source `install/setup.bash` and verify that `ros2 pkg list` lists
-   `glim_ros2`.
+   `glim_ros`.
 
 Build time estimate: 30–45 minutes end-to-end on the Alienware x15 R2
 (i9-12900H, 14C/20T). GTSAM alone consumes 10–15 minutes.
@@ -176,10 +176,10 @@ Run GLIM in rosbag input mode:
 cd ~/whill_lab0_ros2
 source install/setup.bash
 mkdir -p /tmp/dump
-ros2 run glim_ros2 glim_rosbag \
+ros2 run glim_ros glim_rosbag \
   /tmp/glim_sample/os1_128_01_downsampled \
   --ros-args \
-    -p config_path:=$(ros2 pkg prefix glim_ros2)/share/glim_ros2/config/ \
+    -p config_path:=$(ros2 pkg prefix glim_ros)/share/glim_ros/config/ \
     -p dump_path:=/tmp/dump/
 ```
 
@@ -257,7 +257,7 @@ Fix:
 1. Split the bag in time and feed it in pieces. (`ros2 bag info` shows
    the duration. `ros2 bag record --start-offset / --end-offset` is the
    wrong tool here; use an external bag editor.)
-2. Switch GLIM to CPU mode by editing the glim_ros2 config (`config_path`
+2. Switch GLIM to CPU mode by editing the glim_ros config (package name) (`config_path`
    → `config_sensors.json` etc.) and setting the `gpu` flag to `false`.
    CPU mode is 3–5× slower but unbounded by VRAM.
 3. Rebuild with `skip-iridescence` to free the visualiser's VRAM.

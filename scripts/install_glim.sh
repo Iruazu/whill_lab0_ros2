@@ -361,7 +361,7 @@ install_glim() {
   # that fail at link time. Pin both to the 12.4 toolchain explicitly.
   echo "Building glim and glim_ros2 (this can take 10+ minutes)..."
   (cd "${REPO_ROOT}" && colcon build \
-    --packages-select glim glim_ros2 \
+    --packages-select glim glim_ros \
     --symlink-install \
     --cmake-args \
       -DCMAKE_BUILD_TYPE=Release \
@@ -371,20 +371,27 @@ install_glim() {
 # --- verify ------------------------------------------------------------------
 
 verify() {
-  # We check that the colcon environment can see glim_ros2 after sourcing
-  # install/setup.bash. Failure here usually means a build error was
-  # silently swallowed earlier; do not skip this step.
+  # We check that the colcon environment can see glim_ros after sourcing
+  # install/setup.bash. The ROS 2 package name is glim_ros even though the
+  # upstream repo URL is github.com/koide3/glim_ros2 — see the package.xml
+  # in src/third_party/glim_ros2/. Failure here usually means a build error
+  # was silently swallowed earlier; do not skip this step.
   if [[ ! -f "${REPO_ROOT}/install/setup.bash" ]]; then
     echo "ERROR: ${REPO_ROOT}/install/setup.bash not found after build." >&2
     exit 1
   fi
+  # ROS 2 setup.bash references AMENT_TRACE_SETUP_FILES / COLCON_TRACE which
+  # are not defined in clean shells; sourcing under `set -u` aborts the
+  # script. Drop -u for the source and restore it immediately afterwards.
+  set +u
   # shellcheck disable=SC1091
   source "${REPO_ROOT}/install/setup.bash"
-  if ! ros2 pkg list 2>/dev/null | grep -q '^glim_ros2$'; then
-    echo "ERROR: glim_ros2 not visible to ros2 pkg list after build." >&2
+  set -u
+  if ! ros2 pkg list 2>/dev/null | grep -q '^glim_ros$'; then
+    echo "ERROR: glim_ros not visible to ros2 pkg list after build." >&2
     exit 1
   fi
-  echo "glim_ros2 is visible to ros2 pkg list."
+  echo "glim_ros is visible to ros2 pkg list."
 }
 
 # --- next-steps hint ---------------------------------------------------------
@@ -405,9 +412,9 @@ GLIM is installed. To smoke-test with the upstream sample bag:
   #    node has nothing to replay.
   cd ${REPO_ROOT}
   source install/setup.bash
-  ros2 run glim_ros2 glim_rosbag \\
+  ros2 run glim_ros glim_rosbag \\
     /tmp/glim_sample/os1_128_01_downsampled \\
-    --ros-args -p config_path:=\$(ros2 pkg prefix glim_ros2)/share/glim_ros2/config/ \\
+    --ros-args -p config_path:=\$(ros2 pkg prefix glim_ros)/share/glim_ros/config/ \\
     -p dump_path:=/tmp/dump/
 
   # 3. The trajectory will be written to /tmp/dump/traj_lidar.txt.

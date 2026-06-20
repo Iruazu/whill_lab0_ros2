@@ -33,7 +33,7 @@ CUDA Toolkit が母艦に入っていない状態 (Issue #45 起案時点では�
 | コンポーネント | 上流リポ | ライセンス | 運用方針との整合 |
 |---|---|---|---|
 | GLIM | [`koide3/glim`](https://github.com/koide3/glim) | MIT | permissive、運用スタック (車載で動き、将来配布し得る部分) に組み込み可 |
-| glim_ros2 | [`koide3/glim_ros2`](https://github.com/koide3/glim_ros2) | MIT | 同上 |
+| glim_ros (リポは [`koide3/glim_ros2`](https://github.com/koide3/glim_ros2)) | 上流 | MIT | 同上。**注意**: リポ URL は `glim_ros2` だが `package.xml` の `<name>` は `glim_ros` (上流の命名不整合)。`colcon build --packages-select` や `ros2 run / pkg list` ではすべて `glim_ros` を使う |
 | gtsam_points | [`koide3/gtsam_points`](https://github.com/koide3/gtsam_points) | MIT | 同上 |
 | GTSAM | [`borglab/gtsam`](https://github.com/borglab/gtsam) | BSD | permissive、組み込み可 |
 | Iridescence | [`koide3/iridescence`](https://github.com/koide3/iridescence) | MIT | 視覚化のみ、運用コア外 |
@@ -75,8 +75,8 @@ source /opt/ros/humble/setup.bash    # ROS_DISTRO=humble を環境に投入
 3. GTSAM `4.3a0` を `~/.cache/whill_lab0_ros2/glim/gtsam` でソースビルドし `/usr/local` にインストール
 4. gtsam_points (master) を CUDA 12.4 明示でソースビルド (`CMAKE_CUDA_COMPILER=/usr/local/cuda-12.4/bin/nvcc`、`BUILD_WITH_CUDA=ON`)
 5. Iridescence (master) を視覚化用にビルド (skip-iridescence 指定時はスキップ)
-6. `src/third_party/glim` と `src/third_party/glim_ros2` を clone し、`colcon build --packages-select glim glim_ros2 --symlink-install`
-7. `install/setup.bash` を source して `ros2 pkg list` に `glim_ros2` が出るかで検証
+6. `src/third_party/glim` と `src/third_party/glim_ros2` を clone し、`colcon build --packages-select glim glim_ros --symlink-install`
+7. `install/setup.bash` を source して `ros2 pkg list` に `glim_ros` が出るかで検証 (ディレクトリ名は `glim_ros2` だがパッケージ名は `glim_ros`)
 
 ビルド時間目安: Alienware x15 R2 (i9-12900H 14C/20T) で全工程 30〜45 分。GTSAM のみで 10〜15 分かかる。
 
@@ -127,10 +127,10 @@ GLIM を rosbag 入力モードで起動する:
 cd ~/whill_lab0_ros2
 source install/setup.bash
 mkdir -p /tmp/dump
-ros2 run glim_ros2 glim_rosbag \
+ros2 run glim_ros glim_rosbag \
   /tmp/glim_sample/os1_128_01_downsampled \
   --ros-args \
-    -p config_path:=$(ros2 pkg prefix glim_ros2)/share/glim_ros2/config/ \
+    -p config_path:=$(ros2 pkg prefix glim_ros)/share/glim_ros/config/ \
     -p dump_path:=/tmp/dump/
 ```
 
@@ -184,7 +184,7 @@ rm -rf ~/.cache/whill_lab0_ros2/glim/gtsam_points/build
 対処:
 
 1. bag を時間で分割して順に処理する (`ros2 bag info` で長さを確認し、`ros2 bag record --start-offset / --end-offset` ではなく、外部の bag editor で分割)
-2. GLIM の CPU モードに切り替える: glim_ros2 の config (`config_path` 配下の `config_sensors.json` 等) で `gpu` フラグを `false` に。CPU モードは速度が 1/3 〜 1/5 に落ちるが、VRAM 制約からは解放される
+2. GLIM の CPU モードに切り替える: glim_ros の config (package 名) (`config_path` 配下の `config_sensors.json` 等) で `gpu` フラグを `false` に。CPU モードは速度が 1/3 〜 1/5 に落ちるが、VRAM 制約からは解放される
 3. Iridescence を `skip-iridescence` でビルドしなおし、視覚化の VRAM を節約する
 
 ### Iridescence のウィンドウが表示されない (リモート SSH 等)
