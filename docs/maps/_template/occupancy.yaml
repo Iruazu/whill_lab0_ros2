@@ -1,0 +1,27 @@
+# docs/maps/<site-name>/occupancy.yaml — Nav2 map_server メタデータ。
+#
+# Nav2 map_server 互換 (`nav2_map_server::MapServer` がそのまま読む)。
+# パラメータ意味は Nav2 公式 (REP-105 補足 + nav2_map_server README) と
+# ROS Wiki `map_server` を参照。
+#
+# image: は本 yaml ファイル基準の相対パスとして解決される。site directory
+# 内に置く運用なので "occupancy.pgm" のままで OK。絶対パスにすると site を
+# rename したときに壊れる。
+
+image: occupancy.pgm
+
+# セル 1 つの幅 [m]。M5R-6 (Issue #50) のスクリプトのデフォルト想定。
+# 0.05 m/cell = 旧 M5-b の `pcd_to_occupancy_grid.py` と同値。
+resolution: 0.05
+
+# 占有格子左下隅の世界座標 [x, y, yaw]。M5R-6 でスクリプトが自動算出する想定。
+# テンプレートの値は「20 m 四方をカバーする 800×800 マップ」を仮定したサンプル。
+origin: [-20.000, -20.000, 0.0]
+
+# 0 = 通常 (PGM 上で黒い画素 = 占有)、1 = 反転。M5R-6 出力は 0 を維持する。
+negate: 0
+
+# しきい値解釈は Nav2 map_server のデフォルトに合わせる。閾値を変える場合は
+# metadata.yaml にも記録し、後で「なぜこの値か」を遡れるようにする。
+occupied_thresh: 0.65
+free_thresh: 0.196

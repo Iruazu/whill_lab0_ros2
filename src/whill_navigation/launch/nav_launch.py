@@ -51,8 +51,15 @@ def generate_launch_description():
 
     # The saved map yaml is workspace-relative (not installed under any
     # package share), so allow override via the `map` launch arg.
+    # Legacy M5-b path. M5R-5 (#47) renamed docs/m5-maps/ -> docs/maps/
+    # lab-legacy-m5b/ to align with the new `docs/maps/<site>/` registry
+    # (docs/maps/README.md). M5R-7 (#51) will re-aim this at the M5-R
+    # pipeline output (`docs/maps/<site>/occupancy.yaml`). Kept pointed at
+    # the legacy path until then because map_server resolves this default
+    # at lifecycle CONFIGURE; switching it to a not-yet-existing M5-R
+    # output before #51 would just trade one broken default for another.
     default_map_yaml = os.path.expanduser(
-        '~/whill_lab0_ros2/docs/m5-maps/lab.yaml')
+        '~/whill_lab0_ros2/docs/maps/lab-legacy-m5b/lab.yaml')
 
     lifecycle_nodes = [
         'map_server',
