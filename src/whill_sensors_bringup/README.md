@@ -49,14 +49,17 @@ base_link
 
 ## Open items
 
-- The three top-level static transforms are placeholder identities.
-  Replace them with calibrated extrinsics before relying on this TF
-  tree for FAST-LIO (M4) or Nav2 (M5):
-  - `base_link → velodyne` ← LiDAR↔IMU values inherited from the
-    noetic stack are captured in
-    [`../../docs/m3-extrinsics-from-noetic.md`](../../docs/m3-extrinsics-from-noetic.md).
-  - `base_link → camera_link` ← needs a one-shot measurement; the
-    camera is rigidly mounted to the LiDAR via the support frame.
+- M4R-2 (Issue #36) replaced the three identity placeholders with
+  measurement-based values. `base_link` is defined provisionally as the
+  rear-axle midpoint projected to the ground plane; the derivation and
+  the numeric values are in
+  [`../../docs/ja/m3-extrinsics-from-noetic.md`](../../docs/ja/m3-extrinsics-from-noetic.md).
+  Two refinements still pending:
+  - `base_link → imu_link` z (currently 0.50 m, ±5 cm) — pin down by
+    tape-measure once M4R-3 EKF flags asymmetry in straight-line tests.
+  - `base_link → camera_link` rotation (currently RPY=0) — needs a
+    target-based recalibration in M5-R; today's value is good enough
+    for `view_frames` and rough RViz overlay only.
 
 ## Launch arguments
 
