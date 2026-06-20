@@ -51,6 +51,25 @@ docs/m4r-bench-data/*/
 !docs/m4r-bench-data/*.md
 !docs/m4r-bench-data/*.pdf
 
+# M5R-3 (#48) interim: raw bags + raw PCDs under docs/m5r-bench-data/ are
+# heavy (bags hundreds of MB, PCDs tens of MB), and the per-run *.log
+# files produced by the m5r3 wrappers (vram.log polls at 0.5 s, rss.log
+# at 1 s, slam.log captures the whole SLAM node stdout/stderr,
+# gtsam_env.log is a one-shot snapshot of ldconfig) are noisy. Track only
+# the small artifacts that ADR-0003 cites directly: manifest.yaml,
+# run.log (the per-run summary the wrapper tee's at the top of the file),
+# and any human-written *.md notes. The proper convention for this
+# directory is finalised in M5R-7 (#51); these rules are the minimum
+# needed for M5R-3 to proceed without bloating git. Recursive ** matches
+# per-run subdirectories like 2026-06-22-loop/bag/.
+docs/m5r-bench-data/**/bag/
+!docs/m5r-bench-data/**/bag/.gitkeep
+docs/m5r-bench-data/**/*.pcd
+docs/m5r-bench-data/**/*.log
+!docs/m5r-bench-data/**/run.log
+!docs/m5r-bench-data/**/manifest.yaml
+!docs/m5r-bench-data/**/*.md
+
 .claude/settings.local.json
 # Map artifacts — PCD point clouds are large; track only pgm/yaml/metadata.
 # The `docs/maps/<site>/` registry convention is defined in docs/maps/README.md
