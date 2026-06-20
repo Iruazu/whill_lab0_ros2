@@ -319,6 +319,10 @@ Fix: edit the `JOBS=` line in the script down to 4–8 and rerun.
   — new documents are authored in parallel under `docs/ja/` and `docs/en/`.
 - Script: [`scripts/install_glim.sh`](../../scripts/install_glim.sh) —
   the idempotent installer that this document is paired with.
+- Sibling document: [`m5r-fastlio-sam-eval.md`](m5r-fastlio-sam-eval.md)
+  — the clone-on-demand procedure and license discussion for the
+  second-candidate FAST-LIO SAM (M5R-3 compares it against this
+  document).
 - Related issues: #23 (the CUDA document and script), #45 (this document
   and script), and the upcoming M5-R SLAM candidate comparison ADR (to
   be settled as ADR-0003 by empirical comparison of GLIM versus FAST-LIO
