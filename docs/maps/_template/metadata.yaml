@@ -1,0 +1,41 @@
+# docs/maps/<site-name>/metadata.yaml — テンプレート。
+#
+# 新規 site 作成時はこのファイルをコピーし、全フィールドを実値で埋める。
+# スキーマと各フィールドの意味は ../README.md「`metadata.yaml` スキーマ」節
+# が正本。本ファイルはそのサンプル兼 lint 対象 (YAML 構文確認用)。
+#
+# placeholder ("<...>") が残ったまま commit しないこと。
+
+# bag 取得時刻 (ISO8601 + タイムゾーン)。SLAM を回した時刻ではない。
+acquired_at: "2026-06-22T14:30:00+09:00"
+
+# 経路の一行要約。再取得時に「同じ取得手順か」を判断する手がかり。
+route_summary: "lab 50m loop, start/end at NE corner of room 2F"
+
+# 取得時天候。屋内も明示的に "indoor" と書く (空文字を許さないことで
+# メタデータ未記入を発見しやすくする)。
+weather: "indoor"
+
+# 採用 SLAM。ADR-0003 (M5R-3 で起案) で確定する選択肢のいずれか。
+slam_method: "glim"
+
+# SLAM パラメータの引用元 (repo 相対パス)。インラインで書きたい場合は
+# mapping 形式に置き換えてよいが、YAML が膨れるので path 参照を推奨。
+slam_params: "src/whill_localization/config/<slam-config>.yaml"
+
+# ERASOR パラメータ。インライン (mapping) か yaml ファイルへの相対パスの
+# どちらか。動的除去をかけていない (slam 直出力をそのまま使う) site では
+# 削除するのではなく null を入れる (フィールド省略との区別を残す)。
+erasor_params:
+    voxel_size_m: 0.2
+    pr_threshold: 0.8
+    rr_threshold: 0.2
+
+# 元 bag への repo 相対パス。M5R-7 (Issue #51) で docs/m5r-bench-data/ 規約が
+# 確定したら、そちらの命名規則に揃える。
+source_bag: "docs/m5r-bench-data/2026-06-22-lab-loop-r1/bag/"
+
+# このファイル生成時の repo HEAD (40 文字 SHA)。後で「どのパイプライン版で
+# 作られた地図か」を遡れるようにする。M5R-7 の自動生成スクリプトで
+# `git rev-parse HEAD` から埋める想定。
+commit: "0000000000000000000000000000000000000000"

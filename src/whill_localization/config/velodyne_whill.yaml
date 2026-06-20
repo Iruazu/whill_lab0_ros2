@@ -21,7 +21,15 @@
         filter_size_map: 0.5
         cube_side_length: 200.0           # reduced from upstream 1000.0 because that causes "Leaf size is too small for the input dataset. Integer indices would overflow." in pcl::VoxelGrid::applyFilter (1000^3 / 0.5^3 voxels = 8e9 > INT32_MAX). 200^3 keeps the count well under int32. Visible symptom of the overflow is FAST-LIO dropping into a "No Effective Points!" loop with no pose updates.
         runtime_pos_log_enable: false
-        map_file_path: "/home/systemlab/whill_lab0_ros2/docs/m5-maps/lab.pcd"
+        # Legacy M5-b path. M5R-5 (#47) renamed docs/m5-maps/ -> docs/maps/
+        # lab-legacy-m5b/ to align with the new `docs/maps/<site>/` registry
+        # (docs/maps/README.md). M5R-7 (#51) will re-aim this at the M5-R
+        # pipeline output (`docs/maps/<site>/static.pcd`). Kept pointed at
+        # the legacy path until then because FAST-LIO's pcd_save resolves
+        # this path at startup; dropping it now leaves the offline mapping
+        # replay (M5R-3 evaluator's only path-saving FAST-LIO setup) with
+        # nowhere to write a PCD.
+        map_file_path: "/home/systemlab/whill_lab0_ros2/docs/maps/lab-legacy-m5b/lab.pcd"
 
         common:
             lid_topic: "/velodyne_points"

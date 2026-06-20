@@ -53,7 +53,9 @@ docs/m4r-bench-data/*/
 
 .claude/settings.local.json
 # Map artifacts — PCD point clouds are large; track only pgm/yaml/metadata.
-docs/m5-maps/*.pcd
+# The `docs/maps/<site>/` registry convention is defined in docs/maps/README.md
+# (Issue #47 / M5R-5). The recursive `**` pattern covers both new sites and
+# `lab-legacy-m5b/` (the renamed `docs/m5-maps/` from before the convention).
 docs/maps/**/*.pcd
 
 # tf2_tools view_frames and RViz write diagnostic / session files to the
