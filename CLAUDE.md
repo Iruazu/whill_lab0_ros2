@@ -58,7 +58,7 @@
 | セッションログ・意思決定 | `docs/session-YYYY-MM-DD.md` |
 | ADR (Architecture Decision Record) | `docs/decisions/NNNN-*.md` |
 | 旧実装の調査結果 | `docs/ja/legacy-index.md` および `docs/legacy-findings/` |
-| ベンチデータ | `docs/m3-bench-data/` (実バグは gitignore、README/PDF のみ commit) |
+| ベンチデータ | `docs/m{N}-bench-data/` (M3: `docs/m3-bench-data/`、M4-R: `docs/m4r-bench-data/`。実バグは gitignore、README/PDF のみ commit) |
 
 ## 旧 noetic リポジトリ
 
@@ -88,7 +88,7 @@
 - **P1: 運用時の自己位置に補正経路がない** (`map -> camera_init` identity 固定で FAST-LIO ドリフトがそのまま map 誤差化、60s で 18%)。M6-R で scan-to-map localizer に置換予定
 - **P2: 初期位置合わせ機構がない** (起動位置 = camera_init 前提)。M6-R の initial pose 運用で解消予定
 - **P3: 発散を検知も回復もしない** (歩行者横断で破綻しても TF は出続け Nav2 は走行継続。run3 実測)。M6-R のフェイルセーフノードで遮断する
-- **P4: odom フレーム不在・車輪オドメトリ未使用** (`ros2_whill` の `/whill/odom` が未統合)。M4-R で robot_localization EKF を導入し `odom -> base_link` を構築、`map -> odom` を後段の localizer に分離する
+- **P4 (解消済、2026-06-20, M4-R)**: robot_localization EKF (Issue #37) が `odom -> base_link` を 30 Hz publish。`/whill/odom` (Issue #35) と `/imu/data_raw` を fuse、`tf_bridge_launch.py` の `map -> camera_init` identity は M4R-4 / Issue #38 で物理削除済。単一コマンドの統合 bringup は `ros2 launch whill_localization odom_bringup_launch.py`。`map -> odom` の補正は M6-R の scan-to-map localizer 担当に分離した。詳細は `docs/ja/plans/2026-06-11-platform-pivot.md` §3 と `src/whill_localization/README.md`
 - **P5: 地図品質の問題が安全機能を連鎖停止** (ゴースト障害物 → `use_collision_detection: false`、QoS 不一致 → obstacle layer なし)。M5-R のマップパイプライン + M6-R の obstacle layer 復活で解消予定
 
 旧 M5-d (goal-following) / M5-e (tuning) は本方針下で**凍結**。`tf_bridge_launch.py` の identity 構成を前提とした新機能追加と、FAST-LIO のランタイム localizer 強化は禁止 (本文書 5 章)。

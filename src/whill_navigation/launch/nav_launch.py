@@ -1,17 +1,27 @@
 """Top-level Nav2 bringup for the WHILL chair.
 
-Composition order:
-  1. M4 localization (whill_localization/localization_launch.py) —
-     sensors + FAST-LIO + RViz, producing /Odometry and the
-     camera_init -> body TF.
-  2. M5-a TF bridge (this package) — map -> camera_init and
-     body -> base_link static transforms so Nav2 sees a Nav2-shaped
-     TF chain.
-  3. Nav2 lifecycle bringup (M5-c) — map_server + planner_server +
-     controller_server + behavior_server + bt_navigator behind a
-     lifecycle_manager that autostarts them in order.
+NOTE (M4-R close, 2026-06-20): This launch is intentionally left in a
+broken state. M4R-4 / Issue #38 removed `tf_bridge_launch.py` because the
+`map -> camera_init` identity it published violates the platform-pivot
+plan (§5 禁止 1). The Nav2 nodes below still reference the bringup that
+the old TF bridge enabled, so launching this file currently produces a
+graph with no `map` frame author — Nav2 will start but not localise.
 
-cmd_vel routing:
+The fix is M6-R: replace the identity bridge with a real scan-to-map
+localizer (`lidar_localization_ros2` or equivalent) that publishes
+`map -> odom`. Until then this file is left visible (not renamed to
+`.disabled`) so contributors trip on the breakage on purpose instead of
+silently inheriting a stale dependency.
+
+What stays composed below, untouched, so M6-R can drop the localizer in
+without re-deriving the Nav2 wiring:
+
+  - map_server + planner_server + controller_server + behavior_server
+    + bt_navigator + velocity_smoother behind lifecycle_manager
+  - velocity_smoother remaps `/cmd_vel_smoothed -> /whill/controller/cmd_vel`
+    so the WHILL driver consumes the rate-limited stream directly.
+
+cmd_vel routing (unchanged):
   controller_server  ─┐
                       ├─> /cmd_vel ─> velocity_smoother ─> /whill/controller/cmd_vel
   behavior_server    ─┘                              (remapped from /cmd_vel_smoothed)
@@ -19,24 +29,18 @@ cmd_vel routing:
 velocity_smoother enforces real acceleration limits — RPP itself doesn't
 ramp, so without the smoother the chair gets a 0 → desired_linear_vel
 step which felt dangerous to a seated rider on the first M5-d run.
-
-For offline replay (no chair, no live FAST-LIO), use
-`whill_localization/fast_lio_launch.py` separately and include only
-this package's tf_bridge_launch.py.
 """
 
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    loc_share = get_package_share_directory('whill_localization')
     nav_share = get_package_share_directory('whill_navigation')
 
     # Hardcode the params path at launch description build time, not via
@@ -65,12 +69,11 @@ def generate_launch_description():
             default_value=default_map_yaml,
             description='Absolute path to the map yaml consumed by map_server.'),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                os.path.join(loc_share, 'launch', 'localization_launch.py'))),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                os.path.join(nav_share, 'launch', 'tf_bridge_launch.py'))),
+        # NOTE: No localization include here. The M5-a `tf_bridge_launch.py`
+        # (map -> camera_init identity) was removed by M4R-4 / Issue #38.
+        # M6-R is responsible for wiring a scan-to-map localizer that
+        # publishes `map -> odom` and slotting its include statement at this
+        # position.
 
         Node(
             package='nav2_map_server',
