@@ -220,4 +220,5 @@ X11 forwarding が無いリモートシェルから GLIM を起動した場合�
 - 前置: [`m5r-cuda-setup.md`](m5r-cuda-setup.md) — CUDA Toolkit 12.4 と cuDNN 8 のセットアップ (本文書の入口)
 - ADR 0001: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md) — 新規 docs は ja/en 並列で生やす
 - スクリプト: [`scripts/install_glim.sh`](../../scripts/install_glim.sh) — 本文書と対の冪等インストールスクリプト
+- 対の文書: [`m5r-fastlio-sam-eval.md`](m5r-fastlio-sam-eval.md) — 第二候補 FAST-LIO SAM の clone-on-demand 手順とライセンス整合 (M5R-3 で本文書と比較)
 - 関連 Issue: #23 (CUDA 文書とスクリプト)、#45 (本文書とスクリプト)、後続の M5-R SLAM 候補比較 ADR (実 bag で GLIM と FAST-LIO SAM を比較し、ADR-0003 として確定予定)

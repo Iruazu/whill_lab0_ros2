@@ -279,8 +279,7 @@ steps" in a strict chain. Each Issue is sized to stand alone.
     when evaluating" recorded in `docs/en/m5r-fastlio-sam-eval.md`
   - [ ] gtsam 4.1 install (`libgtsam-dev`) added to
     `docs/en/m5r-fastlio-sam-eval.md` (per the FAST-LIO SAM README prereq)
-  - [ ] `colcon build --packages-up-to fast_lio_sam` succeeds (empirical
-    evaluation is M5R-3)
+  - [ ] In path (a) or (b), the M5R-3 evaluator runs `colcon build --packages-up-to fast_lio_sam` and confirms success (this Issue does not run the build).
 - **Out of scope**: empirical bag comparison (M5R-3), linkage into the
   operational stack
 - **Owning agent**: `research-analyst` (license fact check) → `ros2-implementer`
@@ -438,7 +437,7 @@ in parallel.
 | Issue | How to verify |
 |-------|---------------|
 | M5R-1 | `vectorAdd` PASS; GLIM trajectory on a sample bag (screenshot) |
-| M5R-2 | `vcs import` → `colcon build --packages-up-to fast_lio_sam` (or delete confirmed) |
+| M5R-2 | Upstream LICENSE confirmed → physical deletion + clone-on-demand procedure documented → acceptance (a)/(b) met. The actual colcon build is executed by the M5R-3 evaluator. |
 | M5R-3 | Same bag through GLIM and FAST-LIO SAM; overlay PCDs in CloudCompare, quantify loop error; file ADR-0003 |
 | M5R-4 | Pre/post PCDs on a dynamic-bag via `scripts/m5r_erasor_diff.py`; visually verify pedestrian trace removed |
 | M5R-5 | `docs/maps/_template/` carries every file in the spec; `metadata.yaml` lints (key-presence script ok) |

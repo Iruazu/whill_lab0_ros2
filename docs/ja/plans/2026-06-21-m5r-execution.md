@@ -257,7 +257,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
     に「採用検討時の clone 手順」を記載
   - [ ] gtsam 4.1 (`libgtsam-dev`) のインストール手順が `docs/ja/m5r-fastlio-sam-eval.md`
     に追記される (FAST-LIO SAM README の prereq)
-  - [ ] `colcon build --packages-up-to fast_lio_sam` が成功する (実評価は M5R-3)
+  - [ ] (a)/(b) どちらでも、M5R-3 着手時に評価担当者が `colcon build --packages-up-to fast_lio_sam` を実行して成功することを確認する (本 Issue では build を実行しない)
 - **スコープ外**: 実 bag 比較 (M5R-3)、運用パッケージへの link
 - **担当 agent**: `research-analyst` (ライセンス事実確認) → `ros2-implementer`
   (`whill_lab.repos` 編集 or 削除実行)
@@ -409,7 +409,7 @@ M5R-3 着手直前にまとめて行うのが効率的。M5R-1 / M5R-2 はソフ
 | Issue | 検証方法 |
 |-------|---------|
 | M5R-1 | `vectorAdd` PASS、GLIM サンプル bag で trajectory 出力をスクリーンショット |
-| M5R-2 | `vcs import` → `colcon build --packages-up-to fast_lio_sam` 成功 (or 削除完了確認) |
+| M5R-2 | upstream LICENSE 確認 → 物理削除 + clone-on-demand 手順整備 → 受け入れ基準 (a)/(b) 充足。実 colcon build は M5R-3 評価担当者が実施 |
 | M5R-3 | 同一 bag に GLIM / FAST-LIO SAM をかけた PCD 2 枚を CloudCompare で重ね、ループ誤差を数値化。ADR-0003 起案 |
 | M5R-4 | 動的 bag 入りの除去前後 PCD を `scripts/m5r_erasor_diff.py` で差分表示。歩行者軌跡消失を目視 |
 | M5R-5 | `docs/maps/_template/` の全ファイルが規約通りに揃っている。`metadata.yaml` lint (key 検証スクリプトでも可) |
