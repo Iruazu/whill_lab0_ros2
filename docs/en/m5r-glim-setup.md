@@ -155,14 +155,19 @@ OS1-128.
 
 ```bash
 mkdir -p /tmp/glim_sample && cd /tmp/glim_sample
-curl -L -O https://staff.aist.go.jp/k.koide/projects/glim/os1_128_01_downsampled.tar.gz
+# primary: zenodo (cited in the GLIM official quickstart, ROS 2 version, 426 MB)
+curl -L --fail -o os1_128_01_downsampled.tar.gz \
+  'https://zenodo.org/record/7233945/files/os1_128_01_downsampled.tar.gz?download=1'
 tar -xzf os1_128_01_downsampled.tar.gz
 # After extraction, /tmp/glim_sample/os1_128_01_downsampled/ contains
 # metadata.yaml and the .db3 file.
 ```
 
-The bag is about 1 GB. If the lab decides to mirror this on the internal
-NAS, update this section.
+The bag is about 426 MB (ROS 2 version). If the lab decides to mirror
+this on the internal NAS, update this section. If zenodo is unreachable,
+the official fallback mirror is
+`https://staff.aist.go.jp/k.koide/projects/glim/datasets/os1_128_01_downsampled.tar.gz`
+(note the `/datasets/` path segment — leaving it out yields a 404).
 
 The sample bag is GLIM-verification-only and is not subject to the
 `docs/maps/<site>/` convention (that convention is in M5R-7 scope). Keep

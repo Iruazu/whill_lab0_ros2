@@ -110,12 +110,14 @@ GLIM 上流が Ouster OS1-128 で収録した検証用 bag を配布している
 
 ```bash
 mkdir -p /tmp/glim_sample && cd /tmp/glim_sample
-curl -L -O https://staff.aist.go.jp/k.koide/projects/glim/os1_128_01_downsampled.tar.gz
+# primary: zenodo (GLIM 公式 quickstart 記載、ROS 2 版 426 MB)
+curl -L --fail -o os1_128_01_downsampled.tar.gz \
+  'https://zenodo.org/record/7233945/files/os1_128_01_downsampled.tar.gz?download=1'
 tar -xzf os1_128_01_downsampled.tar.gz
 # 展開後 /tmp/glim_sample/os1_128_01_downsampled/ に metadata.yaml と .db3 が出る
 ```
 
-bag サイズは約 1 GB。研究室の外部 NAS にミラーを置く運用にする場合は本節を更新する。
+bag サイズは約 426 MB (ROS 2 版)。研究室の外部 NAS にミラーを置く運用にする場合は本節を更新する。zenodo が落ちている場合の代替は `https://staff.aist.go.jp/k.koide/projects/glim/datasets/os1_128_01_downsampled.tar.gz` (公式 mirror、ただし URL パスの `/datasets/` 抜けに注意)。
 
 サンプル bag は GLIM の検証専用であり、本リポの `docs/maps/<site>/` 規約 (M5R-7 のスコープ) には乗らない。ストレージ位置は `/tmp/` で完結させる。
 

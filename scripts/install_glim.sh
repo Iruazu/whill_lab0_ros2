@@ -404,7 +404,7 @@ print_next_steps() {
 GLIM is installed. To smoke-test with the upstream sample bag:
 
   # 1. Download the Ouster OS1-128 sample bag (~1 GB):
-  #    https://staff.aist.go.jp/k.koide/projects/glim/os1_128_01_downsampled.tar.gz
+  #    https://zenodo.org/record/7233945/files/os1_128_01_downsampled.tar.gz?download=1
   #    (bag fetch and mirror notes: docs/ja/m5r-glim-setup.md §4)
 
   # 2. In one terminal, run GLIM with the OS1-128 config. Note the bag
