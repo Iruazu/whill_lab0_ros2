@@ -4,10 +4,11 @@
   <name>whill_localization</name>
   <version>0.1.0</version>
   <description>
-    LiDAR-Inertial Odometry (FAST-LIO) bringup for the WHILL stack.
-    Provides a chair-tuned `velodyne_whill.yaml` config and two launch
-    files: one for online use (sensors + FAST-LIO) and one for offline
-    replay against a recorded rosbag.
+    Localization bringup for the WHILL chair. Provides the M4-R odom-layer
+    EKF (`robot_localization`) that fuses wheel odometry and IMU into the
+    `odom -> base_link` TF and `/odometry/filtered` topic, plus the legacy
+    FAST-LIO config retained for offline map-making (M5-R). Online use of
+    FAST-LIO as a runtime localizer is frozen per the platform-pivot plan.
   </description>
 
   <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
@@ -16,6 +17,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>fast_lio</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
   <exec_depend>whill_sensors_bringup</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>launch</exec_depend>

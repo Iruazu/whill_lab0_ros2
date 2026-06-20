@@ -1,0 +1,125 @@
+# robot_localization EKF config for the M4-R odom layer.
+#
+# 役割 (docs/ja/plans/2026-06-11-platform-pivot.md §3.2 REP-105 構成):
+#   - 本ノードは odom -> base_link の TF と /odometry/filtered を publish
+#     する「連続側」EKF。`/whill/odom` (車輪) + `/imu/data_raw` (RT 9 軸
+#     IMU) を融合し、map -> odom の補正は M6-R の scan-to-map localizer
+#     が別経路で出す前提。
+#   - したがって `world_frame: odom` (= 単段 EKF)。map_frame は宣言のみ
+#     で本ノードからは使わない。
+#
+# Centroid な設計判断 (なぜこの構成か):
+#
+# (1) odom0 を velocity-only fusion にしている理由
+#     `/whill/odom` の pose (x, y, yaw) を fuse すると、EKF は
+#     「車輪オドメトリを積分した pose」と「自身が IMU と組み合わせて
+#     再積分した pose」を二重に取り込むことになり、長時間でスケール
+#     ずれと回転バイアスが蓄積する。robot_localization 公式 wiki も
+#     wheel odom は「twist (vx, vyaw) のみを fuse、pose は world_frame
+#     を担う sensor (map-based localizer 等) に任せる」を推奨。
+#     M4-R は odom-only なので pose の絶対基準を持つ sensor がない →
+#     pose は EKF 自身が velocity を積分して出す。
+#
+# (2) two_d_mode: true の理由
+#     学内は実質平面 (スロープはあるが localizer の z は使わない)。
+#     IMU の roll/pitch ノイズが xy pose に染み込むのを防ぐ。R5-R 以降
+#     屋外展開時に three_d を検討。
+#
+# (3) imu0 で orientation を skip する理由
+#     RT 9 軸 IMU の生 topic `/imu/data_raw` は orientation_covariance[0]
+#     = -1、すなわち「orientation 未推定」を REP-145 規約で明示している
+#     (ドライバが geometric_msgs/Quaternion を 0 埋めで出すだけ)。
+#     robot_localization は -1 covariance を「skip しろ」と解釈するが、
+#     念のため imu0_config でも明示的に false にする。yaw 推定は
+#     angular_velocity_z (= gyro yaw rate) の積分に一任する。
+#
+# (4) base_link_frame と imu_link の関係
+#     IMU は imu_link で計測値を publish。robot_localization は
+#     header.frame_id を信じて TF を引き、base_link 系に回転変換した
+#     上で fuse する。よって base_link -> imu_link の static TF
+#     (whill_sensors_bringup/launch/static_tf_launch.py で publish) が
+#     起動済みであることが前提。
+#
+# (5) process_noise_covariance / initial_estimate_covariance はデフォルト
+#     M4-R の合格基準 (10 m 直進終端誤差 ≤ 0.5 m、静止 30 s yaw drift
+#     ≤ 0.1 rad) は upstream のデフォルトで満たせる見込み (おむと配車
+#     系の経験則)。本格チューニングは別 Issue で run データを取った
+#     後に Q 行列を最小化する。デフォルトを採用する以上、yaml に
+#     コピペして commit する意味はないので未記載のままにする。
+ekf_filter_node:
+    ros__parameters:
+        # 30 Hz は Nav2 コントローラ (DWB / RPP 共に最低 20 Hz を期待)
+        # と robot_localization 公式チュートリアルのデフォルトに合わせる。
+        frequency: 30.0
+
+        # 5 サンプル分。/whill/odom が 2.5 Hz、/imu/data_raw が 100 Hz
+        # なので、IMU 側で timeout することはまず起きない。/whill/odom
+        # 側はもとから遅いので、timeout で predict-only に落ちる頻度を
+        # 上げないために frequency の逆数より十分長く取る。
+        sensor_timeout: 0.5
+
+        two_d_mode: true
+
+        # /tf 出力は本ノードを odom -> base_link の唯一の publisher に
+        # する設計の根幹。whill_driver は M4R-1 で TF 出力を止めて
+        # あるので競合は起きない。
+        publish_tf: true
+        publish_acceleration: false
+
+        # 本ノードは odom -> base_link を出すだけ。map -> odom は
+        # M6-R の localizer が出す (= 二段構成、本ノードはその下段)。
+        map_frame: map
+        odom_frame: odom
+        base_link_frame: base_link
+        world_frame: odom
+
+        # /diagnostics に状態を出す。実機検証で sensor timeout や
+        # measurement reject を確認するため。CPU 負荷は無視できる。
+        print_diagnostics: true
+
+        # ---- odom0: WHILL 車輪オドメトリ (M4R-1 で導入) ----
+        odom0: /whill/odom
+        # 15 要素 [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
+        # vx, vy, vyaw のみ true。vy は差動駆動の物理拘束により常時 0 で、
+        # whill_driver は linear.y を明示的に書かず 0 のまま publish する
+        # (twist.covariance[7]=0.01 = 「この 0 は信頼できる」)。これを fuse
+        # することで「非ホロノミック拘束」を EKF に教え、IMU の横方向
+        # 加速度ノイズが xy pose に染み出すのを抑える。差動駆動の robot_
+        # localization の標準パターン。スリップを許容したい場合はこの
+        # ビットを false に戻す (横方向 EKF の自由度が増える)。
+        # pose を fuse しない理由は冒頭 (1)。
+        odom0_config: [false, false, false,
+                       false, false, false,
+                       true,  true,  false,
+                       false, false, true,
+                       false, false, false]
+        # velocity を fuse するので differential は不要 (differential は
+        # pose 入力を一階差分で velocity 化するモード)。
+        odom0_differential: false
+        odom0_relative: false
+        # /whill/odom は 2.5 Hz、frequency 30 Hz に対しては十分小さい
+        # キューでよいが、bag replay 時に時刻飛びがあっても fuse 落ち
+        # しないよう 10 を取る。
+        odom0_queue_size: 10
+
+        # ---- imu0: RT 9 軸 IMU (/imu/data_raw) ----
+        imu0: /imu/data_raw
+        # 15 要素。orientation (idx 3,4,5) は冒頭 (3) の理由で skip。
+        # angular_velocity 全部 true (two_d_mode で vyaw のみ実効、
+        # vroll/vpitch は内部で 0 に潰される) と linear_acceleration の
+        # ax, ay (two_d_mode で実効、az は重力で常時 ~9.8 となり
+        # imu0_remove_gravitational_acceleration が引き算)。
+        imu0_config: [false, false, false,
+                      false, false, false,
+                      false, false, false,
+                      true,  true,  true,
+                      true,  true,  false]
+        imu0_differential: false
+        # RT 9 軸 IMU は重力込みの linear_acceleration を REP-145 に従って
+        # 出す (z 軸 ~+9.8)。robot_localization 側で base_link 系に回転
+        # した後に重力を引いてもらう。
+        imu0_remove_gravitational_acceleration: true
+        # 100 Hz × sensor_timeout 0.5 s = 50 サンプル。30 Hz サイクルの
+        # 間に複数 IMU が積まれる前提で 20 取る (upstream チュートリアル
+        # の値より大きめ)。
+        imu0_queue_size: 20
