@@ -148,42 +148,38 @@ select_glim_config() {
   # degrades feature extraction in ways that would skew the M5R-3
   # comparison. The detection is done by topic name rather than file
   # contents so we avoid touching the bag's binary readers here.
+  # The configs ship under the `glim` package, not `glim_ros` — the latter
+  # is just the ROS 2 wrapper. M5R-1's install_glim.sh next-steps hint
+  # incorrectly pointed at glim_ros/share/glim_ros/config (that path does
+  # not exist); the actual location is glim/share/glim/config. We follow
+  # the install tree here, and protocol doc + install_glim.sh are
+  # corrected separately.
   local share
-  share="$(ros2 pkg prefix glim_ros)/share/glim_ros/config"
+  share="$(ros2 pkg prefix glim)/share/glim/config"
   if [[ ! -d "${share}" ]]; then
-    echo "ERROR: glim_ros config dir not found under ${share}." >&2
+    echo "ERROR: glim config dir not found under ${share}." >&2
     exit 1
   fi
 
-  local has_velodyne_topic=0
-  if grep -q '/velodyne_points' "${BAG_DIR}/metadata.yaml"; then
-    has_velodyne_topic=1
-  fi
-
-  if [[ "${has_velodyne_topic}" -eq 1 ]]; then
-    # Upstream config naming is not stable; previous releases used
-    # `config_velodyne/`, current master may use a different subdir or
-    # ship the Velodyne profile under the top-level config. Probe in
-    # order of decreasing specificity and report the fallback so the
-    # evaluator can confirm we did not silently choose the wrong one.
-    for candidate in config_velodyne config_velodyne_vlp16 config; do
-      if [[ -d "${share}/${candidate}" ]]; then
-        GLIM_CONFIG="${share}/${candidate}/"
-        if [[ "${candidate}" == "config" ]]; then
-          echo "WARNING: upstream has no Velodyne-specific config; falling back to ${GLIM_CONFIG}" >&2
-          echo "         Record this in ADR-0003 Alternatives if it skews the comparison." >&2
-        fi
-        return
-      fi
-    done
-    echo "ERROR: no GLIM config bundle found under ${share}." >&2
-    exit 1
-  fi
-
-  # Non-Velodyne bag (Ouster sample, livox, etc.): use the default config
-  # bundle. The upstream sample bag uses /points and the default config
-  # is tuned for it, so this branch is the M5R-1 smoke-test path.
+  # Upstream ships a single flat config/ directory keyed off config.json,
+  # which references config_sensors.json / config_preprocess.json / etc by
+  # relative name. There is no per-LiDAR subdir (no config_velodyne/, no
+  # config_ouster/) — sensor type is selected by editing config_sensors
+  # .json (T_lidar_imu, ring_field, intensity_field, ...). The implementer
+  # of this wrapper expected per-LiDAR subdirs and that turned out to be
+  # wrong; the assumption broke on the first real Velodyne run (#48 Phase
+  # B 2026-06-21). For M5R-3 we hand GLIM the share/config/ root as-is
+  # and emit an informational note when the bag carries /velodyne_points,
+  # so the evaluator records whether default-config-on-Velodyne biases
+  # the comparison and edits config_sensors.json if needed.
   GLIM_CONFIG="${share}/"
+  if grep -q '/velodyne_points' "${BAG_DIR}/metadata.yaml"; then
+    echo "NOTE: bag carries /velodyne_points; GLIM's config_sensors.json is" >&2
+    echo "      the reference tuning. If trajectory looks broken (missing" >&2
+    echo "      points / preprocess warnings), edit ring_field /" >&2
+    echo "      intensity_field for the VLP-16 and record the change in" >&2
+    echo "      the ADR-0003 Alternatives row." >&2
+  fi
 }
 
 # --- VRAM sampling -----------------------------------------------------------
