@@ -34,6 +34,7 @@ ros2 run tf2_tools view_frames
 | `velodyne-all-nodes-VLP16-launch.py` | `velodyne` (Group A upstream) | `/velodyne_points`, `/scan` |
 | `rs_launch.py` | `realsense2_camera` (Group A upstream) | `/camera/camera/color/...`, `/camera/camera/depth/...` |
 | `imu_launch.py` | this package | `/imu/data_raw`, `/imu/mag`, `/imu/temperature` (after auto `configure → activate`) |
+| `imu_sign_corrector` (spawned by `imu_launch.py`) | this package | `/imu/data_rep145` — `/imu/data_raw` with `linear_acceleration.{x,y,z}` negated (Issue #56) |
 | `static_tf_launch.py` | this package | `base_link → imu_link / velodyne / camera_link` |
 
 ## Expected TF tree
@@ -46,6 +47,21 @@ base_link
     ├── camera_depth_frame → camera_depth_optical_frame   (from realsense2_camera)
     └── camera_color_frame → camera_color_optical_frame   (from realsense2_camera)
 ```
+
+## IMU sign correction (Issue #56)
+
+The RT 9-axis IMU's inner board (PCMK-G3X = MPU-9250 + LPC1343F USB
+firmware) reports `linear_acceleration` as the gravity-acceleration
+vector itself (z ≈ -9.81 at rest, +Z up), not as the REP-145 specific
+force (z ≈ +9.81 at rest). The upstream `rt_usb_9axisimu_driver` is a
+byte-passthrough and does not correct this. `imu_sign_corrector` is a
+small rclpy node spawned by `imu_launch.py` that subscribes to
+`/imu/data_raw` and republishes the message verbatim — except
+`linear_acceleration.{x,y,z}` are negated — to `/imu/data_rep145`. All
+downstream consumers (the `robot_localization` EKF in
+`whill_localization`, and the future scan-to-map localizer) MUST
+subscribe to `/imu/data_rep145`; `/imu/data_raw` is preserved as raw
+passthrough for backward compatibility and debugging.
 
 ## Open items
 

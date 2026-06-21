@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """Rewrite a rosbag2 with /imu/data_raw's linear_acceleration negated.
 
+DEPRECATED (Issue #56):
+  The runtime fix lives in whill_sensors_bringup/imu_sign_corrector
+  (Issue #56). Newly recorded bags taken with the post-#56 launch carry
+  /imu/data_rep145 already REP-145-compliant; downstream consumers (EKF,
+  the future scan-to-map localizer, GLIM/FAST-LIO SAM bag replays) should
+  subscribe to /imu/data_rep145 instead of pre-rewriting the bag.
+
+  This script is retained only for historical bags recorded before #56
+  was merged — e.g. docs/m5r-bench-data/2026-06-21-loop-outdoor/bag/
+  which carries the raw inverted /imu/data_raw. For those bags the
+  rewritten output is still the canonical input to the SLAM comparison.
+  Do not use this script on bags recorded after #56.
+
 Why this script exists:
   PCMK-G3X (MPU-9250 + LPC1343F USB firmware) reports linear_acceleration
   as the gravity-acceleration vector itself, not as REP-145 specific
