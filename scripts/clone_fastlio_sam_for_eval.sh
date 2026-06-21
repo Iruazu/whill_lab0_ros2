@@ -53,7 +53,13 @@
 set -euo pipefail
 
 UPSTREAM_REPO="https://github.com/RightTr/FAST-LIO-SAM.git"
-UPSTREAM_REF="master"
+# Upstream's default branch is `main`, not `master`. Discovered when
+# this script's checkout step exited with "pathspec 'master' did not
+# match any file(s) known to git" against a fresh 2026-06-21 clone.
+# The WebFetch we did during the M5R-2 license investigation already
+# reported `main` as the active branch — we just hardcoded the wrong
+# value here.
+UPSTREAM_REF="main"
 # GTSAM PPA: upstream README for FAST-LIO SAM lists this exact PPA as the
 # Ubuntu 22.04 prerequisite (GTSAM 4.1 line). We do NOT switch to the
 # GTSAM 4.3a0 source build that install_glim.sh provides — FAST-LIO SAM
