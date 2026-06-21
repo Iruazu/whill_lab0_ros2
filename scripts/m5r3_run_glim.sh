@@ -173,13 +173,10 @@ select_glim_config() {
   # does not publish), got no data, and exited with SIGPIPE / rc=141.
   #
   # We work around by copying the upstream config dir into <OUT_DIR>/
-  # config/ and patching just the topic strings. This keeps the install
-  # tree clean, lets the per-run config travel with the run output
-  # (reproducibility), and is the standard "custom-sensor" GLIM flow per
-  # upstream docs. Sensor-side tuning (T_lidar_imu, ring_field) is left
-  # to the evaluator on the assumption that bad output prompts that
-  # edit; capturing the override in the per-run config means whatever
-  # the evaluator settles on is recorded next to the trajectory.
+  # config/ and patching topic strings + sensor-side tunables. This keeps
+  # the install tree clean, lets the per-run config travel with the run
+  # output (reproducibility), and is the standard "custom-sensor" GLIM
+  # flow per upstream docs.
   if grep -q '/velodyne_points' "${BAG_DIR}/metadata.yaml"; then
     local local_cfg="${OUT_DIR}/config"
     rm -rf "${local_cfg}"
@@ -190,14 +187,50 @@ select_glim_config() {
       "${local_cfg}/config_ros.json"
     sed -i 's|^\(\s*"points_topic":\s*\)"[^"]*"|\1"/velodyne_points"|' \
       "${local_cfg}/config_ros.json"
+    # Patch sensor-side config with our calibrated Velodyne+RT-IMU values.
+    # - T_lidar_imu: GLIM convention is p_lidar = T_lidar_imu * p_imu in
+    #   TUM format [x, y, z, qx, qy, qz, qw]. Upstream default (Ouster OS0
+    #   near-zero translation) makes GLIM assume LiDAR is co-located with
+    #   the IMU, which on our rig introduces a ~9 deg pitch error and the
+    #   "IMU prediction is not good. Possibly T_lidar_imu is not accurate"
+    #   warning that filled the entire run.log of 2026-06-21 run #1 (no
+    #   trajectory written, exit 141). The numbers below are SE3-inverse
+    #   of M4R-2's measured extrinsic (extrinsic_T = LiDAR origin in IMU
+    #   frame [0.104136, 0.411548, 0.323704], extrinsic_R = LiDAR->IMU
+    #   rotation in docs/ja/m3-extrinsics-from-noetic.md) with quaternion
+    #   computed in TUM (qx,qy,qz,qw) order. Roundtrip error < 1e-6.
+    # - ring_field: Velodyne ROS2 driver writes laser ID into "ring".
+    #   Upstream "" (auto-detect) downgrades preprocessing quality on
+    #   Velodyne bags per koide3/glim README "Custom sensor" section.
+    python3 - "${local_cfg}/config_sensors.json" <<'PY'
+import re, sys
+path = sys.argv[1]
+with open(path, 'r') as f:
+    txt = f.read()
+new_tli = (
+    '"T_lidar_imu": [\n'
+    '      -0.050000,\n'
+    '      -0.400000,\n'
+    '      -0.350000,\n'
+    '      0.017399,\n'
+    '      -0.078447,\n'
+    '      0.001369,\n'
+    '      0.996765\n'
+    '    ]'
+)
+txt, n_tli = re.subn(r'"T_lidar_imu":\s*\[[^\]]*\]', new_tli, txt, count=1)
+txt, n_rf = re.subn(r'("ring_field":\s*)"[^"]*"', r'\1"ring"', txt, count=1)
+if n_tli != 1 or n_rf != 1:
+    sys.stderr.write(f"ERROR: config_sensors.json patch failed (T_lidar_imu={n_tli}, ring_field={n_rf})\n")
+    sys.exit(1)
+with open(path, 'w') as f:
+    f.write(txt)
+PY
     GLIM_CONFIG="${local_cfg}/"
     echo "NOTE: bag carries /velodyne_points; using per-run config copy at" >&2
-    echo "      ${local_cfg}/ with topics rewritten to /velodyne_points + /imu/data_raw." >&2
-    echo "      If trajectory still looks broken (missing points / preprocess" >&2
-    echo "      warnings), the next thing to try is editing" >&2
-    echo "      ${local_cfg}/config_sensors.json (ring_field=ring for VLP-16," >&2
-    echo "      T_lidar_imu from M4R-2's measured extrinsic). Record any edit" >&2
-    echo "      in the ADR-0003 Alternatives row." >&2
+    echo "      ${local_cfg}/ with topics rewritten (/imu/data_raw + " >&2
+    echo "      /velodyne_points) and sensor config patched (T_lidar_imu" >&2
+    echo "      from M4R-2 measured extrinsic, ring_field=ring for VLP-16)." >&2
   else
     GLIM_CONFIG="${share}/"
   fi
