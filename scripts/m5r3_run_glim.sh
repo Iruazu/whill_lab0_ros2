@@ -163,22 +163,43 @@ select_glim_config() {
 
   # Upstream ships a single flat config/ directory keyed off config.json,
   # which references config_sensors.json / config_preprocess.json / etc by
-  # relative name. There is no per-LiDAR subdir (no config_velodyne/, no
-  # config_ouster/) — sensor type is selected by editing config_sensors
-  # .json (T_lidar_imu, ring_field, intensity_field, ...). The implementer
-  # of this wrapper expected per-LiDAR subdirs and that turned out to be
-  # wrong; the assumption broke on the first real Velodyne run (#48 Phase
-  # B 2026-06-21). For M5R-3 we hand GLIM the share/config/ root as-is
-  # and emit an informational note when the bag carries /velodyne_points,
-  # so the evaluator records whether default-config-on-Velodyne biases
-  # the comparison and edits config_sensors.json if needed.
-  GLIM_CONFIG="${share}/"
+  # relative name. There is no per-LiDAR subdir — sensor and topic
+  # selection is done by editing config_ros.json (topic names) and
+  # config_sensors.json (T_lidar_imu, ring_field, ...). The upstream
+  # defaults are Ouster topics (/os_cloud_node/imu, /os_cloud_node/points)
+  # and an Ouster-tuned T_lidar_imu, neither of which matches our
+  # Velodyne bag. The first real Phase B run on 2026-06-21 confirmed
+  # this: the run started, subscribed to /os_cloud_node/* (which the bag
+  # does not publish), got no data, and exited with SIGPIPE / rc=141.
+  #
+  # We work around by copying the upstream config dir into <OUT_DIR>/
+  # config/ and patching just the topic strings. This keeps the install
+  # tree clean, lets the per-run config travel with the run output
+  # (reproducibility), and is the standard "custom-sensor" GLIM flow per
+  # upstream docs. Sensor-side tuning (T_lidar_imu, ring_field) is left
+  # to the evaluator on the assumption that bad output prompts that
+  # edit; capturing the override in the per-run config means whatever
+  # the evaluator settles on is recorded next to the trajectory.
   if grep -q '/velodyne_points' "${BAG_DIR}/metadata.yaml"; then
-    echo "NOTE: bag carries /velodyne_points; GLIM's config_sensors.json is" >&2
-    echo "      the reference tuning. If trajectory looks broken (missing" >&2
-    echo "      points / preprocess warnings), edit ring_field /" >&2
-    echo "      intensity_field for the VLP-16 and record the change in" >&2
-    echo "      the ADR-0003 Alternatives row." >&2
+    local local_cfg="${OUT_DIR}/config"
+    rm -rf "${local_cfg}"
+    cp -r "${share}" "${local_cfg}"
+    # Patch topics in config_ros.json with sed (the upstream JSON has
+    # // comments, so a JSON parser like jq won't work directly).
+    sed -i 's|^\(\s*"imu_topic":\s*\)"[^"]*"|\1"/imu/data_raw"|' \
+      "${local_cfg}/config_ros.json"
+    sed -i 's|^\(\s*"points_topic":\s*\)"[^"]*"|\1"/velodyne_points"|' \
+      "${local_cfg}/config_ros.json"
+    GLIM_CONFIG="${local_cfg}/"
+    echo "NOTE: bag carries /velodyne_points; using per-run config copy at" >&2
+    echo "      ${local_cfg}/ with topics rewritten to /velodyne_points + /imu/data_raw." >&2
+    echo "      If trajectory still looks broken (missing points / preprocess" >&2
+    echo "      warnings), the next thing to try is editing" >&2
+    echo "      ${local_cfg}/config_sensors.json (ring_field=ring for VLP-16," >&2
+    echo "      T_lidar_imu from M4R-2's measured extrinsic). Record any edit" >&2
+    echo "      in the ADR-0003 Alternatives row." >&2
+  else
+    GLIM_CONFIG="${share}/"
   fi
 }
 
