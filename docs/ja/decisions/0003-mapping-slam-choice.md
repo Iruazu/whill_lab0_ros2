@@ -2,9 +2,9 @@
 
 Language: [日本語](0003-mapping-slam-choice.md) | [English](../../en/decisions/0003-mapping-slam-choice.md)
 
-- Status: proposed (Phase B データ収集後にユーザー承認 → accepted)
-- Date: 2026-06-22
-- Deciders: Iruazu (Phase B 完了後の承認待ち)
+- Status: accepted
+- Date: 2026-06-22 (Phase A 起案) / 2026-06-21 (Phase B 計測完了、Decision 確定、accepted 化)
+- Deciders: Iruazu
 
 ## 背景
 
@@ -44,75 +44,83 @@ M5-R 実行計画 [`../plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m
 
 ## 決定
 
-```
-(PLACEHOLDER) Phase B 完了後に埋める。
+**採用 SLAM: GLIM** (`koide3/glim` + `koide3/glim_ros2`、MIT)。
 
-採用 SLAM: TBD (GLIM | FAST_LIO_SAM)
-Commit SHA / Tag pin: TBD (採用 SLAM の manifest.yaml の git_commit と
-                           上流 upstream_commit を転記)
-判断根拠サマリ: TBD (B1 誤差、ループクロージャの有無、ライセンス、操作性の
-                4 軸での総合判断)
-```
+**Commit SHA / Tag pin** (Phase B run 時、`docs/m5r-bench-data/2026-06-21-loop-outdoor/glim-out/manifest.yaml` より):
+- 本リポ git_commit: `48b746a` (bag rewrite script を含む M5R-3 ブランチ最終状態)
+- 上流 (`install_glim.sh` で source-build 済): M5R-1 (#45) で固定したバージョン。CUDA 12.4 + cuDNN 8 + GTSAM 4.3a0 (UNSTABLE) 構成
+- 設定: per-run config copy 経由で `config_sensors.json` の `T_lidar_imu` と `ring_field` を M4R-2 実測 extrinsic / VLP-16 値に上書き (`scripts/m5r3_run_glim.sh` 内に内包)
 
-本節は Phase B のデータ収集 + 評価担当者の判断後、別 commit で埋めて ユーザー承認のもと accepted 化する。
+**判断根拠サマリ**:
+
+1. **走った/走らなかった** (一番重い軸): GLIM は Velodyne + PCMK-G3X (MPU-9250) bag に対して `traj_lidar.txt` (1954 サンプル)、`graph.bin`、17 個の submap を出力してクリーン終了。FAST-LIO SAM は上流 ROS2 port に Velodyne mapping launch が無く、本リポで自作 launch + config を用意した上でも初回 frame 直後に silent crash (DNF)。詳細は本ファイルの「採用しなかった案」表
+2. **ライセンス**: GLIM = MIT、permissive。運用スタック (将来配布候補) への組み込み制約なし。FAST-LIO SAM = LICENSE 不在 + 派生元 GPL-2.0 で copyleft 伝播懸念。親方針 §3.4 と整合
+3. **ループ誤差** (補完指標、B1 wall-3-point は走った GLIM 側のみ取得可): GLIM は 52.640 m loop で end-to-start drift 0.838 m (~1.6%)。FAST-LIO SAM は trajectory 出力ゼロで比較不能
+4. **LiDAR class fit** (本デッキ固有の判断): VLP-16 は中等性能 LiDAR (16 line、屋外特徴 poverty に弱い)。FAST-LIO 系の優位性 (HKU-MaRS 開発元の hardware) は OS-128 / Livox MID-360 など高密度 LiDAR で顕著。VLP-16 で GLIM が clean に動いた以上、本実装の設備規模ではどちらでも結論はほぼ同等。**FAST-LIO SAM を動かすための追加作業 (ROOT_DIR バグ追跡、preprocess crash 原因特定、upstream 改修) の工数は M5-R の他フェーズ (ERASOR、占有格子、パイプライン統合) に振り向ける方が ROI が高い**
+5. **GTSAM 競合**: gtsam_env.log で 4.3a0 (`/usr/local`) と 4.1.1 (`/usr/lib`) が ldconfig 上で共存していることを確認、衝突は run 時に顕在化しなかった。GLIM 採用後は 4.3a0 単独で運用するので競合リスク自体が消える
 
 ## 採用しなかった案
 
-Phase B 完了時、本節に以下のテーブルを埋める。**Alternatives = 採用しなかった候補** なので、最終的に採用された側はこの表から除き、Decision 節に書く。
+### FAST-LIO SAM (採用見送り)
 
-### 比較テーブル (Phase B で埋める)
-
-| 軸 | GLIM | FAST-LIO SAM |
+| 軸 | GLIM (採用) | FAST-LIO SAM (見送り) |
 |---|---|---|
-| 走行時間 (s) | TBD | TBD |
-| ピーク VRAM (MiB) | TBD | TBD |
-| ピーク RSS (KiB) | n/a (manifest スキーマで未計測) | TBD |
-| trajectory 内部誤差 (m) | TBD | TBD |
-| B1 公式誤差 (壁面 3 点平均、m) | TBD | TBD |
-| ループクロージャの発火タイミング | TBD (例: 走行 80% 地点で 1 回発火) | TBD |
-| keyframe 発行密度 (枚 / m) | TBD | TBD |
-| manual relocalization 要否 | TBD | TBD |
-| GTSAM 解決状況 | n/a (4.3a0 単独) | TBD (4.1.1 単独 / 共存警告あり / `LD_LIBRARY_PATH` 強制が必要) |
-| ライセンス | MIT | LICENSE 不在 + GPL-2.0 伝播可能性 |
-| build 成否 | OK (M5R-1 確認済) | TBD (上流 "Full ROS2 adaptation" TODO 残あり) |
+| 走行時間 (wall clock s) | 575 (bag 199 s に対し ~2.9x) | 589 (うち SLAM 実処理は ~0.14 s で crash、残りは死体プロセス待ち) |
+| ピーク VRAM (MiB) | 545 | 15 (baseline、SLAM が GPU を握ったことなし) |
+| ピーク RSS (KiB) | n/a (GLIM wrapper では未計測) | 0 (RSS poller が pid を捕捉できる前に死んだ) |
+| trajectory 内部誤差 (m) | **0.838** (52.640 m loop で 1.6%、`m5r3_loop_error.py` 算出) | dnf (trajectory 出力ゼロ) |
+| B1 公式誤差 (壁面 3 点平均、m) | TBD (CloudCompare 未実施、PCD は GLIM 側に submap 17 個として存在。GLIM のみでの値なので比較相手がいない) | dnf (PCD 出力ゼロ) |
+| ループクロージャの発火タイミング | run.log に明示エントリなし。屋外直線往復という幾何 (50 m 直進 + 180° turn) では closure 検出条件を満たしにくいのは想定内 | dnf |
+| keyframe 発行密度 (枚 / m) | 1954 サンプル / 52.640 m = 37 sample/m。submap 17 個 | dnf |
+| manual relocalization 要否 | 不要 (M4R-2 extrinsic 直焼き + bag rewrite 経由で IMU 符号正規化、起点静止 5s 確保で grav_align が収束) | n/a |
+| GTSAM 解決状況 | 4.3a0 単独 (`/usr/local/lib`、GLIM source build に同梱) | gtsam_env.log で 4.3a0 (`/usr/local`) + 4.1.1 (`/usr/lib`) 共存、ldconfig 上は両方見える状態。今回 run 時には衝突は顕在化しなかったが、潜在リスクは継続 |
+| ライセンス | MIT (permissive) | 上流 LICENSE 不在 + 派生元 FAST-LIO は GPL-2.0。`package.xml` のみ "BSD" 自己申告で実体不一致 |
+| build 成否 | OK (M5R-1 #45 で source build 完了) | パッケージ build は OK、ただし mapping launch が Velodyne 用は ROS2 port に存在せず (`airy`/`l2`/`mid360` のみ ship)。本リポで `scripts/m5r3_mapping_velodyne_for_fastlio_sam.launch.py` + `scripts/m5r3_fastlio_sam_velodyne_config.yaml` を新規作成して initialization までは通したが、preprocess `[WARN] No point, skip this scan!` 直後 silent crash (DNF) |
 
-### 補足ノート (Phase B で埋める)
+### 補足ノート
 
-- (rejected SLAM 側について) 何が決定打になったか
-- li_slam_ros2 を本 ADR で評価対象外とした理由: 親方針 §3.3 で「比較・つなぎ用」と明記。GLIM vs FAST-LIO SAM が代表選定であり、li_slam_ros2 は本 ADR の比較対象外。採用 SLAM が両者とも不適格と判明した場合のみ別 ADR で再検討する
-- (オプション) 「Velodyne 専用 config が GLIM 上流に ship されていなかったため Ouster 用 config で走らせた」など、比較条件の対称性に影響した事実を列挙
+- **FAST-LIO SAM 側で何が決定打になったか**: 上流 ROS2 port が Velodyne を一級サポートしていない点が一番大きい。`config/odom/velodyne.yaml` (odometry-only) は存在するが、`config/mapping/` 下に velodyne yaml が無く、`launch_ROS2/mapping/` にも Velodyne 用 launch が無い。本 ADR スコープで自作の最小 launch + config (commit 4af5ffa) を用意したが、起動直後に upstream 側の path-construction 警告 (`~~~~<repo>/src/third_party/FAST_LIO_SAM/ doesn't exist` — 実際には存在するので realpath / trailing-slash 由来のバグ) が出て、初回 frame の preprocess で silent crash。crash 原因の特定には upstream 改修が必要で、M5R-3 スコープ外。詳細は `docs/m5r-bench-data/2026-06-21-loop-outdoor/fastlio-sam-out/manifest.yaml` の notes 節
+- **対称性に影響した事実**: GLIM 側は per-run config copy で `T_lidar_imu` (M4R-2 実測値の SE3 inverse) と `ring_field=ring` (VLP-16) を焼き込んだ。FAST-LIO SAM 側は同じ extrinsic を yaml に直書きしたが、そもそも crash で extrinsic が効くフェーズに到達せず。両 SLAM ともに `bag-imu-fixed/` (`scripts/m5r3_fix_imu_bag.py` で PCMK-G3X firmware の accel 重力ベクトル符号を REP-145 specific force に補正済) を入力。GLIM は補正必須 (FAST-LIO 系は自前で gravity 符号を吸収するので補正なしでも本来動く)
+- **li_slam_ros2 を評価対象外とした理由**: 親方針 §3.3 で「比較・つなぎ用」と明記。GLIM vs FAST-LIO SAM が代表選定であり、本 ADR は両者比較で結論を出す枠組み。FAST-LIO SAM 不採用は GLIM 採用と一意に結びつくため (Velodyne 対応 + permissive + 動作確認済 という条件で残るのは GLIM)、li_slam_ros2 の再評価は不要
 
 ## 結果
 
-Phase B 完了時に埋める。以下の構造で書く。
-
 ### ライセンス棚卸し (B5 達成)
 
-採用 SLAM ごとに本リポへの組み込み形態 / 運用スタックへの link 制約を明示する:
+採用 SLAM = GLIM について本リポへの組み込み形態を明示する:
 
-- **GLIM を採用した場合**: MIT、permissive。運用スタックへの link 制約なし。ただし M5-R は「オフラインのマップ作成ツール」フェーズとして位置付け、ランタイム localizer は M6-R の scan-to-map localizer (別選定) が担当する。GLIM 自体を運用スタックに組み込み直す判断は本 ADR では行わず、M6-R の評価結果次第とする
-- **FAST-LIO SAM を採用した場合**: LICENSE 不在 = 著作権法上は事実上 "all rights reserved"、派生元 FAST-LIO (HKU-MaRS) は GPL-2.0 で copyleft 伝播可能性。親方針 §3.4 「GPL 系は『オフラインのマップ作成ツール』としての分離プロセス利用に限定」を適用する:
-  - `whill_lab.repos` への組み込み: **不可** (clone-on-demand 維持)
-  - 運用パッケージへの link: **不可**
-  - 生成 PCD / 占有格子のみ `docs/maps/<site>/` に格納する: 可 (上流コードの再配布ではなく評価出力データ)
-  - 上流 LICENSE が将来追加されて permissive になった場合の運用切替は別 ADR で扱う
+- **GLIM**: MIT、permissive。運用スタックへの link 制約なし。ただし M5-R は親方針 §3.1 が定める「オフラインのマップ作成ツール」フェーズで、ランタイム localizer は M6-R の scan-to-map localizer (別 ADR) が担当する。GLIM 自体を運用スタックに組み込み直す判断は本 ADR では行わず、M6-R の評価結果次第とする
+- **GLIM が依存する GTSAM 4.3a0 (BSD-3-Clause、UNSTABLE 含む)**: `install_glim.sh` 経由で `/usr/local/lib` 配下に source-build 済。permissive で配布上の制約なし
+- **本リポ内に残る FAST-LIO SAM 評価関連物**: `src/third_party/FAST_LIO_SAM/` は `.gitignore` 済 (clone-on-demand)、本リポへの再配布なし。`scripts/m5r3_run_fastlio_sam.sh` + `scripts/m5r3_mapping_velodyne_for_fastlio_sam.launch.py` + `scripts/m5r3_fastlio_sam_velodyne_config.yaml` は M5R-3 評価のための本リポ独自コード (BSD-3-Clause) で、上流コードの再配布ではない。将来 FAST-LIO SAM 上流が permissive LICENSE を追加して状況が変わった場合は別 ADR で再評価する
 
-### CPU / GPU / メモリ要件
+### CPU / GPU / メモリ要件 (実測値)
 
-採用 SLAM の母艦 (Alienware x15 R2、RTX 3080 Laptop GPU 16 GB VRAM、i9-12900H 32 GiB RAM) での実測値を記録する。車載機への移行可否は本 ADR では判断せず、M9 (車載分離) で再評価する。
+母艦: Alienware x15 R2 (i9-12900H 32 GiB RAM、RTX 3080 Laptop GPU 16 GB VRAM)。GLIM Phase B run (`docs/m5r-bench-data/2026-06-21-loop-outdoor/glim-out/manifest.yaml`):
+
+- 走行時間: 575 s wall clock (bag 199 s に対し ~2.9x)
+- ピーク VRAM: 545 MiB
+- ピーク RSS: 未計測 (GLIM wrapper では計測項目なし。次回 wrapper 改修で追加候補)
+- 平均 playback speed: 0.35x realtime (起動初期は 1.9-6.6x で速いが、submap 増加につれてリアルタイム以下に減速。屋外の中等密度 LiDAR + 50 m 級ループでこの値なら、車載機 (M9 で評価) では 1x realtime 必須要件と擦り合わせる必要あり)
+
+車載機への移行可否は本 ADR では判断せず、M9 (車載分離) で再評価。母艦運用 (GPU 16 GB + 32 GiB RAM) では余裕あり。
 
 ### 後続フェーズ (M6-R) への影響
 
-- M6-R の scan-to-map localizer は採用 SLAM が出した静的 PCD を `docs/maps/<site>/static.pcd` 規約に従って入力前提とする (ADR-0005)
-- PCD フォーマット (binary vs ascii、座標系、座標精度) の互換性確認結果を本節に記録
-- coordinate frame の整合性: M4-R bringup `/tf_static` の `base_link → velodyne` extrinsic が bag に乗っているため、生成 PCD が `velodyne` frame で出力されるか `base_link` frame で出力されるかを記録し、M6-R localizer 側の前提と突合する
+- M6-R の scan-to-map localizer は GLIM が出した静的 PCD を `docs/maps/<site>/static.pcd` 規約 (ADR-0005) に従って入力前提とする
+- PCD フォーマット: GLIM は `dump_path` 指定で各 submap dir (`000000/` 〜 `000017/`) に submap 点群と pose を吐く。**単一の global static PCD を作るには `glim_offline` 等の上流ツールでマージが必要** (M5R-4 ERASOR の入力前段で実施)
+- 座標系: GLIM の `auto-detected IMU frame ID: imu_link` + `auto-detected LiDAR frame ID: velodyne` の通り、TF 自動検出が動いた。出力 trajectory は `traj_lidar.txt` (LiDAR frame) と `traj_imu.txt` (IMU frame) の両方が ship される
+- coordinate frame の整合性: M4-R bringup `/tf_static` の `base_link → velodyne` extrinsic は bag に乗っており、GLIM はこれを使って `base_link` frame の TF を publish 可能 (今回の評価では IMU frame を base に使った)
+
+### IMU 符号規約の波及 (本 ADR の発見、別 Issue 候補)
+
+Phase B 計測中に判明: PCMK-G3X (MPU-9250 + LPC1343F USB firmware) は `linear_acceleration` を REP-145 specific force ではなく gravity-vector で出力する (実測 `linear_acceleration.z = -9.71` at rest)。GLIM は明示補正必須、FAST-LIO 系は自己吸収 (`IMU_Processing.hpp:196` の `init_state.grav = S2(-mean_acc / |mean_acc| * G)`)。本 ADR では M5R-3 評価向け最小経路として `scripts/m5r3_fix_imu_bag.py` で bag rewrite して回避したが、永続対策 (sensor bringup 層に republisher を追加して全下流で REP-145 準拠 IMU を流す) は本 ADR スコープ外で別 Issue を起案する。EKF (M4R-3) への影響可能性も同 Issue で精査する。
 
 ### 後続作業
 
-- **M5R-4 (#49) ERASOR**: 採用 SLAM の出力 (PCD + per-frame poses) を入力に、動的物体除去。本 ADR の Decision が確定するまでは M5R-4 着手不可
-- **M5R-6 (#50) 占有格子変換**: 採用 SLAM 経由の ERASOR 後 PCD を 2D 占有格子に変換、`docs/maps/<site>/occupancy.{pgm,yaml}` に格納
-- **M5R-7 (#51) パイプライン統合**: bag → 採用 SLAM → ERASOR → 占有格子 → `docs/maps/<site>/` の E2E 文書化
-- **本 ADR の `proposed → accepted` 化**: Decision 節を埋めた別 commit でユーザー承認を取り、Status 行を書き換える
+- **M5R-4 (#49) ERASOR**: GLIM の submap 出力 (PCD + per-frame poses) を入力に動的物体除去。本 ADR accepted を受けて着手可能
+- **M5R-6 (#50) 占有格子変換**: GLIM → ERASOR 後 PCD を 2D 占有格子に変換、`docs/maps/<site>/occupancy.{pgm,yaml}` に格納
+- **M5R-7 (#51) パイプライン統合**: bag → GLIM → ERASOR → 占有格子 → `docs/maps/<site>/` の E2E 文書化
+- **IMU 符号永続対策 Issue (本 ADR §「IMU 符号規約の波及」発の派生)**: `whill_sensors_bringup/` に `/imu/data_raw` → `/imu/data_corrected` の REP-145 化 republisher を追加。再録 bag の符号統一、EKF 設定の波及確認
 
 ## 関連
 
