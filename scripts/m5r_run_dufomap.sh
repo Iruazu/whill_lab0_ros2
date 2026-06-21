@@ -12,6 +12,7 @@
 #
 # Setup (one-time, on the development host):
 #
+#   sudo apt install -y python3-pip   # Ubuntu 22.04 default lacks pip
 #   pip install dufomap
 #
 # Verified on Ubuntu 22.04 + Python 3.10 (the lab host configuration
@@ -88,7 +89,9 @@ check_dufomap_installed() {
     cat >&2 <<EOF
 ERROR: dufomap is not importable from python3.
 
-  Install with: pip install dufomap
+  Install with:
+    sudo apt install -y python3-pip   # Ubuntu 22.04 default lacks pip
+    pip install dufomap
 
   See docs/ja/m5r-pipeline.md "DUFOMap セットアップ" for the verified
   Ubuntu 22.04 + Python 3.10 setup recipe.

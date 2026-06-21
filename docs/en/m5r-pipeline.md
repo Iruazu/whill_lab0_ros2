@@ -25,7 +25,10 @@ dufomap`, ROS-independent).
 Once on the dev host (Alienware x15 R2, Ubuntu 22.04 + Python 3.10):
 
 ```bash
+# Ubuntu 22.04 ships python3 but not pip; install it first.
+sudo apt install -y python3-pip
 pip install dufomap
+python3 -c 'import dufomap; print(dufomap)'   # sanity check
 ```
 
 Verified on Ubuntu 22.04.5 LTS + Python 3.10.x. The DUFOMap wheel

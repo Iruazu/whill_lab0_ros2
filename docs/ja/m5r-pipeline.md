@@ -22,7 +22,10 @@ DUFOMap (BSD-3-Clause, `pip install dufomap`, ROS 非依存) を採用。
 母艦 (Alienware x15 R2、Ubuntu 22.04 + Python 3.10) で 1 回だけ:
 
 ```bash
+# Ubuntu 22.04 default は python3 だけで pip が入っていないので、まず pip を入れる
+sudo apt install -y python3-pip
 pip install dufomap
+python3 -c 'import dufomap; print(dufomap)'   # サニティチェック
 ```
 
 検証済み環境: Ubuntu 22.04.5 LTS + Python 3.10.x。DUFOMap のホイールには
