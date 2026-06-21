@@ -342,18 +342,33 @@ EOF
   # because the upstream launch does NOT take a bag positional argument;
   # this means the SLAM node and `ros2 bag play` race on startup. The
   # `--delay` mitigates that.
-  # LiDAR: this wrapper hardcodes mapping_velodyne.launch.py because the
-  # M5R-3 comparison uses Velodyne VLP-16 bags (the lab platform). FAST-
-  # LIO SAM ships separate launch files per LiDAR (mapping_robosense,
-  # mapping_unilidar); if M5R-3 ever evaluates an Ouster bag in parallel
-  # with GLIM's Ouster config, swap the launch name here or add a
-  # bag-introspection branch mirroring select_glim_config() in
-  # m5r3_run_glim.sh.
+  # LiDAR: SLAM_LAUNCH env var picks the launch file.
+  # * Unset or relative name → resolved against the fast_lio_sam package
+  #   share (the natural fit if upstream eventually publishes a Velodyne
+  #   mapping launch — drop this env, just set the file name).
+  # * Absolute path → passed straight to `ros2 launch`. Used because the
+  #   upstream ROS2 port currently ships mapping launches ONLY for airy
+  #   / l2 / mid360, NOT for Velodyne. M5R-3 supplies a Velodyne+MPU-9250
+  #   launch at scripts/m5r3_mapping_velodyne_for_fastlio_sam.launch.py
+  #   that's not in src/third_party/ (project rule forbids editing the
+  #   upstream tree). Default points at that script so the wrapper just
+  #   works on this rig without env juggling. Set SLAM_LAUNCH to a
+  #   different abs path or to a future upstream relative name to
+  #   override.
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local default_launch="${script_dir}/m5r3_mapping_velodyne_for_fastlio_sam.launch.py"
+  local slam_launch="${SLAM_LAUNCH:-${default_launch}}"
   set +e
   {
     echo "==> FAST-LIO SAM start ${started_at}"
     echo "==> launching SLAM node in background"
-    ros2 launch "${PKG_NAME}" mapping_velodyne.launch.py >> "${OUT_DIR}/slam.log" 2>&1 &
+    echo "==>   launch: ${slam_launch}"
+    if [[ "${slam_launch}" = /* ]]; then
+      ros2 launch "${slam_launch}" >> "${OUT_DIR}/slam.log" 2>&1 &
+    else
+      ros2 launch "${PKG_NAME}" "${slam_launch}" >> "${OUT_DIR}/slam.log" 2>&1 &
+    fi
     local slam_pid=$!
     sleep 5  # let the SLAM node finish startup before replay begins
     echo "==> replaying bag (pid ${slam_pid} should be alive)"
