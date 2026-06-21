@@ -14,6 +14,7 @@
   <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <exec_depend>velodyne</exec_depend>
   <exec_depend>realsense2_camera</exec_depend>
@@ -22,6 +23,9 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>lifecycle_msgs</exec_depend>
+  <!-- imu_sign_corrector (Issue #56) の依存 -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

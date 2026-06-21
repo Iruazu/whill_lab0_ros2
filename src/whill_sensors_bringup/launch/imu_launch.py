@@ -17,7 +17,7 @@ from launch.actions import (
 )
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import LifecycleNode
+from launch_ros.actions import LifecycleNode, Node
 from launch_ros.event_handlers import OnStateTransition
 from launch_ros.events.lifecycle import ChangeState
 from lifecycle_msgs.msg import Transition
@@ -81,10 +81,23 @@ def generate_launch_description():
         ],
     ))
 
+    # imu_sign_corrector (Issue #56): /imu/data_raw を購読し
+    # linear_acceleration の符号を反転して /imu/data_rep145 に流す。
+    # 普通の rclpy ノードなのでライフサイクルに紐付けず兄弟として起動して
+    # よい — ドライバが publish を始めるまでは何もせず idle で待つだけ。
+    # 詳細は whill_sensors_bringup/imu_sign_corrector.py の docstring。
+    sign_corrector_node = Node(
+        package='whill_sensors_bringup',
+        executable='imu_sign_corrector',
+        name='imu_sign_corrector',
+        output='screen',
+    )
+
     return LaunchDescription([
         port_arg,
         frame_arg,
         imu_node,
+        sign_corrector_node,
         activate_on_inactive,
         configure,
     ])
