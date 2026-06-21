@@ -1,0 +1,99 @@
+# FAST-LIO SAM mapping config for VLP-16 + PCMK-G3X (MPU-9250).
+#
+# Why this file exists:
+#   Upstream RightTr/FAST_LIO_SAM ships ROS2 mapping launches for only three
+#   LiDARs (Aeva Aeries II, Livox L2, Livox MID-360). Our M5R-3 evaluation
+#   needs Velodyne VLP-16, which has no upstream ROS2 mapping launch — only
+#   an odom config exists (config/odom/velodyne.yaml). The 2026-06-21 first
+#   run produced no trajectory because the wrapper's hardcoded launch name
+#   matched nothing on disk.
+#
+# Composition: this combines
+#   * noetic FAST_LIO/config/velodyne.yaml (LiDAR/IMU topic names, extrinsic
+#     T/R from M4R-2, IMU noise; same numbers docs/ja/m3-extrinsics-from-
+#     noetic.md cites and that scripts/m5r3_run_glim.sh patches into GLIM's
+#     config_sensors.json) with
+#   * upstream config/mapping/airy.yaml lio_sam / publish / result_save /
+#     zupt sections (so loop closure, keyframe export, global PCD stitching
+#     stay enabled and the run is directly comparable to GLIM Phase B).
+#
+# Bag bag-imu-fixed already has /imu/data_raw.linear_acceleration negated
+# (PCMK-G3X firmware reports gravity-vector, not REP-145 specific force).
+# FAST-LIO's IMU_Processing.hpp:196 self-estimates gravity sign so the bag
+# rewrite is not strictly required for FAST-LIO SAM, but we use the same
+# bag GLIM consumed so the two evaluations are bit-for-bit comparable.
+
+common:
+    lid_topic:  "/velodyne_points"
+    imu_topic:  "/imu/data_raw"
+    time_sync_en: false
+    time_offset_lidar_to_imu: 0.0
+    flip_en: false                   # airy-only knob; Velodyne is already in standard convention
+    grav_align: true                 # initial roll/pitch from gravity
+
+preprocess:
+    lidar_type: 2                    # 2 = Velodyne (per FAST-LIO preprocess.cpp)
+    scan_line: 16                    # VLP-16
+    timestamp_unit: 0                # 0 = seconds (matches velodyne_driver ROS2)
+    blind: 0.5                       # noetic-inherited
+
+mapping:
+    acc_cov: 0.1                     # noetic-inherited; matches MPU-9250 noise scale
+    gyr_cov: 0.1
+    b_acc_cov: 0.0001
+    b_gyr_cov: 0.0001
+    fov_degree: 180.0                # VLP-16 horizontal FoV is 360 but noetic config used 180; keep parity
+    det_range: 100.0
+    extrinsic_est_en: false          # do NOT re-estimate online — we trust M4R-2 measurement
+    # M4R-2 measured (docs/ja/m3-extrinsics-from-noetic.md).
+    # Convention: extrinsic_T = LiDAR origin in IMU frame, extrinsic_R = LiDAR -> IMU.
+    extrinsic_T: [0.104136, 0.411548, 0.323704]
+    extrinsic_R: [ 0.987688,  0.000000,  0.156434,
+                  -0.005459,  0.999391,  0.034470,
+                  -0.156339, -0.034900,  0.987087]
+
+lio_sam:
+    # Copied from airy.yaml; these knobs are sensor-agnostic.
+    numberOfCores: 4
+    surroundingkeyframeAddingDistThreshold: 1.0
+    surroundingkeyframeAddingAngleThreshold: 0.2
+    surroundingKeyframeDensity: 2.0
+    surroundingKeyframeSearchRadius: 50.0
+
+    # Loop closure ON — GLIM had loop closure on (no explicit trigger
+    # logged but the pose graph was active), so leave FAST-LIO SAM's
+    # loop closure on for symmetric comparison.
+    loopClosureEnableFlag: true
+    loopClosureFrequency: 1.0
+    surroundingKeyframeSize: 50
+    historyKeyframeSearchRadius: 5.0
+    historyKeyframeSearchTimeDiff: 15.0
+    historyKeyframeSearchAngleThreshold: 0.5
+    historyKeyframeSearchNum: 25
+    historyKeyframeFitnessScore: 0.3
+
+    globalMapVisualizationSearchRadius: 1000.0
+    globalMapVisualizationPoseDensity: 10.0
+    globalMapVisualizationLeafSize: 0.1
+
+    # Keyframe export ON — produces per-frame PCDs + a stitched global
+    # PCD that CloudCompare can open for the B1 wall-3-point measurement.
+    keyframe_export_en: true
+    keyframe_global_pcd_en: true
+
+publish:
+    path_en: true
+    scan_publish_en: true
+    dense_publish_en: true
+    scan_bodyframe_pub_en: true
+
+result_save:
+    feat_accum_save_en: false
+    interval: -1
+    imu_pose_save_en: false
+    scan_frame_save_en: false
+
+zupt:
+    use_zupt: false
+    zupt_acc_var_threshold: 0.0001
+    zupt_gyro_var_threshold: 0.00001
