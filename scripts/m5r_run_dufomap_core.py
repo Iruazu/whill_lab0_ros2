@@ -85,113 +85,127 @@ def collect_pcds(data_dir: Path) -> list[Path]:
     return pcds
 
 
+def _viewpoint_to_world_transform(viewpoint) -> np.ndarray:
+    """Build a 4x4 world<-local transform from a PCL VIEWPOINT 7-tuple.
+
+    VIEWPOINT order per PCL spec: (tx, ty, tz, qw, qx, qy, qz).
+    Returned matrix turns keyframe-local points into world-frame points
+    via ``p_world = T @ [p_local; 1]``.
+    """
+    from scipy.spatial.transform import Rotation
+    tx, ty, tz, qw, qx, qy, qz = (float(v) for v in viewpoint)
+    # scipy's from_quat expects (x, y, z, w).
+    rot = Rotation.from_quat([qx, qy, qz, qw]).as_matrix()
+    T = np.eye(4, dtype=np.float64)
+    T[:3, :3] = rot
+    T[:3, 3] = (tx, ty, tz)
+    return T
+
+
 def run_dufomap(data_dir: Path, output: Path,
                 resolution: float, d_s: float, d_p: int,
                 num_threads: int) -> int:
     """Drive DUFOMap end-to-end on a directory of per-scan PCDs.
 
-    Steps mirror upstream's ``KTH-RPL/dufomap/main.py``:
+    Mirrors upstream's ``KTH-RPL/dufomap/main.py`` accumulator pattern:
 
-    1. Construct a ``dufomap`` instance with the three primary
-       parameters (resolution / inflate_hits_dist / inflate_unknown).
-    2. Feed each scan with its viewpoint, leaving ``cloud_transform``
-       at ``False`` so DUFOMap applies the supplied pose itself (any
-       pre-transform here would double-apply).
-    3. Call ``oncePropagateCluster`` to finalise dynamic / free /
-       unknown labels.  Clustering is left off (matches upstream
-       default) — the speed-up from skipping it is significant and the
-       quality difference is marginal for our outdoor loop bag.
-    4. Call ``outputMap`` which writes ``dufomap_output.pcd`` into the
-       process CWD.  We then move that file to ``--output``.
+    1. Construct a ``dufomap`` instance (resolution / d_s / d_p).
+    2. For each scan, transform keyframe-local points into the world
+       frame using the PCD's VIEWPOINT pose, append to an accumulator,
+       and feed DUFOMap with ``cloud_transform=False`` (we already did
+       the transform).
+    3. ``oncePropagateCluster`` finalises dynamic / free / unknown
+       labels.  Clustering is left off — matches upstream default and
+       gives a big speedup with marginal quality loss on outdoor loops.
+    4. ``outputMap(cloud_acc, voxel_map=True, file_name=<basename>)``
+       writes ``<basename>.pcd`` directly to the path we want; no chdir
+       or post-move dance is required (file_name kwarg added upstream
+       in dufomap 1.x).
     """
     dufomap, pcdpy3 = _import_dufomap()
     pcds = collect_pcds(data_dir)
 
     mydufo = dufomap(resolution, d_s, d_p, num_threads=num_threads)
 
+    # DUFOMap's outputMap() filters this accumulated cloud against the
+    # map's seen-free voxels and writes the surviving (static) subset.
+    # Must be in the same frame as the voxel map — i.e. world frame —
+    # since the filter is spatial. Pre-allocating with float32 keeps the
+    # downstream ascontiguousarray.astype(np.float32) inside outputMap a
+    # no-op.
+    cloud_acc = np.zeros((0, 3), dtype=np.float32)
+
     for i, pcd_path in enumerate(pcds):
         pcd = pcdpy3.PointCloud.from_path(str(pcd_path))
         # pcdpy3 may return float64 depending on the source PCD's TYPE
-        # field. DUFOMap's run() requires float32 (upstream main.py uses
-        # data['pc'].astype(np.float32)); an f64 array silently truncates
-        # or raises inside the native binding.
-        pts = pcd.np_data[:, :3].astype(np.float32)
-        # PCL VIEWPOINT order is (tx, ty, tz, qw, qx, qy, qz). DUFOMap's
-        # run() accepts the same layout — see upstream main.py.
-        pose = list(pcd.viewpoint)
-        mydufo.run(pts, pose, cloud_transform=False)
-        print(f"[{i + 1}/{len(pcds)}] ingested {pcd_path.name} "
-              f"({pts.shape[0]} points)")
+        # field; DUFOMap's run() casts to float32 internally but we cast
+        # here too so the homogeneous-transform matmul stays in f64 and
+        # only the final cloud is f32.
+        local_pts = pcd.np_data[:, :3].astype(np.float64)
+        viewpoint = list(pcd.viewpoint)
+        T_world_local = _viewpoint_to_world_transform(viewpoint)
+        # Homogeneous-coords transform: faster as (R @ pts.T).T + t than
+        # building an Nx4 augmented array.
+        world_pts = (T_world_local[:3, :3] @ local_pts.T).T + T_world_local[:3, 3]
+        world_pts_f32 = world_pts.astype(np.float32)
 
-    print("Propagating cluster labels...")
+        # cloud_transform=False because we already moved points to world.
+        # Pose still needs to be world-frame (DUFOMap uses it as the
+        # sensor origin for ray casting); viewpoint translation already
+        # equals T_world_local[:3, 3], so it's the right value.
+        mydufo.run(world_pts_f32, viewpoint, cloud_transform=False)
+        cloud_acc = np.concatenate((cloud_acc, world_pts_f32), axis=0)
+        print(f"[{i + 1}/{len(pcds)}] ingested {pcd_path.name} "
+              f"({world_pts_f32.shape[0]} points)")
+
+    print(f"Propagating cluster labels over {cloud_acc.shape[0]} accumulated points...")
     mydufo.oncePropagateCluster(if_propagate=True, if_cluster=False)
 
-    # outputMap takes a "cloud accumulator" path / handle.  Upstream's
-    # main.py passes a writable handle whose target is fixed at
-    # ``dufomap_output.pcd`` in CWD.  We pre-create the staging dir,
-    # chdir into it for the call only, then move the result out.  This
-    # keeps the user-visible output path under their control while
-    # tolerating any version of DUFOMap that wires the output filename
-    # internally.
-    staging = output.parent / ".dufomap_tmp"
-    staging.mkdir(parents=True, exist_ok=True)
-    prev_cwd = Path.cwd()
+    # outputMap appends ".pcd" to file_name itself, so strip any suffix
+    # the user passed via --output.
+    if output.suffix == ".pcd":
+        basename = str(output.with_suffix(""))
+    else:
+        basename = str(output)
     try:
-        os.chdir(staging)
-        # The accumulator argument is the basename DUFOMap uses for the
-        # output file (some versions ignore it and always write
-        # "dufomap_output.pcd" anyway). Pass the basename we want and
-        # fall back to the canonical name if the version-specific
-        # behaviour differs.
-        mydufo.outputMap("dufomap_output", voxel_map=True)
+        mydufo.outputMap(cloud_acc, voxel_map=True, file_name=basename)
     except Exception as exc:
-        # An exception out of outputMap is almost always a DUFOMap
-        # API drift (renamed kwarg, changed return type, etc.). Surface
-        # that clearly rather than letting a raw RuntimeError escape, and
-        # sweep the staging dir so the next --force-less re-run starts
-        # clean.
+        # Anything out of the native binding here means an API shape
+        # change. Surface that clearly rather than letting a raw error
+        # escape.
         print(
             f"ERROR: DUFOMap raised during outputMap: {type(exc).__name__}: "
-            f"{exc}. Check the installed `dufomap` version against "
-            "scripts/m5r_run_dufomap_core.py's expected API "
-            "(`mydufo.outputMap(basename, voxel_map=True)`).",
+            f"{exc}. Check the installed `dufomap` version against the "
+            "expected API: outputMap(points: np.ndarray, voxel_map: bool, "
+            "file_name: str).",
             file=sys.stderr,
         )
-        shutil.rmtree(staging, ignore_errors=True)
         return 1
-    finally:
-        os.chdir(prev_cwd)
 
-    produced = None
-    # Cover both observed naming conventions across DUFOMap releases.
-    for candidate in ("dufomap_output.pcd", "dufomap_output_voxel_map.pcd"):
-        c = staging / candidate
-        if c.is_file():
-            produced = c
-            break
+    # Observed in dufomap 1.1.1: voxel_map=True appends "_voxel.pcd",
+    # voxel_map=False appends ".pcd". Try both so the script keeps
+    # working if the suffix convention shifts.
+    candidates = [
+        Path(basename + "_voxel.pcd"),
+        Path(basename + ".pcd"),
+    ]
+    produced = next((c for c in candidates if c.is_file()), None)
     if produced is None:
-        # Fall back to "anything that landed here".
-        leftovers = list(staging.glob("*.pcd"))
-        if not leftovers:
-            print(
-                f"ERROR: DUFOMap produced no PCD in {staging}. The "
-                "Python API may have a different output convention than "
-                "expected; inspect the directory manually.",
-                file=sys.stderr,
-            )
-            return 1
-        produced = leftovers[0]
-        print(f"WARNING: using unexpected output filename "
-              f"{produced.name}", file=sys.stderr)
+        print(
+            "ERROR: DUFOMap reported success but no output PCD was found "
+            f"at any of: {[str(c) for c in candidates]}. Check the "
+            "installed dufomap version.",
+            file=sys.stderr,
+        )
+        return 1
+    # Honour --output exactly. dufomap's file_name kwarg gets us close
+    # but doesn't let us pick the suffix; rename the produced file so
+    # the user sees what they asked for.
+    if str(produced) != str(output):
+        shutil.move(str(produced), str(output))
+        produced = output
 
-    shutil.move(str(produced), str(output))
-    # Best-effort: remove the staging dir if it's empty afterwards.
-    try:
-        staging.rmdir()
-    except OSError:
-        pass
-
-    print(f"\nStatic map written to {output}")
+    print(f"\nStatic map written to {produced}")
     return 0
 
 
