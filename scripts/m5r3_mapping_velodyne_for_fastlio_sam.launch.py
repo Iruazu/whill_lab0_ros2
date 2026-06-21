@@ -59,11 +59,19 @@ def _load_ros1_yaml_as_params(yaml_file_path):
 def generate_launch_description():
     yaml_params = _load_ros1_yaml_as_params(CONFIG_PATH)
 
-    # These overrides are copied from mapping_airy.launch.py verbatim.
-    # They are not redundant with the yaml: upstream FAST-LIO SAM reads
-    # some of them as launch-level params (separate from the lio_sam
-    # nested config). Keeping the same set keeps the apples-to-apples
-    # comparison with airy.
+    # These overrides are copied from mapping_airy.launch.py verbatim
+    # EXCEPT cube_side_length (see below). They are not redundant with
+    # the yaml: upstream FAST-LIO SAM reads some of them as launch-
+    # level params (separate from the lio_sam nested config).
+    #
+    # cube_side_length: dropped from upstream's 1000.0 to 200.0 because
+    # 1000³ / filter_size_map(0.5)³ = 8e9 > INT32_MAX overflows the
+    # PCL VoxelGrid index, which is the same "No Effective Points"
+    # stall whill_localization (M4-R) hit with the noetic FAST-LIO
+    # cube_side_length=1000 default. See docs/ja/m4-localization.md
+    # and the comment in src/whill_localization/config/velodyne_whill.
+    # yaml. 200 leaves ~6.4e7 cells (well within INT32_MAX) and is
+    # large enough for our 50 m outdoor loops.
     params = [
         {"sam_enable": True},
         {"feature_extract_enable": False},
@@ -71,7 +79,7 @@ def generate_launch_description():
         {"max_iteration": 3},
         {"filter_size_surf": 0.5},
         {"filter_size_map": 0.5},
-        {"cube_side_length": 1000.0},
+        {"cube_side_length": 200.0},
         {"runtime_pos_log_enable": False},
         yaml_params,
     ]

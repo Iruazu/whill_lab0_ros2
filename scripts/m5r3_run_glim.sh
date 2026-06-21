@@ -221,7 +221,12 @@ new_tli = (
 txt, n_tli = re.subn(r'"T_lidar_imu":\s*\[[^\]]*\]', new_tli, txt, count=1)
 txt, n_rf = re.subn(r'("ring_field":\s*)"[^"]*"', r'\1"ring"', txt, count=1)
 if n_tli != 1 or n_rf != 1:
-    sys.stderr.write(f"ERROR: config_sensors.json patch failed (T_lidar_imu={n_tli}, ring_field={n_rf})\n")
+    sys.stderr.write(
+        f"ERROR: config_sensors.json patch failed (T_lidar_imu={n_tli}, ring_field={n_rf}).\n"
+        f"  This usually means upstream GLIM changed the JSON shape of T_lidar_imu\n"
+        f"  or ring_field. Inspect {path} by hand; the regexes here assume a flat\n"
+        f"  float array for T_lidar_imu and a quoted string for ring_field.\n"
+    )
     sys.exit(1)
 with open(path, 'w') as f:
     f.write(txt)
