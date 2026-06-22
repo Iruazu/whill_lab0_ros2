@@ -21,15 +21,31 @@
         filter_size_map: 0.5
         cube_side_length: 200.0           # reduced from upstream 1000.0 because that causes "Leaf size is too small for the input dataset. Integer indices would overflow." in pcl::VoxelGrid::applyFilter (1000^3 / 0.5^3 voxels = 8e9 > INT32_MAX). 200^3 keeps the count well under int32. Visible symptom of the overflow is FAST-LIO dropping into a "No Effective Points!" loop with no pose updates.
         runtime_pos_log_enable: false
-        # Legacy M5-b path. M5R-5 (#47) renamed docs/m5-maps/ -> docs/maps/
-        # lab-legacy-m5b/ to align with the new `docs/maps/<site>/` registry
-        # (docs/maps/README.md). M5R-7 (#51) will re-aim this at the M5-R
-        # pipeline output (`docs/maps/<site>/static.pcd`). Kept pointed at
-        # the legacy path until then because FAST-LIO's pcd_save resolves
-        # this path at startup; dropping it now leaves the offline mapping
-        # replay (M5R-3 evaluator's only path-saving FAST-LIO setup) with
-        # nowhere to write a PCD.
-        map_file_path: "/home/systemlab/whill_lab0_ros2/docs/maps/lab-legacy-m5b/lab.pcd"
+        # Output path for FAST-LIO's /map_save service (= where pcl_wait_pub
+        # gets written when the service is called). Re-aimed by M5R-7
+        # (#51) at the docs/maps/<site>/ registry — concretely the
+        # `lab-loop` site as a sensible default, but any caller that
+        # wants a different site should override this parameter at
+        # launch (FAST-LIO resolves the path at startup, not per save).
+        #
+        # M5-R / M6-R note: this stays FAST-LIO-specific. The active
+        # M5-R map-building pipeline is GLIM + DUFOMap + occupancy
+        # converter (ADR-0003 / 0004 / Issue #50). The only remaining
+        # caller of this YAML is the M5R-3 evaluator's FAST-LIO SAM
+        # baseline run, which needs *some* writable path. Pointing at
+        # docs/maps/lab-loop/static.pcd means the file lands in the
+        # registry directory (gitignored per ADR-0005) ready to be
+        # promoted or discarded; pointing it at /tmp would dump it
+        # outside the repo and break audit traceability.
+        #
+        # Pre-#51 path was docs/maps/lab-legacy-m5b/lab.pcd. The
+        # legacy-m5b site still contains lab.pcd as a historical
+        # artifact; runtime consumers in that directory are nav_launch.py
+        # via map_server (lab.yaml + lab.pgm — lab.pcd itself is not
+        # loaded at runtime). The FAST-LIO save path was renamed off
+        # the legacy directory because new saves should land in the
+        # new registry layout, not overwrite the legacy snapshot.
+        map_file_path: "/home/systemlab/whill_lab0_ros2/docs/maps/lab-loop/static.pcd"
 
         common:
             lid_topic: "/velodyne_points"
