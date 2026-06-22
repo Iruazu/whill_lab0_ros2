@@ -4,10 +4,22 @@ Language: [日本語](m5r-pipeline.md) | [English](../en/m5r-pipeline.md)
 
 本書は M5-R (マップ作成) パイプライン全体の参照ドキュメント。本ファイルは
 Issue #49 で動的除去 (DUFOMap) section の skeleton として起こされ、
-Issue #51 (M5R-7 パイプライン統合) で全体に拡張される。
+Issue #50 で占有格子変換 section を追加、Issue #51 (M5R-7 パイプライン統合)
+で残る bag 取得 / SLAM 実行 / `docs/maps/<site>/` 配置などに拡張される予定。
 
-現時点でカバーする範囲は動的除去ステージのみ。bag 取得手順 / SLAM 実行 /
-占有格子変換 / `docs/maps/<site>/` 配置などは #51 で追記する。
+現時点でカバーする範囲: 動的除去ステージ (DUFOMap) と占有格子変換ステージ
+(`m5r_pcd_to_occupancy.py`)。bag 取得手順 / SLAM 実行 /
+`metadata.yaml` 自動生成 / 最終配置などは #51 で追記する。
+
+## E2E パイプライン (現状)
+
+```
+bag (M4-R bringup) -> GLIM (ADR-0003) -> DUFOMap (ADR-0004) -> 占有格子変換 (#50)
+                       |                   |                     |
+                       v                   v                     v
+                glim-out/NNNNNN/    static.pcd            occupancy.pgm
+                                                          occupancy.yaml
+```
 
 ## 動的物体除去 (DUFOMap)
 
@@ -131,12 +143,92 @@ scripts/m5r_dufomap_diff.py --before <raw>.pcd --after <static>.pcd \
   明示露出されていない。必要なら upstream `assets/config.toml` を編集して
   `pip install --force-reinstall .` し直す (本パイプラインでは現状未対応)
 
+## 占有格子変換 (Nav2 互換)
+
+DUFOMap が出力した `static.pcd` を Nav2 `map_server` がそのまま読める
+`occupancy.pgm` + `occupancy.yaml` に変換する。`scripts/m5r_pcd_to_occupancy.py`
+が担当 (Issue #50 / M5R-6)。
+
+旧 `scripts/pcd_to_occupancy_grid.py` (M5-b 時代) はそのまま残してある
+(`docs/maps/lab-legacy-m5b/` を `nav_launch.py` がまだ参照しているため)。
+新規スクリプトは別ファイルで作っており、旧スクリプトとは独立に動く。
+両者の差分の詳細は `scripts/m5r_pcd_to_occupancy.py` モジュール docstring
+参照。要旨:
+
+- XY 範囲は入力 PCD の bbox から自動算出 (旧スクリプトは ±20 m ハードコード)
+- ray-cast の起点は占有点群の重心 (旧スクリプトは world (0, 0) 固定)
+- 出力 YAML は `docs/maps/_template/occupancy.yaml` と同形 (`free_thresh: 0.196`、
+  Nav2 公式 default)
+- 旧スクリプトの outlier filter / clear-radius は廃止 (前者は DUFOMap が
+  代替、後者は「椅子が world 原点から始まる」前提が消えたため不要)
+
+### 使い方
+
+```bash
+scripts/m5r_pcd_to_occupancy.py <input.pcd> <output-dir> [options]
+```
+
+例 (#49 で作った static.pcd を変換):
+
+```bash
+scripts/m5r_pcd_to_occupancy.py \
+  /tmp/m5r49_dufomap/static.pcd \
+  docs/maps/lab-loop \
+  --force
+# -> docs/maps/lab-loop/occupancy.pgm
+# -> docs/maps/lab-loop/occupancy.yaml
+```
+
+冪等性: 既存 `occupancy.pgm` / `occupancy.yaml` への上書きはデフォルト
+abort (`--force` 必須)。他の M5-R スクリプトと同じ慣習。
+
+### パラメータ
+
+| パラメータ | CLI フラグ | 既定値 | 説明 |
+|---|---|---|---|
+| resolution | `--resolution` | 0.05 m | セルサイズ。`_template/occupancy.yaml` と同値 |
+| Z slice 下限 | `--z-min` | 0.1 m | これ未満を捨てる。床面ノイズ・坂の除外 |
+| Z slice 上限 | `--z-max` | 1.5 m | これ超を捨てる。鴨居・看板・天井等の除外 |
+| ray-cast anchor | `--anchor-x`, `--anchor-y` | auto | 省略時は占有点群の XY 重心。U 字経路では明示指定推奨 |
+| ray-cast 無効化 | `--no-raycast` | off | 占有点のみ stamp、それ以外 unknown。debug 用 |
+| occupied_thresh | `--occupied-thresh` | 0.65 | YAML 出力値 |
+| free_thresh | `--free-thresh` | 0.196 | YAML 出力値 (Nav2 公式 default) |
+| 余白 | `--padding` | 2.0 m | bbox 外側に追加する余裕。端の障害物が見切れないように |
+| 上書き許可 | `--force` | off | 既存 pgm/yaml の上書きを許可 |
+
+### 出力
+
+- `occupancy.pgm`: P5 binary、1 byte/cell、`P5\n# m5r_pcd_to_occupancy.py output\n<W> <H>\n255\n` ヘッダ + ピクセルデータ
+- `occupancy.yaml`: `docs/maps/_template/occupancy.yaml` と同形フィールド
+  (`image` / `resolution` / `origin` / `negate` / `occupied_thresh` /
+  `free_thresh`)。先頭に入力 PCD 名を残す生成コメント 1 行
+
+ピクセル値規約 (ROS `map_server`):
+
+| 値 | 意味 |
+|---|---|
+| 0 | OCCUPIED (黒) |
+| 254 | FREE |
+| 205 | UNKNOWN |
+
+### 既知の懸念点
+
+- anchor 自動算出は **占有点群の重心** を使うため、U 字経路や L 字経路では
+  centroid が navigable な領域外 (壁の内側等) に落ちることがある。その場合は
+  `--anchor-x` / `--anchor-y` で明示指定する
+- bbox が極端に細長い bag (長い直線走行) ではグリッドメモリが膨らむ。
+  100M セル超で abort する safety を入れてあるので、引っかかった場合は
+  `--resolution` を粗くするか PCD を pre-crop する
+- ray-cast は **anchor 1 点** からの近似で、per-scan ray-cast (UFO/octomap が
+  正攻法) は実装していない。オフライン処理で静的 PCD を入力にする本パイプラインの
+  範囲では十分。per-scan が必要になったら別 Issue で keyframe 姿勢を本ステージまで
+  運ぶことになる
+
 ## 後続 (Issue #51 で記述予定)
 
 - bag 取得手順 (M4-R bringup launch を立ててから何を録るか)
 - SLAM 実行コマンド (採用 SLAM = GLIM の per-bag config パッチ手順)
-- 占有格子変換コマンド (M5R-6 / #50 の `scripts/m5r_pcd_to_occupancy.py`)
 - `metadata.yaml` 記入要領 (採用 SLAM / DUFOMap パラメータ / 取得日 /
-  経路 / 天候)
+  経路 / 天候、commit SHA 自動埋め)
 - 最終成果物配置 (`docs/maps/<site>/...`)
 - ADR-0003 を `accepted` 化するユーザー承認手順
