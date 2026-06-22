@@ -4,12 +4,25 @@ Language: [日本語](../ja/m5r-pipeline.md) | [English](m5r-pipeline.md)
 
 This is the reference doc for the M5-R map-building pipeline. The
 file was created in Issue #49 as a skeleton covering the
-dynamic-removal (DUFOMap) section; Issue #51 (M5R-7, pipeline
-integration) will expand it to the full pipeline.
+dynamic-removal (DUFOMap) section; Issue #50 added the
+occupancy-grid conversion section; Issue #51 (M5R-7, pipeline
+integration) will expand it to the remaining bag-capture / SLAM-run /
+`docs/maps/<site>/` placement steps.
 
-Current coverage: dynamic-removal stage only. Bag capture, SLAM
-execution, occupancy-grid conversion, and `docs/maps/<site>/`
+Current coverage: dynamic-removal stage (DUFOMap) and
+occupancy-grid conversion stage (`m5r_pcd_to_occupancy.py`). Bag
+capture, SLAM execution, `metadata.yaml` auto-generation, and final
 placement are added in #51.
+
+## End-to-end pipeline (current)
+
+```
+bag (M4-R bringup) -> GLIM (ADR-0003) -> DUFOMap (ADR-0004) -> occupancy grid (#50)
+                       |                   |                     |
+                       v                   v                     v
+                glim-out/NNNNNN/    static.pcd            occupancy.pgm
+                                                          occupancy.yaml
+```
 
 ## Dynamic-object removal (DUFOMap)
 
@@ -149,8 +162,6 @@ scripts/m5r_dufomap_diff.py --before <raw>.pcd --after <static>.pcd \
   launch active).
 - SLAM run commands (per-bag config patch for the adopted SLAM =
   GLIM).
-- Occupancy-grid conversion command (M5R-6 / #50,
-  `scripts/m5r_pcd_to_occupancy.py`).
 - How to fill in `metadata.yaml` (adopted SLAM / DUFOMap parameters
   / acquisition date / route / weather).
 - Final artifact placement (`docs/maps/<site>/...`).
