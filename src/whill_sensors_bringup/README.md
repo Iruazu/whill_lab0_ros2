@@ -70,11 +70,12 @@ passthrough for backward compatibility and debugging.
   rear-axle midpoint projected to the ground plane; the derivation and
   the numeric values are in
   [`../../docs/ja/m3-extrinsics-from-noetic.md`](../../docs/ja/m3-extrinsics-from-noetic.md).
-  Two refinements still pending:
-  - `base_link → imu_link` z (currently 0.50 m, ±5 cm) — pin down by
-    tape-measure once M4R-3 EKF flags asymmetry in straight-line tests.
+  Status:
+  - `base_link → imu_link` — measured (Issue #61, 2026-06-24) to
+    (0.38, -0.03, 0.47); re-evaluation conditions are in
+    `m3-extrinsics-from-noetic.md` "再評価のタイミング".
   - `base_link → camera_link` rotation (currently RPY=0) — needs a
-    target-based recalibration in M5-R; today's value is good enough
+    target-based recalibration in M6-R; today's value is good enough
     for `view_frames` and rough RViz overlay only.
 
 ## Launch arguments
