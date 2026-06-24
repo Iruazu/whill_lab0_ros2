@@ -60,12 +60,21 @@ GLIM ~10 分 (GPU、Iridescence 起動) + DUFOMap ~3 秒 + 占有格子変換 ~1
   100 Hz で publish 中 (`ros2 topic hz /imu/data_rep145` で確認)
 - 走行ルート: ループ走行が望ましい (始終点同一壁面で SLAM ループクロージャ
   精度を測れる)。M5R-3 の検証 bag は 50 m / 200 s 規模、ADR-0003 §評価条件参照
+- **ランタイム環境**: `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` および
+  CPU governor=`performance` であること。両者が揃っていないと
+  `/velodyne_points` が 1 Hz 前後に詰まる現象が再現する
+  (詳細: `m5r-rmw-cyclonedds.md`)
 
 ### 録画コマンド
 
 ```bash
 source /opt/ros/humble/setup.bash
 source install/setup.bash
+
+# ランタイム環境の sanity check (録画前に必ず)
+echo $RMW_IMPLEMENTATION                                  # rmw_cyclonedds_cpp
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor # performance
+# powersave なら sudo cpupower frequency-set -g performance
 
 # 1. bringup (sensors + driver + EKF)
 ros2 launch whill_localization odom_bringup_launch.py
@@ -115,6 +124,10 @@ ros2 bag info docs/m5r-bench-data/<run-id>/bag
 
 `/imu/data_rep145` の rate が 100 Hz を大きく下回る場合は録画中に bringup
 が CPU 飽和した可能性。録画ターミナル以外で RViz や rqt を併走させない。
+
+`/velodyne_points` の count が走行秒 × 10 の半分以下なら、FastDDS の
+大メッセージ配送詰まり (`m5r-rmw-cyclonedds.md`) を疑う。`RMW` と
+governor を確認して再録画する。
 
 ## SLAM 実行 (ステップ 2): GLIM
 

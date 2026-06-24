@@ -48,6 +48,25 @@
 - **package.xml の exec_depend を必ず正確に**書く。ament_cmake は `buildtool_depend` のみ
 - **launch ファイル**: `IncludeLaunchDescription` で wrap される可能性を考慮、`LaunchConfiguration` をパス resolve に使わず launch description 生成時にハードコードする (既存の `fast_lio_launch.py` と `nav_launch.py` のコメント参照)
 
+## ランタイム環境の前提 (本機 = Alienware x15 R2)
+
+bag 録画 / GLIM オフライン処理 / M6-R 検証で launch する前に、各ターミナルで
+以下を確認すること。1 つでも食い違うと再現性が崩れる (2026-06-24 に
+`/velodyne_points` 1 Hz 病で実証済。詳細: `docs/ja/m5r-rmw-cyclonedds.md`):
+
+```bash
+echo $RMW_IMPLEMENTATION                                  # rmw_cyclonedds_cpp
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor # performance
+```
+
+- **RMW**: 既定の FastDDS は `velodyne_msgs/VelodyneScan` 等の大メッセージで
+  間欠的に詰まる。`~/.bashrc` に `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` を
+  入れて永続化する (Claude は `~/.bashrc` を編集しない。ユーザー手動)
+- **CPU governor**: 再起動で `powersave` に戻るため、録画/SLAM 前に毎セッション
+  `sudo cpupower frequency-set -g performance` を実行する
+- 録画後は `ros2 bag info <bag-dir>` で `/velodyne_points` count ≈ 走行秒 × 10、
+  `/imu/data_rep145` count ≈ 走行秒 × 100 を確認。半分以下なら録画破棄して再録
+
 ## ファイル所在の規約
 
 | 種類 | 場所 |
