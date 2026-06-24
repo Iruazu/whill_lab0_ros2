@@ -91,6 +91,12 @@ REP-145 規約の `/imu/data_rep145` の方を録る。`/odometry/filtered` 等�
 EKF 出力は M4-R 検証用で、GLIM は IMU + LiDAR しか使わないため録らない
 (録ると bag 容量が嵩む)。
 
+**注意: `--compression-mode file --compression-format zstd` は使わない** —
+GLIM の `glim_rosbag` は rosbag2 の compression plugin を引いていないため、
+zstd 圧縮された `bag_0.db3.zstd` を sqlite3 として直接開こうとして失敗する
+("file is not a database" エラー)。容量を抑えたければ録画後に
+`ros2 bag convert` で別ディレクトリに書き出すか、外部圧縮で archive する。
+
 `docs/m5r-bench-data/` 配下の `<run-id>` ディレクトリ命名規約と gitignore
 規約は [`../../m5r-bench-data/README.md`](../../m5r-bench-data/README.md)
 を正本とする。

@@ -92,9 +92,15 @@ check_cuda_124() {
     echo "ERROR: ${NVCC} not found. Re-run scripts/install_cuda.sh first." >&2
     exit 1
   fi
-  if ! "${NVCC}" --version | grep -q 'release 12.4'; then
+  # Capture before grep -q to avoid the same SIGPIPE race that bit
+  # check_glim_installed (see comment there). nvcc output is ~5 lines so
+  # the race rarely fires, but keep the pattern consistent across
+  # preflight checks.
+  local nvcc_ver
+  nvcc_ver="$("${NVCC}" --version)"
+  if ! echo "${nvcc_ver}" | grep -q 'release 12.4'; then
     echo "ERROR: ${NVCC} did not report release 12.4." >&2
-    "${NVCC}" --version >&2 || true
+    echo "${nvcc_ver}" >&2
     exit 1
   fi
 }
@@ -111,8 +117,54 @@ check_glim_installed() {
   # shellcheck disable=SC1091
   source "${REPO_ROOT}/install/setup.bash"
   set -u
-  if ! ros2 pkg list 2>/dev/null | grep -q '^glim_ros$'; then
-    echo "ERROR: glim_ros not visible to ros2 pkg list. Re-run scripts/install_glim.sh." >&2
+  # Capture ros2 pkg list output to a variable BEFORE grepping so the
+  # SIGPIPE race below does not bite us:
+  #   `ros2 pkg list | grep -q '^glim_ros$'` matches glim_ros early in the
+  #   alphabetically-ordered output (the 'g' band), and grep -q closes
+  #   stdin the moment it matches. ros2 still has the rest of the package
+  #   list to write, gets SIGPIPE, exits 141. Under `set -o pipefail` the
+  #   pipe's exit becomes 141 even though grep itself returned 0. The
+  #   `if !` then reads "non-zero = failure" and enters the error branch.
+  #   Symptom: this preflight intermittently fails on a healthy install,
+  #   which is what tripped the 2026-06-24 verification session.
+  # Storing the full output in a variable lets ros2 finish cleanly.
+  local pkg_list
+  pkg_list=$(ros2 pkg list 2>/dev/null)
+  if ! echo "${pkg_list}" | grep -q '^glim_ros$'; then
+    # Print enough state to diagnose the common causes: (a) install/glim_ros
+    # missing on disk (real broken install) vs (b) AMENT_PREFIX_PATH not
+    # extended by the just-sourced setup.bash (transient shell state).
+    {
+      echo "ERROR: glim_ros not visible to ros2 pkg list."
+      echo ""
+      echo "Diagnostic:"
+      if [[ -d "${REPO_ROOT}/install/glim_ros" ]]; then
+        echo "  install/glim_ros/ : EXISTS"
+      else
+        echo "  install/glim_ros/ : MISSING — run scripts/install_glim.sh"
+      fi
+      # Same SIGPIPE-avoidance pattern as the main check: store split
+      # paths in a variable, grep that. Otherwise a long AMENT_PREFIX_PATH
+      # could abort the diagnostic mid-output under `set -e`.
+      local ament_paths
+      ament_paths="$(echo "${AMENT_PREFIX_PATH:-}" | tr ':' '\n')"
+      if echo "${ament_paths}" | grep -q '/glim_ros$'; then
+        echo "  AMENT_PREFIX_PATH : contains glim_ros (env looks correct)"
+        echo "  ros2 pkg list head:"
+        # Use the captured pkg_list (same SIGPIPE-avoidance reason as
+        # above); using `ros2 pkg list | head -3` would re-introduce the
+        # bug.
+        echo "${pkg_list}" | head -3 | sed 's/^/    /'
+        echo ""
+        echo "  This is unusual — re-source manually in this shell:"
+        echo "    source /opt/ros/humble/setup.bash"
+        echo "    source ${REPO_ROOT}/install/setup.bash"
+      else
+        echo "  AMENT_PREFIX_PATH : MISSING glim_ros — install/setup.bash"
+        echo "                      did not extend the path. Try opening a"
+        echo "                      fresh shell and sourcing manually."
+      fi
+    } >&2
     exit 1
   fi
 }
@@ -183,7 +235,19 @@ select_glim_config() {
     cp -r "${share}" "${local_cfg}"
     # Patch topics in config_ros.json with sed (the upstream JSON has
     # // comments, so a JSON parser like jq won't work directly).
-    sed -i 's|^\(\s*"imu_topic":\s*\)"[^"]*"|\1"/imu/data_raw"|' \
+    # Auto-detect which IMU topic the bag carries. Bags recorded after
+    # Issue #56 (whill_sensors_bringup/imu_sign_corrector) publish
+    # /imu/data_rep145 in REP-145 specific-force convention; older bags
+    # (or the m5r3_fix_imu_bag.py rewrite) carry /imu/data_raw.
+    if grep -q '/imu/data_rep145' "${BAG_DIR}/metadata.yaml"; then
+      imu_topic='/imu/data_rep145'
+    elif grep -q '/imu/data_raw' "${BAG_DIR}/metadata.yaml"; then
+      imu_topic='/imu/data_raw'
+    else
+      echo "ERROR: bag has neither /imu/data_rep145 nor /imu/data_raw" >&2
+      exit 1
+    fi
+    sed -i "s|^\(\s*\"imu_topic\":\s*\)\"[^\"]*\"|\1\"${imu_topic}\"|" \
       "${local_cfg}/config_ros.json"
     sed -i 's|^\(\s*"points_topic":\s*\)"[^"]*"|\1"/velodyne_points"|' \
       "${local_cfg}/config_ros.json"
@@ -233,7 +297,7 @@ with open(path, 'w') as f:
 PY
     GLIM_CONFIG="${local_cfg}/"
     echo "NOTE: bag carries /velodyne_points; using per-run config copy at" >&2
-    echo "      ${local_cfg}/ with topics rewritten (/imu/data_raw + " >&2
+    echo "      ${local_cfg}/ with topics rewritten (${imu_topic} + " >&2
     echo "      /velodyne_points) and sensor config patched (T_lidar_imu" >&2
     echo "      from M4R-2 measured extrinsic, ring_field=ring for VLP-16)." >&2
   else
@@ -327,18 +391,26 @@ EOF
   start_vram_logger
   trap 'stop_vram_logger' EXIT
 
+  # Run the ros2 invocation as its own pipe stage so PIPESTATUS[0] reflects
+  # GLIM's exit code. Wrapping start/end echoes + ros2 in a brace group
+  # would make the brace group's exit be the trailing echo (always 0),
+  # which silently overwrites a non-zero GLIM exit in manifest.yaml — and
+  # ADR-0003 would then ingest a "successful" run that actually died.
+  echo "==> GLIM start ${started_at}" | tee "${OUT_DIR}/run.log"
   set +e
-  {
-    echo "==> GLIM start ${started_at}"
-    /usr/bin/time -p ros2 run glim_ros glim_rosbag \
-      "${BAG_DIR}" \
-      --ros-args \
-        -p config_path:="${GLIM_CONFIG}" \
-        -p dump_path:="${OUT_DIR}/"
-    echo "==> GLIM end $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  } 2>&1 | tee "${OUT_DIR}/run.log"
+  # auto_quit:=true forces glim_rosbag to dump + exit at end of bag
+  # rather than entering rclcpp::spin() to wait for SIGINT. Without it
+  # the wrapper hangs (and Ctrl+C mid-optimisation loses traj_lidar.txt
+  # — see Issue #63 and the dead 2026-06-24 run that triggered this fix).
+  /usr/bin/time -p ros2 run glim_ros glim_rosbag \
+    "${BAG_DIR}" \
+    --ros-args \
+      -p config_path:="${GLIM_CONFIG}" \
+      -p dump_path:="${OUT_DIR}/" \
+      -p auto_quit:=true 2>&1 | tee -a "${OUT_DIR}/run.log"
   local rc=${PIPESTATUS[0]}
   set -e
+  echo "==> GLIM end $(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee -a "${OUT_DIR}/run.log"
 
   stop_vram_logger
   trap - EXIT

@@ -93,6 +93,13 @@ topic is `/imu/data_rep145`. EKF outputs like `/odometry/filtered` are
 M4-R verification artifacts; GLIM only uses IMU + LiDAR so we skip
 them to keep bag size down.
 
+**WARNING: do not use `--compression-mode file --compression-format zstd`** —
+GLIM's `glim_rosbag` does not link the rosbag2 compression plugin, so a
+zstd-compressed `bag_0.db3.zstd` triggers "file is not a database" when
+GLIM tries to open it as plain sqlite3. If you need to save disk space,
+use `ros2 bag convert` to a separate directory after the fact, or
+archive externally.
+
 Naming and gitignore policy for `docs/m5r-bench-data/<run-id>/` lives
 in [`../../m5r-bench-data/README.md`](../../m5r-bench-data/README.md).
 
