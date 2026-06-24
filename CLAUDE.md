@@ -89,7 +89,7 @@
 - **P2: 初期位置合わせ機構がない** (起動位置 = camera_init 前提)。M6-R の initial pose 運用で解消予定
 - **P3: 発散を検知も回復もしない** (歩行者横断で破綻しても TF は出続け Nav2 は走行継続。run3 実測)。M6-R のフェイルセーフノードで遮断する
 - **P4 (解消済、2026-06-20, M4-R)**: robot_localization EKF (Issue #37) が `odom -> base_link` を 30 Hz publish。`/whill/odom` (Issue #35) と `/imu/data_raw` を fuse、`tf_bridge_launch.py` の `map -> camera_init` identity は M4R-4 / Issue #38 で物理削除済。単一コマンドの統合 bringup は `ros2 launch whill_localization odom_bringup_launch.py`。`map -> odom` の補正は M6-R の scan-to-map localizer 担当に分離した。詳細は `docs/ja/plans/2026-06-11-platform-pivot.md` §3 と `src/whill_localization/README.md`
-- **P5: 地図品質の問題が安全機能を連鎖停止** (ゴースト障害物 → `use_collision_detection: false`、QoS 不一致 → obstacle layer なし)。M5-R のマップパイプライン + M6-R の obstacle layer 復活で解消予定
+- **P5: 地図品質の問題が安全機能を連鎖停止** (ゴースト障害物 → `use_collision_detection: false`、QoS 不一致 → obstacle layer なし)。**地図側 (M5-R 担当部分) は解消済 (2026-06-22)**: bag → GLIM (ADR-0003) → DUFOMap (ADR-0004) → 占有格子 (#50) → `docs/maps/<site>/` 規約 (ADR-0005) の E2E パイプラインが整備済 (`docs/ja/m5r-pipeline.md` 参照)。**残り (M6-R 担当)**: obstacle layer 復活 / collision detection 復帰 / per-scan ray-cast 化等の Nav2 統合側
 
 旧 M5-d (goal-following) / M5-e (tuning) は本方針下で**凍結**。`tf_bridge_launch.py` の identity 構成を前提とした新機能追加と、FAST-LIO のランタイム localizer 強化は禁止 (本文書 5 章)。
 
