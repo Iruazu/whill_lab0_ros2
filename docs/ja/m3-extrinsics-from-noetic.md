@@ -72,22 +72,32 @@ M4R-2 (Issue #36) で `whill_sensors_bringup/launch/static_tf_launch.py` の 3 �
 
 | 親 → 子 | 並進 [m] | 回転 (RPY rad) | 由来 |
 |---------|---------|---------------|------|
-| `base_link → imu_link` | (0.20, 0.00, 0.50) | (0, 0, 0) | **仮置き** (簡易見積もり、±5 cm) |
-| `base_link → velodyne` | (0.304136, 0.411548, 0.823704) | (-0.035342, +0.156983, -0.005527) | **計算** (上記 imu + noetic 引き継ぎ `extrinsic_T`/`extrinsic_R`) |
-| `base_link → camera_link` | (0.36, 0.412, 0.82) | (0, 0, 0) | **仮置き** (M5-R で再校正) |
+| `base_link → imu_link` | (0.38, -0.03, 0.47) | (0, 0, 0) | **実測** (2026-06-24, Issue #61) |
+| `base_link → velodyne` | (0.484136, 0.381548, 0.793704) | (-0.035342, +0.156983, -0.005527) | **計算** (上記 imu + noetic 引き継ぎ `extrinsic_T`/`extrinsic_R`) |
+| `base_link → camera_link` | (0.54, 0.382, 0.79) | (0, 0, 0) | **仮置き** (M6-R で target-based 校正)。Issue #61 で LiDAR/IMU の共締めユニットが平行移動したため同じ delta だけスライド済 |
 
 ### base_link → imu_link
 
 | 項目 | 値 / 根拠 |
 |------|----------|
-| 何の値か | IMU (RT 9 軸 USB IMU) の取付位置を `base_link` 基準で表したもの |
-| 由来 | 推定: 座面クッション下、椅子の左右中央付近 |
-| x | 0.20 m — URDF seat box 中央が `base_floor` 系で x = -0.10。本 Issue のナビ用 `base_link` は後輪車軸中点であり、後輪車軸は URDF 上 `base_floor x = -0.3` にあるため、ナビ `base_link` 基準で座面中央は x = +0.20 |
-| y | 0.00 m — 左右中央 |
-| z | 0.50 m — 標準的車椅子座面高 (0.45-0.55 m) からクッション下を想定 |
-| 不確実性 | ±5 cm 程度。M4R-3 EKF のバイアス推定で吸収可能な範囲 |
-| 姿勢 | (0, 0, 0)。IMU ケースを水平にマウント済の前提 (REP-103 の x = 前, y = 左, z = 上 と一致) |
-| 再評価のタイミング | M4R-3 EKF を載せた時点で `/odometry/filtered` が直進テストで横滑り成分を持つようなら、目視・メジャー実測で z をピン留めする |
+| 何の値か | IMU (RT 9 軸 USB IMU = MPU-9250 + LPC1343F USB) の取付位置を `base_link` 基準で表したもの |
+| 由来 | **実測** (Issue #61、2026-06-24)。IMU 本体は座面クッション下に水平マウント |
+| x | **+0.38 m** — 後輪車軸 (左右タイヤ中心を結ぶ床上の直線) から前方 38 cm |
+| y | **-0.03 m** — 車体中心から右 3 cm |
+| z | **+0.47 m** — 地面から 47 cm。後輪ハブ高 17 cm (= タイヤ半径、WHILL CR2 後輪 ~34 cm 直径と整合) + ハブから IMU まで鉛直 30 cm |
+| 不確実性 | 実測の手作業精度 (±1〜2 cm)。M4R-2 placeholder (±5 cm) より精度向上 |
+| 姿勢 | (0, 0, 0)。IMU ケースの x 軸が車椅子前進方向、z 軸が上を向くマウント (REP-103 と一致)、目視確認済 (Issue #61) |
+| 再評価のタイミング | (a) WHILL の物理改造 (シート交換、IMU マウント移設) (b) GLIM の「IMU prediction is not good」警告が解消しない場合の LiDAR↔IMU 精密校正 (kalibr 等。本値ではなく noetic 由来の `extrinsic_T`/`extrinsic_R` を再校正することになる) |
+
+### M4R-2 placeholder からの変更 (Issue #61)
+
+| 軸 | placeholder (M4R-2) | 実測 (M5-R prep) | 差分 |
+|---|---|---|---|
+| x | 0.20 m | **0.38 m** | +0.18 m |
+| y | 0.00 m | **-0.03 m** | -0.03 m |
+| z | 0.50 m | **0.47 m** | -0.03 m |
+
+x の +18 cm はかなり大きく、M4R-2 で「±5 cm 程度の不確実性」と見積もった範囲を超えていた。本番マップ録画 (M5-R 完了直後) の前に実測値で置換することで、SLAM の IMU lever arm 計算と Nav2 footprint の精度を改善する。
 
 ### base_link → velodyne
 
@@ -98,14 +108,15 @@ M4R-2 (Issue #36) で `whill_sensors_bringup/launch/static_tf_launch.py` の 3 �
 ```
 base_link → velodyne (translation)
   = base_link → imu_link (translation) + extrinsic_T
-  = (0.20, 0.00, 0.50) + (0.104136, 0.411548, 0.323704)
-  = (0.304136, 0.411548, 0.823704) [m]
+  = (0.38, -0.03, 0.47) + (0.104136, 0.411548, 0.323704)
+  = (0.484136, 0.381548, 0.793704) [m]
 ```
 
-物理解釈:
-- LiDAR は椅子の左 (+y, +0.412 m。`session-2026-05-08.md` のチャット確認)
+物理解釈 (Issue #61 後):
+- LiDAR は椅子の左 (+y, +0.382 m = IMU の左 0.412 m から車体中心の右 0.03 m を引いた値)
 - LiDAR は IMU から上 (+z, +0.324 m。`extrinsic_T` は本文冒頭の通り「IMU フレームで表した LiDAR 原点」であり、IMU フレームは REP-103 で +z=up を採用する。したがって `extrinsic_T[2] = +0.324 > 0` は LiDAR が IMU の +z 方向 = 上方にあることを直接意味する。`session-2026-05-08.md:26` の「~30 cm 下」表記は符号を見落とした誤記、上方が正しい (= 座面上のセンサポール先端))
-- LiDAR はわずかに前方 (+x, +0.104 m)
+- LiDAR は IMU からわずかに前方 (+x, +0.104 m)
+- Issue #61 で IMU が再測定により placeholder から (+0.18, -0.03, -0.03) m 動いたため、LiDAR も共締めの仮定で同じ delta だけスライド (相対位置 `extrinsic_T` は変えない)
 
 **回転**: noetic `extrinsic_R` (3×3, LiDAR → IMU = `imu_R_lidar`) を `R = Rz(yaw) · Ry(pitch) · Rx(roll)` の固定軸表現に分解する。一般式:
 
@@ -152,10 +163,10 @@ IMU と `base_link` が axis-aligned 前提のため、`imu_R_lidar` をその�
 | 項目 | 値 / 根拠 |
 |------|----------|
 | 何の値か | RealSense D435 の取付位置を `base_link` 基準で表したもの |
-| 由来 | **仮置き** — D435 は LiDAR にリジッドに共締めされている (`static_tf_launch.py` 旧コメント、`whill_sensors_bringup/README.md` 参照)。M4R-2 は「ゼロでない概算で M4R-3 EKF 配線を通す」段階にとどめ、本格的な extrinsic 再キャリブは M5-R に送る |
-| x | 0.36 m — LiDAR (x=0.304) より +0.05 m 程度前方 (D435 は前向き) |
-| y | 0.412 m — LiDAR と同じ左寄り (共締めのため) |
-| z | 0.82 m — LiDAR (z=0.824) と同等 |
+| 由来 | **仮置き** — D435 は LiDAR にリジッドに共締めされている (`static_tf_launch.py` 旧コメント、`whill_sensors_bringup/README.md` 参照)。M4R-2 は「ゼロでない概算で M4R-3 EKF 配線を通す」段階にとどめ、本格的な extrinsic 再キャリブは M6-R で行う (旧 M5-R 予定からスライド) |
+| x | 0.54 m — LiDAR (x=0.484) より +0.05 m 程度前方 (D435 は前向き)。Issue #61 で +0.18 m スライド |
+| y | 0.382 m — LiDAR と同じ左寄り (共締めのため)。Issue #61 で -0.03 m スライド |
+| z | 0.79 m — LiDAR (z=0.794) と同等。Issue #61 で -0.03 m スライド |
 | 姿勢 | (0, 0, 0) — 簡易化。実機ではカメラ筐体と LiDAR 筐体の取り付け角に数度のずれがある可能性が高いが、本値は visualization 用途と Nav2 footprint 計算の概算に十分 |
 | 再校正のタイミング | M5-R で chessboard / AprilTag による target-based extrinsic キャリブを実施。それまでは本値で `view_frames` と RViz 表示が成立すれば良い |
 
