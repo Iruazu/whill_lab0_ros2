@@ -1,0 +1,98 @@
+# M5-R bench data — outdoor driving run (2本目 / GLIM 優先対象)
+# 構成は docs/ja/plans/2026-06-21-m5r-execution.md §0-§12 を踏襲
+# 1本目 2026-07-07-campus-loop に対する対照データ (半距離・速度固定・停止なし)
+
+run:
+  id: 2026-07-07-campus-half-v3
+  recorded_at: "2026-07-07T19:30:40+09:00"   # bag start (JST)
+  ended_at:    "2026-07-07T19:38:26+09:00"   # bag end   (JST)
+  operator: systemlab
+  host: systemlab-Alienware-x15-R2
+  purpose: >
+    1本目 (campus-loop) が後半加速 + 非計画停止で外乱多めだったため、
+    速度固定・短距離の対照データを取得。ズレが速度起因か環境起因かの
+    切り分け基準線。M6-R では本 bag を GLIM 地図生成の第一候補とする。
+  compare_with: 2026-07-07-campus-loop
+
+bag:
+  path: docs/m5r-bench-data/2026-07-07-campus-half-v3/bag
+  file: bag_0.db3
+  storage_id: sqlite3
+  size_gib: 2.8
+  duration_s: 466.26
+  messages_total: 51220
+  topics:
+    - name: /velodyne_points
+      type: sensor_msgs/msg/PointCloud2
+      count: 4590
+      approx_hz: 9.84       # VLP-16 実効 9.921 Hz にほぼ理論値
+    - name: /imu/data_rep145
+      type: sensor_msgs/msg/Imu
+      count: 46626
+      approx_hz: 100.0      # 目標 100 Hz 到達
+    - name: /tf_static
+      type: tf2_msgs/msg/TFMessage
+      count: 4
+
+sensors:
+  lidar:
+    model: Velodyne VLP-16
+    rpm: 600
+    ip: 192.168.1.201
+    udp_port: 2368
+  imu:
+    driver: rt_usb_9axisimu_driver
+    data_format: ascii
+    note: >
+      /imu/data_raw を imu_sign_corrector (PR #56) で REP-145 化して
+      /imu/data_rep145 に再 publish (linear_acceleration 符号反転)。
+  camera:
+    model: Intel RealSense D435
+    note: 収録トピックには含めていない。
+
+extrinsics_base_link:   # 1本目と同一 (同セッション、PR #61 の測定値)
+  velodyne:
+    translation: [0.484136, 0.381548, 0.793704]
+    rotation_xyzw: [-0.017399, 0.078447, -0.001369, 0.996765]
+  camera_link:
+    translation: [0.540000, 0.382000, 0.790000]
+    rotation_xyzw: [0.0, 0.0, 0.0, 1.0]   # M6R-6 で target-based 再校正予定
+  imu_link:
+    translation: [0.380000, -0.030000, 0.470000]
+    rotation_xyzw: [0.0, 0.0, 0.0, 1.0]
+
+route:
+  area: キャンパス外周 (7号館を起点とする周回)
+  start_point: 7号館前
+  direction: 反時計回り
+  shape: 外周周回 (1本目の約半分の距離)
+  distance_vs_run1: 約 0.57 倍 (duration 比 466 / 821)
+  loop_closure: 開始点・終了点をある程度一致 (参考値扱い、厳密一致ではない)
+  demo_coverage: デモ想定領域のうち約 30% 区間を 1 周
+
+driving_protocol:
+  initial_static_s: 30                    # 録画開始後に約 30 秒静止 (IMU bias 初期化)
+  control: 有人ジョイスティック
+  speed_profile: WHILL 速度モード 3 で終始固定 (加速なし)
+  in_place_rotation: なし
+  stops: なし (非計画停止なし)
+
+environment:
+  weather: 夜間 (19:30 頃)。1本目 (19:08) より空が暗い。
+  road_surface: ほぼ乾燥 (局所的な水たまりは残存の可能性)
+  lighting: 夜間、街灯下走行
+  traffic:
+    bicycles: 4 台程度の往来
+    vehicles: なし (走行を妨げる自動車なし)
+
+data_quality_notes:
+  - 外乱少なめ: 停止なし・速度固定のため、1本目より GLIM のスキャン
+    マッチングに素直な条件。
+  - velodyne 9.84 Hz / imu 100.0 Hz と両トピックとも良好。
+    健全性確認 (CLAUDE.md §「録画後は ros2 bag info」) クリア。
+  - 対照設計: 速度 3 固定なので、1本目後半 (3 → 4) 区間との比較で
+    速度影響を推定可能。
+  - loop 閉合は厳密一致でないため参考値 (M6-R G1-G3 方針と整合。
+    <1% 大域ループ閉合は M6-R ゲートに含めない)。
+  - 照度が 1本目より低下。屋外夜間で LiDAR 主体のため影響は
+    小さい見込みだが記録として残す。
