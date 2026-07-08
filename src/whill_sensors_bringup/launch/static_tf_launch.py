@@ -51,31 +51,33 @@ def generate_launch_description():
         #   y = -0.03 m  (車体中心から右 3 cm、PR #61)
         #   z = +0.47 m  (地面から 47 cm、PR #61)
         #
-        # 姿勢は 2026-07-08 の実測で **axis-aligned ではない** ことが判明:
-        # PR #61 の目視 (「IMU の +x が前進方向」) は誤りで、実際は:
-        #   IMU の +y 軸 = base_link +x (WHILL 前進方向)
-        #   IMU の +x 軸 = base_link -y (WHILL 右方向)
+        # 姿勢 (2026-07-08 セッションでの経過):
+        #  1. 元 PR #61 は「IMU の +x が前進方向」と記載していたが、目視確認で
+        #     実際は IMU の +y が前進方向 (90° yaw ズレ) であることが判明。
+        #  2. GLIM の T_lidar_imu を 90° yaw 込みで再計算して config に反映
+        #     したところ、GLIM が 6 秒で発散した (2 回試行、詳細は
+        #     scripts/m5r3_run_glim.sh のコメント)。GLIM/imu_sign_corrector
+        #     が axis-aligned 想定で組まれている疑い。
+        #  3. マジックテープ固定を活かし IMU を物理的に反時計回りに 90° 回転
+        #     させて axis-aligned に付け直し。これで noetic T_lidar_imu が
+        #     本来の想定条件で機能し、GLIM の drift 大幅改善見込み。
+        #
+        # 再マウント後の姿勢:
+        #   IMU の +x 軸 = base_link +x (前進方向)
+        #   IMU の +y 軸 = base_link +y (左)
         #   IMU の +z 軸 = base_link +z (上)
-        # つまり yaw = -90° 回転している。加えて座面 (-5°) + マウント溝の
-        # 追加傾きで、IMU 上面が「後方低・前方高」に約 8° 傾いている
-        # (Gemini + Claude の写真解析、複数定規参照で ~7.5-8°)。
+        # つまり yaw = 0。ただし座面 (-5°) + マウント溝の追加傾きは物理的に
+        # 残るため、IMU 全体は「後方低・前方高」に約 8° 傾いたまま
+        # (Gemini + Claude 写真解析で 7.5-8°)。IMU +x が前方に向いた今、
+        # この傾きは純粋に pitch = -8° として表される (tf2 の R_y(-8°) が
+        # +x を斜め上に向ける、gravity 検算で確認)。
         #
-        # tf2 の RPY 表現では yaw を先に適用するため、この物理的なピッチ傾き
-        # (base_link 系の y 軸周り) は yaw 後の中間フレームでは x 軸周り
-        # (roll 相当) として表される。
-        #
-        # 影響: 誤 identity 姿勢の下では EKF が IMU の 90° 回転を吸収できず、
-        # 加速度と回転が全軸で誤解釈されていた。GLIM は config_sensors.json
-        # から T_lidar_imu を直接参照するため本 TF の直接影響を受けないが、
-        # M4-R EKF の accel/gyro 処理と、TF 経由で IMU を消費する将来の
-        # ノード (M6-R runtime, Nav2 等) は本修正が必須。
-        #
-        # 未確認: config_sensors.json の T_lidar_imu (noetic 引き継ぎ値) が
-        # 本 90° 発見と整合しているかは、GLIM 再実行の drift 改善度を測ってから
-        # 判断する (2026-07-08 セッションで実測予定)。
+        # 未確認: pitch の符号は光学的推測 (front-high なら pitch 負) に依存。
+        # 新 bag を取って GLIM の drift が改善するか、または gravity 定常値が
+        # base_link 系で正しく (0, 0, -g) に近くなるかを実測して確認する。
         _static_tf('static_tf_imu',
                    0.38, -0.03, 0.47,
-                   0.1396, 0.0, -1.5708,   # roll=+8°, pitch=0, yaw=-90° (2026-07-08)
+                   0.0, -0.1396, 0.0,   # roll=0, pitch=-8°, yaw=0 (2026-07-08 remount)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne

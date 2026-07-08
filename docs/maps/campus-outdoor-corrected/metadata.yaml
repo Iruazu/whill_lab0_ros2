@@ -1,0 +1,41 @@
+# docs/maps/campus-outdoor-corrected/metadata.yaml
+#
+# M6-R 実行計画 (docs/ja/plans/2026-06-24-m6r-localization.md) の第一候補
+# 地図。2026-07-08 に修正済 static TF chain (base_link->imu_link は
+# yaw=0, pitch=-8°) の下で取得した屋外走行 bag を、GLIM + DUFOMap で
+# 処理して生成した。
+#
+# 品質: drift 0.19 m / 457.5 m 走行 = 0.04% (屋外 SLAM 標準優秀)。
+# 元の campus-half-v3 (drift 66.67 m / 458.9 m = 14.53%) から 363x 改善。
+# 改善の主因:
+#   1. IMU の物理再マウント: PR #61 の目視で誤認していた「IMU +x が
+#      前進方向」を、実際は「IMU +y が前進方向」だったのを axis-aligned
+#      に貼り直し。
+#   2. static_tf_launch.py の RPY 修正: 座面 tilt の 8° を pitch=-8°
+#      として明示。
+#   3. m5r3_run_glim.sh に use_sim_time:=true 追加: bag と実時刻の
+#      ズレによる GLIM の timestamp rewind reject を回避。
+# 詳細は docs/session-2026-07-08.md (未作成、TBD) または commit history。
+
+acquired_at: "2026-07-08T12:22:55+09:00"
+
+route_summary: "outdoor campus loop, longer variant of the demo route; start/end at same seat, full traverse"
+
+weather: "outdoor, midday (12:22-12:35 JST), dry surface, moderate sun"
+
+slam_method: "glim"
+
+# GLIM per-run patched config (Velodyne VLP-16 + RT 9-axis IMU + corrected
+# static TF chain) stored under the bench-data dir, not in-repo.
+slam_params: "docs/m5r-bench-data/2026-07-08-outdoor-corrected/glim-out/config/"
+
+# DUFOMap 1.1.1 default (pip install dufomap).
+erasor_params:
+    voxel_size_m: 0.2
+    pr_threshold: 0.8
+    rr_threshold: 0.2
+
+source_bag: "docs/m5r-bench-data/2026-07-08-outdoor-corrected/bag/"
+
+# Set to the commit that generated this map after `git rev-parse HEAD`.
+commit: "TBD-after-commit"
