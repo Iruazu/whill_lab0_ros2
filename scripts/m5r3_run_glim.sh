@@ -421,9 +421,20 @@ EOF
   # rather than entering rclcpp::spin() to wait for SIGINT. Without it
   # the wrapper hangs (and Ctrl+C mid-optimisation loses traj_lidar.txt
   # — see Issue #63 and the dead 2026-06-24 run that triggered this fix).
+  # use_sim_time:=true is critical for bag replay: without it, GLIM's
+  # odometry node initialises internal clock reference to wall time, and
+  # every IMU message from the bag (with bag-time stamps in the past) is
+  # rejected as "IMU timestamp rewind detected", causing gtsam to hit
+  # underconstrained x0 and abort. Discovered 2026-07-08 when a bag
+  # recorded 20 minutes earlier crashed GLIM in 2.7 seconds; adding this
+  # flag brought Initial error from 1.19e+11 down to ~1.3e+4. Yesterday's
+  # bag also crashed on retry without this flag despite having worked
+  # first time — the wall/bag time gap is what matters, and it grows as
+  # a bag ages, so this flag is safer to always pass.
   /usr/bin/time -p ros2 run glim_ros glim_rosbag \
     "${BAG_DIR}" \
     --ros-args \
+      -p use_sim_time:=true \
       -p config_path:="${GLIM_CONFIG}" \
       -p dump_path:="${OUT_DIR}/" \
       -p auto_quit:=true 2>&1 | tee -a "${OUT_DIR}/run.log"
