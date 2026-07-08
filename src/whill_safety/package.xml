@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>whill_safety</name>
+  <version>0.1.0</version>
+  <description>
+    Runtime safety layer for the WHILL chair (M6-R). Provides
+    `m6r_bringup_launch.py`, the single-command bringup that composes
+    sensors + WHILL driver + M4-R EKF + the runtime scan-to-map
+    localizer (`lidar_localization_ros2`) into the REP-105 TF chain
+    `map -> odom -> base_link -> {imu_link, velodyne, camera_link}`.
+
+    M6R-3 will extend this package with the failsafe node
+    (3-layer subscription to `/reinitialization_requested`,
+    `/alignment_status`, `/pcl_pose`) and a `twist_mux`-based
+    `/cmd_vel_safety` gate. That work is deliberately staged inside
+    this same package so the safety concerns (failsafe, mux, physical
+    E-stop hookup, remote-stop hookup at M9) live in one place; see
+    docs/ja/plans/2026-06-24-m6r-localization.md §3.B.
+
+    Mutually exclusive with `whill_localization/launch/
+    odom_bringup_launch.py` — starting both in parallel would compete
+    over `odom -> base_link`. The M6-R plan supersedes that launch;
+    keep it around for M4-R-only debugging only.
+  </description>
+
+  <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <!-- M6R-2 bringup dependencies -->
+  <exec_depend>whill_sensors_bringup</exec_depend>
+  <exec_depend>whill_localization</exec_depend>
+  <exec_depend>lidar_localization_ros2</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <!-- M6R-3 failsafe node dependencies (planned; will be uncommented
+       when failsafe_node.py + safety_launch.py land):
+    <exec_depend>rclpy</exec_depend>
+    <exec_depend>std_msgs</exec_depend>
+    <exec_depend>diagnostic_msgs</exec_depend>
+    <exec_depend>geometry_msgs</exec_depend>
+    <exec_depend>twist_mux</exec_depend>
+  -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
