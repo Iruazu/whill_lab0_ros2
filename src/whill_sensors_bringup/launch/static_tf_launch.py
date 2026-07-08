@@ -46,22 +46,36 @@ def generate_launch_description():
     return LaunchDescription([
         # base_link -> imu_link
         # IMU は座面クッション下、椅子の左右中央付近にマウントされている (RT
-        # 9 軸 USB IMU)。base_link (後輪車軸中点・地面高さ) を基準とする実測値
-        # (2026-06-24、Issue #61):
-        #   x = +0.38 m  (後輪車軸線から前方 38 cm)
-        #   y = -0.03 m  (車体中心から右 3 cm)
-        #   z = +0.47 m  (地面から 47 cm。後輪ハブ高 17 cm + ハブから IMU まで
-        #                 鉛直 30 cm、WHILL CR2 後輪 直径 ~34 cm と整合)
+        # 9 軸 USB IMU)。base_link (後輪車軸中点・地面高さ) を基準とする実測値:
+        #   x = +0.38 m  (後輪車軸線から前方 38 cm、PR #61)
+        #   y = -0.03 m  (車体中心から右 3 cm、PR #61)
+        #   z = +0.47 m  (地面から 47 cm、PR #61)
         #
-        # 姿勢は base_link と axis-aligned (REP-103, x=前, y=左, z=上)。
-        # IMU 本体の x 軸が車椅子の前進方向、z 軸が上を向いていることを目視確認済
-        # (Issue #61)。ロール/ピッチの微小ずれは M4R-3 の EKF バイアス推定が吸収。
+        # 姿勢は 2026-07-08 の実測で **axis-aligned ではない** ことが判明:
+        # PR #61 の目視 (「IMU の +x が前進方向」) は誤りで、実際は:
+        #   IMU の +y 軸 = base_link +x (WHILL 前進方向)
+        #   IMU の +x 軸 = base_link -y (WHILL 右方向)
+        #   IMU の +z 軸 = base_link +z (上)
+        # つまり yaw = -90° 回転している。加えて座面 (-5°) + マウント溝の
+        # 追加傾きで、IMU 上面が「後方低・前方高」に約 8° 傾いている
+        # (Gemini + Claude の写真解析、複数定規参照で ~7.5-8°)。
         #
-        # M4R-2 (#36) で設定された placeholder (0.20, 0.00, 0.50) からの補正:
-        # x +18 cm、y -3 cm、z -3 cm。±5 cm の見積もり想定を超えていたため
-        # 本番マップ録画前に実測値で置換した (詳細は m3-extrinsics-from-noetic.md)。
+        # tf2 の RPY 表現では yaw を先に適用するため、この物理的なピッチ傾き
+        # (base_link 系の y 軸周り) は yaw 後の中間フレームでは x 軸周り
+        # (roll 相当) として表される。
+        #
+        # 影響: 誤 identity 姿勢の下では EKF が IMU の 90° 回転を吸収できず、
+        # 加速度と回転が全軸で誤解釈されていた。GLIM は config_sensors.json
+        # から T_lidar_imu を直接参照するため本 TF の直接影響を受けないが、
+        # M4-R EKF の accel/gyro 処理と、TF 経由で IMU を消費する将来の
+        # ノード (M6-R runtime, Nav2 等) は本修正が必須。
+        #
+        # 未確認: config_sensors.json の T_lidar_imu (noetic 引き継ぎ値) が
+        # 本 90° 発見と整合しているかは、GLIM 再実行の drift 改善度を測ってから
+        # 判断する (2026-07-08 セッションで実測予定)。
         _static_tf('static_tf_imu',
-                   0.38, -0.03, 0.47, 0.0, 0.0, 0.0,
+                   0.38, -0.03, 0.47,
+                   0.1396, 0.0, -1.5708,   # roll=+8°, pitch=0, yaw=-90° (2026-07-08)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne

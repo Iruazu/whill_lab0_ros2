@@ -167,10 +167,16 @@ RUN_LOG="${OUT_DIR}/run.log"
 LAUNCH_LOG="${OUT_DIR}/launch.log"
 BAG_LOG="${OUT_DIR}/bag-play.log"
 
-echo "==> launching gril_calib (rviz off), log: ${LAUNCH_LOG}"
+echo "==> launching gril_calib (rviz off, use_sim_time=true), log: ${LAUNCH_LOG}"
+# use_sim_time:=true is REQUIRED because the bag is played with --clock and
+# its timestamps are earlier than wall clock. Without sim_time, gril_calib's
+# node clock advances by wall time while incoming IMU messages carry bag time
+# from the past — the reference-time delta becomes negative and gril_calib
+# aborts with `cannot store a negative time point in rclcpp::Time` (2026-07-08).
 ros2 launch gril_calib mapping_velodyne.launch.py \
   config_path:="${CONFIG_PATCHED}" \
   rviz:=false \
+  use_sim_time:=true \
   > "${LAUNCH_LOG}" 2>&1 &
 LAUNCH_PID=$!
 
@@ -192,7 +198,10 @@ trap cleanup EXIT INT TERM
 sleep 3
 
 echo "==> playing bag: ${BAG_DIR}"
-ros2 bag play "${BAG_DIR}" --rate 1.0 > "${BAG_LOG}" 2>&1 &
+# --clock publishes /clock so gril_calib (with use_sim_time:=true) sees
+# bag time, matching the timestamps on incoming /velodyne_points and
+# /imu/data_rep145. See use_sim_time note above launch invocation.
+ros2 bag play "${BAG_DIR}" --clock --rate 1.0 > "${BAG_LOG}" 2>&1 &
 BAG_PID=$!
 
 # --- wait with watchdog ------------------------------------------------------
