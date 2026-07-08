@@ -102,3 +102,9 @@ docs/maps/**/*.pcd
 /frames_*.gv
 /frames_*.pdf
 /*.rviz
+
+# GLIM interactive viewer writes Dear ImGui window layout state
+# (imgui.ini) to cwd on exit. When GLIM is launched from the repo root
+# this lands in the tree. Ignore at the repo root only; if a package
+# needs its own imgui state it is free to track it.
+/imgui.ini

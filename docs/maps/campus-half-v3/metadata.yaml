@@ -1,0 +1,38 @@
+# docs/maps/campus-half-v3/metadata.yaml
+#
+# M6-R 実行計画 (docs/ja/plans/2026-06-24-m6r-localization.md) の入力地図。
+# 2026-07-07 屋外走行 bag (campus-half-v3) を GLIM + DUFOMap で処理して
+# 生成した static PCD + 2D 占有格子。
+#
+# 既知の品質問題 (2026-07-08 診断):
+#   * 66 m の end-start drift (drift 率 14.5%)
+#   * 45 m の Z warp
+#   * ゴースト壁 (Z 方向 drift の 2D 投影)
+# 根本原因は Issue #64 の T_lidar_imu 未計測回転。demo 期日を守る本フェーズ
+# では M6R-1 smoke test で NDT locking を実測して合否を出す方針。
+# 改善案 A の詳細: docs/ja/m6r-indoor-calib-bag-protocol.md
+
+acquired_at: "2026-07-07T19:30:40+09:00"
+
+route_summary: "outdoor campus loop, start/end at Bldg 7, ~30% of the demo target route, counter-clockwise"
+
+weather: "outdoor, dusk (post-sunset), dry road surface, street-light only"
+
+slam_method: "glim"
+
+# GLIM per-run patched config (Velodyne VLP-16 + RT 9-axis IMU + PR #61 static TFs)
+# stored under the bench-data dir, not in-repo.
+slam_params: "docs/m5r-bench-data/2026-07-07-campus-half-v3/glim-out/config/"
+
+# DUFOMap 1.1.1 default (pip install dufomap). When the wrapper
+# (scripts/m5r_run_dufomap.sh) is enhanced to accept non-default parameters,
+# quote them here explicitly.
+erasor_params:
+    voxel_size_m: 0.2
+    pr_threshold: 0.8
+    rr_threshold: 0.2
+
+source_bag: "docs/m5r-bench-data/2026-07-07-campus-half-v3/bag/"
+
+# Set to the commit that generated this map after `git rev-parse HEAD`.
+commit: "TBD-after-commit"

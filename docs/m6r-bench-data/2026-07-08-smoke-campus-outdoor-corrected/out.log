@@ -1,0 +1,170 @@
+==> publishing identity odom -> base_link…
+[INFO] [1783484822.730299920] [static_transform_publisher_umGC7bxoLf32mL61]: Spinning until stopped - publishing transform
+translation: ('0.000000', '0.000000', '0.000000')
+rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+from 'odom' to 'base_link'
+==> starting lidar_localization.launch.py…
+[INFO] [launch]: All log files can be found below /home/systemlab/.ros/log/2026-07-08-13-27-03-775444-systemlab-Alienware-x15-R2-163519
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [lidar_localization_node-1]: process started with pid [163531]
+[lidar_localization_node-1] [INFO] [1783484824.084573369] [lidar_localization]: Configuring
+[lidar_localization_node-1] [INFO] [1783484824.084652612] [lidar_localization]: initializeParameters
+[lidar_localization_node-1] [INFO] [1783484824.084696730] [lidar_localization]: IMU preintegration smoother enabled
+[lidar_localization_node-1] [INFO] [1783484824.084718248] [lidar_localization]: global_frame_id: map
+[lidar_localization_node-1] [INFO] [1783484824.084722075] [lidar_localization]: odom_frame_id: odom
+[lidar_localization_node-1] [INFO] [1783484824.084725193] [lidar_localization]: base_frame_id: base_link
+[lidar_localization_node-1] [INFO] [1783484824.084728404] [lidar_localization]: enable_map_odom_tf: 1
+[lidar_localization_node-1] [INFO] [1783484824.084731720] [lidar_localization]: registration_method: NDT_OMP
+[lidar_localization_node-1] [INFO] [1783484824.084734940] [lidar_localization]: ndt_resolution: 1.000000
+[lidar_localization_node-1] [INFO] [1783484824.084740783] [lidar_localization]: ndt_step_size: 0.100000
+[lidar_localization_node-1] [INFO] [1783484824.084744837] [lidar_localization]: ndt_num_threads: 8
+[lidar_localization_node-1] [INFO] [1783484824.084747997] [lidar_localization]: gicp_corr_randomness: 20
+[lidar_localization_node-1] [INFO] [1783484824.084752337] [lidar_localization]: gicp_max_correspondence_distance: 2.000000
+[lidar_localization_node-1] [INFO] [1783484824.084756066] [lidar_localization]: vgicp_voxel_resolution: 1.000000
+[lidar_localization_node-1] [INFO] [1783484824.084759494] [lidar_localization]: transform_epsilon: 0.010000
+[lidar_localization_node-1] [INFO] [1783484824.084763130] [lidar_localization]: voxel_leaf_size: 0.500000
+[lidar_localization_node-1] [INFO] [1783484824.084766675] [lidar_localization]: enable_scan_voxel_filter: 1
+[lidar_localization_node-1] [INFO] [1783484824.084769815] [lidar_localization]: scan_max_range: 80.000000
+[lidar_localization_node-1] [INFO] [1783484824.084774767] [lidar_localization]: scan_min_range: 1.000000
+[lidar_localization_node-1] [INFO] [1783484824.084777850] [lidar_localization]: scan_period: 0.100000
+[lidar_localization_node-1] [INFO] [1783484824.084781213] [lidar_localization]: cloud_queue_depth: 1
+[lidar_localization_node-1] [INFO] [1783484824.084784157] [lidar_localization]: imu_queue_depth: 2000
+[lidar_localization_node-1] [INFO] [1783484824.084787284] [lidar_localization]: min_scan_interval_sec: 0.000000
+[lidar_localization_node-1] [INFO] [1783484824.084791644] [lidar_localization]: use_pcd_map: 1
+[lidar_localization_node-1] [INFO] [1783484824.084794660] [lidar_localization]: map_path: /home/systemlab/whill_lab0_ros2/docs/maps/campus-outdoor-corrected/static.pcd
+[lidar_localization_node-1] [INFO] [1783484824.084797861] [lidar_localization]: set_initial_pose: 0
+[lidar_localization_node-1] [INFO] [1783484824.084800761] [lidar_localization]: use_odom: 0
+[lidar_localization_node-1] [INFO] [1783484824.084803632] [lidar_localization]: use_twist_prediction: 0
+[lidar_localization_node-1] [INFO] [1783484824.084806392] [lidar_localization]: twist_prediction_use_angular_velocity: 1
+[lidar_localization_node-1] [INFO] [1783484824.084809701] [lidar_localization]: max_twist_prediction_dt: 0.500000
+[lidar_localization_node-1] [INFO] [1783484824.084813027] [lidar_localization]: use_imu: 0
+[lidar_localization_node-1] [INFO] [1783484824.084815821] [lidar_localization]: use_imu_preintegration: 1
+[lidar_localization_node-1] [INFO] [1783484824.084818678] [lidar_localization]: imu_preintegration_use_base_frame_transform: 0
+[lidar_localization_node-1] [INFO] [1783484824.084823564] [lidar_localization]: use_continuous_time_deskew: 0
+[lidar_localization_node-1] [INFO] [1783484824.084826610] [lidar_localization]: continuous_time_deskew_reference_time_sec: 0.000000
+[lidar_localization_node-1] [INFO] [1783484824.084829838] [lidar_localization]: use_twist_ekf: 0
+[lidar_localization_node-1] [INFO] [1783484824.084832752] [lidar_localization]: use_gtsam_smoother: 0
+[lidar_localization_node-1] [INFO] [1783484824.084835605] [lidar_localization]: enable_debug: 0
+[lidar_localization_node-1] [INFO] [1783484824.084838439] [lidar_localization]: predict_pose_from_previous_delta: 1
+[lidar_localization_node-1] [INFO] [1783484824.084841532] [lidar_localization]: enable_local_map_crop: 0
+[lidar_localization_node-1] [INFO] [1783484824.084844436] [lidar_localization]: local_map_radius: 150.000000
+[lidar_localization_node-1] [INFO] [1783484824.084848171] [lidar_localization]: local_map_min_points: 100
+[lidar_localization_node-1] [INFO] [1783484824.084851226] [lidar_localization]: reject_above_score_threshold: 1
+[lidar_localization_node-1] [INFO] [1783484824.084854071] [lidar_localization]: enable_consistency_recovery_gate: 0
+[lidar_localization_node-1] [INFO] [1783484824.084858051] [lidar_localization]: consistency_recovery_min_rejections: 10
+[lidar_localization_node-1] [INFO] [1783484824.084861041] [lidar_localization]: consistency_recovery_score_margin: 2.000000
+[lidar_localization_node-1] [INFO] [1783484824.084864194] [lidar_localization]: consistency_recovery_max_translation_m: 0.050000
+[lidar_localization_node-1] [INFO] [1783484824.084867491] [lidar_localization]: consistency_recovery_max_yaw_deg: 0.500000
+[lidar_localization_node-1] [INFO] [1783484824.084870655] [lidar_localization]: enable_post_reject_strict_score_threshold: 0
+[lidar_localization_node-1] [INFO] [1783484824.084873655] [lidar_localization]: post_reject_strict_min_rejections: 100
+[lidar_localization_node-1] [INFO] [1783484824.084876580] [lidar_localization]: post_reject_strict_score_threshold: 5.500000
+[lidar_localization_node-1] [INFO] [1783484824.084898363] [lidar_localization]: enable_open_loop_strict_score_threshold: 0
+[lidar_localization_node-1] [INFO] [1783484824.084901359] [lidar_localization]: open_loop_strict_min_accepted_gap_sec: 15.000000
+[lidar_localization_node-1] [INFO] [1783484824.084904780] [lidar_localization]: open_loop_strict_min_seed_translation_m: 100.000000
+[lidar_localization_node-1] [INFO] [1783484824.084909203] [lidar_localization]: open_loop_strict_score_threshold: 5.250000
+[lidar_localization_node-1] [INFO] [1783484824.084912219] [lidar_localization]: enable_borderline_seed_rejection_gate: 0
+[lidar_localization_node-1] [INFO] [1783484824.084915057] [lidar_localization]: borderline_seed_gate_score_threshold: 5.250000
+[lidar_localization_node-1] [INFO] [1783484824.084918472] [lidar_localization]: borderline_seed_gate_min_seed_translation_m: 1.000000
+[lidar_localization_node-1] [INFO] [1783484824.084921672] [lidar_localization]: enable_rejected_seed_update: 0
+[lidar_localization_node-1] [INFO] [1783484824.084924676] [lidar_localization]: rejected_seed_update_min_rejections: 0
+[lidar_localization_node-1] [INFO] [1783484824.084927544] [lidar_localization]: rejected_seed_update_max_fitness: 10.000000
+[lidar_localization_node-1] [INFO] [1783484824.084931078] [lidar_localization]: rejected_seed_update_max_correction_translation_m: 2.000000
+[lidar_localization_node-1] [INFO] [1783484824.084934338] [lidar_localization]: rejected_seed_update_max_correction_yaw_deg: 2.000000
+[lidar_localization_node-1] [INFO] [1783484824.084937442] [lidar_localization]: enable_recovery_retry_from_last_pose: 0
+[lidar_localization_node-1] [INFO] [1783484824.084941376] [lidar_localization]: recovery_retry_from_last_pose_min_rejections: 1
+[lidar_localization_node-1] [INFO] [1783484824.084944789] [lidar_localization]: recovery_retry_from_last_pose_max_accepted_gap_sec: 1.000000
+[lidar_localization_node-1] [INFO] [1783484824.084948162] [lidar_localization]: recovery_retry_from_last_pose_max_seed_translation_m: 1000000000.000000
+[lidar_localization_node-1] [INFO] [1783484824.084952829] [lidar_localization]: enable_reinitialization_request_output: 1
+[lidar_localization_node-1] [INFO] [1783484824.084956669] [lidar_localization]: enable_reinitialization_request_latch: 1
+[lidar_localization_node-1] [INFO] [1783484824.084960747] [lidar_localization]: reinitialization_trigger_threshold: 0.950000
+[lidar_localization_node-1] [INFO] [1783484824.084964125] [lidar_localization]: reinitialization_trigger_gap_scale_sec: 30.000000
+[lidar_localization_node-1] [INFO] [1783484824.084967471] [lidar_localization]: reinitialization_trigger_seed_translation_scale_m: 100.000000
+[lidar_localization_node-1] [INFO] [1783484824.084970817] [lidar_localization]: reinitialization_trigger_reject_streak_scale: 200.000000
+[lidar_localization_node-1] [INFO] [1783484824.084974128] [lidar_localization]: reinitialization_trigger_fitness_explosion_threshold: 1000.000000
+[lidar_localization_node-1] [INFO] [1783484824.084977569] [lidar_localization]: imu_prediction_correction_guard_translation_m: 2.000000
+[lidar_localization_node-1] [INFO] [1783484824.084980528] [lidar_localization]: imu_prediction_correction_guard_yaw_deg: 10.000000
+[lidar_localization_node-1] [INFO] [1783484824.084983644] [lidar_localization]: imu_prediction_correction_guard_warmup_accepts: 5
+[lidar_localization_node-1] [INFO] [1783484824.084986516] [lidar_localization]: enable_timer_publishing: 0
+[lidar_localization_node-1] [INFO] [1783484824.084989307] [lidar_localization]: pose_publish_frequency: 10.000000
+[lidar_localization_node-1] [INFO] [1783484824.084994681] [lidar_localization]: initializePubSub
+[lidar_localization_node-1] [INFO] [1783484824.086522577] [lidar_localization]: Initial pose subscription uses a dedicated callback group
+[lidar_localization_node-1] [INFO] [1783484824.086865496] [lidar_localization]: IMU preintegration subscription uses a dedicated callback group
+[lidar_localization_node-1] [INFO] [1783484824.086959647] [lidar_localization]: initializePubSub end
+[lidar_localization_node-1] [INFO] [1783484824.086967697] [lidar_localization]: initializeRegistration
+[INFO] [launch.user]: -- Inactive --
+[lidar_localization_node-1] [INFO] [1783484824.087000486] [lidar_localization]: initializeRegistration end
+[lidar_localization_node-1] [INFO] [1783484824.087006677] [lidar_localization]: Configuring end
+[lidar_localization_node-1] [INFO] [1783484824.088309024] [lidar_localization]: Activating
+[lidar_localization_node-1] [INFO] [1783484824.088360818] [lidar_localization]: Loading pcd map from: /home/systemlab/whill_lab0_ros2/docs/maps/campus-outdoor-corrected/static.pcd
+[lidar_localization_node-1] [WARN] [1783484824.167276034] [lidar_localization]: Map point cloud does not contain intensity. Falling back to xyz with zero intensity.
+[lidar_localization_node-1] [INFO] [1783484824.167325454] [lidar_localization]: Map Size 2930189
+[lidar_localization_node-1] [INFO] [1783484824.185272537] [lidar_localization]: Initial Map Published
+[lidar_localization_node-1] [INFO] [1783484824.339561458] [lidar_localization]: Activating end
+==> /lidar_localization lifecycle: active [3]
+==> recording /pcl_pose and /alignment_status…
+==> replaying bag (745.400415540s)…
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1783484833.682173708] [rosbag2_storage]: Opened database '/home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-outdoor-corrected/bag/bag_0.db3' for READ_ONLY.
+[INFO] [1783484833.682216871] [rosbag2_player]: Set rate to 1
+[INFO] [1783484833.684439238] [rosbag2_player]: Adding keyboard callbacks.
+[INFO] [1783484833.684475634] [rosbag2_player]: Press SPACE for Pause/Resume
+[INFO] [1783484833.684482449] [rosbag2_player]: Press CURSOR_RIGHT for Play Next Message
+[INFO] [1783484833.684489180] [rosbag2_player]: Press CURSOR_UP for Increase Rate 10%
+[INFO] [1783484833.684495240] [rosbag2_player]: Press CURSOR_DOWN for Decrease Rate 10%
+[INFO] [1783484833.684766973] [rosbag2_storage]: Opened database '/home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-outdoor-corrected/bag/bag_0.db3' for READ_ONLY.
+==> publishing /initialpose…
+publisher: beginning loop
+publishing #1: geometry_msgs.msg.PoseWithCovarianceStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id='map'), pose=geometry_msgs.msg.PoseWithCovariance(pose=geometry_msgs.msg.Pose(position=geometry_msgs.msg.Point(x=0.0, y=0.0, z=0.0), orientation=geometry_msgs.msg.Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)), covariance=array([0.25, 0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.25, 0.  , 0.  , 0.  ,
+       0.  , 0.  , 0.  , 0.25, 0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.07,
+       0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.07, 0.  , 0.  , 0.  , 0.  ,
+       0.  , 0.  , 0.07])))
+
+[lidar_localization_node-1] [INFO] [1783484840.795763766] [lidar_localization]: initialPoseReceived
+[lidar_localization_node-1] [INFO] [1783484840.795911232] [lidar_localization]: published map -> odom TF from initial pose
+[lidar_localization_node-1] [INFO] [1783484840.795922197] [lidar_localization]: initialPoseReceived end
+    initialpose pub rc=0
+==> publishing identity odom -> base_link…
+[INFO] [1783484870.522545681] [static_transform_publisher_I2SGBywLwgnqyd6h]: Spinning until stopped - publishing transform
+translation: ('0.000000', '0.000000', '0.000000')
+rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+from 'odom' to 'base_link'
+==> starting lidar_localization.launch.py…
+[INFO] [launch]: All log files can be found below /home/systemlab/.ros/log/2026-07-08-13-27-51-571583-systemlab-Alienware-x15-R2-164523
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [lidar_localization_node-1]: process started with pid [164535]
+[lidar_localization_node-1] [WARN] [1783484871.637996928] [rcl_lifecycle]: No transition matching 1 found for current state active
+[lidar_localization_node-1] [WARN] [1783484871.638018652] [rcl_lifecycle]: No transition matching 1 found for current state active
+[lidar_localization_node-1] [ERROR] [1783484871.638024075] [lidar_localization]: Unable to start transition 1 from current state active: Transition is not registered., at ./src/rcl_lifecycle.c:355
+==> /lidar_localization lifecycle: active [3]
+==> recording /pcl_pose and /alignment_status…
+==> replaying bag (745.400415540s)…
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1783484880.763364546] [rosbag2_storage]: Opened database '/home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-outdoor-corrected/bag/bag_0.db3' for READ_ONLY.
+[INFO] [1783484880.763423726] [rosbag2_player]: Set rate to 1
+[INFO] [1783484880.768085003] [rosbag2_player]: Adding keyboard callbacks.
+[INFO] [1783484880.768131433] [rosbag2_player]: Press SPACE for Pause/Resume
+[INFO] [1783484880.768145057] [rosbag2_player]: Press CURSOR_RIGHT for Play Next Message
+[INFO] [1783484880.768163614] [rosbag2_player]: Press CURSOR_UP for Increase Rate 10%
+[INFO] [1783484880.768175751] [rosbag2_player]: Press CURSOR_DOWN for Decrease Rate 10%
+[INFO] [1783484880.768531347] [rosbag2_storage]: Opened database '/home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-outdoor-corrected/bag/bag_0.db3' for READ_ONLY.
+==> publishing /initialpose…
+publisher: beginning loop
+publishing #1: geometry_msgs.msg.PoseWithCovarianceStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id='map'), pose=geometry_msgs.msg.PoseWithCovariance(pose=geometry_msgs.msg.Pose(position=geometry_msgs.msg.Point(x=0.0, y=0.0, z=0.0), orientation=geometry_msgs.msg.Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)), covariance=array([0.25, 0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.25, 0.  , 0.  , 0.  ,
+       0.  , 0.  , 0.  , 0.25, 0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.07,
+       0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.07, 0.  , 0.  , 0.  , 0.  ,
+       0.  , 0.  , 0.07])))
+
+[lidar_localization_node-1] [INFO] [1783484887.818811842] [lidar_localization]: initialPoseReceived
+[lidar_localization_node-1] [INFO] [1783484887.818958410] [lidar_localization]: published map -> odom TF from initial pose
+[lidar_localization_node-1] [INFO] [1783484887.818973866] [lidar_localization]: initialPoseReceived end
+[lidar_localization_node-1] Warning: TF_OLD_DATA ignoring data from the past for frame odom at time 0.000000 according to authority Authority undetectable
+[lidar_localization_node-1] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[lidar_localization_node-1] Warning: TF_OLD_DATA ignoring data from the past for frame odom at time 0.000000 according to authority Authority undetectable
+[lidar_localization_node-1]          at line 294 in ./src/buffer_core.cpp
+[lidar_localization_node-1] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[lidar_localization_node-1]          at line 294 in ./src/buffer_core.cpp
+    initialpose pub rc=0
+==> bag play finished (rc=0)
+[lidar_localization_node-1] [INFO] [1783485582.317327017] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1783485582.326897030] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1783485582.326897018] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [lidar_localization_node-1]: process has finished cleanly [pid 164535]
+==> bag play finished (rc=0)

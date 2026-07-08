@@ -1,0 +1,134 @@
+header:
+  stamp:
+    sec: 1783420390
+    nanosec: 274175744
+  frame_id: base_link
+status:
+- level: "\x01"
+  name: lidar_localization_ros2/alignment
+  message: fitness_score_over_threshold_rejected
+  hardware_id: NDT_OMP
+  values:
+  - key: registration_method
+    value: NDT_OMP
+  - key: has_converged
+    value: 'true'
+  - key: fitness_score
+    value: '8.752737'
+  - key: score_threshold
+    value: '6.000000'
+  - key: effective_score_threshold
+    value: '6.000000'
+  - key: post_reject_strict_score_threshold_active
+    value: 'false'
+  - key: open_loop_strict_score_threshold_active
+    value: 'false'
+  - key: borderline_seed_rejection_gate_active
+    value: 'false'
+  - key: alignment_time_sec
+    value: '0.463835'
+  - key: filtered_point_count
+    value: '5353'
+  - key: correction_translation_m
+    value: '0.783071'
+  - key: correction_yaw_deg
+    value: '0.691210'
+  - key: seed_translation_since_accept_m
+    value: '0.000000'
+  - key: seed_yaw_since_accept_deg
+    value: '0.000000'
+  - key: accepted_gap_sec
+    value: '1783420390.274176'
+  - key: consecutive_rejected_updates
+    value: '0'
+  - key: recovery_state
+    value: recovering
+  - key: recovery_action
+    value: reject_measurement
+  - key: recovery_state_age_sec
+    value: '0.000000'
+  - key: recovery_state_transition_count
+    value: '1'
+  - key: imu_prediction_active
+    value: 'false'
+  - key: imu_preintegration_enabled
+    value: 'true'
+  - key: imu_preintegration_status
+    value: imu_preintegration_waiting_for_imu
+  - key: imu_preintegration_fallback_mode
+    value: 'false'
+  - key: imu_smoother_initialized
+    value: 'false'
+  - key: imu_has_new_samples
+    value: 'false'
+  - key: imu_received_sample_count
+    value: '0'
+  - key: imu_integrated_sample_count
+    value: '0'
+  - key: imu_skipped_sample_count
+    value: '0'
+  - key: imu_transform_failure_count
+    value: '0'
+  - key: imu_non_finite_sample_count
+    value: '0'
+  - key: imu_invalid_dt_count
+    value: '0'
+  - key: imu_last_dt_sec
+    value: nan
+  - key: imu_last_sample_age_sec
+    value: nan
+  - key: imu_integration_window_sec
+    value: '0.000000'
+  - key: scan_time_status
+    value: scan_time_range_ready
+  - key: scan_time_field
+    value: time
+  - key: scan_time_duration_sec
+    value: '0.101442'
+  - key: scan_time_valid_point_count
+    value: '29184'
+  - key: scan_time_invalid_point_count
+    value: '0'
+  - key: deskew_ready
+    value: 'false'
+  - key: deskew_readiness_status
+    value: deskew_waiting_for_imu
+  - key: continuous_time_deskew_enabled
+    value: 'false'
+  - key: continuous_time_deskew_applied
+    value: 'false'
+  - key: continuous_time_deskew_status
+    value: continuous_time_deskew_disabled
+  - key: continuous_time_deskew_point_count
+    value: '0'
+  - key: continuous_time_deskew_skipped_invalid_time_count
+    value: '0'
+  - key: continuous_time_deskew_clamped_time_count
+    value: '0'
+  - key: reinitialization_requested
+    value: 'false'
+  - key: reinitialization_request_reason
+    value: reinit_not_requested
+  - key: reinitialization_request_score
+    value: '0.450000'
+  - key: reinitialization_request_latched
+    value: 'false'
+  - key: reinitialization_request_latch_age_sec
+    value: '0.000000'
+  - key: map_received
+    value: 'true'
+  - key: initialpose_received
+    value: 'true'
+  - key: failure_category
+    value: bad_match
+  - key: weak_overlap_active
+    value: 'false'
+  - key: bad_match_active
+    value: 'true'
+  - key: stale_prediction_active
+    value: 'true'
+  - key: overload_active
+    value: 'true'
+  - key: registration_seed_source
+    value: previous_delta
+---

@@ -46,22 +46,38 @@ def generate_launch_description():
     return LaunchDescription([
         # base_link -> imu_link
         # IMU は座面クッション下、椅子の左右中央付近にマウントされている (RT
-        # 9 軸 USB IMU)。base_link (後輪車軸中点・地面高さ) を基準とする実測値
-        # (2026-06-24、Issue #61):
-        #   x = +0.38 m  (後輪車軸線から前方 38 cm)
-        #   y = -0.03 m  (車体中心から右 3 cm)
-        #   z = +0.47 m  (地面から 47 cm。後輪ハブ高 17 cm + ハブから IMU まで
-        #                 鉛直 30 cm、WHILL CR2 後輪 直径 ~34 cm と整合)
+        # 9 軸 USB IMU)。base_link (後輪車軸中点・地面高さ) を基準とする実測値:
+        #   x = +0.38 m  (後輪車軸線から前方 38 cm、PR #61)
+        #   y = -0.03 m  (車体中心から右 3 cm、PR #61)
+        #   z = +0.47 m  (地面から 47 cm、PR #61)
         #
-        # 姿勢は base_link と axis-aligned (REP-103, x=前, y=左, z=上)。
-        # IMU 本体の x 軸が車椅子の前進方向、z 軸が上を向いていることを目視確認済
-        # (Issue #61)。ロール/ピッチの微小ずれは M4R-3 の EKF バイアス推定が吸収。
+        # 姿勢 (2026-07-08 セッションでの経過):
+        #  1. 元 PR #61 は「IMU の +x が前進方向」と記載していたが、目視確認で
+        #     実際は IMU の +y が前進方向 (90° yaw ズレ) であることが判明。
+        #  2. GLIM の T_lidar_imu を 90° yaw 込みで再計算して config に反映
+        #     したところ、GLIM が 6 秒で発散した (2 回試行、詳細は
+        #     scripts/m5r3_run_glim.sh のコメント)。GLIM/imu_sign_corrector
+        #     が axis-aligned 想定で組まれている疑い。
+        #  3. マジックテープ固定を活かし IMU を物理的に反時計回りに 90° 回転
+        #     させて axis-aligned に付け直し。これで noetic T_lidar_imu が
+        #     本来の想定条件で機能し、GLIM の drift 大幅改善見込み。
         #
-        # M4R-2 (#36) で設定された placeholder (0.20, 0.00, 0.50) からの補正:
-        # x +18 cm、y -3 cm、z -3 cm。±5 cm の見積もり想定を超えていたため
-        # 本番マップ録画前に実測値で置換した (詳細は m3-extrinsics-from-noetic.md)。
+        # 再マウント後の姿勢:
+        #   IMU の +x 軸 = base_link +x (前進方向)
+        #   IMU の +y 軸 = base_link +y (左)
+        #   IMU の +z 軸 = base_link +z (上)
+        # つまり yaw = 0。ただし座面 (-5°) + マウント溝の追加傾きは物理的に
+        # 残るため、IMU 全体は「後方低・前方高」に約 8° 傾いたまま
+        # (Gemini + Claude 写真解析で 7.5-8°)。IMU +x が前方に向いた今、
+        # この傾きは純粋に pitch = -8° として表される (tf2 の R_y(-8°) が
+        # +x を斜め上に向ける、gravity 検算で確認)。
+        #
+        # 未確認: pitch の符号は光学的推測 (front-high なら pitch 負) に依存。
+        # 新 bag を取って GLIM の drift が改善するか、または gravity 定常値が
+        # base_link 系で正しく (0, 0, -g) に近くなるかを実測して確認する。
         _static_tf('static_tf_imu',
-                   0.38, -0.03, 0.47, 0.0, 0.0, 0.0,
+                   0.38, -0.03, 0.47,
+                   0.0, -0.1396, 0.0,   # roll=0, pitch=-8°, yaw=0 (2026-07-08 remount)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne

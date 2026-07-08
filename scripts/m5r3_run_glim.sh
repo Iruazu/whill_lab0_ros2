@@ -255,14 +255,33 @@ select_glim_config() {
     # - T_lidar_imu: GLIM convention is p_lidar = T_lidar_imu * p_imu in
     #   TUM format [x, y, z, qx, qy, qz, qw]. Upstream default (Ouster OS0
     #   near-zero translation) makes GLIM assume LiDAR is co-located with
-    #   the IMU, which on our rig introduces a ~9 deg pitch error and the
-    #   "IMU prediction is not good. Possibly T_lidar_imu is not accurate"
-    #   warning that filled the entire run.log of 2026-06-21 run #1 (no
-    #   trajectory written, exit 141). The numbers below are SE3-inverse
-    #   of M4R-2's measured extrinsic (extrinsic_T = LiDAR origin in IMU
-    #   frame [0.104136, 0.411548, 0.323704], extrinsic_R = LiDAR->IMU
-    #   rotation in docs/ja/m3-extrinsics-from-noetic.md) with quaternion
-    #   computed in TUM (qx,qy,qz,qw) order. Roundtrip error < 1e-6.
+    #   the IMU, which on our rig introduces the "IMU prediction is not
+    #   good. Possibly T_lidar_imu is not accurate" warning that filled
+    #   the entire run.log of 2026-06-21 run #1.
+    #
+    # The numbers below are SE3-inverse of M4R-2's measured extrinsic
+    # (extrinsic_T = LiDAR origin in IMU frame [0.104136, 0.411548,
+    # 0.323704], extrinsic_R = LiDAR->IMU rotation in
+    # docs/ja/m3-extrinsics-from-noetic.md) with quaternion computed in
+    # TUM (qx,qy,qz,qw) order. Roundtrip error < 1e-6.
+    #
+    # 2026-07-08 note: direct visual inspection revealed the IMU is
+    # actually rotated relative to base_link (IMU +y points forward,
+    # +x points right = 90 deg yaw) and tilted ~8 deg (rear-low,
+    # front-high). The base_link->imu_link static TF was updated to
+    # reflect this. HOWEVER, attempts to update T_lidar_imu here to
+    # match (yaw=-90, roll=+8 composed into the LiDAR-IMU relative
+    # rotation) caused GLIM to diverge in the first 6 seconds — even
+    # in clean state, reproducibly. The most likely explanation is
+    # that the imu_sign_corrector (PR #56) REP-145 sign convention was
+    # calibrated assuming axis-aligned IMU, and GLIM's noetic-derived
+    # T_lidar_imu implicitly assumes the same convention. Changing
+    # T_lidar_imu to the physically-correct orientation breaks that
+    # internal consistency and the optimizer cannot converge from
+    # frame 1. Keep the noetic value until (a) a new bag is recorded
+    # under the corrected static TF chain, (b) imu_sign_corrector is
+    # revisited, or (c) FAST-LIO SAM / another SLAM less sensitive to
+    # this convention is tried.
     # - ring_field: Velodyne ROS2 driver writes laser ID into "ring".
     #   Upstream "" (auto-detect) downgrades preprocessing quality on
     #   Velodyne bags per koide3/glim README "Custom sensor" section.
@@ -402,9 +421,20 @@ EOF
   # rather than entering rclcpp::spin() to wait for SIGINT. Without it
   # the wrapper hangs (and Ctrl+C mid-optimisation loses traj_lidar.txt
   # — see Issue #63 and the dead 2026-06-24 run that triggered this fix).
+  # use_sim_time:=true is critical for bag replay: without it, GLIM's
+  # odometry node initialises internal clock reference to wall time, and
+  # every IMU message from the bag (with bag-time stamps in the past) is
+  # rejected as "IMU timestamp rewind detected", causing gtsam to hit
+  # underconstrained x0 and abort. Discovered 2026-07-08 when a bag
+  # recorded 20 minutes earlier crashed GLIM in 2.7 seconds; adding this
+  # flag brought Initial error from 1.19e+11 down to ~1.3e+4. Yesterday's
+  # bag also crashed on retry without this flag despite having worked
+  # first time — the wall/bag time gap is what matters, and it grows as
+  # a bag ages, so this flag is safer to always pass.
   /usr/bin/time -p ros2 run glim_ros glim_rosbag \
     "${BAG_DIR}" \
     --ros-args \
+      -p use_sim_time:=true \
       -p config_path:="${GLIM_CONFIG}" \
       -p dump_path:="${OUT_DIR}/" \
       -p auto_quit:=true 2>&1 | tee -a "${OUT_DIR}/run.log"
