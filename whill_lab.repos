@@ -54,3 +54,23 @@ repositories:
     type: git
     url: https://github.com/Livox-SDK/livox_ros_driver2.git
     version: master
+
+  # --- M6-R runtime localizer ---
+  # rsasaki0109/lidar_localization_ros2 (BSD-2). NDT scan-to-map that
+  # publishes map -> odom, /pcl_pose, /alignment_status. Consumes the
+  # DUFOMap-cleaned static PCD from docs/maps/<site>/. Runs with
+  # use_imu: false by default (EKF supplies odom -> base_link separately).
+  # Version tracks `main` for now; ADR-0006 will pin to a commit SHA once
+  # M6R-1 smoke test picks one. See docs/ja/plans/2026-06-24-m6r-localization.md.
+  third_party/lidar_localization_ros2:
+    type: git
+    url: https://github.com/rsasaki0109/lidar_localization_ros2.git
+    version: main
+  # Upstream lidar_localization_ros2 lists ndt_omp_ros2 in its own
+  # dependencies.repos. Duplicated here so a single `vcs import` from
+  # whill_lab.repos is sufficient (avoids requiring the reviewer to run
+  # a second vcs import from src/third_party/lidar_localization_ros2/).
+  third_party/ndt_omp_ros2:
+    type: git
+    url: https://github.com/rsasaki0109/ndt_omp_ros2.git
+    version: humble
