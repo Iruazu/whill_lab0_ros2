@@ -75,16 +75,22 @@ def generate_launch_description():
         # 2026-07-09 audit (docs/ja/imu-coordinate-audit.md §3): 2026-07-08
         # campus-outer bag 冒頭 10 秒 (WHILL 停止) の /imu/data_rep145 を
         # 1000 サンプル取得し gravity 逆算した結果:
-        #   pitch 実測 = -7.66°  (元の -8° 設定と 0.34° 差、実質一致 → 変更なし)
-        #   roll  実測 = -5.77°  (元の 0° 設定と 5.77° 差 → **本コミットで追加**)
+        #   pitch 実測 = -7.66°  (元の -8° 設定と 0.34° 差、実質一致)
+        #   roll  実測 = -5.77°  (元の 0° 設定と 5.77° 差 → audit で判明)
         # roll の未検出は、マウント溝が「後方低・前方高」だけでなく「右側低・
         # 左側高」も併せ持っていたことを示す (溝が横方向にも斜めに切ってある)。
-        # -5.77° = -0.1007 rad を反映して bringup 起動時の TF chain が
-        # 実物と一致するようにする。物理的な再マウントは不要 (実測に合わせる
-        # だけ)。今後 IMU を触ったら gravity で再検算すること。
+        #
+        # 2026-07-09 10:41 現地再測定: GRIL-Calib 校正 bag 撮影直前に IMU を
+        # 目視確認したところマジックテープに微スライドが疑われたため、その場で
+        # 手押しで再固定。再固定後の gravity 実測 (500 サンプル、5 秒):
+        #   pitch = -7.26°  (-0.1268 rad)
+        #   roll  = -6.24°  (-0.1089 rad)
+        # 上記を反映。GRIL-Calib bag 収録日 (07-09) の物理状態と TF chain が
+        # 一致する。走行中の振動で 1-2° 動く可能性はあるので、今後 IMU を
+        # 触るたびに scratchpad/imu_live_check.py で再検算すること。
         _static_tf('static_tf_imu',
                    0.38, -0.03, 0.47,
-                   -0.1007, -0.1396, 0.0,   # roll=-5.77°, pitch=-8°, yaw=0 (2026-07-09 audit)
+                   -0.1089, -0.1268, 0.0,   # roll=-6.24°, pitch=-7.26°, yaw=0 (2026-07-09 remount)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne
