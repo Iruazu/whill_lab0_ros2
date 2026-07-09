@@ -72,12 +72,19 @@ def generate_launch_description():
         # この傾きは純粋に pitch = -8° として表される (tf2 の R_y(-8°) が
         # +x を斜め上に向ける、gravity 検算で確認)。
         #
-        # 未確認: pitch の符号は光学的推測 (front-high なら pitch 負) に依存。
-        # 新 bag を取って GLIM の drift が改善するか、または gravity 定常値が
-        # base_link 系で正しく (0, 0, -g) に近くなるかを実測して確認する。
+        # 2026-07-09 audit (docs/ja/imu-coordinate-audit.md §3): 2026-07-08
+        # campus-outer bag 冒頭 10 秒 (WHILL 停止) の /imu/data_rep145 を
+        # 1000 サンプル取得し gravity 逆算した結果:
+        #   pitch 実測 = -7.66°  (元の -8° 設定と 0.34° 差、実質一致 → 変更なし)
+        #   roll  実測 = -5.77°  (元の 0° 設定と 5.77° 差 → **本コミットで追加**)
+        # roll の未検出は、マウント溝が「後方低・前方高」だけでなく「右側低・
+        # 左側高」も併せ持っていたことを示す (溝が横方向にも斜めに切ってある)。
+        # -5.77° = -0.1007 rad を反映して bringup 起動時の TF chain が
+        # 実物と一致するようにする。物理的な再マウントは不要 (実測に合わせる
+        # だけ)。今後 IMU を触ったら gravity で再検算すること。
         _static_tf('static_tf_imu',
                    0.38, -0.03, 0.47,
-                   0.0, -0.1396, 0.0,   # roll=0, pitch=-8°, yaw=0 (2026-07-08 remount)
+                   -0.1007, -0.1396, 0.0,   # roll=-5.77°, pitch=-8°, yaw=0 (2026-07-09 audit)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne

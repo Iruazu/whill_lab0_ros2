@@ -130,6 +130,20 @@ fi
 # GRIL-Calib's trans_IL is "from IMU frame I to LiDAR frame L" so we pass
 # extrinsic_T directly (it already is the translation IMU->LiDAR per the
 # noetic FAST-LIO convention).
+#
+# 2026-07-09 audit (docs/ja/imu-coordinate-audit.md §4.1): この
+# translation 初期値は現行 static TF chain と 1 µm 未満で一致することを
+# 確認済 (問題なし、今回も noetic 値を渡す)。
+# --- 初期 rotation について ---
+# 上流 velodyne32.yaml は初期 rotation を持たず、GRIL-Calib 内部で
+# identity (R_LI = I) を仮定して収束させる仕様。本スクリプトも rotation
+# 初期値は追加していない (= identity のまま)。
+# audit §4.4 のシナリオ A (LiDAR は IMU と同じマウントに共締めされている
+# 前提 = R_lidar_imu ≈ identity) に一致する。もし GRIL-Calib 出力が
+# シナリオ B (LiDAR-IMU が別マウントで大きく傾いている) を示唆したら、
+# 上流ソースに直接 R_LI の init を仕込む改造が必要になる (現時点では未着手)。
+# noetic 由来の 8° pitch 相対値は GLIM の T_lidar_imu 用に残しているが
+# (docs/ja/imu-coordinate-audit.md §4.2)、それは GRIL-Calib には渡していない。
 sed \
   -e 's|imu_topic:  "/imu/data"|imu_topic:  "/imu/data_rep145"|' \
   -e 's|scan_line: 32|scan_line: 16|' \
@@ -307,6 +321,12 @@ else
 fi
 
 # --- summary -----------------------------------------------------------------
+GIT_HASH="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
+GIT_DIRTY=""
+if ! git -C "${REPO_ROOT}" diff --quiet 2>/dev/null; then
+  GIT_DIRTY=" (dirty)"
+fi
+
 cat > "${OUT_DIR}/SUMMARY.md" <<EOF
 # GRIL-Calib run summary
 
@@ -317,6 +337,14 @@ cat > "${OUT_DIR}/SUMMARY.md" <<EOF
 - Patched config: \`$(basename "${CONFIG_PATCHED}")\`
 - Launch log: \`$(basename "${LAUNCH_LOG}")\`
 - Bag-play log: \`$(basename "${BAG_LOG}")\`
+- whill_lab0_ros2 commit: \`${GIT_HASH}\`${GIT_DIRTY}
+
+## Initial extrinsic guess passed to GRIL-Calib
+
+- trans_IL (IMU->LiDAR): (0.104136, 0.411548, 0.323704) m
+  — noetic origin, audit §4.1 で TF chain と 1 µm 未満で一致確認済
+- Rot_IL (IMU->LiDAR): **identity** (upstream default)
+  — audit §4.4 シナリオ A に整合、GRIL-Calib は identity から収束させる
 
 EOF
 if [[ "${STATUS}" == "converged" ]]; then
