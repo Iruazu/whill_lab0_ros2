@@ -314,6 +314,27 @@ if n_tli != 1 or n_rf != 1:
 with open(path, 'w') as f:
     f.write(txt)
 PY
+    # Optional bias-freeze patch (env-gated) — for the M6-R Z-drift
+    # diagnostic on 2026-07-08 campus-outer. When the bias grows unbounded
+    # over a 47-min bag (see docs/session-2026-07-08 discussion), fixing
+    # the bias at its post-init value forces the extrinsic error to show
+    # up in LiDAR residuals instead of being hidden in bias drift. The env
+    # var keeps the default runbook (ADR-0003 baseline) unchanged.
+    if [[ "${GLIM_FIX_IMU_BIAS:-0}" == "1" ]]; then
+      python3 - "${local_cfg}/config_odometry_gpu.json" <<'PY'
+import re, sys
+path = sys.argv[1]
+with open(path) as f:
+    txt = f.read()
+txt, n = re.subn(r'"fix_imu_bias":\s*(true|false)', '"fix_imu_bias": true', txt, count=1)
+if n != 1:
+    sys.stderr.write(f"ERROR: fix_imu_bias patch failed ({n}).\n")
+    sys.exit(1)
+with open(path, 'w') as f:
+    f.write(txt)
+PY
+      echo "NOTE: GLIM_FIX_IMU_BIAS=1 -> config_odometry_gpu.json fix_imu_bias=true" >&2
+    fi
     GLIM_CONFIG="${local_cfg}/"
     echo "NOTE: bag carries /velodyne_points; using per-run config copy at" >&2
     echo "      ${local_cfg}/ with topics rewritten (${imu_topic} + " >&2
