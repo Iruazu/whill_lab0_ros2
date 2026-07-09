@@ -304,6 +304,68 @@ campus-outer bag (2813 秒、baseline commit `80af31f`) に対して 4 パター
 - **LiDAR の base_link に対する物理姿勢**: 今回 IMU 姿勢は gravity 測定で
   出したが、LiDAR は点群平面フィットが必要で今夜は実施していない。GRIL-Calib
   の結果と、点群からの地面 fit を突合して整合を確認するのが確実
+
+### 7.6 追加発見: bag 内の 4.77 秒 IMU/LiDAR gap
+
+2026-07-09 夜、audit-tli 結果を viewer で目視確認したところ、user が
+「6:48 頃に全体が突然がくんと揺れ、その後 drift 由来のズレが出現」を報告。
+run.log と bag timestamp を突き合わせた結果、bag 自体に **4.77 秒間の完全な
+IMU/LiDAR 停止** が入っていることが判明:
+
+```
+last good IMU  : bag time 1783513647.598  (bag 冒頭から 1325.06 秒 = 22 分 05 秒地点)
+next IMU       : bag time 1783513652.368  (4.77 秒後、diff = 4.769995)
+LiDAR も同時に 3.96 秒停止 (diff = 3.956308)
+```
+
+run.log の該当行:
+```
+[glim] [warning] large time gap between consecutive IMU data!!
+[glim] [warning] current=1783513652.368347 last=1783513647.598352 diff=4.769995
+[glim] [warning] large time gap between consecutive LiDAR frames!!
+[glim] [warning] current=1783513651.394380 last=1783513647.438072 diff=3.956308
+[odom] [warning] insufficient number of IMU data between LiDAR scans!! num_imu=0
+```
+
+baseline / fix_imu_bias / audit-tli / debiased+audit の **4 実験すべてで同じ
+gap を通過** し、いずれも通過後の pose graph に不定性が残る。**現在の
+XY drift の実質下限は、この gap がハードコードしている**可能性が高い。
+
+**原因の推定** (優先順):
+
+1. **RMW/DDS 瞬断**: campus-outer 収録時のログでは 21:05 開始直後の
+   ~ネットワーク切替タイミングに DDS の `ddsi_udp_conn_write` エラーが
+   多発 (audit §runtime env RMW メモ参照)。同種の 4-5 秒級ハングが
+   録画中に紛れ込んだ可能性が最有力
+2. **rt_usb_9axisimu_driver の USB 再接続**: dmesg 未確認だが要らしさは中
+3. **CPU governor throttle**: performance に設定していたが電源管理 IRQ で
+   一瞬 powersave に落ちた可能性は低め
+
+### 7.7 明日以降のプラン (Z drift 検証の完結条件)
+
+user 合意 (2026-07-09):
+
+1. **新規 bag 再録画**: 明日、DDS 瞬断リスクを最小化した状態 (WiFi 完全 OFF、
+   デザリング切替なし、governor performance 確認) で campus 外周走行を再録。
+   `ros2 bag info` で count が理論値と乖離しないこと + run.log で
+   `large time gap` 警告ゼロを確認
+2. **現 bag を gap で 2 分割して GLIM 検証**: 現在の campus-outer bag を
+   bag time 1325.06 秒でカット → gap 前 (0-1325s ≒ 22 分) と gap 後
+   (1330s-2813s ≒ 25 分) の 2 セグメントで独立に GLIM を回す
+   - `ros2 bag record` の `--split-duration` は使えないので Python + rosbag2 API か
+     `ros2 bag filter` (ROS 2 humble には未搭載) を検討。最悪 sqlite で
+     bag_0.db3 を直接分割してもよい
+3. **判定基準**: 2 セグメントとも drift が顕著でなければ「gap がなければ
+   本番品質の bag を作れる」= 明日の再録画で本番マップ収録の目処が立つ
+
+### 7.8 練り込むべき follow-up (明日以降)
+
+- gap 検知の bringup 側フック (7.6 の再発防止): 録画中の IMU 100Hz 未達を
+  監視して即警告する node の追加 (`imu_sign_corrector` の副作用として
+  組み込むのが自然か)
+- 現 bag に対して IMU 線形補間で gap を埋める debias スクリプト流用テスト
+  (7.7 の検証と独立に、`debias_gyro_bag.py` の骨組みを流用して 15 分程度で
+  作れる)
 - **camera_link の姿勢**: RealSense extrinsic は M4R-2 の暫定値 (RPY=0)
   のまま。M6-R でチェスボード校正予定 (`static_tf_launch.py:118`)
 - **base_link 自体が水平か**: 実測は「base_link 水平・地面平面」を前提。
