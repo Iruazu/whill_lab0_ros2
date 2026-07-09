@@ -6,6 +6,112 @@
 一日で複数回書き換わる場合があるため、GLIM / GRIL-Calib / Nav2 のいずれかで
 値を消費する前に必ずここを参照する。**必ず最新の commit hash と対応させる**。
 
+## 0. 走行日の朝一チェックリスト (本番録画前 15 分)
+
+### 0.1 環境変数と DDS 設定
+
+```bash
+# 1. bashrc に 2 行あることを確認 (無ければ追加して source):
+#      export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+#      export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-lo-only.xml
+
+# 2. daemon 再起動 (CLI 側の反映):
+ros2 daemon stop && ros2 daemon start
+
+# 3. bringup を起動する前に、そのターミナルで確認 (安全ネット):
+echo $CYCLONEDDS_URI     # ← file:///.../cyclonedds-lo-only.xml が返ること
+echo $RMW_IMPLEMENTATION # ← rmw_cyclonedds_cpp
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor  # ← performance
+```
+
+**注意**: `CYCLONEDDS_URI` は各プロセス起動時に読まれる env。既存シェルで
+`source ~/.bashrc` し忘れた別ターミナルから bringup を起動すると、そのプロセスは
+古い設定 (=lo 限定でない) で走る。**bringup 起動前の `echo $CYCLONEDDS_URI`
+は必ず 1 行挟む**。
+
+### 0.2 センサ健全性 — 静止 IMU 5 秒 (走行**前**)
+
+Bringup 後 (IMU 静止状態):
+
+```bash
+python3 scratchpad/imu_live_check.py
+```
+
+期待値 (§base_link → imu_link ref 2026-07-09 10:52 最終再固定後):
+
+| 項目 | 期待 | tolerance | 判定 |
+|------|------|-----------|------|
+| ax   | +1.340 | ± 0.05 | ✓ or 中断 |
+| ay   | -0.604 | ± 0.05 | ✓ or 中断 |
+| az   | +9.815 | ± 0.05 | ✓ or 中断 |
+| gx   | -0.01845 | ± 0.005 | ✓ or 中断 |
+
+**中断条件**: いずれか tolerance 外 = IMU マウントが動いている or ハーネス緩み。
+その場合は物理再固定 → `frame_audit.py` で TF 再計算 → static_tf 更新 →
+ledger 更新 → 再開。走行は絶対にしない。
+
+### 0.3 DDS 検証 bag (10 分)
+
+**正常系** と **異常系** の両方を見る (片方だけだと lo 限定ミスで無音状態を
+gap ゼロと誤読するリスクあり):
+
+```bash
+# ターミナル A: bringup 起動 (Ctrl+C しない)
+ros2 launch whill_localization odom_bringup_launch.py
+
+# ターミナル B: 検証 bag 録画開始
+cd docs/m5r-bench-data/2026-07-10-dds-verify  # (mkdir しておく)
+ros2 bag record -o bag /velodyne_points /imu/data_rep145 /tf_static
+
+# ターミナル C: 意図的に外乱を発生 (5 分程度)
+#   - WiFi ON/OFF 切替
+#   - デザリング接続/切断
+#   - Ethernet 抜き差し (差してあれば)
+# → CycloneDDS が外部 discovery で振り回されないかテスト
+
+# 5 分経ったら B で Ctrl+C
+```
+
+**判定** (両方満たすこと):
+
+1. **正常系**: `ros2 bag info bag` で count が理論値通り
+   - `/velodyne_points`: 秒数 × 10 の 90% 以上
+   - `/imu/data_rep145`: 秒数 × 100 の 95% 以上
+   - **これが満たされないと lo 限定の設定ミスで無音状態の可能性大 → 検証失敗**
+2. **異常系**: bringup のログ (ターミナル A) で `large time gap` 警告ゼロ
+   - もしくは `IMU loop back`、`ddsi_udp_conn_write ... failed` の類が出ていないこと
+
+両方 ✓ → 本番録画に進む。片方でも ✗ → 原因調査 (本番は次回に)。
+
+### 0.4 本番録画
+
+- run-id: `2026-07-10-campus-outer-final` (仮)
+- run-dir: `docs/m5r-bench-data/<run-id>/`
+- コマンド: `ros2 bag record -o bag /velodyne_points /imu/data_rep145 /tf_static`
+- 走行完了 → Ctrl+C
+- `ros2 bag info` で count 再確認 (0.3 と同じ基準)
+- run.log で `large time gap` ゼロ確認
+
+### 0.5 走行**後** の静止 IMU 5 秒 (0.2 と同じ)
+
+物理振動でマウントがズレていないかの保険。走行前 (0.2) と一致していれば
+「この bag は commit hash `aed1e4d` の T_lidar_imu 値と整合」が保証される。
+ズレていたら、この bag 用の T_lidar_imu を実測値で再計算 (`frame_audit.py`)。
+
+### 0.6 GLIM 実行
+
+```bash
+GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
+  docs/m5r-bench-data/<run-id>/bag \
+  docs/m5r-bench-data/<run-id>/glim-out-audit-tli
+```
+
+判定: `traj_lidar.txt` の loop_error + offline_viewer 目視で seg-A 級品質を確認。
+両方 ✓ → CloudCompare B1 → DUFOMap → `docs/maps/campus/` → M5-R 完了。
+
+---
+
+
 ## 現時点の正 (as of 2026-07-09)
 
 ### base_link → imu_link
