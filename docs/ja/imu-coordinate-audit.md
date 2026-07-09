@@ -232,8 +232,75 @@ gx の -0.019 rad/s (-1.09 °/s) は 47 分走行で **-51° の heading 誤差*
 ほうが安全。次のイテレーションで `imu_sign_corrector` に gyro bias 減算オプ
 ションを足すか、別ノードにするかを検討する。
 
-## 7. 未検証項目 (今回の audit で埋められなかったもの)
+## 7. 2026-07-09 追記: LiDAR 姿勢実測と GLIM 検証
 
+### 7.1 LiDAR の地面平面 fit — シナリオ B 確定
+
+2026-07-09 収録 `2026-07-09-indoor-calib` bag の静止 30 スキャンに対して
+ring 別解析 (scratchpad/lidar_ground_fit_multi.py、lidar_roll_from_ring0.py):
+
+- Ring 0..15 の効果角度 (atan2(-z_med, xy_med)) は **全リングで 14.83-14.87°**
+  = -15° 校正値と完全一致 → **LiDAR は base_link に対してほぼ完全に水平**
+  (pitch ≈ -0.5°、roll ≈ 0°、plane fit std 0.4°)
+- 4 象限で「見える面の高さ」は違うが (front 1.05m、back 1.27m、left 0.98m、
+  right 1.05m)、これは LiDAR 傾きではなく屋内の物体/床高低差
+
+→ §4.4 の **シナリオ B 確定** (LiDAR と IMU は別マウント。noetic の +9° pitch は
+「IMU が -8° 傾いて LiDAR が水平だから見かけ上 imu-lidar 相対 +9° に見える」の
+正体)。
+
+### 7.2 audit 反映 T_lidar_imu で GLIM 4 者比較
+
+LiDAR 水平 + IMU pitch -7.76° roll -3.52° → **R_lidar_imu ≈ RPY(-3.52°, -7.26°, 0°)**。
+quaternion (qx, qy, qz, qw) = (-0.030651, -0.063283, -0.001945, 0.997523)。
+`scripts/m5r3_run_glim.sh` に env `GLIM_TLI_FROM_AUDIT=1` で追加パッチ実装。
+
+campus-outer bag (2813 秒、baseline commit `80af31f`) に対して 4 パターン
+比較 (`docs/m5r-bench-data/2026-07-08-campus-outer/glim-out-*` および
+`campus-outer-debiased/glim-out-audit-tli`):
+
+| 実験                       | dx     | dy      | **dz**       | end-to-start | yaw drift |
+|----------------------------|--------|---------|--------------|--------------|-----------|
+| baseline (noetic T_lidar_imu) | -8.01  | -3.54   | **+7.49**    | 11.53 m      | +18.17°   |
+| fix_imu_bias (§5)          | -0.26  | -25.36  | **+10.66**   | 27.51 m      | +19.93°   |
+| **audit T_lidar_imu**      | -3.82  | -23.39  | **+1.28 (▼85%)** | 23.74 m  | +16.60°   |
+| **debiased + audit T_lidar_imu** | -7.78 | -28.33 | **+0.39 (▼95%)** | 29.38 m | +18.76°   |
+
+### 7.3 判明した事実
+
+- **Z ドリフトの主犯は T_lidar_imu の roll 校正誤差** (5.5° 逆向き)。
+  audit の実測姿勢を反映しただけで dz が 7.5m → 1.3m まで解消
+- gyro bias (audit §3 の gx = -0.019 rad/s) を bag 冒頭 500 サンプル
+  静止時 mean で事前減算しても **XY drift は改善せず、むしろ悪化**。
+  GLIM 内蔵の bias 推定器と衝突した可能性大 (`IMU bias estimation seems
+  inaccurate` 警告が 268 → 287 に増加)。
+- **XY ドリフトの主因は gyro bias ではない**。残る候補:
+  - T_lidar_imu の yaw 成分未計測 (今日の audit では 0 と仮定)
+  - GLIM の loop closure が長時間走行で有効に働いていない
+- yaw drift そのものは 47 分で 16-19° と大きくない (0.35°/min)。しかし
+  47 分の間に「同じ廊下を通っても座標系が徐々に回転」して建物の複製が
+  3-4 個生成されている (bag viewer 目視で確認済)
+
+### 7.4 gyro debias 手法の再評価
+
+事前減算による debias は本 audit の実験では **有害** と判明。理由推定:
+
+1. **静的 bias 値が動作中の実 bias と異なる** (温度、加速度、機械振動で変化)
+2. **GLIM の推定器を混乱** — GLIM は各サンプルで bias 状態を更新するが、
+   事前減算されたデータに対しては bias state が 0 近くに拘束され、
+   ロバスト性が下がる
+
+代替策 (今後の候補):
+- `imu_bias_noise` を config 側で 1e-5 → 1e-6 に絞って推定器を stiff にする
+- または EKF (robot_localization) 側で bias 事前減算 (GLIM とは分離)
+- 本命は GRIL-Calib で 6-DoF 校正 (bias も同時推定)
+
+### 7.5 残る未検証項目
+
+- **T_lidar_imu の yaw 成分**: 今日は 0 と仮定。真値との差が XY drift の
+  主因である可能性高。GRIL-Calib 完走で実測すべき
+- **GLIM の loop closure 効き**: 47 分 bag で建物複製が発生している。
+  `config_global_mapping_gpu.json` の閾値調整で改善する余地あり
 - **LiDAR の base_link に対する物理姿勢**: 今回 IMU 姿勢は gravity 測定で
   出したが、LiDAR は点群平面フィットが必要で今夜は実施していない。GRIL-Calib
   の結果と、点群からの地面 fit を突合して整合を確認するのが確実
@@ -247,8 +314,14 @@ gx の -0.019 rad/s (-1.09 °/s) は 47 分走行で **-51° の heading 誤差*
 
 - 静止 IMU サンプリング: `scratchpad/imu_static_sample.py`
 - TF chain 数値計算: `scratchpad/frame_audit.py`
+- 07-09 追記: LiDAR ring 別解析: `scratchpad/lidar_ground_fit_multi.py`、
+  `scratchpad/lidar_roll_from_ring0.py`
+- 07-09 追記: gyro bias 事前減算 bag rewrite: `scratchpad/debias_gyro_bag.py`
 - `imu_sign_corrector` ソース: `src/whill_sensors_bringup/whill_sensors_bringup/imu_sign_corrector.py`
 - static TF 定義: `src/whill_sensors_bringup/launch/static_tf_launch.py`
 - GLIM `T_lidar_imu` 由来コメント: `scripts/m5r3_run_glim.sh:262-286`
+- GLIM T_lidar_imu env-gated 追加パッチ: `scripts/m5r3_run_glim.sh` (`GLIM_TLI_FROM_AUDIT`)
 - noetic 校正値の由来: `docs/ja/m3-extrinsics-from-noetic.md`
-- 今夜の比較実験結果: `docs/m5r-bench-data/2026-07-08-campus-outer/glim-out-{baseline,fixbias}/`
+- 07-08 の比較実験結果: `docs/m5r-bench-data/2026-07-08-campus-outer/glim-out-{baseline,fixbias}/`
+- 07-09 の追加実験結果: `docs/m5r-bench-data/2026-07-08-campus-outer/glim-out-audit-tli/`
+  および `docs/m5r-bench-data/2026-07-08-campus-outer-debiased/glim-out-audit-tli/`

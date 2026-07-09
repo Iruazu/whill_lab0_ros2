@@ -314,6 +314,41 @@ if n_tli != 1 or n_rf != 1:
 with open(path, 'w') as f:
     f.write(txt)
 PY
+    # Optional T_lidar_imu override (env-gated) — for the 2026-07-09
+    # ground-plane audit finding. audit §Ring-quadrant + gravity concludes:
+    #   LiDAR ≈ level in base_link (pitch -0.5°, roll ~0°)
+    #   IMU  tilted (pitch -7.76°, roll -3.52° per gravity)
+    # Therefore R_lidar_imu ≈ RPY(-3.52°, -7.26°, 0°) (near-identity roll of
+    # IMU's tilt as seen from level LiDAR). This is a 5.5° roll rotation
+    # from the noetic value and is our best hypothesis for the residual
+    # GLIM Z-drift after the fix_imu_bias experiment fell short.
+    if [[ "${GLIM_TLI_FROM_AUDIT:-0}" == "1" ]]; then
+      python3 - "${local_cfg}/config_sensors.json" <<'PY'
+import re, sys
+path = sys.argv[1]
+with open(path) as f:
+    txt = f.read()
+audit_tli = (
+    '"T_lidar_imu": [\n'
+    '      -0.050000,\n'
+    '      -0.400000,\n'
+    '      -0.350000,\n'
+    '      -0.030651,\n'
+    '      -0.063283,\n'
+    '      -0.001945,\n'
+    '      0.997523\n'
+    '    ]'
+)
+txt, n = re.subn(r'"T_lidar_imu":\s*\[[^\]]*\]', audit_tli, txt, count=1)
+if n != 1:
+    sys.stderr.write(f"ERROR: audit-tli patch failed ({n}).\n")
+    sys.exit(1)
+with open(path, 'w') as f:
+    f.write(txt)
+PY
+      echo "NOTE: GLIM_TLI_FROM_AUDIT=1 -> T_lidar_imu = audit RPY(-3.52°, -7.26°, 0°)" >&2
+    fi
+
     # Optional bias-freeze patch (env-gated) — for the M6-R Z-drift
     # diagnostic on 2026-07-08 campus-outer. When the bias grows unbounded
     # over a 47-min bag (see docs/session-2026-07-08 discussion), fixing
