@@ -358,7 +358,53 @@ user 合意 (2026-07-09):
 3. **判定基準**: 2 セグメントとも drift が顕著でなければ「gap がなければ
    本番品質の bag を作れる」= 明日の再録画で本番マップ収録の目処が立つ
 
-### 7.8 練り込むべき follow-up (明日以降)
+### 7.9 追試: bag を gap で 2 分割して GLIM (2026-07-09 23:00 頃)
+
+user の判断で現 bag を bag time 1325.06s (gap 直前) でカットし、seg-A
+(0-22min)、seg-B (22-47min) の 2 セグメントを独立に GLIM (`GLIM_TLI_FROM_AUDIT=1`)
+にかけた。分割スクリプト: `scratchpad/split_bag_at_gap.py`。tf_static は
+`scratchpad/` の後補填で 4 個入れ直し。
+
+| run | duration | samples | end-start | dz (endpoint) |
+|---|---|---|---|---|
+| 47min audit-tli (full) | 47 min | 27,684 | 23.7 m | +1.28 |
+| seg-A (0-22min, pre-gap) | 22 min | 13,051 | 60.3 m* | +4.05 |
+| seg-B (22-47min, post-gap) | 25 min | 14,622 | 65.6 m* | +6.37 |
+
+\* 各セグメント末での「起点からの直線距離」= WHILL がその時点でいた場所。
+loop でないので loop error 指標としては無意味。
+
+**目視判定 (offline_viewer で user が確認、2026-07-09 23:20)**:
+
+- **seg-A**: 明確な単線ループ、drift 無し、Z 平坦 (色の帯はキャンパスの
+  実高低差を表現)。**SLAM tracking 良好、audit T_lidar_imu は正しく機能**
+- **seg-B**: 建物や地面が複数の高さで重複描画されている。**明確な Z drift**
+
+**判定** — user の当初仮説通り、**bag 中の 4.77 秒 gap が主犯**:
+
+- seg-A (gap 前だけ) では audit T_lidar_imu で **Z drift 完全解消**
+- seg-B (gap 後) では復帰時のジャンプで Z 拘束が崩れ、以降累積
+- 47min 全体で見た "Z drift 主犯 = T_lidar_imu roll 校正誤差 (audit で解消)" と
+  "残る drift = gap 起因" が両立している
+
+**私 (Claude) の誤診記録**: 当初 `traj_lidar.txt` の Z 全域 min-max span
+(21m) だけ見て「Z が walk 中に 20m 振れている」と誤判定した。実際は
+キャンパスの本物の高低差 (坂、階段、建物 2 階部分の壁点群) を全部「drift」
+として計算に含めていたため。目視 or 「同じ物理場所での Z 一致性」を
+まず確認すべきだった。数値だけで断定した点は反省項目として残す
+(次回同種の判定では offline_viewer 目視を必ず併用する)。
+
+**明日以降の本番マップ生成の道筋**:
+
+1. **再録画 (DDS 瞬断リスクを最小化)**: WiFi OFF、デザリング切替なし、
+   governor performance 確認。ros2 bag info で count が理論値通り、
+   run.log で `large time gap` 警告ゼロを保証
+2. 再録画 bag に対して `GLIM_TLI_FROM_AUDIT=1` で GLIM → seg-A クラスの
+   クリーンな結果が期待できる
+3. DUFOMap で動的物体除去 → `docs/maps/campus/` に成果物規約 (ADR-0004,
+   ADR-0005) で格納 → M5-R 完了
+
+### 7.10 練り込むべき follow-up (明日以降)
 
 - gap 検知の bringup 側フック (7.6 の再発防止): 録画中の IMU 100Hz 未達を
   監視して即警告する node の追加 (`imu_sign_corrector` の副作用として
@@ -379,6 +425,7 @@ user 合意 (2026-07-09):
 - 07-09 追記: LiDAR ring 別解析: `scratchpad/lidar_ground_fit_multi.py`、
   `scratchpad/lidar_roll_from_ring0.py`
 - 07-09 追記: gyro bias 事前減算 bag rewrite: `scratchpad/debias_gyro_bag.py`
+- 07-09 追記: bag を gap で分割: `scratchpad/split_bag_at_gap.py`
 - `imu_sign_corrector` ソース: `src/whill_sensors_bringup/whill_sensors_bringup/imu_sign_corrector.py`
 - static TF 定義: `src/whill_sensors_bringup/launch/static_tf_launch.py`
 - GLIM `T_lidar_imu` 由来コメント: `scripts/m5r3_run_glim.sh:262-286`
