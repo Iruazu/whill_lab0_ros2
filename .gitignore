@@ -108,3 +108,23 @@ docs/maps/**/*.pcd
 # this lands in the tree. Ignore at the repo root only; if a package
 # needs its own imgui state it is free to track it.
 /imgui.ini
+
+# Conversation exports from `/export` slash command land at repo root
+# with names like `2026-07-10-142721-dataddsimu.txt`. Plain rosbag info
+# dumps that operators save with similar names (`2026-07-09-232918-bag.txt`)
+# fall under the same pattern. Neither belongs in the repo — they are
+# session-scoped and easy to regenerate.
+/2026-*-*.txt
+/2027-*-*.txt
+
+# scratchpad/ holds session-scoped investigation tools. Python scripts
+# there ARE tracked (e.g. frame_audit.py, imu_live_check.py,
+# investigate_thin_corridor.py — the calibration-ledger and audit doc
+# reference them by path). Temporary artifacts (PNG screenshots, JSON
+# scratch results) are NOT tracked; if a plot needs to persist it should
+# live under docs/ instead.
+scratchpad/*.png
+scratchpad/*.jpg
+scratchpad/*.jpeg
+scratchpad/*.pdf
+scratchpad/*.svg
