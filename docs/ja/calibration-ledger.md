@@ -163,11 +163,13 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 | Mode | 並進 [m] | 回転 (qx, qy, qz, qw) | 由来 |
 |------|---------|----------------------|------|
 | baseline (デフォルト) | (-0.05, -0.4, -0.35) | (0.017399, -0.078447, 0.001369, 0.996765) | noetic (RPY +2°, -9°, 0°) |
-| **audit** (`GLIM_TLI_FROM_AUDIT=1`) | 同上 | (-0.030651, -0.063283, -0.001945, 0.997523) | 2026-07-09 audit (RPY -3.52°, -7.26°, 0°) |
+| **audit** (`GLIM_TLI_FROM_AUDIT=1`) | 同上 | (-0.035606, -0.066319, -0.002368, 0.997163) | **2026-07-10 pre-run audit** (RPY -4.09°, -7.61°, 0°) |
 
-- 対応 commit: **`494ea77`** (`feat(m5r3): env-gated GLIM_TLI_FROM_AUDIT + 07-09 4-way GLIM comparison`)
-- 目視実証: 2026-07-09 23:20 の offline_viewer で seg-A が単線・drift 無しを確認
-  (`docs/ja/imu-coordinate-audit.md` §7.9)
+- 対応 commit: **(this commit)** (07-10 pre-run 追随。前回 `494ea77` は 07-09 audit)
+- 導出式: `R_lidar_imu.roll = imu.roll`, `R_lidar_imu.pitch = imu.pitch + 0.5°`
+  (LiDAR は base_link 系で概ね水平、pitch -0.5° の残留のみを補正)
+- 目視実証: 2026-07-09 23:20 の offline_viewer で **07-09 audit 版が** seg-A 単線・drift 無しを確認
+  (`docs/ja/imu-coordinate-audit.md` §7.9)。07-10 pre-run 版は今日の GLIM 実行後に判定
 - **本番マップ生成時は `GLIM_TLI_FROM_AUDIT=1` 必須**
 - 未計測: `yaw` 成分 (現在 0 仮定)。47 分フルループで yaw 起因の残留 drift が
   数 m 級で出る可能性が残る。出たら GRIL-Calib 6-DoF 校正を優先度上げ
@@ -180,7 +182,8 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 
 | Date       | Change                                      | Commit |
 |------------|---------------------------------------------|--------|
-| 2026-07-10 | base_link → imu_link 再測定 (roll -4.09°, pitch -8.11°、昨日値から -0.57°/-0.35° の応力緩和分) | (this commit) |
+| 2026-07-10 | GLIM audit T_lidar_imu を 07-10 pre-run 導出値に更新 (RPY -4.09°/-7.61°) | (this commit) |
+| 2026-07-10 | base_link → imu_link 再測定 (roll -4.09°, pitch -8.11°、昨日値から -0.57°/-0.35° の応力緩和分) | `9cc4be2` |
 | 2026-07-10 | lo-only xml に MaxAutoParticipantIndex=100 追加 (bringup で participant 枯渇 → 4 ノード死亡) | `d5c6eff` |
 | 2026-07-09 | 朝一チェックリスト §0 追加                   | `f81d6c1` |
 | 2026-07-09 | initial ledger作成 (今日の反省を受けて)      | `deb317d` |
