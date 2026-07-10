@@ -207,10 +207,60 @@ M5-R 山越え記録。本番マップ候補として正式採用。
 
 ### 既知残差 (M6-R 引き継ぎ)
 
+- **map tilt 1.81°** (追記 2026-07-10 19:xx、占有格子調査で発見):
+  `traj_lidar.txt` (x, y, z) の平面フィットで
+  ```
+  z = -0.0155·x + +0.0276·y + 1.815
+  tilt vs vertical = 1.81°  (azimuth 119° from +x)
+  residual RMS = 1.32 m
+  z_span 9.79 m のうち  平面成分 7.10 m (72.5%)  残差 1.32 m
+  ```
+  GLIM 出力の world z 軸が真の gravity と 1.81° ズレている。実地形
+  起伏は残差 RMS 1.3 m 級。原因は 2 候補:
+  1. IMU audit を実施した WHILL 静止位置 (start pose 付近) の路面が
+     実際に 1.81° 傾いていた (§7.10「base_link 水平性は水準器で確認
+     したい」未処理のツケ)
+  2. GLIM の初期 gravity alignment が瞬間 IMU 値だけで走り、ズレが
+     残った
+  M6-R の localizer の gravity-aware factor 設計 or Nav2 costmap の
+  垂直面判定に影響しうる。M6-R 開始前に「マップを de-tilt」or
+  「localizer 側で許容」を判断する
 - **IMU better ratios が低いまま**: trans=0.03 / vel=0.07。bag 47 分の
   大半で LiDAR 主導、IMU 予測寄与が薄い。マップ品質には影響しない
 - **bias_acc が最後まで未収束**。localization で IMU 予測に頼る設計を
   組む場合はここが弱点になる。M6-R の localizer 選定時に評価軸へ
+
+### 校正プロトコル改善案 (次回本番録画時に必ず取り入れる)
+
+07-10 の追試で発見された map tilt 1.81° の再発防止として、§0 の朝一
+チェックリストに以下を追加する:
+
+1. **§0.2 に前置き: 起動地点の路面水準チェック**
+   - 手順: 静止させた WHILL に手のひらサイズの水準器を base_link 面
+     (座面 or 底部フレーム) に置き、前後・左右の両軸で気泡が中央にある
+     ことを目視確認
+   - 判定: ± 1° 以内 (気泡が水準器の 1 目盛り内) なら OK。それ以上なら
+     path を数十 cm ずらして再試行、あるいはその場所での録画をあきらめる
+   - 不合格時: base_link の傾きは IMU audit で自動測定できない (audit は
+     gravity vs IMU の相対で、base_link は仮定として「水平」を入れて
+     いるため)。この確認が抜けると本 audit で言う "base_link → imu_link
+     の RPY" が正しくても、真の gravity vs map の関係がズレて 1.81°
+     tilt が map に焼きつく (2026-07-10 の実例)
+2. **§0.2 の代替: 複数地点 gravity 平均**
+   - 上記水準器チェックが物理的に難しい場合 (水準器を持ち込めない、屋外
+     で振動が大きい等)、以下で近似:
+   - 走行予定経路上の 3-5 箇所で WHILL を停めて 5 秒静止 IMU サンプリング
+     (`scratchpad/imu_live_check.py` を各地点で実行)
+   - 各地点の gravity vector を回転させて世界座標での平均を取り、
+     残差 RMS が小さいことを確認 (RMS < 0.3° なら「経路の路面がおおむね
+     水平」と言える)
+   - 大きければその方向 (steepest ascent 方位) がわかるので、audit で
+     推定した base_link → imu_link RPY からその成分を差し引くことで
+     真の imu_link → gravity 方向が復元できる。GLIM 側では
+     `T_lidar_imu` の rotation にこの補正を追加する
+
+どちらも 2026-07-10 の本番録画時には未実施。M6-R 用の再録画または
+補助マップ取得時に導入する。
 
 ### 3 日間の追い込み総括
 
@@ -234,7 +284,11 @@ M5-R 山越え記録。本番マップ候補として正式採用。
 
 | Date       | Change                                      | Commit |
 |------------|---------------------------------------------|--------|
-| 2026-07-10 | 本番マップ採用: `2026-07-10-campus-outer-final` viewer PASS (loop_error 0.10%、複製・Z ゴーストなし) | (this commit) |
+| 2026-07-10 | **M5-R 完了**: `docs/maps/campus/` README + metadata + tilt 1.81° 記録 + 校正プロトコル改善案 (§本節「校正プロトコル改善案」) | (this commit) |
+| 2026-07-10 | 占有格子に relative z-slice + anchor-free-radius 導入 (tilt/starved 問題を解消) | `7a9924a` |
+| 2026-07-10 | 占有格子に trajectory-anchor free マーキング導入 | `a180c8b` |
+| 2026-07-10 | B1 数値代替 `m5r3_b1_numeric.py` + campus map 適用 (ground z-gap 1.394 m) | `71b6407` |
+| 2026-07-10 | 本番マップ採用: `2026-07-10-campus-outer-final` viewer PASS (loop_error 0.10%、複製・Z ゴーストなし) | `4ca6704` |
 | 2026-07-10 | GLIM audit T_lidar_imu を 07-10 pre-run 導出値に更新 (RPY -4.09°/-7.61°) | `39bf794` |
 | 2026-07-10 | base_link → imu_link 再測定 (roll -4.09°, pitch -8.11°、昨日値から -0.57°/-0.35° の応力緩和分) | `9cc4be2` |
 | 2026-07-10 | lo-only xml に MaxAutoParticipantIndex=100 追加 (bringup で participant 枯渇 → 4 ノード死亡) | `d5c6eff` |
