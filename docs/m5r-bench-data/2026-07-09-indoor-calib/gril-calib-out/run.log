@@ -1,0 +1,73 @@
+[INFO] [launch]: All log files can be found below /home/systemlab/.ros/log/2026-07-09-16-33-33-700819-systemlab-Alienware-x15-R2-12875
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [gril_calib_exec-1]: process started with pid [12877]
+[gril_calib_exec-1] Multi thread started 
+[gril_calib_exec-1] lidar_type: 2
+[gril_calib_exec-1] LiDAR-only odometry starts.
+[gril_calib_exec-1] Operating patchwork++...
+[gril_calib_exec-1] [INFO] [1783582413.831118468] [patchworkpp]: Inititalizing PatchWork++...
+[gril_calib_exec-1] Sensor Height: 0.85
+[gril_calib_exec-1] Num of Iteration: 3
+[gril_calib_exec-1] Num of LPR: 20
+[gril_calib_exec-1] Num of min. points: 10
+[gril_calib_exec-1] Seeds Threshold: 0.3
+[gril_calib_exec-1] Distance Threshold: 0.125
+[gril_calib_exec-1] Max. range:: 4
+[gril_calib_exec-1] Min. range:: 1
+[gril_calib_exec-1] Normal vector threshold: 0.707
+[gril_calib_exec-1] adaptive_seed_selection_margin: -1.2
+[gril_calib_exec-1] Num. zones: 4
+[gril_calib_exec-1] Num. sectors: 16, 32, 54, 32
+[gril_calib_exec-1] Num. rings: 3, 3, 3, 3
+[gril_calib_exec-1] elevation_thr_: 0.1000, 0.2000, 0.4000, 0.6000 
+[gril_calib_exec-1] flatness_thr_: 0.0000, 0.0000, 0.0000, 0.0000 
+[gril_calib_exec-1] INITIALIZATION COMPLETE
+[gril_calib_exec-1] ~~~~/home/systemlab/calib_ws/src/GRIL-Calib/ doesn't exist
+[gril_calib_exec-1] [INFO] [1783582413.835566636] [laser_mapping]: Node init finished.
+[gril_calib_exec-1] 
+[gril_calib_exec-1] Acceleration norm  : 9.92495
+[gril_calib_exec-1] IMU data frequency : 99.9935 Hz
+[gril_calib_exec-1] 
+[gril_calib_exec-1] IMU data frequency too low. Higher than 150 Hz is recommended.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] lidar loop back, clear buffer
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] [1m[36m[Initialization] Movement detected, data accumulation starts.
+[gril_calib_exec-1] 
+[gril_calib_exec-1] 
+[gril_calib_exec-1] 
+[gril_calib_exec-1] 
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] [0mSelf sync IMU and LiDAR, HARD time lag is -401.8351035118 
+[gril_calib_exec-1]  
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] lidar loop back, clear buffer
+[gril_calib_exec-1] Delete time: 0.000001, delete size: 0
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] lidar loop back, clear buffer
+[gril_calib_exec-1] [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] IMU loop back, clear IMU buffer.
+[gril_calib_exec-1] [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.
+[gril_calib_exec-1] [2J[H[3A[1m[36m[Data accumulation] [1m[32mRotation around Lidar X Axis complete! [0m
+[gril_calib_exec-1] [1m[36m[Data accumulation] [1m[32mRotation around Lidar Y Axis complete! [0m
+[gril_calib_exec-1] [1m[36m[Data accumulation] [1m[32mRotation around Lidar Z Axis complete! [0m
+[gril_calib_exec-1] [1m[95m[Rotation matrix Ground to LiDAR (euler)] [0m 0 -0  0 deg
+[gril_calib_exec-1] [1m[95m[Rotation matrix Ground to IMU (euler)] [0m 0 -0  0 deg
+[gril_calib_exec-1] [1m[95m[Estimated LiDAR sensor height] : [0m0 m
+[ERROR] [gril_calib_exec-1]: process has died [pid 12877, exit code -11, cmd '/home/systemlab/calib_ws/install/gril_calib/lib/gril_calib/gril_calib_exec --ros-args --params-file /home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-09-indoor-calib/gril-calib-out/velodyne16_whill.yaml --params-file /tmp/launch_params_pv9319lm'].

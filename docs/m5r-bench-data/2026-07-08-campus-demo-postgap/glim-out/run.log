@@ -1,0 +1,1583 @@
+==> GLIM start 2026-07-08T09:23:40Z
+[2026-07-08 18:23:40.605] [glim] [info] config_path: /home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-campus-demo-postgap/glim-out/config/
+[2026-07-08 18:23:40.606] [glim] [info] load libodometry_estimation_gpu.so
+[2026-07-08 18:23:42.722] [glim] [info] load libsub_mapping.so
+[2026-07-08 18:23:42.732] [glim] [info] load libglobal_mapping.so
+[2026-07-08 18:23:42.733] [glim] [info] load libmemory_monitor.so
+[2026-07-08 18:23:42.733] [glim] [info] load libstandard_viewer.so
+[2026-07-08 18:23:42.896] [glim] [info] load librviz_viewer.so
+[2026-07-08 18:23:42.914] [glim] [info] topics:
+[2026-07-08 18:23:42.914] [glim] [info] - /imu/data_rep145
+[2026-07-08 18:23:42.914] [glim] [info] - /velodyne_points
+[2026-07-08 18:23:42.914] [glim] [info] - /image
+[2026-07-08 18:23:42.914] [glim] [info] bag_filenames:
+[2026-07-08 18:23:42.914] [glim] [info] - /home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-campus-demo-postgap/bag
+[2026-07-08 18:23:42.914] [glim] [warning] param glim_ros/playback_speed not found
+[2026-07-08 18:23:42.914] [glim] [warning] use default_value=100
+[2026-07-08 18:23:42.914] [glim] [info] opening /home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-campus-demo-postgap/bag
+[2026-07-08 18:23:42.915] [glim] [info] detected storage_id=sqlite3 from metadata.yaml
+[INFO] [1783502622.919706700] [rosbag2_storage]: Opened database '/home/systemlab/whill_lab0_ros2/docs/m5r-bench-data/2026-07-08-campus-demo-postgap/bag/bag_0.db3' for READ_ONLY.
+[2026-07-08 18:23:42.923] [glim] [warning] negative per-point timestamp is found!! min=-0.100115 max=0.001306
+[2026-07-08 18:23:42.923] [glim] [warning] add an offset to the frame timestamp to make per-point ones positive!!
+[2026-07-08 18:23:43.146] [odom] [info] estimate initial IMU state
+Initial error: 227539, values: 33
+iter      cost      cost_change    lambda  success iter_time
+   0      79.4532      2.3e+05      1e-05      1    0.00036
+   1         0.94           79      1e-06      1    0.00031
+   2         0.94       0.0011      1e-07      1    0.00027
+   3         0.94       -3e-10      1e-08      1    0.00026
+[2026-07-08 18:23:43.150] [odom] [info] initial IMU state estimation result
+[2026-07-08 18:23:43.150] [odom] [info] T_world_imu=se3(0.667215,-0.019409,0.022606,-0.039929,-0.078716,0.005574,0.996082)
+[2026-07-08 18:23:43.150] [odom] [info] v_world_imu=vec(0.633242,0.005245,0.069859)
+[2026-07-08 18:23:43.150] [odom] [info] imu_bias=vec(0.001676,0.001502,0.001109,-0.006543,0.003202,-0.000077)
+[2026-07-08 18:23:43.158] [rviz] [info] auto-detected IMU frame ID: imu_link
+[2026-07-08 18:23:43.158] [rviz] [info] auto-detected LiDAR frame ID: velodyne
+[2026-07-08 18:23:43.158] [rviz] [info] base_frame_id is not set. using IMU frame ID 'imu_link' as base frame ID.
+[2026-07-08 18:23:44.735] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:44.735] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:44.735] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:44.735] [odom] [warning] num_validations=128
+[2026-07-08 18:23:44.735] [odom] [warning] No-IMU errors rot=0.135 +- 0.080 deg, trans=0.008 +- 0.005 m, vel=0.031 +- 0.023 m/s
+[2026-07-08 18:23:44.735] [odom] [warning] IMU errors rot=0.074 +- 0.046 deg, trans=0.008 +- 0.005 m, vel=0.026 +- 0.023 m/s
+[2026-07-08 18:23:44.735] [odom] [warning] IMU better ratios rot=0.74, trans=0.38, vel=0.61
+[2026-07-08 18:23:45.500] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:45.500] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:45.500] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:45.500] [odom] [warning] num_validations=192
+[2026-07-08 18:23:45.500] [odom] [warning] No-IMU errors rot=0.146 +- 0.085 deg, trans=0.009 +- 0.005 m, vel=0.029 +- 0.020 m/s
+[2026-07-08 18:23:45.500] [odom] [warning] IMU errors rot=0.080 +- 0.047 deg, trans=0.009 +- 0.005 m, vel=0.026 +- 0.020 m/s
+[2026-07-08 18:23:45.500] [odom] [warning] IMU better ratios rot=0.73, trans=0.33, vel=0.54
+[2026-07-08 18:23:46.387] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:46.387] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:46.387] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:46.387] [odom] [warning] num_validations=256
+[2026-07-08 18:23:46.387] [odom] [warning] No-IMU errors rot=0.151 +- 0.082 deg, trans=0.010 +- 0.006 m, vel=0.028 +- 0.019 m/s
+[2026-07-08 18:23:46.387] [odom] [warning] IMU errors rot=0.082 +- 0.046 deg, trans=0.010 +- 0.006 m, vel=0.027 +- 0.019 m/s
+[2026-07-08 18:23:46.387] [odom] [warning] IMU better ratios rot=0.75, trans=0.28, vel=0.50
+[2026-07-08 18:23:47.220] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:47.220] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:47.220] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:47.220] [odom] [warning] num_validations=320
+[2026-07-08 18:23:47.220] [odom] [warning] No-IMU errors rot=0.144 +- 0.080 deg, trans=0.009 +- 0.005 m, vel=0.026 +- 0.018 m/s
+[2026-07-08 18:23:47.220] [odom] [warning] IMU errors rot=0.074 +- 0.045 deg, trans=0.010 +- 0.006 m, vel=0.026 +- 0.017 m/s
+[2026-07-08 18:23:47.220] [odom] [warning] IMU better ratios rot=0.78, trans=0.25, vel=0.43
+[2026-07-08 18:23:48.274] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:48.274] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:48.274] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:48.274] [odom] [warning] num_validations=384
+[2026-07-08 18:23:48.274] [odom] [warning] No-IMU errors rot=0.150 +- 0.098 deg, trans=0.009 +- 0.005 m, vel=0.025 +- 0.017 m/s
+[2026-07-08 18:23:48.274] [odom] [warning] IMU errors rot=0.071 +- 0.043 deg, trans=0.010 +- 0.005 m, vel=0.027 +- 0.016 m/s
+[2026-07-08 18:23:48.274] [odom] [warning] IMU better ratios rot=0.80, trans=0.22, vel=0.39
+[2026-07-08 18:23:49.349] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:49.349] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:49.349] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:49.349] [odom] [warning] num_validations=448
+[2026-07-08 18:23:49.349] [odom] [warning] No-IMU errors rot=0.283 +- 0.511 deg, trans=0.009 +- 0.005 m, vel=0.027 +- 0.018 m/s
+[2026-07-08 18:23:49.349] [odom] [warning] IMU errors rot=0.082 +- 0.056 deg, trans=0.010 +- 0.006 m, vel=0.030 +- 0.019 m/s
+[2026-07-08 18:23:49.349] [odom] [warning] IMU better ratios rot=0.82, trans=0.21, vel=0.39
+[2026-07-08 18:23:51.423] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:51.423] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:51.423] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:51.423] [odom] [warning] num_validations=512
+[2026-07-08 18:23:51.423] [odom] [warning] No-IMU errors rot=0.316 +- 0.520 deg, trans=0.015 +- 0.015 m, vel=0.030 +- 0.022 m/s
+[2026-07-08 18:23:51.423] [odom] [warning] IMU errors rot=0.096 +- 0.074 deg, trans=0.016 +- 0.018 m, vel=0.047 +- 0.051 m/s
+[2026-07-08 18:23:51.423] [odom] [warning] IMU better ratios rot=0.82, trans=0.18, vel=0.34
+[2026-07-08 18:23:52.947] [glim] [info] playback speed: 3.959x
+[2026-07-08 18:23:53.460] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:53.460] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:53.460] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:53.460] [odom] [warning] num_validations=576
+[2026-07-08 18:23:53.460] [odom] [warning] No-IMU errors rot=0.308 +- 0.495 deg, trans=0.020 +- 0.022 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:23:53.460] [odom] [warning] IMU errors rot=0.101 +- 0.075 deg, trans=0.023 +- 0.025 m, vel=0.063 +- 0.065 m/s
+[2026-07-08 18:23:53.460] [odom] [warning] IMU better ratios rot=0.81, trans=0.16, vel=0.30
+[2026-07-08 18:23:54.735] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:54.735] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:54.735] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:54.735] [odom] [warning] num_validations=640
+[2026-07-08 18:23:54.735] [odom] [warning] No-IMU errors rot=0.302 +- 0.472 deg, trans=0.025 +- 0.025 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:23:54.735] [odom] [warning] IMU errors rot=0.107 +- 0.078 deg, trans=0.028 +- 0.029 m, vel=0.074 +- 0.070 m/s
+[2026-07-08 18:23:54.735] [odom] [warning] IMU better ratios rot=0.80, trans=0.15, vel=0.27
+[2026-07-08 18:23:56.571] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:56.571] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:56.571] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:56.571] [odom] [warning] num_validations=704
+[2026-07-08 18:23:56.571] [odom] [warning] No-IMU errors rot=0.295 +- 0.452 deg, trans=0.029 +- 0.027 m, vel=0.032 +- 0.021 m/s
+[2026-07-08 18:23:56.571] [odom] [warning] IMU errors rot=0.109 +- 0.077 deg, trans=0.033 +- 0.031 m, vel=0.082 +- 0.072 m/s
+[2026-07-08 18:23:56.571] [odom] [warning] IMU better ratios rot=0.80, trans=0.13, vel=0.25
+[2026-07-08 18:23:57.975] [glim] [info] playback speed: 4.135x
+[2026-07-08 18:23:58.332] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:58.332] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:58.332] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:58.332] [odom] [warning] num_validations=768
+[2026-07-08 18:23:58.332] [odom] [warning] No-IMU errors rot=0.297 +- 0.437 deg, trans=0.033 +- 0.029 m, vel=0.033 +- 0.021 m/s
+[2026-07-08 18:23:58.332] [odom] [warning] IMU errors rot=0.114 +- 0.077 deg, trans=0.037 +- 0.032 m, vel=0.089 +- 0.073 m/s
+[2026-07-08 18:23:58.332] [odom] [warning] IMU better ratios rot=0.79, trans=0.12, vel=0.23
+[2026-07-08 18:23:59.477] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:23:59.477] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:23:59.477] [odom] [warning] IMU validation results:
+[2026-07-08 18:23:59.477] [odom] [warning] num_validations=832
+[2026-07-08 18:23:59.477] [odom] [warning] No-IMU errors rot=0.297 +- 0.427 deg, trans=0.034 +- 0.028 m, vel=0.033 +- 0.021 m/s
+[2026-07-08 18:23:59.477] [odom] [warning] IMU errors rot=0.114 +- 0.076 deg, trans=0.038 +- 0.032 m, vel=0.093 +- 0.071 m/s
+[2026-07-08 18:23:59.477] [odom] [warning] IMU better ratios rot=0.79, trans=0.11, vel=0.21
+[2026-07-08 18:24:01.038] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:01.038] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:01.038] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:01.038] [odom] [warning] num_validations=896
+[2026-07-08 18:24:01.038] [odom] [warning] No-IMU errors rot=0.289 +- 0.413 deg, trans=0.034 +- 0.027 m, vel=0.033 +- 0.021 m/s
+[2026-07-08 18:24:01.038] [odom] [warning] IMU errors rot=0.114 +- 0.074 deg, trans=0.039 +- 0.031 m, vel=0.095 +- 0.069 m/s
+[2026-07-08 18:24:01.038] [odom] [warning] IMU better ratios rot=0.79, trans=0.10, vel=0.20
+[2026-07-08 18:24:01.697] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:01.697] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:01.697] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:01.697] [odom] [warning] num_bias_validations=960
+[2026-07-08 18:24:01.697] [odom] [warning] bias_acc=[0.540, -0.080, 0.038] m/s^2, bias_gyro=[-0.018, -0.000, 0.001] rad/s
+[2026-07-08 18:24:01.697] [odom] [warning] acc_stat ax=0.145 +- 0.208 [min=-0.045, max=0.540], ay=-0.005 +- 0.033 [min=-0.080, max=0.039], az=0.042 +- 0.013 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:01.697] [odom] [warning] gyro_stat wx=-0.017 +- 0.001 [min=-0.018, max=-0.016], wy=-0.001 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:02.921] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:02.921] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:02.921] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:02.921] [odom] [warning] num_validations=960
+[2026-07-08 18:24:02.921] [odom] [warning] No-IMU errors rot=0.282 +- 0.400 deg, trans=0.034 +- 0.026 m, vel=0.033 +- 0.020 m/s
+[2026-07-08 18:24:02.921] [odom] [warning] IMU errors rot=0.113 +- 0.072 deg, trans=0.038 +- 0.030 m, vel=0.097 +- 0.067 m/s
+[2026-07-08 18:24:02.921] [odom] [warning] IMU better ratios rot=0.79, trans=0.10, vel=0.18
+[2026-07-08 18:24:02.991] [glim] [info] playback speed: 4.065x
+[2026-07-08 18:24:03.567] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:03.567] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:03.567] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:03.567] [odom] [warning] num_bias_validations=1024
+[2026-07-08 18:24:03.567] [odom] [warning] bias_acc=[0.586, -0.092, 0.036] m/s^2, bias_gyro=[-0.018, -0.000, 0.001] rad/s
+[2026-07-08 18:24:03.567] [odom] [warning] acc_stat ax=0.172 +- 0.228 [min=-0.045, max=0.586], ay=-0.011 +- 0.039 [min=-0.092, max=0.039], az=0.042 +- 0.013 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:03.567] [odom] [warning] gyro_stat wx=-0.017 +- 0.001 [min=-0.018, max=-0.016], wy=-0.001 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:04.845] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:04.845] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:04.845] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:04.845] [odom] [warning] num_validations=1024
+[2026-07-08 18:24:04.845] [odom] [warning] No-IMU errors rot=0.283 +- 0.394 deg, trans=0.034 +- 0.025 m, vel=0.034 +- 0.021 m/s
+[2026-07-08 18:24:04.845] [odom] [warning] IMU errors rot=0.113 +- 0.072 deg, trans=0.038 +- 0.029 m, vel=0.097 +- 0.065 m/s
+[2026-07-08 18:24:04.845] [odom] [warning] IMU better ratios rot=0.79, trans=0.09, vel=0.17
+[2026-07-08 18:24:05.034] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:05.034] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:05.034] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:05.034] [odom] [warning] num_bias_validations=1088
+[2026-07-08 18:24:05.034] [odom] [warning] bias_acc=[0.628, -0.105, 0.035] m/s^2, bias_gyro=[-0.018, -0.001, 0.001] rad/s
+[2026-07-08 18:24:05.034] [odom] [warning] acc_stat ax=0.199 +- 0.246 [min=-0.045, max=0.628], ay=-0.016 +- 0.044 [min=-0.105, max=0.039], az=0.041 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:05.034] [odom] [warning] gyro_stat wx=-0.017 +- 0.001 [min=-0.018, max=-0.016], wy=-0.001 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:06.817] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:06.817] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:06.817] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:06.817] [odom] [warning] num_validations=1088
+[2026-07-08 18:24:06.817] [odom] [warning] No-IMU errors rot=0.280 +- 0.384 deg, trans=0.034 +- 0.025 m, vel=0.034 +- 0.021 m/s
+[2026-07-08 18:24:06.817] [odom] [warning] IMU errors rot=0.113 +- 0.071 deg, trans=0.038 +- 0.028 m, vel=0.098 +- 0.064 m/s
+[2026-07-08 18:24:06.817] [odom] [warning] IMU better ratios rot=0.80, trans=0.09, vel=0.16
+[2026-07-08 18:24:07.700] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:07.700] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:07.700] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:07.700] [odom] [warning] num_bias_validations=1152
+[2026-07-08 18:24:07.700] [odom] [warning] bias_acc=[0.669, -0.116, 0.032] m/s^2, bias_gyro=[-0.018, 0.000, 0.001] rad/s
+[2026-07-08 18:24:07.700] [odom] [warning] acc_stat ax=0.225 +- 0.262 [min=-0.045, max=0.669], ay=-0.022 +- 0.048 [min=-0.116, max=0.039], az=0.041 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:07.700] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.001 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:07.993] [glim] [info] playback speed: 3.123x
+[2026-07-08 18:24:08.961] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:08.961] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:08.961] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:08.961] [odom] [warning] num_validations=1152
+[2026-07-08 18:24:08.961] [odom] [warning] No-IMU errors rot=0.278 +- 0.374 deg, trans=0.034 +- 0.024 m, vel=0.035 +- 0.021 m/s
+[2026-07-08 18:24:08.961] [odom] [warning] IMU errors rot=0.112 +- 0.070 deg, trans=0.038 +- 0.027 m, vel=0.098 +- 0.062 m/s
+[2026-07-08 18:24:08.961] [odom] [warning] IMU better ratios rot=0.81, trans=0.08, vel=0.16
+[2026-07-08 18:24:09.155] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:09.155] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:09.155] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:09.155] [odom] [warning] num_bias_validations=1216
+[2026-07-08 18:24:09.155] [odom] [warning] bias_acc=[0.703, -0.125, 0.030] m/s^2, bias_gyro=[-0.018, 0.000, 0.001] rad/s
+[2026-07-08 18:24:09.155] [odom] [warning] acc_stat ax=0.251 +- 0.276 [min=-0.045, max=0.703], ay=-0.027 +- 0.052 [min=-0.125, max=0.039], az=0.040 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:09.155] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.001 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:11.101] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:11.101] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:11.101] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:11.101] [odom] [warning] num_validations=1216
+[2026-07-08 18:24:11.101] [odom] [warning] No-IMU errors rot=0.274 +- 0.366 deg, trans=0.033 +- 0.023 m, vel=0.035 +- 0.021 m/s
+[2026-07-08 18:24:11.101] [odom] [warning] IMU errors rot=0.111 +- 0.069 deg, trans=0.038 +- 0.026 m, vel=0.097 +- 0.060 m/s
+[2026-07-08 18:24:11.101] [odom] [warning] IMU better ratios rot=0.81, trans=0.08, vel=0.15
+[2026-07-08 18:24:12.080] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:12.081] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:12.081] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:12.081] [odom] [warning] num_bias_validations=1280
+[2026-07-08 18:24:12.081] [odom] [warning] bias_acc=[0.732, -0.126, 0.029] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:12.081] [odom] [warning] acc_stat ax=0.275 +- 0.289 [min=-0.045, max=0.732], ay=-0.032 +- 0.055 [min=-0.126, max=0.039], az=0.040 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:12.081] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.001 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:13.019] [glim] [info] playback speed: 2.846x
+[2026-07-08 18:24:14.461] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:14.461] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:14.461] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:14.461] [odom] [warning] num_validations=1280
+[2026-07-08 18:24:14.461] [odom] [warning] No-IMU errors rot=0.263 +- 0.360 deg, trans=0.033 +- 0.023 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:24:14.461] [odom] [warning] IMU errors rot=0.107 +- 0.071 deg, trans=0.037 +- 0.026 m, vel=0.095 +- 0.059 m/s
+[2026-07-08 18:24:14.461] [odom] [warning] IMU better ratios rot=0.80, trans=0.08, vel=0.14
+[2026-07-08 18:24:15.407] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:15.407] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:15.407] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:15.407] [odom] [warning] num_bias_validations=1344
+[2026-07-08 18:24:15.407] [odom] [warning] bias_acc=[0.758, -0.126, 0.028] m/s^2, bias_gyro=[-0.018, 0.000, 0.001] rad/s
+[2026-07-08 18:24:15.407] [odom] [warning] acc_stat ax=0.298 +- 0.300 [min=-0.045, max=0.758], ay=-0.037 +- 0.057 [min=-0.126, max=0.039], az=0.039 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:15.407] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:17.804] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:17.804] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:17.804] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:17.804] [odom] [warning] num_validations=1344
+[2026-07-08 18:24:17.804] [odom] [warning] No-IMU errors rot=0.262 +- 0.353 deg, trans=0.032 +- 0.022 m, vel=0.035 +- 0.022 m/s
+[2026-07-08 18:24:17.804] [odom] [warning] IMU errors rot=0.106 +- 0.070 deg, trans=0.037 +- 0.025 m, vel=0.094 +- 0.058 m/s
+[2026-07-08 18:24:17.804] [odom] [warning] IMU better ratios rot=0.80, trans=0.07, vel=0.14
+[2026-07-08 18:24:17.947] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:17.947] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:17.947] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:17.947] [odom] [warning] num_bias_validations=1408
+[2026-07-08 18:24:17.947] [odom] [warning] bias_acc=[0.784, -0.122, 0.027] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:17.947] [odom] [warning] acc_stat ax=0.320 +- 0.310 [min=-0.045, max=0.784], ay=-0.041 +- 0.059 [min=-0.126, max=0.039], az=0.039 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:17.947] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:18.023] [glim] [info] playback speed: 2.270x
+[2026-07-08 18:24:18.565] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:18.565] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:18.565] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:18.565] [odom] [warning] num_validations=1408
+[2026-07-08 18:24:18.565] [odom] [warning] No-IMU errors rot=0.261 +- 0.346 deg, trans=0.032 +- 0.022 m, vel=0.035 +- 0.022 m/s
+[2026-07-08 18:24:18.565] [odom] [warning] IMU errors rot=0.107 +- 0.070 deg, trans=0.036 +- 0.025 m, vel=0.093 +- 0.057 m/s
+[2026-07-08 18:24:18.565] [odom] [warning] IMU better ratios rot=0.80, trans=0.07, vel=0.14
+[2026-07-08 18:24:19.291] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:19.291] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:19.291] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:19.291] [odom] [warning] num_bias_validations=1472
+[2026-07-08 18:24:19.291] [odom] [warning] bias_acc=[0.807, -0.116, 0.027] m/s^2, bias_gyro=[-0.018, 0.000, 0.001] rad/s
+[2026-07-08 18:24:19.291] [odom] [warning] acc_stat ax=0.341 +- 0.319 [min=-0.045, max=0.807], ay=-0.044 +- 0.060 [min=-0.126, max=0.039], az=0.038 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:19.291] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:21.367] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:21.367] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:21.367] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:21.367] [odom] [warning] num_validations=1472
+[2026-07-08 18:24:21.367] [odom] [warning] No-IMU errors rot=0.260 +- 0.340 deg, trans=0.032 +- 0.022 m, vel=0.035 +- 0.022 m/s
+[2026-07-08 18:24:21.367] [odom] [warning] IMU errors rot=0.107 +- 0.069 deg, trans=0.036 +- 0.024 m, vel=0.092 +- 0.056 m/s
+[2026-07-08 18:24:21.367] [odom] [warning] IMU better ratios rot=0.80, trans=0.07, vel=0.14
+[2026-07-08 18:24:21.799] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:21.799] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:21.799] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:21.799] [odom] [warning] num_bias_validations=1536
+[2026-07-08 18:24:21.799] [odom] [warning] bias_acc=[0.828, -0.113, 0.025] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:21.799] [odom] [warning] acc_stat ax=0.361 +- 0.327 [min=-0.045, max=0.828], ay=-0.047 +- 0.060 [min=-0.126, max=0.039], az=0.038 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:21.799] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:22.420] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:22.420] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:22.420] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:22.420] [odom] [warning] num_validations=1536
+[2026-07-08 18:24:22.420] [odom] [warning] No-IMU errors rot=0.259 +- 0.334 deg, trans=0.031 +- 0.021 m, vel=0.036 +- 0.022 m/s
+[2026-07-08 18:24:22.420] [odom] [warning] IMU errors rot=0.107 +- 0.069 deg, trans=0.035 +- 0.024 m, vel=0.091 +- 0.055 m/s
+[2026-07-08 18:24:22.420] [odom] [warning] IMU better ratios rot=0.80, trans=0.07, vel=0.14
+[2026-07-08 18:24:22.814] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:22.814] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:22.814] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:22.814] [odom] [warning] num_bias_validations=1600
+[2026-07-08 18:24:22.814] [odom] [warning] bias_acc=[0.844, -0.108, 0.025] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:22.814] [odom] [warning] acc_stat ax=0.380 +- 0.334 [min=-0.045, max=0.844], ay=-0.049 +- 0.060 [min=-0.126, max=0.039], az=0.037 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:22.814] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:23.045] [glim] [info] playback speed: 3.878x
+[2026-07-08 18:24:24.574] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:24.574] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:24.574] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:24.574] [odom] [warning] num_validations=1600
+[2026-07-08 18:24:24.574] [odom] [warning] No-IMU errors rot=0.262 +- 0.331 deg, trans=0.031 +- 0.021 m, vel=0.037 +- 0.025 m/s
+[2026-07-08 18:24:24.574] [odom] [warning] IMU errors rot=0.108 +- 0.069 deg, trans=0.035 +- 0.024 m, vel=0.089 +- 0.055 m/s
+[2026-07-08 18:24:24.574] [odom] [warning] IMU better ratios rot=0.80, trans=0.08, vel=0.16
+[2026-07-08 18:24:24.705] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:24.705] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:24.705] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:24.705] [odom] [warning] num_bias_validations=1664
+[2026-07-08 18:24:24.705] [odom] [warning] bias_acc=[0.855, -0.104, 0.023] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:24.705] [odom] [warning] acc_stat ax=0.399 +- 0.340 [min=-0.045, max=0.855], ay=-0.051 +- 0.060 [min=-0.126, max=0.039], az=0.037 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:24.705] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:25.483] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:25.483] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:25.483] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:25.483] [odom] [warning] num_validations=1664
+[2026-07-08 18:24:25.483] [odom] [warning] No-IMU errors rot=0.261 +- 0.326 deg, trans=0.030 +- 0.021 m, vel=0.037 +- 0.025 m/s
+[2026-07-08 18:24:25.483] [odom] [warning] IMU errors rot=0.108 +- 0.069 deg, trans=0.034 +- 0.024 m, vel=0.087 +- 0.055 m/s
+[2026-07-08 18:24:25.483] [odom] [warning] IMU better ratios rot=0.80, trans=0.08, vel=0.17
+[2026-07-08 18:24:25.881] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:25.881] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:25.881] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:25.881] [odom] [warning] num_bias_validations=1728
+[2026-07-08 18:24:25.881] [odom] [warning] bias_acc=[0.860, -0.099, 0.023] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:25.881] [odom] [warning] acc_stat ax=0.416 +- 0.345 [min=-0.045, max=0.860], ay=-0.053 +- 0.059 [min=-0.126, max=0.039], az=0.036 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:25.881] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:27.570] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:27.570] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:27.570] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:27.570] [odom] [warning] num_validations=1728
+[2026-07-08 18:24:27.570] [odom] [warning] No-IMU errors rot=0.262 +- 0.321 deg, trans=0.029 +- 0.021 m, vel=0.036 +- 0.025 m/s
+[2026-07-08 18:24:27.570] [odom] [warning] IMU errors rot=0.108 +- 0.068 deg, trans=0.033 +- 0.024 m, vel=0.085 +- 0.055 m/s
+[2026-07-08 18:24:27.570] [odom] [warning] IMU better ratios rot=0.81, trans=0.09, vel=0.18
+[2026-07-08 18:24:27.705] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:27.705] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:27.705] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:27.705] [odom] [warning] num_bias_validations=1792
+[2026-07-08 18:24:27.705] [odom] [warning] bias_acc=[0.866, -0.097, 0.023] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:27.705] [odom] [warning] acc_stat ax=0.432 +- 0.349 [min=-0.045, max=0.866], ay=-0.055 +- 0.059 [min=-0.126, max=0.039], az=0.036 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:27.705] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.018, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:28.065] [glim] [info] playback speed: 4.325x
+[2026-07-08 18:24:28.442] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:28.442] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:28.442] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:28.442] [odom] [warning] num_validations=1792
+[2026-07-08 18:24:28.442] [odom] [warning] No-IMU errors rot=0.262 +- 0.317 deg, trans=0.028 +- 0.021 m, vel=0.037 +- 0.025 m/s
+[2026-07-08 18:24:28.442] [odom] [warning] IMU errors rot=0.109 +- 0.069 deg, trans=0.032 +- 0.024 m, vel=0.083 +- 0.055 m/s
+[2026-07-08 18:24:28.442] [odom] [warning] IMU better ratios rot=0.81, trans=0.09, vel=0.20
+[2026-07-08 18:24:29.071] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:29.071] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:29.071] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:29.071] [odom] [warning] num_bias_validations=1856
+[2026-07-08 18:24:29.071] [odom] [warning] bias_acc=[0.872, -0.093, 0.022] m/s^2, bias_gyro=[-0.019, 0.001, 0.001] rad/s
+[2026-07-08 18:24:29.071] [odom] [warning] acc_stat ax=0.447 +- 0.352 [min=-0.045, max=0.872], ay=-0.056 +- 0.058 [min=-0.126, max=0.039], az=0.035 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:29.071] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:30.546] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:30.546] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:30.546] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:30.546] [odom] [warning] num_validations=1856
+[2026-07-08 18:24:30.546] [odom] [warning] No-IMU errors rot=0.264 +- 0.314 deg, trans=0.028 +- 0.021 m, vel=0.037 +- 0.025 m/s
+[2026-07-08 18:24:30.546] [odom] [warning] IMU errors rot=0.108 +- 0.068 deg, trans=0.031 +- 0.024 m, vel=0.081 +- 0.055 m/s
+[2026-07-08 18:24:30.546] [odom] [warning] IMU better ratios rot=0.81, trans=0.11, vel=0.22
+[2026-07-08 18:24:31.260] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:31.261] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:31.261] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:31.261] [odom] [warning] num_bias_validations=1920
+[2026-07-08 18:24:31.261] [odom] [warning] bias_acc=[0.868, -0.089, 0.021] m/s^2, bias_gyro=[-0.019, 0.002, 0.001] rad/s
+[2026-07-08 18:24:31.261] [odom] [warning] acc_stat ax=0.461 +- 0.355 [min=-0.045, max=0.872], ay=-0.057 +- 0.058 [min=-0.126, max=0.039], az=0.035 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:31.261] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=-0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:31.987] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:31.987] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:31.987] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:31.987] [odom] [warning] num_validations=1920
+[2026-07-08 18:24:31.987] [odom] [warning] No-IMU errors rot=0.263 +- 0.310 deg, trans=0.027 +- 0.021 m, vel=0.037 +- 0.024 m/s
+[2026-07-08 18:24:31.987] [odom] [warning] IMU errors rot=0.108 +- 0.068 deg, trans=0.031 +- 0.024 m, vel=0.080 +- 0.055 m/s
+[2026-07-08 18:24:31.987] [odom] [warning] IMU better ratios rot=0.81, trans=0.12, vel=0.23
+[2026-07-08 18:24:32.489] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:32.489] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:32.489] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:32.489] [odom] [warning] num_bias_validations=1984
+[2026-07-08 18:24:32.489] [odom] [warning] bias_acc=[0.865, -0.085, 0.022] m/s^2, bias_gyro=[-0.019, 0.001, 0.001] rad/s
+[2026-07-08 18:24:32.489] [odom] [warning] acc_stat ax=0.474 +- 0.356 [min=-0.045, max=0.872], ay=-0.058 +- 0.057 [min=-0.126, max=0.039], az=0.034 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:32.489] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:33.087] [glim] [info] playback speed: 3.677x
+[2026-07-08 18:24:33.890] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:33.890] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:33.890] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:33.890] [odom] [warning] num_validations=1984
+[2026-07-08 18:24:33.890] [odom] [warning] No-IMU errors rot=0.265 +- 0.314 deg, trans=0.027 +- 0.021 m, vel=0.037 +- 0.024 m/s
+[2026-07-08 18:24:33.890] [odom] [warning] IMU errors rot=0.108 +- 0.069 deg, trans=0.030 +- 0.024 m, vel=0.078 +- 0.055 m/s
+[2026-07-08 18:24:33.890] [odom] [warning] IMU better ratios rot=0.82, trans=0.13, vel=0.25
+[2026-07-08 18:24:34.246] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:34.246] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:34.246] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:34.246] [odom] [warning] num_bias_validations=2048
+[2026-07-08 18:24:34.246] [odom] [warning] bias_acc=[0.866, -0.084, 0.021] m/s^2, bias_gyro=[-0.019, 0.001, 0.001] rad/s
+[2026-07-08 18:24:34.246] [odom] [warning] acc_stat ax=0.486 +- 0.357 [min=-0.045, max=0.872], ay=-0.059 +- 0.056 [min=-0.126, max=0.039], az=0.034 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:34.246] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:35.295] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:35.295] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:35.295] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:35.295] [odom] [warning] num_validations=2048
+[2026-07-08 18:24:35.295] [odom] [warning] No-IMU errors rot=0.268 +- 0.319 deg, trans=0.026 +- 0.021 m, vel=0.037 +- 0.025 m/s
+[2026-07-08 18:24:35.295] [odom] [warning] IMU errors rot=0.108 +- 0.070 deg, trans=0.029 +- 0.024 m, vel=0.076 +- 0.055 m/s
+[2026-07-08 18:24:35.295] [odom] [warning] IMU better ratios rot=0.82, trans=0.14, vel=0.26
+[2026-07-08 18:24:35.782] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:35.782] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:35.782] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:35.782] [odom] [warning] num_bias_validations=2112
+[2026-07-08 18:24:35.782] [odom] [warning] bias_acc=[0.863, -0.086, 0.021] m/s^2, bias_gyro=[-0.019, 0.001, 0.001] rad/s
+[2026-07-08 18:24:35.782] [odom] [warning] acc_stat ax=0.498 +- 0.357 [min=-0.045, max=0.872], ay=-0.060 +- 0.055 [min=-0.126, max=0.039], az=0.033 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:35.782] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:36.161] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:36.161] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:36.161] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:36.161] [odom] [warning] num_validations=2112
+[2026-07-08 18:24:36.161] [odom] [warning] No-IMU errors rot=0.264 +- 0.315 deg, trans=0.025 +- 0.021 m, vel=0.037 +- 0.025 m/s
+[2026-07-08 18:24:36.161] [odom] [warning] IMU errors rot=0.107 +- 0.070 deg, trans=0.029 +- 0.024 m, vel=0.074 +- 0.055 m/s
+[2026-07-08 18:24:36.161] [odom] [warning] IMU better ratios rot=0.82, trans=0.15, vel=0.28
+[2026-07-08 18:24:36.786] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:36.786] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:36.786] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:36.786] [odom] [warning] num_bias_validations=2176
+[2026-07-08 18:24:36.786] [odom] [warning] bias_acc=[0.861, -0.087, 0.021] m/s^2, bias_gyro=[-0.019, 0.001, 0.001] rad/s
+[2026-07-08 18:24:36.786] [odom] [warning] acc_stat ax=0.508 +- 0.357 [min=-0.045, max=0.872], ay=-0.060 +- 0.055 [min=-0.126, max=0.039], az=0.033 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:36.786] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.002 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:37.699] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:37.699] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:37.699] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:37.699] [odom] [warning] num_validations=2176
+[2026-07-08 18:24:37.699] [odom] [warning] No-IMU errors rot=0.262 +- 0.311 deg, trans=0.025 +- 0.021 m, vel=0.036 +- 0.025 m/s
+[2026-07-08 18:24:37.699] [odom] [warning] IMU errors rot=0.106 +- 0.070 deg, trans=0.028 +- 0.023 m, vel=0.073 +- 0.055 m/s
+[2026-07-08 18:24:37.699] [odom] [warning] IMU better ratios rot=0.82, trans=0.15, vel=0.29
+[2026-07-08 18:24:38.092] [glim] [info] playback speed: 4.783x
+[2026-07-08 18:24:38.106] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:38.106] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:38.106] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:38.106] [odom] [warning] num_bias_validations=2240
+[2026-07-08 18:24:38.106] [odom] [warning] bias_acc=[0.859, -0.088, 0.022] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:38.106] [odom] [warning] acc_stat ax=0.518 +- 0.357 [min=-0.045, max=0.872], ay=-0.061 +- 0.054 [min=-0.126, max=0.039], az=0.033 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:38.106] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:39.024] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:39.024] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:39.024] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:39.024] [odom] [warning] num_validations=2240
+[2026-07-08 18:24:39.025] [odom] [warning] No-IMU errors rot=0.259 +- 0.308 deg, trans=0.024 +- 0.021 m, vel=0.036 +- 0.024 m/s
+[2026-07-08 18:24:39.025] [odom] [warning] IMU errors rot=0.104 +- 0.069 deg, trans=0.027 +- 0.023 m, vel=0.071 +- 0.055 m/s
+[2026-07-08 18:24:39.025] [odom] [warning] IMU better ratios rot=0.82, trans=0.16, vel=0.31
+[2026-07-08 18:24:39.558] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:39.558] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:39.558] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:39.558] [odom] [warning] num_bias_validations=2304
+[2026-07-08 18:24:39.558] [odom] [warning] bias_acc=[0.859, -0.090, 0.021] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:39.558] [odom] [warning] acc_stat ax=0.528 +- 0.356 [min=-0.045, max=0.872], ay=-0.062 +- 0.054 [min=-0.126, max=0.039], az=0.032 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:39.558] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:40.763] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:40.763] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:40.763] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:40.763] [odom] [warning] num_validations=2304
+[2026-07-08 18:24:40.763] [odom] [warning] No-IMU errors rot=0.259 +- 0.305 deg, trans=0.024 +- 0.021 m, vel=0.036 +- 0.024 m/s
+[2026-07-08 18:24:40.763] [odom] [warning] IMU errors rot=0.104 +- 0.069 deg, trans=0.027 +- 0.023 m, vel=0.070 +- 0.055 m/s
+[2026-07-08 18:24:40.763] [odom] [warning] IMU better ratios rot=0.83, trans=0.17, vel=0.32
+[2026-07-08 18:24:41.427] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:41.427] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:41.427] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:41.427] [odom] [warning] num_bias_validations=2368
+[2026-07-08 18:24:41.427] [odom] [warning] bias_acc=[0.854, -0.089, 0.021] m/s^2, bias_gyro=[-0.019, 0.002, 0.001] rad/s
+[2026-07-08 18:24:41.427] [odom] [warning] acc_stat ax=0.537 +- 0.356 [min=-0.045, max=0.872], ay=-0.063 +- 0.053 [min=-0.126, max=0.039], az=0.032 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:41.427] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:42.417] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:42.417] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:42.417] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:42.417] [odom] [warning] num_validations=2368
+[2026-07-08 18:24:42.417] [odom] [warning] No-IMU errors rot=0.259 +- 0.304 deg, trans=0.024 +- 0.020 m, vel=0.036 +- 0.024 m/s
+[2026-07-08 18:24:42.417] [odom] [warning] IMU errors rot=0.103 +- 0.069 deg, trans=0.026 +- 0.023 m, vel=0.069 +- 0.054 m/s
+[2026-07-08 18:24:42.417] [odom] [warning] IMU better ratios rot=0.83, trans=0.17, vel=0.31
+[2026-07-08 18:24:42.922] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:42.922] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:42.922] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:42.922] [odom] [warning] num_bias_validations=2432
+[2026-07-08 18:24:42.922] [odom] [warning] bias_acc=[0.841, -0.086, 0.022] m/s^2, bias_gyro=[-0.018, 0.002, 0.001] rad/s
+[2026-07-08 18:24:42.922] [odom] [warning] acc_stat ax=0.545 +- 0.354 [min=-0.045, max=0.872], ay=-0.063 +- 0.053 [min=-0.126, max=0.039], az=0.032 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:42.922] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:43.097] [glim] [info] playback speed: 4.033x
+[2026-07-08 18:24:44.507] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:44.507] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:44.507] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:44.507] [odom] [warning] num_validations=2432
+[2026-07-08 18:24:44.507] [odom] [warning] No-IMU errors rot=0.258 +- 0.301 deg, trans=0.023 +- 0.020 m, vel=0.036 +- 0.024 m/s
+[2026-07-08 18:24:44.507] [odom] [warning] IMU errors rot=0.103 +- 0.069 deg, trans=0.026 +- 0.023 m, vel=0.069 +- 0.054 m/s
+[2026-07-08 18:24:44.507] [odom] [warning] IMU better ratios rot=0.83, trans=0.17, vel=0.31
+[2026-07-08 18:24:44.639] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:44.639] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:44.639] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:44.639] [odom] [warning] num_bias_validations=2496
+[2026-07-08 18:24:44.639] [odom] [warning] bias_acc=[0.833, -0.081, 0.022] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:44.639] [odom] [warning] acc_stat ax=0.552 +- 0.353 [min=-0.045, max=0.872], ay=-0.064 +- 0.052 [min=-0.126, max=0.039], az=0.032 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:44.639] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:45.601] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:45.602] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:45.602] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:45.602] [odom] [warning] num_validations=2496
+[2026-07-08 18:24:45.602] [odom] [warning] No-IMU errors rot=0.257 +- 0.298 deg, trans=0.023 +- 0.020 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:45.602] [odom] [warning] IMU errors rot=0.102 +- 0.068 deg, trans=0.026 +- 0.023 m, vel=0.068 +- 0.053 m/s
+[2026-07-08 18:24:45.602] [odom] [warning] IMU better ratios rot=0.83, trans=0.16, vel=0.31
+[2026-07-08 18:24:46.416] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:46.417] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:46.417] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:46.417] [odom] [warning] num_bias_validations=2560
+[2026-07-08 18:24:46.417] [odom] [warning] bias_acc=[0.826, -0.074, 0.023] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:46.417] [odom] [warning] acc_stat ax=0.559 +- 0.351 [min=-0.045, max=0.872], ay=-0.064 +- 0.051 [min=-0.126, max=0.039], az=0.031 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:46.417] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:47.257] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:47.257] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:47.257] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:47.257] [odom] [warning] num_validations=2560
+[2026-07-08 18:24:47.257] [odom] [warning] No-IMU errors rot=0.256 +- 0.296 deg, trans=0.023 +- 0.020 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:47.257] [odom] [warning] IMU errors rot=0.102 +- 0.068 deg, trans=0.026 +- 0.022 m, vel=0.067 +- 0.053 m/s
+[2026-07-08 18:24:47.257] [odom] [warning] IMU better ratios rot=0.83, trans=0.16, vel=0.30
+[2026-07-08 18:24:47.472] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:47.472] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:47.472] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:47.472] [odom] [warning] num_bias_validations=2624
+[2026-07-08 18:24:47.472] [odom] [warning] bias_acc=[0.819, -0.067, 0.024] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:47.472] [odom] [warning] acc_stat ax=0.565 +- 0.349 [min=-0.045, max=0.872], ay=-0.064 +- 0.051 [min=-0.126, max=0.039], az=0.031 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:47.472] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:48.110] [glim] [info] playback speed: 4.189x
+[2026-07-08 18:24:49.257] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:49.257] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:49.257] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:49.257] [odom] [warning] num_validations=2624
+[2026-07-08 18:24:49.257] [odom] [warning] No-IMU errors rot=0.257 +- 0.295 deg, trans=0.023 +- 0.020 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:49.257] [odom] [warning] IMU errors rot=0.102 +- 0.068 deg, trans=0.025 +- 0.022 m, vel=0.067 +- 0.052 m/s
+[2026-07-08 18:24:49.257] [odom] [warning] IMU better ratios rot=0.83, trans=0.16, vel=0.30
+[2026-07-08 18:24:49.710] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:49.710] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:49.710] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:49.710] [odom] [warning] num_bias_validations=2688
+[2026-07-08 18:24:49.710] [odom] [warning] bias_acc=[0.811, -0.057, 0.025] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:49.710] [odom] [warning] acc_stat ax=0.571 +- 0.347 [min=-0.045, max=0.872], ay=-0.064 +- 0.050 [min=-0.126, max=0.039], az=0.031 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:49.710] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:50.965] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:50.965] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:50.965] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:50.965] [odom] [warning] num_validations=2688
+[2026-07-08 18:24:50.965] [odom] [warning] No-IMU errors rot=0.257 +- 0.292 deg, trans=0.023 +- 0.019 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:50.965] [odom] [warning] IMU errors rot=0.102 +- 0.068 deg, trans=0.025 +- 0.022 m, vel=0.067 +- 0.052 m/s
+[2026-07-08 18:24:50.965] [odom] [warning] IMU better ratios rot=0.83, trans=0.15, vel=0.30
+[2026-07-08 18:24:51.348] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:51.348] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:51.348] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:51.348] [odom] [warning] num_bias_validations=2752
+[2026-07-08 18:24:51.348] [odom] [warning] bias_acc=[0.806, -0.047, 0.027] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:51.348] [odom] [warning] acc_stat ax=0.577 +- 0.344 [min=-0.045, max=0.872], ay=-0.064 +- 0.050 [min=-0.126, max=0.039], az=0.031 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:51.348] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:53.116] [glim] [info] playback speed: 3.100x
+[2026-07-08 18:24:53.162] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:53.162] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:53.162] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:53.162] [odom] [warning] num_validations=2752
+[2026-07-08 18:24:53.162] [odom] [warning] No-IMU errors rot=0.255 +- 0.290 deg, trans=0.022 +- 0.019 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:53.162] [odom] [warning] IMU errors rot=0.102 +- 0.068 deg, trans=0.025 +- 0.022 m, vel=0.066 +- 0.051 m/s
+[2026-07-08 18:24:53.162] [odom] [warning] IMU better ratios rot=0.84, trans=0.15, vel=0.29
+[2026-07-08 18:24:54.041] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:54.041] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:54.041] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:54.041] [odom] [warning] num_bias_validations=2816
+[2026-07-08 18:24:54.041] [odom] [warning] bias_acc=[0.799, -0.040, 0.028] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:24:54.041] [odom] [warning] acc_stat ax=0.582 +- 0.342 [min=-0.045, max=0.872], ay=-0.063 +- 0.049 [min=-0.126, max=0.039], az=0.031 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:54.041] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.002], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:55.715] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:55.715] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:55.715] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:55.715] [odom] [warning] num_validations=2816
+[2026-07-08 18:24:55.715] [odom] [warning] No-IMU errors rot=0.257 +- 0.291 deg, trans=0.022 +- 0.019 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:55.715] [odom] [warning] IMU errors rot=0.101 +- 0.068 deg, trans=0.025 +- 0.022 m, vel=0.066 +- 0.051 m/s
+[2026-07-08 18:24:55.715] [odom] [warning] IMU better ratios rot=0.84, trans=0.15, vel=0.29
+[2026-07-08 18:24:56.566] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:56.566] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:56.566] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:56.566] [odom] [warning] num_bias_validations=2880
+[2026-07-08 18:24:56.566] [odom] [warning] bias_acc=[0.785, -0.034, 0.029] m/s^2, bias_gyro=[-0.019, 0.003, 0.002] rad/s
+[2026-07-08 18:24:56.566] [odom] [warning] acc_stat ax=0.586 +- 0.340 [min=-0.045, max=0.872], ay=-0.062 +- 0.049 [min=-0.126, max=0.039], az=0.031 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:56.566] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.019, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.003], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:24:58.126] [glim] [info] playback speed: 2.531x
+[2026-07-08 18:24:58.252] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:24:58.252] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:24:58.252] [odom] [warning] IMU validation results:
+[2026-07-08 18:24:58.252] [odom] [warning] num_validations=2880
+[2026-07-08 18:24:58.252] [odom] [warning] No-IMU errors rot=0.271 +- 0.305 deg, trans=0.023 +- 0.019 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:24:58.252] [odom] [warning] IMU errors rot=0.102 +- 0.067 deg, trans=0.025 +- 0.022 m, vel=0.067 +- 0.051 m/s
+[2026-07-08 18:24:58.252] [odom] [warning] IMU better ratios rot=0.84, trans=0.14, vel=0.28
+[2026-07-08 18:24:58.756] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:24:58.756] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:24:58.756] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:24:58.756] [odom] [warning] num_bias_validations=2944
+[2026-07-08 18:24:58.756] [odom] [warning] bias_acc=[0.752, -0.043, 0.033] m/s^2, bias_gyro=[-0.020, 0.003, 0.002] rad/s
+[2026-07-08 18:24:58.756] [odom] [warning] acc_stat ax=0.590 +- 0.337 [min=-0.045, max=0.872], ay=-0.062 +- 0.048 [min=-0.126, max=0.039], az=0.031 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:24:58.756] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.000 +- 0.001 [min=-0.004, max=0.003], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:00.225] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:00.225] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:00.225] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:00.225] [odom] [warning] num_validations=2944
+[2026-07-08 18:25:00.225] [odom] [warning] No-IMU errors rot=0.274 +- 0.305 deg, trans=0.023 +- 0.020 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:25:00.225] [odom] [warning] IMU errors rot=0.102 +- 0.067 deg, trans=0.026 +- 0.022 m, vel=0.069 +- 0.052 m/s
+[2026-07-08 18:25:00.225] [odom] [warning] IMU better ratios rot=0.84, trans=0.14, vel=0.28
+[2026-07-08 18:25:00.979] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:00.979] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:00.979] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:00.979] [odom] [warning] num_bias_validations=3008
+[2026-07-08 18:25:00.979] [odom] [warning] bias_acc=[0.714, -0.071, 0.036] m/s^2, bias_gyro=[-0.020, 0.004, 0.002] rad/s
+[2026-07-08 18:25:00.979] [odom] [warning] acc_stat ax=0.592 +- 0.334 [min=-0.045, max=0.872], ay=-0.062 +- 0.048 [min=-0.126, max=0.039], az=0.031 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:25:00.979] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.002 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:03.160] [glim] [info] playback speed: 2.619x
+[2026-07-08 18:25:03.503] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:03.503] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:03.503] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:03.503] [odom] [warning] num_validations=3008
+[2026-07-08 18:25:03.503] [odom] [warning] No-IMU errors rot=0.269 +- 0.304 deg, trans=0.024 +- 0.021 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:25:03.503] [odom] [warning] IMU errors rot=0.101 +- 0.067 deg, trans=0.027 +- 0.023 m, vel=0.071 +- 0.054 m/s
+[2026-07-08 18:25:03.503] [odom] [warning] IMU better ratios rot=0.83, trans=0.14, vel=0.27
+[2026-07-08 18:25:04.505] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:04.505] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:04.505] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:04.505] [odom] [warning] num_bias_validations=3072
+[2026-07-08 18:25:04.505] [odom] [warning] bias_acc=[0.677, -0.098, 0.039] m/s^2, bias_gyro=[-0.019, 0.004, 0.002] rad/s
+[2026-07-08 18:25:04.506] [odom] [warning] acc_stat ax=0.594 +- 0.330 [min=-0.045, max=0.872], ay=-0.063 +- 0.048 [min=-0.126, max=0.039], az=0.031 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:25:04.506] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.002 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:06.122] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:06.122] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:06.122] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:06.122] [odom] [warning] num_validations=3072
+[2026-07-08 18:25:06.122] [odom] [warning] No-IMU errors rot=0.268 +- 0.301 deg, trans=0.025 +- 0.022 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:25:06.122] [odom] [warning] IMU errors rot=0.101 +- 0.067 deg, trans=0.028 +- 0.024 m, vel=0.073 +- 0.055 m/s
+[2026-07-08 18:25:06.122] [odom] [warning] IMU better ratios rot=0.83, trans=0.14, vel=0.27
+[2026-07-08 18:25:06.633] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:06.633] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:06.633] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:06.633] [odom] [warning] num_bias_validations=3136
+[2026-07-08 18:25:06.633] [odom] [warning] bias_acc=[0.640, -0.119, 0.043] m/s^2, bias_gyro=[-0.019, 0.003, 0.002] rad/s
+[2026-07-08 18:25:06.633] [odom] [warning] acc_stat ax=0.595 +- 0.327 [min=-0.045, max=0.872], ay=-0.064 +- 0.048 [min=-0.126, max=0.039], az=0.031 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:25:06.633] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.002 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:08.210] [glim] [info] playback speed: 2.511x
+[2026-07-08 18:25:08.731] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:08.731] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:08.731] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:08.731] [odom] [warning] num_validations=3136
+[2026-07-08 18:25:08.731] [odom] [warning] No-IMU errors rot=0.267 +- 0.299 deg, trans=0.026 +- 0.023 m, vel=0.035 +- 0.024 m/s
+[2026-07-08 18:25:08.731] [odom] [warning] IMU errors rot=0.101 +- 0.067 deg, trans=0.030 +- 0.026 m, vel=0.075 +- 0.056 m/s
+[2026-07-08 18:25:08.731] [odom] [warning] IMU better ratios rot=0.83, trans=0.13, vel=0.26
+[2026-07-08 18:25:09.183] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:09.183] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:09.183] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:09.183] [odom] [warning] num_bias_validations=3200
+[2026-07-08 18:25:09.183] [odom] [warning] bias_acc=[0.602, -0.139, 0.046] m/s^2, bias_gyro=[-0.018, 0.003, 0.001] rad/s
+[2026-07-08 18:25:09.183] [odom] [warning] acc_stat ax=0.595 +- 0.324 [min=-0.045, max=0.872], ay=-0.066 +- 0.048 [min=-0.139, max=0.039], az=0.032 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:25:09.183] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.002 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:10.212] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:10.212] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:10.213] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:10.213] [odom] [warning] num_validations=3200
+[2026-07-08 18:25:10.213] [odom] [warning] No-IMU errors rot=0.267 +- 0.297 deg, trans=0.027 +- 0.023 m, vel=0.036 +- 0.024 m/s
+[2026-07-08 18:25:10.213] [odom] [warning] IMU errors rot=0.102 +- 0.067 deg, trans=0.030 +- 0.026 m, vel=0.076 +- 0.056 m/s
+[2026-07-08 18:25:10.213] [odom] [warning] IMU better ratios rot=0.83, trans=0.13, vel=0.26
+[2026-07-08 18:25:11.193] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:11.193] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:11.193] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:11.193] [odom] [warning] num_bias_validations=3264
+[2026-07-08 18:25:11.193] [odom] [warning] bias_acc=[0.566, -0.161, 0.050] m/s^2, bias_gyro=[-0.019, 0.002, 0.002] rad/s
+[2026-07-08 18:25:11.193] [odom] [warning] acc_stat ax=0.595 +- 0.321 [min=-0.045, max=0.872], ay=-0.067 +- 0.050 [min=-0.161, max=0.039], az=0.032 +- 0.011 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:25:11.193] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.002 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:12.689] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:12.689] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:12.689] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:12.689] [odom] [warning] num_validations=3264
+[2026-07-08 18:25:12.689] [odom] [warning] No-IMU errors rot=0.266 +- 0.295 deg, trans=0.028 +- 0.023 m, vel=0.035 +- 0.023 m/s
+[2026-07-08 18:25:12.689] [odom] [warning] IMU errors rot=0.101 +- 0.067 deg, trans=0.031 +- 0.026 m, vel=0.078 +- 0.057 m/s
+[2026-07-08 18:25:12.689] [odom] [warning] IMU better ratios rot=0.83, trans=0.13, vel=0.25
+[2026-07-08 18:25:13.252] [glim] [info] playback speed: 2.957x
+[2026-07-08 18:25:13.643] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:13.643] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:13.643] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:13.643] [odom] [warning] num_bias_validations=3328
+[2026-07-08 18:25:13.643] [odom] [warning] bias_acc=[0.531, -0.179, 0.052] m/s^2, bias_gyro=[-0.019, 0.002, 0.002] rad/s
+[2026-07-08 18:25:13.643] [odom] [warning] acc_stat ax=0.593 +- 0.318 [min=-0.045, max=0.872], ay=-0.070 +- 0.052 [min=-0.179, max=0.039], az=0.033 +- 0.012 [min=0.012, max=0.058] m/s^2
+[2026-07-08 18:25:13.643] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.002 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:15.899] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:15.899] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:15.899] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:15.899] [odom] [warning] num_validations=3328
+[2026-07-08 18:25:15.899] [odom] [warning] No-IMU errors rot=0.265 +- 0.292 deg, trans=0.028 +- 0.023 m, vel=0.035 +- 0.023 m/s
+[2026-07-08 18:25:15.899] [odom] [warning] IMU errors rot=0.101 +- 0.066 deg, trans=0.032 +- 0.026 m, vel=0.079 +- 0.057 m/s
+[2026-07-08 18:25:15.899] [odom] [warning] IMU better ratios rot=0.83, trans=0.13, vel=0.25
+[2026-07-08 18:25:17.711] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:17.711] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:17.711] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:17.711] [odom] [warning] num_validations=3392
+[2026-07-08 18:25:17.711] [odom] [warning] No-IMU errors rot=0.263 +- 0.290 deg, trans=0.029 +- 0.023 m, vel=0.035 +- 0.023 m/s
+[2026-07-08 18:25:17.711] [odom] [warning] IMU errors rot=0.100 +- 0.066 deg, trans=0.032 +- 0.026 m, vel=0.080 +- 0.057 m/s
+[2026-07-08 18:25:17.711] [odom] [warning] IMU better ratios rot=0.83, trans=0.12, vel=0.24
+[2026-07-08 18:25:18.283] [glim] [info] playback speed: 2.581x
+[2026-07-08 18:25:19.705] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:19.705] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:19.705] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:19.705] [odom] [warning] num_validations=3456
+[2026-07-08 18:25:19.705] [odom] [warning] No-IMU errors rot=0.261 +- 0.288 deg, trans=0.029 +- 0.023 m, vel=0.035 +- 0.023 m/s
+[2026-07-08 18:25:19.705] [odom] [warning] IMU errors rot=0.100 +- 0.066 deg, trans=0.033 +- 0.026 m, vel=0.081 +- 0.057 m/s
+[2026-07-08 18:25:19.705] [odom] [warning] IMU better ratios rot=0.83, trans=0.12, vel=0.24
+[2026-07-08 18:25:22.218] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:22.219] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:22.219] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:22.219] [odom] [warning] num_validations=3520
+[2026-07-08 18:25:22.219] [odom] [warning] No-IMU errors rot=0.259 +- 0.286 deg, trans=0.030 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:22.219] [odom] [warning] IMU errors rot=0.100 +- 0.065 deg, trans=0.033 +- 0.026 m, vel=0.082 +- 0.057 m/s
+[2026-07-08 18:25:22.219] [odom] [warning] IMU better ratios rot=0.83, trans=0.12, vel=0.23
+[2026-07-08 18:25:23.312] [glim] [info] playback speed: 3.349x
+[2026-07-08 18:25:24.015] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:24.015] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:24.015] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:24.015] [odom] [warning] num_validations=3584
+[2026-07-08 18:25:24.015] [odom] [warning] No-IMU errors rot=0.255 +- 0.285 deg, trans=0.030 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:24.015] [odom] [warning] IMU errors rot=0.098 +- 0.066 deg, trans=0.034 +- 0.026 m, vel=0.083 +- 0.057 m/s
+[2026-07-08 18:25:24.015] [odom] [warning] IMU better ratios rot=0.82, trans=0.12, vel=0.23
+[2026-07-08 18:25:27.759] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:27.759] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:27.759] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:27.759] [odom] [warning] num_validations=3648
+[2026-07-08 18:25:27.759] [odom] [warning] No-IMU errors rot=0.253 +- 0.284 deg, trans=0.030 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:27.759] [odom] [warning] IMU errors rot=0.097 +- 0.066 deg, trans=0.034 +- 0.026 m, vel=0.084 +- 0.057 m/s
+[2026-07-08 18:25:27.759] [odom] [warning] IMU better ratios rot=0.82, trans=0.11, vel=0.22
+[2026-07-08 18:25:28.350] [glim] [info] playback speed: 1.832x
+[2026-07-08 18:25:30.820] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:30.820] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:30.820] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:30.820] [odom] [warning] num_validations=3712
+[2026-07-08 18:25:30.820] [odom] [warning] No-IMU errors rot=0.253 +- 0.282 deg, trans=0.031 +- 0.024 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:30.820] [odom] [warning] IMU errors rot=0.098 +- 0.065 deg, trans=0.034 +- 0.026 m, vel=0.085 +- 0.057 m/s
+[2026-07-08 18:25:30.820] [odom] [warning] IMU better ratios rot=0.82, trans=0.11, vel=0.22
+[2026-07-08 18:25:32.855] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:32.855] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:32.855] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:32.855] [odom] [warning] num_validations=3776
+[2026-07-08 18:25:32.855] [odom] [warning] No-IMU errors rot=0.254 +- 0.281 deg, trans=0.031 +- 0.024 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:32.855] [odom] [warning] IMU errors rot=0.098 +- 0.066 deg, trans=0.035 +- 0.026 m, vel=0.085 +- 0.057 m/s
+[2026-07-08 18:25:32.855] [odom] [warning] IMU better ratios rot=0.82, trans=0.11, vel=0.22
+[2026-07-08 18:25:33.367] [glim] [info] playback speed: 2.548x
+[2026-07-08 18:25:36.236] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:36.236] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:36.236] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:36.236] [odom] [warning] num_validations=3840
+[2026-07-08 18:25:36.236] [odom] [warning] No-IMU errors rot=0.254 +- 0.279 deg, trans=0.032 +- 0.024 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:36.236] [odom] [warning] IMU errors rot=0.098 +- 0.065 deg, trans=0.035 +- 0.026 m, vel=0.086 +- 0.057 m/s
+[2026-07-08 18:25:36.236] [odom] [warning] IMU better ratios rot=0.82, trans=0.11, vel=0.21
+[2026-07-08 18:25:38.367] [glim] [info] playback speed: 1.883x
+[2026-07-08 18:25:38.725] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:38.725] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:38.725] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:38.725] [odom] [warning] num_validations=3904
+[2026-07-08 18:25:38.725] [odom] [warning] No-IMU errors rot=0.253 +- 0.278 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:38.725] [odom] [warning] IMU errors rot=0.098 +- 0.065 deg, trans=0.036 +- 0.026 m, vel=0.087 +- 0.056 m/s
+[2026-07-08 18:25:38.725] [odom] [warning] IMU better ratios rot=0.82, trans=0.11, vel=0.21
+[2026-07-08 18:25:40.826] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:40.826] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:40.826] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:40.826] [odom] [warning] num_validations=3968
+[2026-07-08 18:25:40.826] [odom] [warning] No-IMU errors rot=0.252 +- 0.276 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:40.826] [odom] [warning] IMU errors rot=0.098 +- 0.065 deg, trans=0.036 +- 0.026 m, vel=0.087 +- 0.056 m/s
+[2026-07-08 18:25:40.826] [odom] [warning] IMU better ratios rot=0.82, trans=0.11, vel=0.21
+[2026-07-08 18:25:43.397] [glim] [info] playback speed: 2.767x
+[2026-07-08 18:25:44.384] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:44.384] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:44.384] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:44.384] [odom] [warning] num_validations=4032
+[2026-07-08 18:25:44.384] [odom] [warning] No-IMU errors rot=0.253 +- 0.275 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:44.384] [odom] [warning] IMU errors rot=0.098 +- 0.065 deg, trans=0.036 +- 0.026 m, vel=0.088 +- 0.056 m/s
+[2026-07-08 18:25:44.384] [odom] [warning] IMU better ratios rot=0.83, trans=0.10, vel=0.20
+[2026-07-08 18:25:45.878] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:45.878] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:45.878] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:45.878] [odom] [warning] num_validations=4096
+[2026-07-08 18:25:45.878] [odom] [warning] No-IMU errors rot=0.252 +- 0.274 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:45.878] [odom] [warning] IMU errors rot=0.097 +- 0.064 deg, trans=0.036 +- 0.026 m, vel=0.088 +- 0.055 m/s
+[2026-07-08 18:25:45.878] [odom] [warning] IMU better ratios rot=0.83, trans=0.10, vel=0.20
+[2026-07-08 18:25:48.299] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:48.299] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:48.299] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:48.299] [odom] [warning] num_validations=4160
+[2026-07-08 18:25:48.299] [odom] [warning] No-IMU errors rot=0.252 +- 0.273 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:48.299] [odom] [warning] IMU errors rot=0.097 +- 0.064 deg, trans=0.036 +- 0.026 m, vel=0.089 +- 0.055 m/s
+[2026-07-08 18:25:48.299] [odom] [warning] IMU better ratios rot=0.83, trans=0.10, vel=0.20
+[2026-07-08 18:25:48.406] [glim] [info] playback speed: 2.937x
+[2026-07-08 18:25:50.769] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:50.769] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:50.769] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:50.769] [odom] [warning] num_validations=4224
+[2026-07-08 18:25:50.769] [odom] [warning] No-IMU errors rot=0.254 +- 0.273 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:50.769] [odom] [warning] IMU errors rot=0.097 +- 0.064 deg, trans=0.036 +- 0.025 m, vel=0.089 +- 0.055 m/s
+[2026-07-08 18:25:50.769] [odom] [warning] IMU better ratios rot=0.83, trans=0.10, vel=0.19
+[2026-07-08 18:25:52.778] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:52.778] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:52.778] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:52.778] [odom] [warning] num_validations=4288
+[2026-07-08 18:25:52.778] [odom] [warning] No-IMU errors rot=0.257 +- 0.276 deg, trans=0.032 +- 0.023 m, vel=0.034 +- 0.023 m/s
+[2026-07-08 18:25:52.778] [odom] [warning] IMU errors rot=0.098 +- 0.064 deg, trans=0.036 +- 0.025 m, vel=0.090 +- 0.055 m/s
+[2026-07-08 18:25:52.778] [odom] [warning] IMU better ratios rot=0.83, trans=0.10, vel=0.19
+[2026-07-08 18:25:53.406] [glim] [info] playback speed: 2.840x
+[2026-07-08 18:25:55.349] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:55.349] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:55.349] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:55.349] [odom] [warning] num_validations=4352
+[2026-07-08 18:25:55.349] [odom] [warning] No-IMU errors rot=0.256 +- 0.275 deg, trans=0.033 +- 0.023 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:25:55.349] [odom] [warning] IMU errors rot=0.098 +- 0.064 deg, trans=0.037 +- 0.025 m, vel=0.090 +- 0.054 m/s
+[2026-07-08 18:25:55.349] [odom] [warning] IMU better ratios rot=0.83, trans=0.10, vel=0.19
+[2026-07-08 18:25:55.617] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:55.617] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:55.617] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:55.617] [odom] [warning] num_bias_validations=4416
+[2026-07-08 18:25:55.617] [odom] [warning] bias_acc=[0.081, -0.505, 0.095] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:25:55.617] [odom] [warning] acc_stat ax=0.517 +- 0.313 [min=-0.045, max=0.872], ay=-0.141 +- 0.141 [min=-0.505, max=0.039], az=0.042 +- 0.021 [min=0.012, max=0.095] m/s^2
+[2026-07-08 18:25:55.617] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:57.808] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:57.808] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:57.808] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:57.808] [odom] [warning] num_validations=4416
+[2026-07-08 18:25:57.808] [odom] [warning] No-IMU errors rot=0.255 +- 0.273 deg, trans=0.033 +- 0.022 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:25:57.808] [odom] [warning] IMU errors rot=0.098 +- 0.064 deg, trans=0.037 +- 0.025 m, vel=0.090 +- 0.054 m/s
+[2026-07-08 18:25:57.808] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.19
+[2026-07-08 18:25:58.097] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:25:58.097] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:25:58.097] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:25:58.097] [odom] [warning] num_bias_validations=4480
+[2026-07-08 18:25:58.097] [odom] [warning] bias_acc=[0.060, -0.523, 0.097] m/s^2, bias_gyro=[-0.018, 0.001, 0.001] rad/s
+[2026-07-08 18:25:58.097] [odom] [warning] acc_stat ax=0.510 +- 0.316 [min=-0.045, max=0.872], ay=-0.147 +- 0.147 [min=-0.523, max=0.039], az=0.043 +- 0.022 [min=0.012, max=0.097] m/s^2
+[2026-07-08 18:25:58.097] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:25:58.416] [glim] [info] playback speed: 2.936x
+[2026-07-08 18:25:59.855] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:25:59.855] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:25:59.855] [odom] [warning] IMU validation results:
+[2026-07-08 18:25:59.855] [odom] [warning] num_validations=4480
+[2026-07-08 18:25:59.855] [odom] [warning] No-IMU errors rot=0.254 +- 0.272 deg, trans=0.033 +- 0.022 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:25:59.855] [odom] [warning] IMU errors rot=0.098 +- 0.064 deg, trans=0.037 +- 0.025 m, vel=0.091 +- 0.054 m/s
+[2026-07-08 18:25:59.855] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.18
+[2026-07-08 18:26:00.873] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:00.873] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:00.873] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:00.873] [odom] [warning] num_bias_validations=4544
+[2026-07-08 18:26:00.873] [odom] [warning] bias_acc=[0.038, -0.537, 0.101] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:00.873] [odom] [warning] acc_stat ax=0.503 +- 0.318 [min=-0.045, max=0.872], ay=-0.152 +- 0.153 [min=-0.537, max=0.039], az=0.044 +- 0.022 [min=0.012, max=0.101] m/s^2
+[2026-07-08 18:26:00.873] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:01.458] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:01.458] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:01.458] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:01.458] [odom] [warning] num_validations=4544
+[2026-07-08 18:26:01.458] [odom] [warning] No-IMU errors rot=0.254 +- 0.270 deg, trans=0.033 +- 0.022 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:26:01.458] [odom] [warning] IMU errors rot=0.098 +- 0.064 deg, trans=0.037 +- 0.025 m, vel=0.091 +- 0.053 m/s
+[2026-07-08 18:26:01.458] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.18
+[2026-07-08 18:26:02.103] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:02.103] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:02.103] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:02.103] [odom] [warning] num_bias_validations=4608
+[2026-07-08 18:26:02.103] [odom] [warning] bias_acc=[0.017, -0.556, 0.104] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:02.103] [odom] [warning] acc_stat ax=0.497 +- 0.321 [min=-0.045, max=0.872], ay=-0.158 +- 0.160 [min=-0.556, max=0.039], az=0.045 +- 0.023 [min=0.012, max=0.104] m/s^2
+[2026-07-08 18:26:02.103] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:03.441] [glim] [info] playback speed: 2.867x
+[2026-07-08 18:26:03.876] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:03.876] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:03.876] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:03.876] [odom] [warning] num_validations=4608
+[2026-07-08 18:26:03.876] [odom] [warning] No-IMU errors rot=0.252 +- 0.269 deg, trans=0.033 +- 0.022 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:26:03.876] [odom] [warning] IMU errors rot=0.098 +- 0.064 deg, trans=0.037 +- 0.025 m, vel=0.091 +- 0.053 m/s
+[2026-07-08 18:26:03.876] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.18
+[2026-07-08 18:26:04.100] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:04.100] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:04.100] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:04.100] [odom] [warning] num_bias_validations=4672
+[2026-07-08 18:26:04.100] [odom] [warning] bias_acc=[-0.005, -0.574, 0.107] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:04.100] [odom] [warning] acc_stat ax=0.490 +- 0.324 [min=-0.045, max=0.872], ay=-0.164 +- 0.166 [min=-0.574, max=0.039], az=0.045 +- 0.024 [min=0.012, max=0.107] m/s^2
+[2026-07-08 18:26:04.100] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:05.845] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:05.845] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:05.845] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:05.845] [odom] [warning] num_validations=4672
+[2026-07-08 18:26:05.845] [odom] [warning] No-IMU errors rot=0.251 +- 0.268 deg, trans=0.033 +- 0.022 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:26:05.845] [odom] [warning] IMU errors rot=0.097 +- 0.064 deg, trans=0.037 +- 0.024 m, vel=0.091 +- 0.053 m/s
+[2026-07-08 18:26:05.845] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.18
+[2026-07-08 18:26:06.474] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:06.474] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:06.474] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:06.474] [odom] [warning] num_bias_validations=4736
+[2026-07-08 18:26:06.474] [odom] [warning] bias_acc=[-0.025, -0.594, 0.110] m/s^2, bias_gyro=[-0.018, 0.000, 0.002] rad/s
+[2026-07-08 18:26:06.474] [odom] [warning] acc_stat ax=0.483 +- 0.327 [min=-0.045, max=0.872], ay=-0.169 +- 0.172 [min=-0.594, max=0.039], az=0.046 +- 0.025 [min=0.012, max=0.110] m/s^2
+[2026-07-08 18:26:06.474] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:07.168] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:07.168] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:07.168] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:07.168] [odom] [warning] num_validations=4736
+[2026-07-08 18:26:07.168] [odom] [warning] No-IMU errors rot=0.251 +- 0.268 deg, trans=0.033 +- 0.022 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:26:07.168] [odom] [warning] IMU errors rot=0.097 +- 0.064 deg, trans=0.037 +- 0.024 m, vel=0.092 +- 0.053 m/s
+[2026-07-08 18:26:07.168] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.17
+[2026-07-08 18:26:07.955] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:07.955] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:07.955] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:07.955] [odom] [warning] num_bias_validations=4800
+[2026-07-08 18:26:07.955] [odom] [warning] bias_acc=[-0.047, -0.611, 0.114] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:07.955] [odom] [warning] acc_stat ax=0.476 +- 0.331 [min=-0.047, max=0.872], ay=-0.175 +- 0.178 [min=-0.611, max=0.039], az=0.047 +- 0.026 [min=0.012, max=0.114] m/s^2
+[2026-07-08 18:26:07.955] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:08.453] [glim] [info] playback speed: 3.542x
+[2026-07-08 18:26:09.356] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:09.356] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:09.356] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:09.356] [odom] [warning] num_validations=4800
+[2026-07-08 18:26:09.356] [odom] [warning] No-IMU errors rot=0.251 +- 0.266 deg, trans=0.033 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:09.356] [odom] [warning] IMU errors rot=0.096 +- 0.064 deg, trans=0.037 +- 0.024 m, vel=0.092 +- 0.052 m/s
+[2026-07-08 18:26:09.356] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.17
+[2026-07-08 18:26:09.673] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:09.673] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:09.673] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:09.673] [odom] [warning] num_bias_validations=4864
+[2026-07-08 18:26:09.673] [odom] [warning] bias_acc=[-0.068, -0.625, 0.118] m/s^2, bias_gyro=[-0.018, -0.000, 0.002] rad/s
+[2026-07-08 18:26:09.673] [odom] [warning] acc_stat ax=0.469 +- 0.334 [min=-0.068, max=0.872], ay=-0.181 +- 0.184 [min=-0.625, max=0.039], az=0.048 +- 0.027 [min=0.012, max=0.118] m/s^2
+[2026-07-08 18:26:09.673] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:11.994] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:11.994] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:11.994] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:11.994] [odom] [warning] num_validations=4864
+[2026-07-08 18:26:11.994] [odom] [warning] No-IMU errors rot=0.252 +- 0.266 deg, trans=0.033 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:11.994] [odom] [warning] IMU errors rot=0.096 +- 0.064 deg, trans=0.037 +- 0.024 m, vel=0.092 +- 0.052 m/s
+[2026-07-08 18:26:11.994] [odom] [warning] IMU better ratios rot=0.83, trans=0.09, vel=0.17
+[2026-07-08 18:26:12.145] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:12.145] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:12.145] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:12.145] [odom] [warning] num_bias_validations=4928
+[2026-07-08 18:26:12.145] [odom] [warning] bias_acc=[-0.088, -0.636, 0.121] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:12.145] [odom] [warning] acc_stat ax=0.461 +- 0.338 [min=-0.088, max=0.872], ay=-0.187 +- 0.190 [min=-0.636, max=0.039], az=0.049 +- 0.028 [min=0.012, max=0.121] m/s^2
+[2026-07-08 18:26:12.145] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:13.311] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:13.311] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:13.311] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:13.311] [odom] [warning] num_validations=4928
+[2026-07-08 18:26:13.311] [odom] [warning] No-IMU errors rot=0.250 +- 0.265 deg, trans=0.033 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:13.311] [odom] [warning] IMU errors rot=0.096 +- 0.064 deg, trans=0.037 +- 0.024 m, vel=0.092 +- 0.052 m/s
+[2026-07-08 18:26:13.311] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.17
+[2026-07-08 18:26:13.472] [glim] [info] playback speed: 3.375x
+[2026-07-08 18:26:14.247] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:14.247] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:14.247] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:14.247] [odom] [warning] num_bias_validations=4992
+[2026-07-08 18:26:14.247] [odom] [warning] bias_acc=[-0.110, -0.652, 0.124] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:14.247] [odom] [warning] acc_stat ax=0.454 +- 0.342 [min=-0.110, max=0.872], ay=-0.193 +- 0.196 [min=-0.652, max=0.039], az=0.050 +- 0.029 [min=0.012, max=0.124] m/s^2
+[2026-07-08 18:26:14.247] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:15.155] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:15.155] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:15.155] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:15.155] [odom] [warning] num_validations=4992
+[2026-07-08 18:26:15.155] [odom] [warning] No-IMU errors rot=0.250 +- 0.265 deg, trans=0.033 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:15.155] [odom] [warning] IMU errors rot=0.096 +- 0.064 deg, trans=0.038 +- 0.024 m, vel=0.092 +- 0.051 m/s
+[2026-07-08 18:26:15.155] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.16
+[2026-07-08 18:26:15.924] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:15.924] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:15.924] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:15.924] [odom] [warning] num_bias_validations=5056
+[2026-07-08 18:26:15.924] [odom] [warning] bias_acc=[-0.136, -0.668, 0.130] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:15.924] [odom] [warning] acc_stat ax=0.447 +- 0.346 [min=-0.136, max=0.872], ay=-0.199 +- 0.202 [min=-0.668, max=0.039], az=0.051 +- 0.031 [min=0.012, max=0.130] m/s^2
+[2026-07-08 18:26:15.924] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:17.739] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:17.739] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:17.739] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:17.739] [odom] [warning] num_validations=5056
+[2026-07-08 18:26:17.739] [odom] [warning] No-IMU errors rot=0.250 +- 0.265 deg, trans=0.034 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:17.739] [odom] [warning] IMU errors rot=0.095 +- 0.063 deg, trans=0.038 +- 0.024 m, vel=0.093 +- 0.051 m/s
+[2026-07-08 18:26:17.739] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.16
+[2026-07-08 18:26:18.030] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:18.030] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:18.030] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:18.030] [odom] [warning] num_bias_validations=5120
+[2026-07-08 18:26:18.030] [odom] [warning] bias_acc=[-0.165, -0.678, 0.135] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:18.030] [odom] [warning] acc_stat ax=0.439 +- 0.351 [min=-0.165, max=0.872], ay=-0.205 +- 0.208 [min=-0.678, max=0.039], az=0.052 +- 0.032 [min=0.012, max=0.135] m/s^2
+[2026-07-08 18:26:18.030] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:18.494] [glim] [info] playback speed: 3.171x
+[2026-07-08 18:26:19.996] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:19.996] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:19.996] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:19.996] [odom] [warning] num_validations=5120
+[2026-07-08 18:26:19.996] [odom] [warning] No-IMU errors rot=0.249 +- 0.265 deg, trans=0.034 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:19.996] [odom] [warning] IMU errors rot=0.095 +- 0.063 deg, trans=0.038 +- 0.024 m, vel=0.093 +- 0.051 m/s
+[2026-07-08 18:26:19.996] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.16
+[2026-07-08 18:26:20.682] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:20.682] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:20.682] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:20.682] [odom] [warning] num_bias_validations=5184
+[2026-07-08 18:26:20.682] [odom] [warning] bias_acc=[-0.193, -0.688, 0.140] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:20.682] [odom] [warning] acc_stat ax=0.431 +- 0.355 [min=-0.193, max=0.872], ay=-0.211 +- 0.213 [min=-0.688, max=0.039], az=0.053 +- 0.033 [min=0.012, max=0.140] m/s^2
+[2026-07-08 18:26:20.682] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:23.018] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:23.018] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:23.018] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:23.018] [odom] [warning] num_validations=5184
+[2026-07-08 18:26:23.018] [odom] [warning] No-IMU errors rot=0.249 +- 0.264 deg, trans=0.034 +- 0.021 m, vel=0.034 +- 0.022 m/s
+[2026-07-08 18:26:23.018] [odom] [warning] IMU errors rot=0.095 +- 0.063 deg, trans=0.038 +- 0.024 m, vel=0.093 +- 0.051 m/s
+[2026-07-08 18:26:23.018] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.16
+[2026-07-08 18:26:23.518] [glim] [info] playback speed: 2.181x
+[2026-07-08 18:26:23.982] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:23.982] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:23.982] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:23.982] [odom] [warning] num_bias_validations=5248
+[2026-07-08 18:26:23.982] [odom] [warning] bias_acc=[-0.219, -0.695, 0.145] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:23.982] [odom] [warning] acc_stat ax=0.423 +- 0.360 [min=-0.219, max=0.872], ay=-0.217 +- 0.218 [min=-0.695, max=0.039], az=0.054 +- 0.034 [min=0.012, max=0.145] m/s^2
+[2026-07-08 18:26:23.982] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:26.646] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:26.646] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:26.646] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:26.646] [odom] [warning] num_validations=5248
+[2026-07-08 18:26:26.646] [odom] [warning] No-IMU errors rot=0.246 +- 0.263 deg, trans=0.034 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:26.646] [odom] [warning] IMU errors rot=0.094 +- 0.063 deg, trans=0.038 +- 0.024 m, vel=0.094 +- 0.051 m/s
+[2026-07-08 18:26:26.646] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.16
+[2026-07-08 18:26:26.847] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:26.847] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:26.847] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:26.847] [odom] [warning] num_bias_validations=5312
+[2026-07-08 18:26:26.847] [odom] [warning] bias_acc=[-0.249, -0.702, 0.151] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:26:26.847] [odom] [warning] acc_stat ax=0.415 +- 0.366 [min=-0.249, max=0.872], ay=-0.223 +- 0.223 [min=-0.702, max=0.039], az=0.055 +- 0.036 [min=0.012, max=0.151] m/s^2
+[2026-07-08 18:26:26.847] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:28.015] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:28.015] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:28.015] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:28.015] [odom] [warning] num_validations=5312
+[2026-07-08 18:26:28.015] [odom] [warning] No-IMU errors rot=0.245 +- 0.262 deg, trans=0.034 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:28.015] [odom] [warning] IMU errors rot=0.094 +- 0.063 deg, trans=0.038 +- 0.024 m, vel=0.094 +- 0.051 m/s
+[2026-07-08 18:26:28.015] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.16
+[2026-07-08 18:26:28.560] [glim] [info] playback speed: 2.595x
+[2026-07-08 18:26:28.928] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:28.928] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:28.928] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:28.928] [odom] [warning] num_bias_validations=5376
+[2026-07-08 18:26:28.928] [odom] [warning] bias_acc=[-0.282, -0.707, 0.158] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:26:28.928] [odom] [warning] acc_stat ax=0.407 +- 0.371 [min=-0.282, max=0.872], ay=-0.228 +- 0.228 [min=-0.707, max=0.039], az=0.057 +- 0.037 [min=0.012, max=0.158] m/s^2
+[2026-07-08 18:26:28.928] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:31.904] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:31.904] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:31.904] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:31.904] [odom] [warning] num_validations=5376
+[2026-07-08 18:26:31.904] [odom] [warning] No-IMU errors rot=0.245 +- 0.262 deg, trans=0.034 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:31.904] [odom] [warning] IMU errors rot=0.094 +- 0.063 deg, trans=0.039 +- 0.024 m, vel=0.095 +- 0.050 m/s
+[2026-07-08 18:26:31.904] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.15
+[2026-07-08 18:26:32.157] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:32.157] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:32.157] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:32.157] [odom] [warning] num_bias_validations=5440
+[2026-07-08 18:26:32.157] [odom] [warning] bias_acc=[-0.311, -0.702, 0.164] m/s^2, bias_gyro=[-0.017, 0.000, 0.001] rad/s
+[2026-07-08 18:26:32.157] [odom] [warning] acc_stat ax=0.398 +- 0.377 [min=-0.311, max=0.872], ay=-0.234 +- 0.232 [min=-0.707, max=0.039], az=0.058 +- 0.039 [min=0.012, max=0.164] m/s^2
+[2026-07-08 18:26:32.157] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:33.569] [glim] [info] playback speed: 2.673x
+[2026-07-08 18:26:33.621] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:33.621] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:33.621] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:33.621] [odom] [warning] num_bias_validations=5504
+[2026-07-08 18:26:33.621] [odom] [warning] bias_acc=[-0.339, -0.701, 0.170] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:33.621] [odom] [warning] acc_stat ax=0.390 +- 0.383 [min=-0.339, max=0.872], ay=-0.239 +- 0.236 [min=-0.707, max=0.039], az=0.059 +- 0.040 [min=0.012, max=0.170] m/s^2
+[2026-07-08 18:26:33.621] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:33.948] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:33.948] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:33.948] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:33.948] [odom] [warning] num_validations=5440
+[2026-07-08 18:26:33.948] [odom] [warning] No-IMU errors rot=0.246 +- 0.261 deg, trans=0.035 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:33.948] [odom] [warning] IMU errors rot=0.093 +- 0.063 deg, trans=0.039 +- 0.024 m, vel=0.095 +- 0.050 m/s
+[2026-07-08 18:26:33.948] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.15
+[2026-07-08 18:26:35.531] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:35.531] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:35.531] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:35.531] [odom] [warning] num_bias_validations=5568
+[2026-07-08 18:26:35.531] [odom] [warning] bias_acc=[-0.370, -0.707, 0.176] m/s^2, bias_gyro=[-0.017, 0.001, 0.002] rad/s
+[2026-07-08 18:26:35.531] [odom] [warning] acc_stat ax=0.381 +- 0.389 [min=-0.370, max=0.872], ay=-0.245 +- 0.240 [min=-0.707, max=0.039], az=0.061 +- 0.042 [min=0.012, max=0.176] m/s^2
+[2026-07-08 18:26:35.531] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:35.661] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:35.661] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:35.661] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:35.661] [odom] [warning] num_validations=5504
+[2026-07-08 18:26:35.661] [odom] [warning] No-IMU errors rot=0.245 +- 0.260 deg, trans=0.035 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:35.661] [odom] [warning] IMU errors rot=0.093 +- 0.063 deg, trans=0.039 +- 0.024 m, vel=0.095 +- 0.050 m/s
+[2026-07-08 18:26:35.661] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.15
+[2026-07-08 18:26:38.036] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:38.036] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:38.036] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:38.036] [odom] [warning] num_bias_validations=5632
+[2026-07-08 18:26:38.036] [odom] [warning] bias_acc=[-0.402, -0.713, 0.183] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:38.036] [odom] [warning] acc_stat ax=0.372 +- 0.396 [min=-0.402, max=0.872], ay=-0.250 +- 0.244 [min=-0.713, max=0.039], az=0.062 +- 0.044 [min=0.012, max=0.183] m/s^2
+[2026-07-08 18:26:38.036] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:38.109] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:38.109] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:38.109] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:38.109] [odom] [warning] num_validations=5568
+[2026-07-08 18:26:38.109] [odom] [warning] No-IMU errors rot=0.243 +- 0.259 deg, trans=0.035 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:38.109] [odom] [warning] IMU errors rot=0.093 +- 0.063 deg, trans=0.040 +- 0.024 m, vel=0.096 +- 0.050 m/s
+[2026-07-08 18:26:38.109] [odom] [warning] IMU better ratios rot=0.83, trans=0.08, vel=0.15
+[2026-07-08 18:26:38.580] [glim] [info] playback speed: 2.976x
+[2026-07-08 18:26:40.711] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:40.711] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:40.711] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:40.711] [odom] [warning] num_bias_validations=5696
+[2026-07-08 18:26:40.711] [odom] [warning] bias_acc=[-0.432, -0.724, 0.190] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:26:40.711] [odom] [warning] acc_stat ax=0.363 +- 0.403 [min=-0.432, max=0.872], ay=-0.255 +- 0.248 [min=-0.724, max=0.039], az=0.063 +- 0.046 [min=0.012, max=0.190] m/s^2
+[2026-07-08 18:26:40.711] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:41.000] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:41.000] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:41.000] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:41.000] [odom] [warning] num_validations=5632
+[2026-07-08 18:26:41.000] [odom] [warning] No-IMU errors rot=0.242 +- 0.258 deg, trans=0.036 +- 0.021 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:41.000] [odom] [warning] IMU errors rot=0.093 +- 0.063 deg, trans=0.040 +- 0.024 m, vel=0.096 +- 0.050 m/s
+[2026-07-08 18:26:41.000] [odom] [warning] IMU better ratios rot=0.83, trans=0.07, vel=0.15
+[2026-07-08 18:26:42.866] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:42.866] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:42.866] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:42.866] [odom] [warning] num_bias_validations=5760
+[2026-07-08 18:26:42.866] [odom] [warning] bias_acc=[-0.463, -0.734, 0.197] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:42.866] [odom] [warning] acc_stat ax=0.354 +- 0.410 [min=-0.463, max=0.872], ay=-0.261 +- 0.251 [min=-0.734, max=0.039], az=0.065 +- 0.047 [min=0.012, max=0.197] m/s^2
+[2026-07-08 18:26:42.866] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:43.094] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:43.094] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:43.094] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:43.094] [odom] [warning] num_validations=5696
+[2026-07-08 18:26:43.094] [odom] [warning] No-IMU errors rot=0.243 +- 0.257 deg, trans=0.036 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:43.094] [odom] [warning] IMU errors rot=0.093 +- 0.063 deg, trans=0.040 +- 0.024 m, vel=0.096 +- 0.050 m/s
+[2026-07-08 18:26:43.094] [odom] [warning] IMU better ratios rot=0.83, trans=0.07, vel=0.14
+[2026-07-08 18:26:43.615] [glim] [info] playback speed: 2.559x
+[2026-07-08 18:26:46.095] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:46.095] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:46.095] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:46.095] [odom] [warning] num_bias_validations=5824
+[2026-07-08 18:26:46.095] [odom] [warning] bias_acc=[-0.494, -0.733, 0.205] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:46.095] [odom] [warning] acc_stat ax=0.345 +- 0.417 [min=-0.494, max=0.872], ay=-0.266 +- 0.255 [min=-0.734, max=0.039], az=0.066 +- 0.049 [min=0.012, max=0.205] m/s^2
+[2026-07-08 18:26:46.095] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:46.880] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:46.880] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:46.880] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:46.880] [odom] [warning] num_validations=5760
+[2026-07-08 18:26:46.880] [odom] [warning] No-IMU errors rot=0.242 +- 0.257 deg, trans=0.036 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:46.880] [odom] [warning] IMU errors rot=0.092 +- 0.062 deg, trans=0.041 +- 0.024 m, vel=0.097 +- 0.050 m/s
+[2026-07-08 18:26:46.880] [odom] [warning] IMU better ratios rot=0.83, trans=0.07, vel=0.14
+[2026-07-08 18:26:48.068] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:48.068] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:48.068] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:48.068] [odom] [warning] num_bias_validations=5888
+[2026-07-08 18:26:48.068] [odom] [warning] bias_acc=[-0.525, -0.733, 0.213] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:48.068] [odom] [warning] acc_stat ax=0.335 +- 0.424 [min=-0.525, max=0.872], ay=-0.271 +- 0.258 [min=-0.734, max=0.039], az=0.068 +- 0.051 [min=0.012, max=0.213] m/s^2
+[2026-07-08 18:26:48.068] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:48.638] [glim] [info] playback speed: 2.484x
+[2026-07-08 18:26:49.570] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:49.570] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:49.570] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:49.570] [odom] [warning] num_validations=5824
+[2026-07-08 18:26:49.570] [odom] [warning] No-IMU errors rot=0.240 +- 0.256 deg, trans=0.036 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:49.570] [odom] [warning] IMU errors rot=0.092 +- 0.062 deg, trans=0.041 +- 0.024 m, vel=0.097 +- 0.050 m/s
+[2026-07-08 18:26:49.570] [odom] [warning] IMU better ratios rot=0.83, trans=0.07, vel=0.14
+[2026-07-08 18:26:50.383] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:50.383] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:50.383] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:50.383] [odom] [warning] num_bias_validations=5952
+[2026-07-08 18:26:50.383] [odom] [warning] bias_acc=[-0.555, -0.735, 0.220] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:26:50.383] [odom] [warning] acc_stat ax=0.326 +- 0.432 [min=-0.555, max=0.872], ay=-0.276 +- 0.261 [min=-0.735, max=0.039], az=0.070 +- 0.053 [min=0.012, max=0.220] m/s^2
+[2026-07-08 18:26:50.383] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:51.813] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:51.813] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:51.813] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:51.813] [odom] [warning] num_validations=5888
+[2026-07-08 18:26:51.813] [odom] [warning] No-IMU errors rot=0.241 +- 0.259 deg, trans=0.036 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:51.813] [odom] [warning] IMU errors rot=0.091 +- 0.062 deg, trans=0.041 +- 0.024 m, vel=0.098 +- 0.049 m/s
+[2026-07-08 18:26:51.813] [odom] [warning] IMU better ratios rot=0.83, trans=0.07, vel=0.14
+[2026-07-08 18:26:52.623] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:52.623] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:52.623] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:52.623] [odom] [warning] num_bias_validations=6016
+[2026-07-08 18:26:52.623] [odom] [warning] bias_acc=[-0.585, -0.750, 0.228] m/s^2, bias_gyro=[-0.017, 0.003, 0.002] rad/s
+[2026-07-08 18:26:52.623] [odom] [warning] acc_stat ax=0.316 +- 0.440 [min=-0.585, max=0.872], ay=-0.281 +- 0.264 [min=-0.750, max=0.039], az=0.071 +- 0.056 [min=0.012, max=0.228] m/s^2
+[2026-07-08 18:26:52.623] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:53.540] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:53.540] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:53.540] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:53.540] [odom] [warning] num_validations=5952
+[2026-07-08 18:26:53.540] [odom] [warning] No-IMU errors rot=0.244 +- 0.265 deg, trans=0.037 +- 0.022 m, vel=0.033 +- 0.022 m/s
+[2026-07-08 18:26:53.540] [odom] [warning] IMU errors rot=0.091 +- 0.062 deg, trans=0.041 +- 0.024 m, vel=0.098 +- 0.049 m/s
+[2026-07-08 18:26:53.540] [odom] [warning] IMU better ratios rot=0.83, trans=0.07, vel=0.14
+[2026-07-08 18:26:53.639] [glim] [info] playback speed: 2.922x
+[2026-07-08 18:26:55.074] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:55.074] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:55.074] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:55.074] [odom] [warning] num_bias_validations=6080
+[2026-07-08 18:26:55.074] [odom] [warning] bias_acc=[-0.607, -0.784, 0.235] m/s^2, bias_gyro=[-0.018, 0.003, 0.002] rad/s
+[2026-07-08 18:26:55.074] [odom] [warning] acc_stat ax=0.306 +- 0.447 [min=-0.607, max=0.872], ay=-0.286 +- 0.268 [min=-0.784, max=0.039], az=0.073 +- 0.058 [min=0.012, max=0.235] m/s^2
+[2026-07-08 18:26:55.074] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:56.525] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:56.525] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:56.525] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:56.525] [odom] [warning] num_validations=6016
+[2026-07-08 18:26:56.525] [odom] [warning] No-IMU errors rot=0.242 +- 0.265 deg, trans=0.037 +- 0.021 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:26:56.525] [odom] [warning] IMU errors rot=0.091 +- 0.062 deg, trans=0.041 +- 0.024 m, vel=0.099 +- 0.050 m/s
+[2026-07-08 18:26:56.525] [odom] [warning] IMU better ratios rot=0.82, trans=0.07, vel=0.14
+[2026-07-08 18:26:58.498] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:26:58.498] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:26:58.498] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:26:58.498] [odom] [warning] num_bias_validations=6144
+[2026-07-08 18:26:58.498] [odom] [warning] bias_acc=[-0.628, -0.820, 0.244] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:26:58.498] [odom] [warning] acc_stat ax=0.296 +- 0.455 [min=-0.628, max=0.872], ay=-0.292 +- 0.272 [min=-0.820, max=0.039], az=0.075 +- 0.060 [min=0.012, max=0.244] m/s^2
+[2026-07-08 18:26:58.498] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:26:58.651] [glim] [info] playback speed: 2.125x
+[2026-07-08 18:26:59.929] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:26:59.929] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:26:59.929] [odom] [warning] IMU validation results:
+[2026-07-08 18:26:59.929] [odom] [warning] num_validations=6080
+[2026-07-08 18:26:59.929] [odom] [warning] No-IMU errors rot=0.239 +- 0.264 deg, trans=0.037 +- 0.021 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:26:59.929] [odom] [warning] IMU errors rot=0.090 +- 0.062 deg, trans=0.042 +- 0.024 m, vel=0.100 +- 0.050 m/s
+[2026-07-08 18:26:59.929] [odom] [warning] IMU better ratios rot=0.81, trans=0.07, vel=0.14
+[2026-07-08 18:27:01.904] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:01.904] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:01.904] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:01.904] [odom] [warning] num_bias_validations=6208
+[2026-07-08 18:27:01.904] [odom] [warning] bias_acc=[-0.648, -0.854, 0.251] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:27:01.904] [odom] [warning] acc_stat ax=0.287 +- 0.463 [min=-0.648, max=0.872], ay=-0.298 +- 0.276 [min=-0.854, max=0.039], az=0.077 +- 0.062 [min=0.012, max=0.251] m/s^2
+[2026-07-08 18:27:01.904] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:03.366] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:03.366] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:03.366] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:03.366] [odom] [warning] num_validations=6144
+[2026-07-08 18:27:03.366] [odom] [warning] No-IMU errors rot=0.240 +- 0.267 deg, trans=0.037 +- 0.021 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:27:03.366] [odom] [warning] IMU errors rot=0.090 +- 0.062 deg, trans=0.042 +- 0.024 m, vel=0.100 +- 0.050 m/s
+[2026-07-08 18:27:03.366] [odom] [warning] IMU better ratios rot=0.81, trans=0.07, vel=0.13
+[2026-07-08 18:27:03.690] [glim] [info] playback speed: 1.892x
+[2026-07-08 18:27:04.576] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:04.576] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:04.576] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:04.576] [odom] [warning] num_bias_validations=6272
+[2026-07-08 18:27:04.576] [odom] [warning] bias_acc=[-0.657, -0.896, 0.257] m/s^2, bias_gyro=[-0.017, 0.003, 0.002] rad/s
+[2026-07-08 18:27:04.576] [odom] [warning] acc_stat ax=0.277 +- 0.470 [min=-0.657, max=0.872], ay=-0.304 +- 0.281 [min=-0.896, max=0.039], az=0.079 +- 0.065 [min=0.012, max=0.257] m/s^2
+[2026-07-08 18:27:04.576] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:04.992] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:04.992] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:04.992] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:04.992] [odom] [warning] num_validations=6208
+[2026-07-08 18:27:04.992] [odom] [warning] No-IMU errors rot=0.240 +- 0.268 deg, trans=0.038 +- 0.022 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:27:04.992] [odom] [warning] IMU errors rot=0.089 +- 0.062 deg, trans=0.042 +- 0.024 m, vel=0.101 +- 0.050 m/s
+[2026-07-08 18:27:04.992] [odom] [warning] IMU better ratios rot=0.81, trans=0.07, vel=0.13
+[2026-07-08 18:27:06.778] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:06.778] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:06.778] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:06.778] [odom] [warning] num_bias_validations=6336
+[2026-07-08 18:27:06.778] [odom] [warning] bias_acc=[-0.654, -0.941, 0.261] m/s^2, bias_gyro=[-0.017, 0.003, 0.002] rad/s
+[2026-07-08 18:27:06.778] [odom] [warning] acc_stat ax=0.268 +- 0.477 [min=-0.657, max=0.872], ay=-0.310 +- 0.287 [min=-0.941, max=0.039], az=0.080 +- 0.067 [min=0.012, max=0.261] m/s^2
+[2026-07-08 18:27:06.778] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:07.459] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:07.459] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:07.459] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:07.459] [odom] [warning] num_validations=6272
+[2026-07-08 18:27:07.459] [odom] [warning] No-IMU errors rot=0.240 +- 0.266 deg, trans=0.038 +- 0.022 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:27:07.459] [odom] [warning] IMU errors rot=0.089 +- 0.062 deg, trans=0.043 +- 0.024 m, vel=0.102 +- 0.051 m/s
+[2026-07-08 18:27:07.459] [odom] [warning] IMU better ratios rot=0.81, trans=0.07, vel=0.13
+[2026-07-08 18:27:08.686] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:08.686] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:08.686] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:08.687] [odom] [warning] num_bias_validations=6400
+[2026-07-08 18:27:08.687] [odom] [warning] bias_acc=[-0.646, -0.984, 0.264] m/s^2, bias_gyro=[-0.017, 0.003, 0.002] rad/s
+[2026-07-08 18:27:08.687] [odom] [warning] acc_stat ax=0.259 +- 0.483 [min=-0.657, max=0.872], ay=-0.317 +- 0.293 [min=-0.984, max=0.039], az=0.082 +- 0.069 [min=0.012, max=0.264] m/s^2
+[2026-07-08 18:27:08.687] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:08.708] [glim] [info] playback speed: 3.194x
+[2026-07-08 18:27:10.019] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:10.019] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:10.019] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:10.019] [odom] [warning] num_validations=6336
+[2026-07-08 18:27:10.019] [odom] [warning] No-IMU errors rot=0.239 +- 0.265 deg, trans=0.038 +- 0.022 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:27:10.019] [odom] [warning] IMU errors rot=0.089 +- 0.062 deg, trans=0.043 +- 0.024 m, vel=0.102 +- 0.051 m/s
+[2026-07-08 18:27:10.019] [odom] [warning] IMU better ratios rot=0.81, trans=0.07, vel=0.13
+[2026-07-08 18:27:12.065] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:12.065] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:12.065] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:12.065] [odom] [warning] num_bias_validations=6464
+[2026-07-08 18:27:12.065] [odom] [warning] bias_acc=[-0.639, -1.027, 0.267] m/s^2, bias_gyro=[-0.018, 0.003, 0.002] rad/s
+[2026-07-08 18:27:12.065] [odom] [warning] acc_stat ax=0.250 +- 0.489 [min=-0.657, max=0.872], ay=-0.324 +- 0.300 [min=-1.027, max=0.039], az=0.084 +- 0.071 [min=0.012, max=0.267] m/s^2
+[2026-07-08 18:27:12.065] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:12.403] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:12.403] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:12.403] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:12.403] [odom] [warning] num_validations=6400
+[2026-07-08 18:27:12.403] [odom] [warning] No-IMU errors rot=0.238 +- 0.265 deg, trans=0.038 +- 0.022 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:27:12.403] [odom] [warning] IMU errors rot=0.088 +- 0.062 deg, trans=0.043 +- 0.024 m, vel=0.103 +- 0.051 m/s
+[2026-07-08 18:27:12.403] [odom] [warning] IMU better ratios rot=0.81, trans=0.07, vel=0.13
+[2026-07-08 18:27:13.378] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:13.378] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:13.378] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:13.378] [odom] [warning] num_bias_validations=6528
+[2026-07-08 18:27:13.378] [odom] [warning] bias_acc=[-0.634, -1.069, 0.270] m/s^2, bias_gyro=[-0.018, 0.003, 0.002] rad/s
+[2026-07-08 18:27:13.378] [odom] [warning] acc_stat ax=0.241 +- 0.494 [min=-0.657, max=0.872], ay=-0.331 +- 0.308 [min=-1.069, max=0.039], az=0.086 +- 0.073 [min=0.012, max=0.270] m/s^2
+[2026-07-08 18:27:13.378] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:13.748] [glim] [info] playback speed: 2.717x
+[2026-07-08 18:27:14.865] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:14.865] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:14.865] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:14.865] [odom] [warning] num_validations=6464
+[2026-07-08 18:27:14.865] [odom] [warning] No-IMU errors rot=0.238 +- 0.264 deg, trans=0.039 +- 0.022 m, vel=0.032 +- 0.022 m/s
+[2026-07-08 18:27:14.865] [odom] [warning] IMU errors rot=0.088 +- 0.062 deg, trans=0.043 +- 0.024 m, vel=0.104 +- 0.052 m/s
+[2026-07-08 18:27:14.865] [odom] [warning] IMU better ratios rot=0.81, trans=0.06, vel=0.13
+[2026-07-08 18:27:15.805] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:15.805] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:15.805] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:15.805] [odom] [warning] num_bias_validations=6592
+[2026-07-08 18:27:15.805] [odom] [warning] bias_acc=[-0.632, -1.113, 0.272] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:27:15.805] [odom] [warning] acc_stat ax=0.233 +- 0.499 [min=-0.657, max=0.872], ay=-0.339 +- 0.316 [min=-1.113, max=0.039], az=0.088 +- 0.075 [min=0.012, max=0.272] m/s^2
+[2026-07-08 18:27:15.805] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:17.289] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:17.289] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:17.289] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:17.289] [odom] [warning] num_validations=6528
+[2026-07-08 18:27:17.289] [odom] [warning] No-IMU errors rot=0.236 +- 0.263 deg, trans=0.039 +- 0.022 m, vel=0.032 +- 0.021 m/s
+[2026-07-08 18:27:17.289] [odom] [warning] IMU errors rot=0.088 +- 0.062 deg, trans=0.044 +- 0.024 m, vel=0.105 +- 0.052 m/s
+[2026-07-08 18:27:17.289] [odom] [warning] IMU better ratios rot=0.81, trans=0.06, vel=0.13
+[2026-07-08 18:27:18.657] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:18.657] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:18.657] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:18.657] [odom] [warning] num_bias_validations=6656
+[2026-07-08 18:27:18.657] [odom] [warning] bias_acc=[-0.631, -1.154, 0.274] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:27:18.657] [odom] [warning] acc_stat ax=0.224 +- 0.504 [min=-0.657, max=0.872], ay=-0.347 +- 0.324 [min=-1.154, max=0.039], az=0.089 +- 0.077 [min=0.012, max=0.274] m/s^2
+[2026-07-08 18:27:18.657] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:18.748] [glim] [info] playback speed: 2.480x
+[2026-07-08 18:27:19.041] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:19.041] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:19.041] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:19.041] [odom] [warning] num_validations=6592
+[2026-07-08 18:27:19.041] [odom] [warning] No-IMU errors rot=0.235 +- 0.262 deg, trans=0.039 +- 0.022 m, vel=0.032 +- 0.021 m/s
+[2026-07-08 18:27:19.041] [odom] [warning] IMU errors rot=0.087 +- 0.062 deg, trans=0.044 +- 0.024 m, vel=0.105 +- 0.052 m/s
+[2026-07-08 18:27:19.041] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.13
+[2026-07-08 18:27:20.745] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:20.745] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:20.745] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:20.745] [odom] [warning] num_bias_validations=6720
+[2026-07-08 18:27:20.745] [odom] [warning] bias_acc=[-0.628, -1.192, 0.276] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:27:20.745] [odom] [warning] acc_stat ax=0.216 +- 0.508 [min=-0.657, max=0.872], ay=-0.355 +- 0.333 [min=-1.192, max=0.039], az=0.091 +- 0.078 [min=0.012, max=0.276] m/s^2
+[2026-07-08 18:27:20.745] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:22.320] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:22.320] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:22.320] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:22.320] [odom] [warning] num_validations=6656
+[2026-07-08 18:27:22.320] [odom] [warning] No-IMU errors rot=0.235 +- 0.261 deg, trans=0.039 +- 0.022 m, vel=0.032 +- 0.021 m/s
+[2026-07-08 18:27:22.320] [odom] [warning] IMU errors rot=0.087 +- 0.061 deg, trans=0.044 +- 0.024 m, vel=0.105 +- 0.052 m/s
+[2026-07-08 18:27:22.320] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:23.776] [glim] [info] playback speed: 2.355x
+[2026-07-08 18:27:24.473] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:24.473] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:24.473] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:24.473] [odom] [warning] num_bias_validations=6784
+[2026-07-08 18:27:24.473] [odom] [warning] bias_acc=[-0.626, -1.229, 0.279] m/s^2, bias_gyro=[-0.018, 0.002, 0.002] rad/s
+[2026-07-08 18:27:24.473] [odom] [warning] acc_stat ax=0.208 +- 0.512 [min=-0.657, max=0.872], ay=-0.363 +- 0.342 [min=-1.229, max=0.039], az=0.093 +- 0.080 [min=0.012, max=0.279] m/s^2
+[2026-07-08 18:27:24.473] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:25.573] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:25.573] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:25.573] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:25.573] [odom] [warning] num_validations=6720
+[2026-07-08 18:27:25.573] [odom] [warning] No-IMU errors rot=0.234 +- 0.260 deg, trans=0.039 +- 0.022 m, vel=0.032 +- 0.021 m/s
+[2026-07-08 18:27:25.573] [odom] [warning] IMU errors rot=0.087 +- 0.061 deg, trans=0.044 +- 0.024 m, vel=0.106 +- 0.052 m/s
+[2026-07-08 18:27:25.573] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:25.984] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:25.984] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:25.984] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:25.984] [odom] [warning] num_bias_validations=6848
+[2026-07-08 18:27:25.984] [odom] [warning] bias_acc=[-0.627, -1.262, 0.282] m/s^2, bias_gyro=[-0.017, 0.002, 0.002] rad/s
+[2026-07-08 18:27:25.984] [odom] [warning] acc_stat ax=0.200 +- 0.516 [min=-0.657, max=0.872], ay=-0.371 +- 0.351 [min=-1.262, max=0.039], az=0.095 +- 0.082 [min=0.012, max=0.282] m/s^2
+[2026-07-08 18:27:25.984] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:27.162] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:27.162] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:27.162] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:27.162] [odom] [warning] num_validations=6784
+[2026-07-08 18:27:27.162] [odom] [warning] No-IMU errors rot=0.233 +- 0.259 deg, trans=0.039 +- 0.021 m, vel=0.032 +- 0.021 m/s
+[2026-07-08 18:27:27.162] [odom] [warning] IMU errors rot=0.086 +- 0.061 deg, trans=0.044 +- 0.024 m, vel=0.106 +- 0.051 m/s
+[2026-07-08 18:27:27.162] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:28.360] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:28.360] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:28.360] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:28.360] [odom] [warning] num_bias_validations=6912
+[2026-07-08 18:27:28.360] [odom] [warning] bias_acc=[-0.628, -1.291, 0.283] m/s^2, bias_gyro=[-0.017, 0.001, 0.002] rad/s
+[2026-07-08 18:27:28.360] [odom] [warning] acc_stat ax=0.193 +- 0.520 [min=-0.657, max=0.872], ay=-0.380 +- 0.360 [min=-1.291, max=0.039], az=0.096 +- 0.083 [min=0.012, max=0.283] m/s^2
+[2026-07-08 18:27:28.360] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:28.654] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:28.654] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:28.654] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:28.654] [odom] [warning] num_validations=6848
+[2026-07-08 18:27:28.654] [odom] [warning] No-IMU errors rot=0.232 +- 0.258 deg, trans=0.039 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:28.654] [odom] [warning] IMU errors rot=0.086 +- 0.061 deg, trans=0.044 +- 0.024 m, vel=0.106 +- 0.051 m/s
+[2026-07-08 18:27:28.654] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:28.778] [glim] [info] playback speed: 3.346x
+[2026-07-08 18:27:30.385] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:30.385] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:30.385] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:30.385] [odom] [warning] num_bias_validations=6976
+[2026-07-08 18:27:30.385] [odom] [warning] bias_acc=[-0.631, -1.317, 0.285] m/s^2, bias_gyro=[-0.017, 0.001, 0.002] rad/s
+[2026-07-08 18:27:30.385] [odom] [warning] acc_stat ax=0.185 +- 0.523 [min=-0.657, max=0.872], ay=-0.389 +- 0.370 [min=-1.317, max=0.039], az=0.098 +- 0.085 [min=0.012, max=0.285] m/s^2
+[2026-07-08 18:27:30.385] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:31.058] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:31.058] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:31.058] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:31.058] [odom] [warning] num_validations=6912
+[2026-07-08 18:27:31.058] [odom] [warning] No-IMU errors rot=0.231 +- 0.257 deg, trans=0.039 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:31.058] [odom] [warning] IMU errors rot=0.085 +- 0.061 deg, trans=0.044 +- 0.024 m, vel=0.106 +- 0.051 m/s
+[2026-07-08 18:27:31.058] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:31.612] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:31.612] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:31.612] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:31.612] [odom] [warning] num_bias_validations=7040
+[2026-07-08 18:27:31.612] [odom] [warning] bias_acc=[-0.631, -1.340, 0.286] m/s^2, bias_gyro=[-0.017, 0.001, 0.002] rad/s
+[2026-07-08 18:27:31.612] [odom] [warning] acc_stat ax=0.178 +- 0.527 [min=-0.657, max=0.872], ay=-0.397 +- 0.379 [min=-1.340, max=0.039], az=0.100 +- 0.086 [min=0.012, max=0.286] m/s^2
+[2026-07-08 18:27:31.612] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:32.838] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:32.838] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:32.838] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:32.838] [odom] [warning] num_validations=6976
+[2026-07-08 18:27:32.838] [odom] [warning] No-IMU errors rot=0.230 +- 0.257 deg, trans=0.039 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:32.838] [odom] [warning] IMU errors rot=0.085 +- 0.061 deg, trans=0.044 +- 0.024 m, vel=0.106 +- 0.051 m/s
+[2026-07-08 18:27:32.838] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:33.642] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:33.642] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:33.642] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:33.642] [odom] [warning] num_bias_validations=7104
+[2026-07-08 18:27:33.642] [odom] [warning] bias_acc=[-0.629, -1.361, 0.286] m/s^2, bias_gyro=[-0.017, 0.001, 0.002] rad/s
+[2026-07-08 18:27:33.642] [odom] [warning] acc_stat ax=0.170 +- 0.530 [min=-0.657, max=0.872], ay=-0.406 +- 0.388 [min=-1.361, max=0.039], az=0.102 +- 0.088 [min=0.012, max=0.286] m/s^2
+[2026-07-08 18:27:33.642] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:33.781] [glim] [info] playback speed: 3.407x
+[2026-07-08 18:27:34.263] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:34.263] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:34.263] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:34.263] [odom] [warning] num_validations=7040
+[2026-07-08 18:27:34.263] [odom] [warning] No-IMU errors rot=0.229 +- 0.256 deg, trans=0.039 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:34.263] [odom] [warning] IMU errors rot=0.085 +- 0.061 deg, trans=0.043 +- 0.024 m, vel=0.106 +- 0.051 m/s
+[2026-07-08 18:27:34.263] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:35.999] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:35.999] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:35.999] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:35.999] [odom] [warning] num_bias_validations=7168
+[2026-07-08 18:27:35.999] [odom] [warning] bias_acc=[-0.628, -1.382, 0.286] m/s^2, bias_gyro=[-0.017, 0.001, 0.002] rad/s
+[2026-07-08 18:27:35.999] [odom] [warning] acc_stat ax=0.163 +- 0.533 [min=-0.657, max=0.872], ay=-0.415 +- 0.397 [min=-1.382, max=0.039], az=0.103 +- 0.089 [min=0.012, max=0.286] m/s^2
+[2026-07-08 18:27:35.999] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:36.299] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:36.299] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:36.299] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:36.299] [odom] [warning] num_validations=7104
+[2026-07-08 18:27:36.299] [odom] [warning] No-IMU errors rot=0.228 +- 0.255 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:36.299] [odom] [warning] IMU errors rot=0.084 +- 0.061 deg, trans=0.043 +- 0.024 m, vel=0.105 +- 0.050 m/s
+[2026-07-08 18:27:36.299] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:37.887] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:37.887] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:37.887] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:37.887] [odom] [warning] num_bias_validations=7232
+[2026-07-08 18:27:37.887] [odom] [warning] bias_acc=[-0.628, -1.405, 0.286] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:37.887] [odom] [warning] acc_stat ax=0.156 +- 0.536 [min=-0.657, max=0.872], ay=-0.423 +- 0.406 [min=-1.405, max=0.039], az=0.105 +- 0.090 [min=0.012, max=0.286] m/s^2
+[2026-07-08 18:27:37.887] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:38.519] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:38.519] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:38.519] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:38.519] [odom] [warning] num_validations=7168
+[2026-07-08 18:27:38.519] [odom] [warning] No-IMU errors rot=0.227 +- 0.254 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:38.519] [odom] [warning] IMU errors rot=0.084 +- 0.060 deg, trans=0.043 +- 0.024 m, vel=0.105 +- 0.050 m/s
+[2026-07-08 18:27:38.519] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.12
+[2026-07-08 18:27:38.801] [glim] [info] playback speed: 3.435x
+[2026-07-08 18:27:39.377] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:39.377] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:39.377] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:39.377] [odom] [warning] num_bias_validations=7296
+[2026-07-08 18:27:39.377] [odom] [warning] bias_acc=[-0.629, -1.430, 0.287] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:39.377] [odom] [warning] acc_stat ax=0.149 +- 0.538 [min=-0.657, max=0.872], ay=-0.432 +- 0.415 [min=-1.430, max=0.039], az=0.106 +- 0.092 [min=0.012, max=0.287] m/s^2
+[2026-07-08 18:27:39.377] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:40.809] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:40.809] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:40.809] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:40.809] [odom] [warning] num_validations=7232
+[2026-07-08 18:27:40.809] [odom] [warning] No-IMU errors rot=0.226 +- 0.253 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:40.809] [odom] [warning] IMU errors rot=0.084 +- 0.060 deg, trans=0.043 +- 0.023 m, vel=0.105 +- 0.050 m/s
+[2026-07-08 18:27:40.809] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:41.992] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:41.992] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:41.992] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:41.992] [odom] [warning] num_bias_validations=7360
+[2026-07-08 18:27:41.992] [odom] [warning] bias_acc=[-0.630, -1.452, 0.287] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:41.992] [odom] [warning] acc_stat ax=0.143 +- 0.541 [min=-0.657, max=0.872], ay=-0.441 +- 0.424 [min=-1.452, max=0.039], az=0.108 +- 0.093 [min=0.012, max=0.287] m/s^2
+[2026-07-08 18:27:41.992] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:42.275] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:42.275] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:42.275] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:42.275] [odom] [warning] num_validations=7296
+[2026-07-08 18:27:42.275] [odom] [warning] No-IMU errors rot=0.225 +- 0.252 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:42.275] [odom] [warning] IMU errors rot=0.083 +- 0.060 deg, trans=0.043 +- 0.023 m, vel=0.105 +- 0.050 m/s
+[2026-07-08 18:27:42.275] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:43.802] [glim] [info] playback speed: 2.960x
+[2026-07-08 18:27:43.921] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:43.921] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:43.921] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:43.921] [odom] [warning] num_bias_validations=7424
+[2026-07-08 18:27:43.921] [odom] [warning] bias_acc=[-0.628, -1.476, 0.287] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:43.921] [odom] [warning] acc_stat ax=0.136 +- 0.543 [min=-0.657, max=0.872], ay=-0.450 +- 0.433 [min=-1.476, max=0.039], az=0.110 +- 0.094 [min=0.012, max=0.287] m/s^2
+[2026-07-08 18:27:43.921] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:45.408] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:45.408] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:45.408] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:45.408] [odom] [warning] num_validations=7360
+[2026-07-08 18:27:45.408] [odom] [warning] No-IMU errors rot=0.225 +- 0.252 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:45.408] [odom] [warning] IMU errors rot=0.083 +- 0.060 deg, trans=0.043 +- 0.023 m, vel=0.105 +- 0.050 m/s
+[2026-07-08 18:27:45.408] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:47.486] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:47.486] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:47.486] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:47.486] [odom] [warning] num_bias_validations=7488
+[2026-07-08 18:27:47.486] [odom] [warning] bias_acc=[-0.628, -1.500, 0.288] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:47.486] [odom] [warning] acc_stat ax=0.129 +- 0.545 [min=-0.657, max=0.872], ay=-0.459 +- 0.442 [min=-1.500, max=0.039], az=0.111 +- 0.095 [min=0.012, max=0.288] m/s^2
+[2026-07-08 18:27:47.486] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:48.833] [glim] [info] playback speed: 1.816x
+[2026-07-08 18:27:49.014] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:49.014] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:49.014] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:49.014] [odom] [warning] num_validations=7424
+[2026-07-08 18:27:49.014] [odom] [warning] No-IMU errors rot=0.223 +- 0.252 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:49.014] [odom] [warning] IMU errors rot=0.083 +- 0.060 deg, trans=0.043 +- 0.023 m, vel=0.105 +- 0.049 m/s
+[2026-07-08 18:27:49.014] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:51.127] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:51.127] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:51.127] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:51.127] [odom] [warning] num_bias_validations=7552
+[2026-07-08 18:27:51.127] [odom] [warning] bias_acc=[-0.627, -1.522, 0.288] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:51.127] [odom] [warning] acc_stat ax=0.123 +- 0.547 [min=-0.657, max=0.872], ay=-0.468 +- 0.450 [min=-1.522, max=0.039], az=0.113 +- 0.096 [min=0.012, max=0.288] m/s^2
+[2026-07-08 18:27:51.127] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:52.664] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:52.664] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:52.664] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:52.664] [odom] [warning] num_validations=7488
+[2026-07-08 18:27:52.664] [odom] [warning] No-IMU errors rot=0.224 +- 0.254 deg, trans=0.038 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:52.664] [odom] [warning] IMU errors rot=0.083 +- 0.061 deg, trans=0.043 +- 0.023 m, vel=0.105 +- 0.049 m/s
+[2026-07-08 18:27:52.664] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:53.057] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:53.057] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:53.057] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:53.057] [odom] [warning] num_bias_validations=7616
+[2026-07-08 18:27:53.057] [odom] [warning] bias_acc=[-0.632, -1.541, 0.290] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:53.057] [odom] [warning] acc_stat ax=0.117 +- 0.550 [min=-0.657, max=0.872], ay=-0.477 +- 0.459 [min=-1.541, max=0.039], az=0.114 +- 0.097 [min=0.012, max=0.290] m/s^2
+[2026-07-08 18:27:53.057] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:53.856] [glim] [info] playback speed: 2.585x
+[2026-07-08 18:27:53.881] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:53.881] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:53.881] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:53.881] [odom] [warning] num_validations=7552
+[2026-07-08 18:27:53.881] [odom] [warning] No-IMU errors rot=0.223 +- 0.253 deg, trans=0.037 +- 0.021 m, vel=0.031 +- 0.021 m/s
+[2026-07-08 18:27:53.881] [odom] [warning] IMU errors rot=0.083 +- 0.060 deg, trans=0.042 +- 0.023 m, vel=0.105 +- 0.049 m/s
+[2026-07-08 18:27:53.881] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:55.913] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:55.913] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:55.913] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:55.913] [odom] [warning] num_bias_validations=7680
+[2026-07-08 18:27:55.913] [odom] [warning] bias_acc=[-0.638, -1.561, 0.293] m/s^2, bias_gyro=[-0.018, 0.001, 0.002] rad/s
+[2026-07-08 18:27:55.913] [odom] [warning] acc_stat ax=0.110 +- 0.552 [min=-0.657, max=0.872], ay=-0.486 +- 0.468 [min=-1.561, max=0.039], az=0.116 +- 0.098 [min=0.012, max=0.293] m/s^2
+[2026-07-08 18:27:55.913] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:56.146] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:56.146] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:56.146] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:56.146] [odom] [warning] num_validations=7616
+[2026-07-08 18:27:56.146] [odom] [warning] No-IMU errors rot=0.223 +- 0.252 deg, trans=0.037 +- 0.021 m, vel=0.030 +- 0.021 m/s
+[2026-07-08 18:27:56.146] [odom] [warning] IMU errors rot=0.082 +- 0.060 deg, trans=0.042 +- 0.023 m, vel=0.105 +- 0.049 m/s
+[2026-07-08 18:27:56.146] [odom] [warning] IMU better ratios rot=0.82, trans=0.06, vel=0.11
+[2026-07-08 18:27:56.980] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:56.980] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:56.980] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:56.980] [odom] [warning] num_bias_validations=7744
+[2026-07-08 18:27:56.980] [odom] [warning] bias_acc=[-0.642, -1.583, 0.296] m/s^2, bias_gyro=[-0.018, 0.000, 0.002] rad/s
+[2026-07-08 18:27:56.980] [odom] [warning] acc_stat ax=0.104 +- 0.553 [min=-0.657, max=0.872], ay=-0.495 +- 0.476 [min=-1.583, max=0.039], az=0.117 +- 0.099 [min=0.012, max=0.296] m/s^2
+[2026-07-08 18:27:56.980] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:27:57.947] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:27:57.947] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:27:57.947] [odom] [warning] IMU validation results:
+[2026-07-08 18:27:57.947] [odom] [warning] num_validations=7680
+[2026-07-08 18:27:57.947] [odom] [warning] No-IMU errors rot=0.223 +- 0.252 deg, trans=0.037 +- 0.021 m, vel=0.030 +- 0.021 m/s
+[2026-07-08 18:27:57.947] [odom] [warning] IMU errors rot=0.082 +- 0.060 deg, trans=0.042 +- 0.023 m, vel=0.104 +- 0.049 m/s
+[2026-07-08 18:27:57.947] [odom] [warning] IMU better ratios rot=0.82, trans=0.05, vel=0.11
+[2026-07-08 18:27:58.878] [glim] [info] playback speed: 3.212x
+[2026-07-08 18:27:59.090] [odom] [warning] IMU bias estimation seems inaccurate.
+[2026-07-08 18:27:59.090] [odom] [warning] Possibly T_lidar_imu is not accurate or LiDAR-IMU synchronization is not correct.
+[2026-07-08 18:27:59.090] [odom] [warning] IMU bias validation results:
+[2026-07-08 18:27:59.090] [odom] [warning] num_bias_validations=7808
+[2026-07-08 18:27:59.090] [odom] [warning] bias_acc=[-0.650, -1.597, 0.298] m/s^2, bias_gyro=[-0.018, 0.000, 0.002] rad/s
+[2026-07-08 18:27:59.090] [odom] [warning] acc_stat ax=0.098 +- 0.555 [min=-0.657, max=0.872], ay=-0.504 +- 0.485 [min=-1.597, max=0.039], az=0.119 +- 0.100 [min=0.012, max=0.298] m/s^2
+[2026-07-08 18:27:59.090] [odom] [warning] gyro_stat wx=-0.018 +- 0.001 [min=-0.020, max=-0.016], wy=0.001 +- 0.001 [min=-0.004, max=0.004], wz=0.001 +- 0.000 [min=0.001, max=0.002] rad/s
+[2026-07-08 18:28:00.031] [odom] [warning] IMU prediction is not good.
+[2026-07-08 18:28:00.031] [odom] [warning] Possibly T_lidar_imu is not accurate or IMU bias is not well estimated.
+[2026-07-08 18:28:00.031] [odom] [warning] IMU validation results:
+[2026-07-08 18:28:00.031] [odom] [warning] num_validations=7744
+[2026-07-08 18:28:00.032] [odom] [warning] No-IMU errors rot=0.222 +- 0.251 deg, trans=0.037 +- 0.021 m, vel=0.030 +- 0.021 m/s
+[2026-07-08 18:28:00.032] [odom] [warning] IMU errors rot=0.082 +- 0.060 deg, trans=0.042 +- 0.023 m, vel=0.104 +- 0.049 m/s
+[2026-07-08 18:28:00.032] [odom] [warning] IMU better ratios rot=0.82, trans=0.05, vel=0.11
+[2026-07-08 18:28:00.860] [glim] [warning] large time gap between consecutive IMU data!!
+[2026-07-08 18:28:00.860] [glim] [warning] current=1783496798.729170 last=1783496781.529121 diff=17.200049
+[2026-07-08 18:28:00.860] [glim] [warning] large time difference between points and imu!!
+[2026-07-08 18:28:00.860] [glim] [warning] points=1783496781.382838 imu=1783496798.729170 diff=17.346332
+[2026-07-08 18:28:00.861] [glim] [warning] large time gap between consecutive LiDAR frames!!
+[2026-07-08 18:28:00.861] [glim] [warning] current=1783496798.628348 last=1783496781.382838 diff=17.245510
+local_index: -1, data.size(): 1, total_size: 7866
+terminate called after throwing an instance of 'std::out_of_range'
+  what():  IndexedSlidingWindow: index out of range
+[ros2run]: Aborted
+real 260.96
+user 594.30
+sys 16.63
+==> GLIM end 2026-07-08T09:28:01Z

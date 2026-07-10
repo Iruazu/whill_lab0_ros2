@@ -1,0 +1,43 @@
+# docs/maps/campus-demo/metadata.yaml
+#
+# 本番デモ用の M6-R 地図候補。2026-07-08 の 2 回目屋外走行 (58 分)
+# の pre-gap 44 分を GLIM + DUFOMap で処理して生成。
+#
+# 品質特性:
+#   * カバレッジ: 365 m x 270 m (前 campus-outdoor-corrected の 2.5x)
+#   * path length: 1.65 km, keyframes: 289
+#   * drift ratio: 見掛け 11.5%、ただし bag が seat 帰還前に切れたため
+#     end-start 距離は物理走行途中位置と seat の距離であり純粋な SLAM
+#     drift ではない
+#   * user 目視: 前半 6-10 分は高精度な 3D map、中盤で Z 方向に parallel
+#     plane が発生し累積、後半で loop closure により部分収束
+#
+# 想定利用: NDT scan-to-map の入力。Z drift の parallel plane は 2D 投影
+# (occupancy grid の Z=[0.1,1.5] スライス) で減衰されるはずだが、3D NDT
+# 側の fitness_score は smoke test で実測必要。
+
+acquired_at: "2026-07-08T18:52:24+09:00"
+
+route_summary: "outdoor campus, incremental loop expansion (small to large), pre-gap 44min of 58min recording"
+
+weather: "outdoor, evening dusk, dry surface"
+
+slam_method: "glim"
+
+# GLIM per-run patched config (Velodyne VLP-16 + RT 9-axis IMU + corrected
+# static TF chain with pitch=-8 deg after IMU re-mount, PR #74)
+slam_params: "docs/m5r-bench-data/2026-07-08-campus-demo-v2-pregap/glim-out/config/"
+
+erasor_params:
+    voxel_size_m: 0.2
+    pr_threshold: 0.8
+    rr_threshold: 0.2
+
+source_bag: "docs/m5r-bench-data/2026-07-08-campus-demo-v2-pregap/bag/"
+
+# Original full 58-min bag (before pre-gap slicing):
+#   docs/m5r-bench-data/2026-07-08-campus-demo-v2/bag/
+# Pre-gap slice contains messages from bag time
+#   1783504344.000 (bag start) to 1783506946.500 (10s before internal gap)
+
+commit: "TBD-registered-post-hoc"
