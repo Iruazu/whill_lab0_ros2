@@ -51,9 +51,27 @@ Differences from the legacy script that matter:
   self-returns; DUFOMap removes the former, and the latter is moot
   since we no longer assume the chair starts at world origin.
 
-Z-slice defaults (0.1 m to 1.5 m) preserve the chair-relevant band
-the legacy script also used: above floor noise / sloped ground, and
-below most ceiling fixtures and door lintels.
+Z-slice defaults (0.1 m to 1.5 m above local ground) preserve the
+chair-relevant obstacle band the legacy script also used: above floor
+noise / sloped ground, and below most ceiling fixtures and door lintels.
+
+``--z-slice-mode`` selects how "ground" is defined:
+
+* ``relative`` (default): "ground" is the nearest trajectory pose's
+  ``pose_z - --lidar-mount-height``.  Follows terrain slope AND any
+  map-wide tilt in the SLAM output.  Discovered necessary on the
+  2026-07-10 campus loop where the GLIM map is tilted 1.81° (residual
+  after IMU calibration), producing 7 m of apparent z drift across the
+  300 m x 300 m map that a fixed slice would clip.  Requires
+  ``traj_lidar.txt`` (same auto-detection as trajectory anchor mode).
+* ``absolute``: "ground" is world z = 0 (the legacy behaviour).  Use
+  when the map is truly gravity-aligned and the trajectory is flat.
+
+``--anchor-free-radius`` (default 2.0 m) applies a disk of unconditional
+FREE marking around each trajectory anchor after the raycast pass, as a
+safety-oriented "the chair was here so it is by definition traversable"
+guarantee.  Set to 0 to disable.  Occupied cells are preserved (the disk
+only flips UNKNOWN → FREE).
 
 PGM pixel convention follows ROS ``map_server``:
     0   = occupied (black)
@@ -210,13 +228,14 @@ def read_pcd_xyz(path: Path) -> np.ndarray:
 
 
 def load_trajectory_tum(path: Path) -> np.ndarray:
-    """Load TUM-format trajectory (timestamp x y z qx qy qz qw). Return (N, 2) xy.
+    """Load TUM-format trajectory (timestamp x y z qx qy qz qw). Return (N, 3) xyz.
 
-    Only x, y are used for the grid; z is available in the file but the
-    occupancy grid is 2D and does not need it. Comment lines starting
-    with '#' are skipped.
+    x, y are used for both the grid bbox (trajectory anchor mode) and the
+    KDTree lookup (relative z-slice mode). z is used only by the relative
+    z-slice to define local ground. Comment lines starting with '#' are
+    skipped.
     """
-    xy = []
+    xyz = []
     for line in path.read_text().splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
@@ -225,33 +244,34 @@ def load_trajectory_tum(path: Path) -> np.ndarray:
         if len(toks) < 4:
             continue
         try:
-            xy.append((float(toks[1]), float(toks[2])))
+            xyz.append((float(toks[1]), float(toks[2]), float(toks[3])))
         except ValueError:
             continue
-    if not xy:
+    if not xyz:
         raise ValueError(f"{path}: no poses parsed (TUM format expected)")
-    return np.asarray(xy, dtype=np.float32)
+    return np.asarray(xyz, dtype=np.float32)
 
 
-def downsample_trajectory(xy: np.ndarray, min_stride_m: float) -> np.ndarray:
-    """Keep points that are at least min_stride_m from the last kept one.
+def downsample_trajectory(xyz: np.ndarray, min_stride_m: float) -> np.ndarray:
+    """Keep points that are at least min_stride_m from the last kept one (xy).
 
     Preserves the first and last poses. Deterministic (no random skips)
     so re-runs produce byte-identical output given the same input.
+    Accepts (N, 2) xy or (N, 3) xyz; xy distance drives the decision.
     """
-    if xy.shape[0] == 0 or min_stride_m <= 0:
-        return xy
+    if xyz.shape[0] == 0 or min_stride_m <= 0:
+        return xyz
     kept = [0]
-    last = xy[0]
-    for i in range(1, xy.shape[0]):
-        p = xy[i]
+    last = xyz[0]
+    for i in range(1, xyz.shape[0]):
+        p = xyz[i]
         if np.hypot(p[0] - last[0], p[1] - last[1]) >= min_stride_m:
             kept.append(i)
             last = p
     # Guarantee the last pose is included (loop closure anchor)
-    if kept[-1] != xy.shape[0] - 1:
-        kept.append(xy.shape[0] - 1)
-    return xy[np.asarray(kept, dtype=np.int64)]
+    if kept[-1] != xyz.shape[0] - 1:
+        kept.append(xyz.shape[0] - 1)
+    return xyz[np.asarray(kept, dtype=np.int64)]
 
 
 def bresenham_rays_to_free_trajectory(
@@ -444,11 +464,30 @@ def main() -> int:
     # up as phantom obstacles even though the chair passes underneath.
     parser.add_argument(
         "--z-min", type=float, default=0.1,
-        help="Lower Z slice [m] (default 0.1, excludes floor noise)",
+        help="Lower Z slice [m] above local ground "
+             "(default 0.1, excludes floor noise). "
+             "In --z-slice-mode=relative local ground follows the traj; "
+             "in absolute mode local ground = world z=0.",
     )
     parser.add_argument(
         "--z-max", type=float, default=1.5,
-        help="Upper Z slice [m] (default 1.5, excludes lintels / signs)",
+        help="Upper Z slice [m] above local ground "
+             "(default 1.5, excludes lintels / signs).",
+    )
+    parser.add_argument(
+        "--z-slice-mode", choices=("relative", "absolute"), default="relative",
+        help="How 'ground' is defined for the Z slice. 'relative' (default) "
+             "follows nearest traj pose (KDTree in xy) — needed when the "
+             "SLAM map has any tilt or the terrain has slope. 'absolute' "
+             "uses world z=0 as ground (legacy behaviour, only correct for "
+             "gravity-aligned flat maps).",
+    )
+    parser.add_argument(
+        "--lidar-mount-height", type=float, default=0.79,
+        help="LiDAR mount height above base_link [m] (default 0.79 per "
+             "calibration-ledger's base_link->velodyne z). Used only in "
+             "--z-slice-mode=relative to translate traj_z (which is the "
+             "LiDAR position) into local ground z.",
     )
     parser.add_argument(
         "--anchor-mode", choices=("trajectory", "single"), default="trajectory",
@@ -475,6 +514,14 @@ def main() -> int:
         help="Per-anchor raycast radius [m] (default 20 m, matches VLP-16 "
              "effective range for indoor/near-outdoor scenes). Only used "
              "when --anchor-mode=trajectory.",
+    )
+    parser.add_argument(
+        "--anchor-free-radius", type=float, default=2.0,
+        help="Radius [m] of unconditional FREE marking around each traj "
+             "anchor (default 2.0). Ensures the trajectory itself gets a "
+             "safe corridor even where no obstacles are captured within "
+             "--max-range. Set to 0 to disable. Occupied cells are "
+             "preserved — the disk only flips UNKNOWN → FREE.",
     )
     parser.add_argument(
         "--anchor-x", type=float, default=None,
@@ -546,35 +593,16 @@ def main() -> int:
         return 1
     print(f"Loaded {len(xyz)} points", file=sys.stderr)
 
-    z_mask = (xyz[:, 2] >= args.z_min) & (xyz[:, 2] <= args.z_max)
-    sliced = xyz[z_mask]
-    print(
-        f"Z-sliced to [{args.z_min:.2f}, {args.z_max:.2f}]: "
-        f"{len(sliced)} points retained",
-        file=sys.stderr,
-    )
-    if len(sliced) == 0:
-        print(
-            "ERROR: no points survived Z-slice. Check --z-min / --z-max "
-            "against the PCD bounding box.",
-            file=sys.stderr,
-        )
-        return 1
-
-    xmin = float(sliced[:, 0].min())
-    xmax = float(sliced[:, 0].max())
-    ymin = float(sliced[:, 1].min())
-    ymax = float(sliced[:, 1].max())
-
-    # In trajectory mode we also need the trajectory to fit inside the
-    # grid — otherwise anchors in open areas (no z=[0.1, 1.5] obstacle
-    # observations near them) drop off the grid and 15%+ of the traversal
-    # cannot be represented. Load traj_lidar.txt here so its bbox joins
-    # the point cloud's before we compute grid dimensions. If loading
-    # fails we still print the resolved path for the user to fix.
-    traj_xy = None
+    # Load trajectory upfront if either the anchor mode OR the z-slice
+    # mode needs it. Both consume the same traj_lidar.txt, so resolve the
+    # path once and share the loaded array.
+    traj_xyz = None
     traj_path_resolved: Path | None = None
-    if args.anchor_mode == "trajectory" and not args.no_raycast:
+    needs_traj = (
+        (args.anchor_mode == "trajectory" and not args.no_raycast)
+        or args.z_slice_mode == "relative"
+    )
+    if needs_traj:
         if args.traj is not None:
             traj_path_resolved = args.traj
         else:
@@ -586,25 +614,90 @@ def main() -> int:
                 (p for p in candidates if p.is_file()), None
             )
             if traj_path_resolved is None:
+                need_reason = []
+                if args.anchor_mode == "trajectory" and not args.no_raycast:
+                    need_reason.append("--anchor-mode=trajectory")
+                if args.z_slice_mode == "relative":
+                    need_reason.append("--z-slice-mode=relative")
                 print(
-                    "ERROR: trajectory mode selected but traj_lidar.txt not "
-                    "found in\n"
+                    f"ERROR: traj_lidar.txt not found "
+                    f"({' and '.join(need_reason)} require it):\n"
                     f"  {candidates[0]}\n"
                     f"  {candidates[1]}\n"
-                    "Pass --traj PATH, or copy the GLIM output traj_lidar.txt "
-                    "next to static.pcd, or use --anchor-mode single.",
+                    "Pass --traj PATH, or copy the GLIM output next to "
+                    "static.pcd, or fall back to --anchor-mode=single "
+                    "--z-slice-mode=absolute.",
                     file=sys.stderr,
                 )
                 return 1
         try:
-            traj_xy = load_trajectory_tum(traj_path_resolved)
+            traj_xyz = load_trajectory_tum(traj_path_resolved)
         except ValueError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
-        xmin = min(xmin, float(traj_xy[:, 0].min()))
-        xmax = max(xmax, float(traj_xy[:, 0].max()))
-        ymin = min(ymin, float(traj_xy[:, 1].min()))
-        ymax = max(ymax, float(traj_xy[:, 1].max()))
+        print(
+            f"Trajectory loaded from {traj_path_resolved}: "
+            f"{traj_xyz.shape[0]} poses",
+            file=sys.stderr,
+        )
+
+    # Z-slice: absolute or relative to nearest traj pose. Relative mode
+    # needs scipy.spatial.cKDTree for the per-point nearest-neighbour
+    # lookup; a naive loop is O(N*M) = 9.6M * 21300 = 204G ops, ~hours.
+    if args.z_slice_mode == "absolute":
+        z_mask = (xyz[:, 2] >= args.z_min) & (xyz[:, 2] <= args.z_max)
+        print(
+            f"Z-slice (absolute) [{args.z_min:.2f}, {args.z_max:.2f}] "
+            f"(local ground = world z=0): "
+            f"{int(z_mask.sum())} of {len(xyz)} points retained",
+            file=sys.stderr,
+        )
+    else:  # relative
+        try:
+            from scipy.spatial import cKDTree
+        except ImportError:
+            print(
+                "ERROR: --z-slice-mode=relative needs scipy.spatial. "
+                "Install scipy or use --z-slice-mode=absolute.",
+                file=sys.stderr,
+            )
+            return 1
+        tree = cKDTree(traj_xyz[:, :2])
+        _, nn_idx = tree.query(xyz[:, :2], k=1)
+        # Local ground per point = nearest traj pose z - LiDAR mount height.
+        local_ground = traj_xyz[nn_idx, 2] - args.lidar_mount_height
+        z_off = xyz[:, 2] - local_ground
+        z_mask = (z_off >= args.z_min) & (z_off <= args.z_max)
+        print(
+            f"Z-slice (relative to nearest traj pose, LiDAR mount "
+            f"{args.lidar_mount_height} m): [{args.z_min:.2f}, "
+            f"{args.z_max:.2f}] above local ground: "
+            f"{int(z_mask.sum())} of {len(xyz)} points retained",
+            file=sys.stderr,
+        )
+    sliced = xyz[z_mask]
+    if len(sliced) == 0:
+        print(
+            "ERROR: no points survived Z-slice. Check --z-min / --z-max "
+            "(and --z-slice-mode) against the PCD bounding box.",
+            file=sys.stderr,
+        )
+        return 1
+
+    xmin = float(sliced[:, 0].min())
+    xmax = float(sliced[:, 0].max())
+    ymin = float(sliced[:, 1].min())
+    ymax = float(sliced[:, 1].max())
+
+    # If the trajectory anchor mode is on, expand the grid bbox to include
+    # the trajectory too — otherwise anchors in open areas (no obstacle
+    # observations retained near them) drop off the grid and a portion
+    # of the traversal cannot be represented.
+    if traj_xyz is not None and args.anchor_mode == "trajectory" and not args.no_raycast:
+        xmin = min(xmin, float(traj_xyz[:, 0].min()))
+        xmax = max(xmax, float(traj_xyz[:, 0].max()))
+        ymin = min(ymin, float(traj_xyz[:, 1].min()))
+        ymax = max(ymax, float(traj_xyz[:, 1].max()))
 
     pcd_bbox = (
         float(sliced[:, 0].min()), float(sliced[:, 0].max()),
@@ -621,10 +714,11 @@ def main() -> int:
         f"Grid: {width} x {height} cells @ {res} m  "
         f"(pcd bbox x:[{pcd_bbox[0]:.2f}, {pcd_bbox[1]:.2f}], "
         f"y:[{pcd_bbox[2]:.2f}, {pcd_bbox[3]:.2f}]" +
-        (f" ∪ traj bbox x:[{float(traj_xy[:, 0].min()):.2f}, "
-         f"{float(traj_xy[:, 0].max()):.2f}], "
-         f"y:[{float(traj_xy[:, 1].min()):.2f}, {float(traj_xy[:, 1].max()):.2f}]"
-         if traj_xy is not None else "") +
+        (f" ∪ traj bbox x:[{float(traj_xyz[:, 0].min()):.2f}, "
+         f"{float(traj_xyz[:, 0].max()):.2f}], "
+         f"y:[{float(traj_xyz[:, 1].min()):.2f}, {float(traj_xyz[:, 1].max()):.2f}]"
+         if traj_xyz is not None and args.anchor_mode == "trajectory"
+         else "") +
         f", padding {args.padding} m)",
         file=sys.stderr,
     )
@@ -662,12 +756,14 @@ def main() -> int:
 
     if args.no_raycast:
         print("Skipping ray-cast (--no-raycast).", file=sys.stderr)
+        traj_ds_xy = None
     elif args.anchor_mode == "trajectory":
-        # traj_xy was already loaded above (joined into the bbox). Reuse.
-        assert traj_xy is not None, "trajectory mode reached without traj_xy"
+        # traj_xyz was already loaded above. Reuse.
+        assert traj_xyz is not None, "trajectory mode reached without traj_xyz"
         print(f"Using trajectory {traj_path_resolved}", file=sys.stderr)
-        n_raw = traj_xy.shape[0]
-        traj_ds = downsample_trajectory(traj_xy, args.traj_stride)
+        n_raw = traj_xyz.shape[0]
+        traj_ds = downsample_trajectory(traj_xyz, args.traj_stride)
+        traj_ds_xy = traj_ds[:, :2]
         n_ds = traj_ds.shape[0]
         # World → pixel for each anchor
         anchor_cols = np.round((traj_ds[:, 0] - xmin) / res).astype(np.int64)
@@ -700,6 +796,7 @@ def main() -> int:
         print(f"Trajectory raycast complete: {n_marked} cells marked free.",
               file=sys.stderr)
     else:  # single mode (legacy)
+        traj_ds_xy = None
         if args.anchor_x is not None and args.anchor_y is not None:
             anchor_world = (args.anchor_x, args.anchor_y)
             anchor_source = "user"
@@ -743,6 +840,47 @@ def main() -> int:
                 file=sys.stderr,
             )
             bresenham_rays_to_free(grid, (anchor_col, anchor_row), occupied)
+
+    # Anchor-free-radius pass: unconditional FREE disk around each traj
+    # anchor. Only in trajectory mode. Motivated by the 07-10 campus map
+    # where 35.6% of anchors are "starved" (no obstacle observations in
+    # the local z-slice band, so the ray-cast pass has nothing to walk
+    # to). "The chair went here, therefore this cell is safe to plan
+    # through" is a stronger prior than "no observation → unknown". The
+    # disk still respects OCCUPIED cells (only UNKNOWN → FREE).
+    if (
+        traj_ds_xy is not None
+        and args.anchor_free_radius > 0
+        and not args.no_raycast
+    ):
+        r_px = int(np.ceil(args.anchor_free_radius / res))
+        yy, xx = np.mgrid[-r_px:r_px + 1, -r_px:r_px + 1]
+        in_disk = (xx * xx + yy * yy) <= r_px * r_px
+        disk_dx = xx[in_disk].astype(np.int64)
+        disk_dy = yy[in_disk].astype(np.int64)
+        print(
+            f"Anchor-free-radius: painting {int(in_disk.sum())} cells around "
+            f"each of {anchor_px.shape[0]} anchors "
+            f"(r={args.anchor_free_radius} m = {r_px} px)",
+            file=sys.stderr,
+        )
+        n_disk_marked = 0
+        for i in range(anchor_px.shape[0]):
+            a_col = int(anchor_px[i, 0])
+            a_row = int(anchor_px[i, 1])
+            cs = a_col + disk_dx
+            rs = a_row + disk_dy
+            v = (cs >= 0) & (cs < width) & (rs >= 0) & (rs < height)
+            cs = cs[v]
+            rs = rs[v]
+            if cs.size == 0:
+                continue
+            unk = grid[rs, cs] == PIX_UNKNOWN
+            if unk.any():
+                grid[rs[unk], cs[unk]] = PIX_FREE
+                n_disk_marked += int(unk.sum())
+        print(f"Anchor-free-radius: {n_disk_marked} cells marked free.",
+              file=sys.stderr)
 
     # Stamp occupied last so free-marking from later rays cannot
     # overwrite a real obstacle (defence in depth -- the ray walker
