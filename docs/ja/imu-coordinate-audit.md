@@ -418,7 +418,103 @@ loop でないので loop error 指標としては無意味。
   タイヤの空気圧不均一、重量偏重、路面傾斜で base_link が微傾斜している
   可能性は排除できない。厳密には水準器で確認したい
 
-## 8. 参照
+## 8. 2026-07-10 追記: 本番マップ採用 (M5-R 山越え)
+
+### 8.1 走行前の TF 再測定
+
+07-09 の 2 nd remount 後 (`aed1e4d`) から 1 晩置いて、走行前に再び静止 IMU
+gravity 実測を実施 (`scratchpad/imu_live_check.py` 3 連続、各軸ばらつき
+0.003 m/s² 未満で安定):
+
+```
+ax = +1.397  ay = -0.699  az = +9.782
+```
+
+`scratchpad/frame_audit.py` で逆算:
+- roll  = -0.0713 rad (**-4.09°**)  [07-09 2nd remount 値 -3.52° から -0.57°]
+- pitch = -0.1415 rad (**-8.11°**)  [同 -7.76° から -0.35°]
+
+物理再固定はしていないため、締結の応力緩和による微沈み込みと解釈。
+この新 RPY を `static_tf_launch.py` に反映して commit `9cc4be2`。
+
+R_lidar_imu も対応更新: 導出式 `roll = imu.roll`, `pitch = imu.pitch + 0.5°`
+より **RPY(-4.09°, -7.61°, 0°)** → quaternion `(-0.035606, -0.066319,
+-0.002368, 0.997163)`。commit `39bf794` で `GLIM_TLI_FROM_AUDIT=1` に反映。
+
+### 8.2 本番録画
+
+- run-id: `2026-07-10-campus-outer-final`
+- Duration: **2161.98 s** (36 分 2 秒)
+- `/velodyne_points`: 21311 (98.6% of expected 21620)
+- `/imu/data_rep145`: 216191 (99.997% of expected 216200)
+- 大きな gap: **ゼロ** (07-08 の 4.77 s gap は再発しなかった)
+- CycloneDDS lo-only + MaxAutoParticipantIndex=100 が効いた形
+
+### 8.3 走行後 IMU 再測定 (差分検出)
+
+同じ `imu_live_check.py` を走行後にも実行:
+
+```
+ax = +1.331  ay = -0.577  az = +9.768  (走行前 +1.397 / -0.699 / +9.782 との差)
+```
+
+逆算 RPY: roll = **-3.38°**, pitch = **-7.75°** — 走行前から roll +0.71°、
+pitch +0.36° の変化。溝の ±2-3° 再固定バラツキ範囲内で、47 分走行中の
+振動による自然な微沈み込みと読める。
+
+### 8.4 GLIM 実行結果 (`GLIM_TLI_FROM_AUDIT=1`)
+
+- 実行時間: **691.8 s** (bag 2162 s の 32%)
+- Peak VRAM: 3297 MiB
+- exit_code: 0
+
+定量指標 (`m5r3_loop_error.py` 出力):
+
+| 項目 | 値 |
+|------|-----|
+| loop length | 1310.098 m |
+| end-to-start | **1.317 m** (0.10%) |
+| dx / dy / **dz** | +0.107 / -0.161 / **+1.303** |
+| yaw drift | -0.16° |
+
+### 8.5 目視判定 (3 視点すべて PASS)
+
+- **真上**: 建物・柱の輪郭一重、単線ループ (07-09 fixbias 実験の複製ゴースト消失)
+- **3D 俯瞰**: Z レイヤー化なし (07-08 「多層パンケーキ」は根絶)
+- **地上レベル拡大**: 壁面単線、二重壁なし、街路樹の個体分離
+
+pre/post 中間 quat での再処理は不要と判断。**本番マップ候補として正式採用**。
+CloudCompare B1 (壁 3 点平均) は viewer PASS の後段検証として実施予定。
+
+### 8.6 残る既知事項 (M6-R へ引き継ぎ)
+
+- **IMU better ratios**: trans=0.03 / vel=0.07 と低いまま (LiDAR 主導、
+  IMU 予測寄与が薄い)。マップ品質には影響しないが、M6-R の localizer
+  設計で IMU 予測に頼るなら再評価が必要
+- **bias_acc 未収束**: 47 分走行中、accelerometer bias 推定が最後まで
+  収束しなかった。マップ生成には影響しないが、上と同じ理由で M6-R 引き継ぎ
+- **camera_link の姿勢**: §7.10 で提起した「M6-R でチェスボード校正」は
+  未着手のまま。M6-R 開始時に第一タスク化
+- **base_link 水平性**: 同じく §7.10 未着手。水準器での実測は M6-R 開始
+  前に別途消化
+
+### 8.7 3 日間の追い込み総括
+
+| 指標 | 07-08 seg-A/B (fixbias) | **07-10 pre-run 本番** | 改善率 |
+|------|------------------------|------------------------|--------|
+| loop_error | 11.53 m | **1.317 m** | **1/9** |
+| yaw drift | 18° | **0.16°** | **1/100** |
+| 建物ゴースト | 3-4 個複製 | 消失 | ✅ |
+| Z レイヤー | 多層パンケーキ | 単一面 | ✅ |
+
+犯人と対策 (すべて特定 + 修正 + 検証プロトコル整備済):
+- **DDS gap** (テザリング IF): `configs/cyclonedds-lo-only.xml` +
+  `MaxAutoParticipantIndex=100`
+- **座標系の層問題**: `base_link → imu_link` の RPY 実測反映 (2 日連続の微更新)
+- **マウント管理**: `scratchpad/imu_live_check.py` + `scratchpad/frame_audit.py`
+  で走行前後の再現性を機械判定できる状態に
+
+## 9. 参照
 
 - 静止 IMU サンプリング: `scratchpad/imu_static_sample.py`
 - TF chain 数値計算: `scratchpad/frame_audit.py`

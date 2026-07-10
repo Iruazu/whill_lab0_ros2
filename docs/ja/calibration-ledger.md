@@ -165,14 +165,65 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 | baseline (デフォルト) | (-0.05, -0.4, -0.35) | (0.017399, -0.078447, 0.001369, 0.996765) | noetic (RPY +2°, -9°, 0°) |
 | **audit** (`GLIM_TLI_FROM_AUDIT=1`) | 同上 | (-0.035606, -0.066319, -0.002368, 0.997163) | **2026-07-10 pre-run audit** (RPY -4.09°, -7.61°, 0°) |
 
-- 対応 commit: **(this commit)** (07-10 pre-run 追随。前回 `494ea77` は 07-09 audit)
+- 対応 commit: **`39bf794`** (07-10 pre-run 追随。前回 `494ea77` は 07-09 audit)
 - 導出式: `R_lidar_imu.roll = imu.roll`, `R_lidar_imu.pitch = imu.pitch + 0.5°`
   (LiDAR は base_link 系で概ね水平、pitch -0.5° の残留のみを補正)
-- 目視実証: 2026-07-09 23:20 の offline_viewer で **07-09 audit 版が** seg-A 単線・drift 無しを確認
-  (`docs/ja/imu-coordinate-audit.md` §7.9)。07-10 pre-run 版は今日の GLIM 実行後に判定
+- 目視実証:
+  - 2026-07-09 23:20: 07-09 audit 版で seg-A 単線・drift 無しを確認 (`docs/ja/imu-coordinate-audit.md` §7.9)
+  - **2026-07-10 15:xx: 07-10 pre-run 版で本番 bag `2026-07-10-campus-outer-final` を処理 →
+    viewer 3 視点すべて PASS**。詳細は下記「本番マップ採用結果」節
 - **本番マップ生成時は `GLIM_TLI_FROM_AUDIT=1` 必須**
 - 未計測: `yaw` 成分 (現在 0 仮定)。47 分フルループで yaw 起因の残留 drift が
-  数 m 級で出る可能性が残る。出たら GRIL-Calib 6-DoF 校正を優先度上げ
+  数 m 級で出る可能性が残る。今回の run は yaw -0.16° で収まり、GRIL-Calib
+  優先度は当面「必要になれば」レベルに下げる
+
+## 本番マップ採用結果 (2026-07-10)
+
+M5-R 山越え記録。本番マップ候補として正式採用。
+
+### 対象 run
+- run-id: `2026-07-10-campus-outer-final`
+- bag: `docs/m5r-bench-data/2026-07-10-campus-outer-final/bag` (2162 s / 12.8 GiB)
+- glim-out: `docs/m5r-bench-data/2026-07-10-campus-outer-final/glim-out-audit-tli/`
+- git commit: **`39bf794`** (GLIM audit quat = 07-10 pre-run)
+
+### 定量指標
+
+| 項目 | 値 | 判定 |
+|------|-----|------|
+| loop_error (end-to-start) | 1.317 m / 1310.098 m = **0.10%** | ✅ (基準 0.1-0.3% の最良側) |
+| dx / dy / **dz** (per-axis) | +0.107 / -0.161 / **+1.303** | dz は視認不可レベル |
+| yaw drift | -0.16° | ✅ (数 m 級 yaw 起因 drift 懸念は不発) |
+| GLIM 実行時間 | 691.8 s | bag 2162 s の 32% |
+| Peak VRAM | 3297 MiB | 参考値 |
+| CloudCompare B1 (壁 3 点) | TBD (viewer PASS の後段検証) | — |
+
+### 目視判定 (3 視点すべて PASS)
+
+- 真上: 建物・柱の輪郭一重、単線ループ (前日の複製ゴースト消失)
+- 3D 俯瞰: Z レイヤー化なし、色グラデーションは実高低差のみ
+- 地上レベル拡大: 壁面単線、二重壁なし、街路樹の個体分離
+
+### 既知残差 (M6-R 引き継ぎ)
+
+- **IMU better ratios が低いまま**: trans=0.03 / vel=0.07。bag 47 分の
+  大半で LiDAR 主導、IMU 予測寄与が薄い。マップ品質には影響しない
+- **bias_acc が最後まで未収束**。localization で IMU 予測に頼る設計を
+  組む場合はここが弱点になる。M6-R の localizer 選定時に評価軸へ
+
+### 3 日間の追い込み総括
+
+| 指標 | 07-08 seg-A/B (fixbias 実験) | **07-10 pre-run 本番** | 改善率 |
+|------|-----------------------------|------------------------|-------|
+| loop_error | 11.53 m | 1.317 m | 1/9 |
+| yaw drift | 18° | 0.16° | 1/100 |
+| 建物ゴースト | 3-4 個複製 | 消失 | ✅ |
+| Z レイヤー | 多層パンケーキ | 単一面 | ✅ |
+
+犯人リスト (すべて特定 + 修正 + 検証プロトコル整備済):
+- DDS gap (テザリング IF): CycloneDDS lo-only 恒久設定 + MaxAutoParticipantIndex=100
+- 座標系の層問題: base_link → imu_link の RPY 実測反映 (2 日連続で微更新)
+- マウント管理: `imu_live_check.py` + `frame_audit.py` で走行前後の再現性を機械判定
 
 ### base_link → camera_link
 - 未更新 (M4R-2 の仮置き RPY=0)。M6-R でチェスボード校正予定
@@ -182,7 +233,8 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 
 | Date       | Change                                      | Commit |
 |------------|---------------------------------------------|--------|
-| 2026-07-10 | GLIM audit T_lidar_imu を 07-10 pre-run 導出値に更新 (RPY -4.09°/-7.61°) | (this commit) |
+| 2026-07-10 | 本番マップ採用: `2026-07-10-campus-outer-final` viewer PASS (loop_error 0.10%、複製・Z ゴーストなし) | (this commit) |
+| 2026-07-10 | GLIM audit T_lidar_imu を 07-10 pre-run 導出値に更新 (RPY -4.09°/-7.61°) | `39bf794` |
 | 2026-07-10 | base_link → imu_link 再測定 (roll -4.09°, pitch -8.11°、昨日値から -0.57°/-0.35° の応力緩和分) | `9cc4be2` |
 | 2026-07-10 | lo-only xml に MaxAutoParticipantIndex=100 追加 (bringup で participant 枯渇 → 4 ノード死亡) | `d5c6eff` |
 | 2026-07-09 | 朝一チェックリスト §0 追加                   | `f81d6c1` |
