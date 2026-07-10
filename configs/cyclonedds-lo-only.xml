@@ -43,6 +43,16 @@
     </General>
     <Discovery>
       <ParticipantIndex>auto</ParticipantIndex>
+      <!--
+        lo 単一 IF では participant index が枯渇しやすい。CycloneDDS の
+        既定 MaxAutoParticipantIndex は 9 で、bringup (whill + ekf +
+        imu_sign_corrector + realsense + velodyne 系 + ros2 daemon 等)
+        は軽く超えるため、遅く起動したノードから "Failed to find a
+        free participant index for domain 0" で落ちる。
+        2026-07-10 朝の bringup で 4 ノード死亡 (whill / ekf_node /
+        imu_sign_corrector / realsense) を実測。100 に引き上げ。
+      -->
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
       <!-- Peers を空にすることでピア発見を lo unicast のみに閉じる -->
       <Peers>
         <Peer address="localhost"/>

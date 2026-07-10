@@ -29,6 +29,12 @@ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor  # ← performance
 古い設定 (=lo 限定でない) で走る。**bringup 起動前の `echo $CYCLONEDDS_URI`
 は必ず 1 行挟む**。
 
+**bringup が participant index エラーで一部ノード死亡した場合**: lo 単一 IF は
+CycloneDDS 既定 `MaxAutoParticipantIndex=9` を超えるため、`Failed to find a
+free participant index for domain 0` で遅く起動したノードが落ちる。lo-only xml
+の `<Discovery>` に `<MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>` が
+入っているか確認 (2026-07-10 追加、commit で対応)。
+
 ### 0.2 センサ健全性 — 静止 IMU 5 秒 (走行**前**)
 
 Bringup 後 (IMU 静止状態):
@@ -171,6 +177,7 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 
 | Date       | Change                                      | Commit |
 |------------|---------------------------------------------|--------|
+| 2026-07-10 | lo-only xml に MaxAutoParticipantIndex=100 追加 (bringup で participant 枯渇 → 4 ノード死亡) | (this commit) |
 | 2026-07-09 | initial ledger作成 (今日の反省を受けて)      | (this commit) |
 | 2026-07-09 | GLIM audit T_lidar_imu 追加 (env-gated)     | `494ea77` |
 | 2026-07-09 | base_link → imu_link 2nd remount           | `aed1e4d` |
