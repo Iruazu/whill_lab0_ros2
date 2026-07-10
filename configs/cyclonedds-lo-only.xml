@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CycloneDDS 恒久設定: loopback 限定 + マルチキャスト無効化
+
+  Why:
+    2026-07-08 campus-outer bag (47 分) の bag time 1325 秒地点で 4.77 秒間の
+    IMU/LiDAR 完全停止が発生。原因はテザリング接続中の CycloneDDS が外部ピア
+    (10.130.7.163 / 172.20.10.2 等) への UDP 送信を延々リトライしてハング。
+    docs/ja/imu-coordinate-audit.md §7.6 参照。
+
+    「録画前に WiFi を OFF する」という運用は 47 分の一発勝負では弱すぎるため
+    (人間依存の抜けが致命的)、DDS 側で構造的に外部ピアを見せない設定にする。
+
+  How to use:
+    ~/.bashrc に以下 2 行を追加 (既存の RMW 行と併存):
+      export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-lo-only.xml
+
+    設定反映後、以下で lo だけ使っているか確認:
+      ros2 daemon stop && ros2 daemon start
+      ss -uan | grep -E "0\.0\.0\.0:[0-9]+ " | head  # 全 wildcard bind は使わないはず
+
+  Verify (10 分推奨):
+    ターミナル A: ros2 launch whill_localization odom_bringup_launch.py
+    ターミナル B: timeout 30 ros2 topic hz /velodyne_points --qos-reliability best_effort
+    ターミナル C (途中で): WiFi 接続/切断/デザリング切替 を意図的に発生
+      → /velodyne_points hz が乱れなければ OK
+      → ros2 topic echo で外部 IP へのエラーログが出ていないこと
+-->
+<CycloneDDS xmlns="https://cdds.io/config"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
+  <Domain id="any">
+    <General>
+      <!-- loopback だけを DDS 通信に使う。WiFi/Ethernet 経由は完全に無視 -->
+      <Interfaces>
+        <NetworkInterface name="lo"/>
+      </Interfaces>
+      <!-- マルチキャスト discovery を停止。lo 上でも UDP unicast のみ -->
+      <AllowMulticast>false</AllowMulticast>
+      <!-- 外部ピアが仮に見えても接続を試行しない -->
+      <DontRoute>true</DontRoute>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <!--
+        lo 単一 IF では participant index が枯渇しやすい。CycloneDDS の
+        既定 MaxAutoParticipantIndex は 9 で、bringup (whill + ekf +
+        imu_sign_corrector + realsense + velodyne 系 + ros2 daemon 等)
+        は軽く超えるため、遅く起動したノードから "Failed to find a
+        free participant index for domain 0" で落ちる。
+        2026-07-10 朝の bringup で 4 ノード死亡 (whill / ekf_node /
+        imu_sign_corrector / realsense) を実測。100 に引き上げ。
+      -->
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
+      <!-- Peers を空にすることでピア発見を lo unicast のみに閉じる -->
+      <Peers>
+        <Peer address="localhost"/>
+      </Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

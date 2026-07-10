@@ -100,10 +100,15 @@ bash scripts/m5r3_run_glim.sh ${RUN_DIR}/bag ${RUN_DIR}/glim-out
 完了後の出力:
 
 - `${RUN_DIR}/glim-out/traj_lidar.txt` (TUM 形式 trajectory)
-- `${RUN_DIR}/glim-out/dump.pcd` または `map.pcd` (生成 PCD)
+- `${RUN_DIR}/glim-out/000000/` … `000NNN/` (keyframe 別 dump: `points_compact.bin` + `data.txt`)
+- `${RUN_DIR}/glim-out/graph.bin` + `graph.txt` + `values.bin` (factor graph state)
 - `${RUN_DIR}/glim-out/manifest.yaml` (実行メタデータ、results 節は TBD のまま)
 - `${RUN_DIR}/glim-out/run.log` (`/usr/bin/time -p` 出力含む stdout/stderr)
 - `${RUN_DIR}/glim-out/vram.log` (0.5 s 間隔の `nvidia-smi` ダンプ)
+
+**merged PCD/PLY はここに吐かれない** (2026-07-10 追記)。CloudCompare B1
+に流すには §4.2 の `offline_viewer → Save → Export Points` で
+`${RUN_DIR}/glim-out/map.ply` を手動生成する。
 
 ### 3. FAST-LIO SAM 走行
 
@@ -171,16 +176,68 @@ python3 scripts/m5r3_loop_error.py docs/m5r-bench-data/<run>/glim-out/traj_lidar
 
 #### 4.2 公式指標 (B1): CloudCompare 壁面 3 点平均
 
-[`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §6 B1 で「始終点の同一壁面 3 点平均で ≤ 0.5 m」と定めた指標は、生成 PCD に対する物理位置計測で評価する。CloudCompare で:
+[`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §6 B1 で「始終点の同一壁面 3 点平均で ≤ 0.5 m」と定めた指標は、生成 PCD に対する物理位置計測で評価する。
+
+**先に merged PLY を作る (2026-07-10 追記)**: 現行の koide3/glim_ros2 は
+`${RUN_DIR}/glim-out/` 直下に merged `dump.pcd` / `map.pcd` を吐かない
+(keyframe 別 subdir + graph state テキストのみ)。CloudCompare に流すには
+自前でマージが要る。
+
+**GUI 経由は使えない**: `offline_viewer` の `Save → Export Points` は
+保存確定時に `terminate called without an active exception` で abort する
+(2026-07-10 実測)。ソース上は実装があるが (`offline_viewer.cpp:57-64`)、
+Iridescence の save dialog との噛み合わせで落ちるパスがある。
+
+**代わりに headless 変換スクリプトを使う**:
+
+```bash
+python3 scripts/m5r3_export_merged_ply.py \
+  ${RUN_DIR}/glim-out \
+  -o ${RUN_DIR}/glim-out/map.ply
+
+# CloudCompare が重い場合は voxel ダウンサンプル (5 cm)
+python3 scripts/m5r3_export_merged_ply.py \
+  ${RUN_DIR}/glim-out -o ${RUN_DIR}/glim-out/map.ply --voxel 0.05
+```
+
+内部: 各 keyframe (`000NNN/`) の `points_compact.bin` (submap local frame)
+を `data.txt` の `T_world_origin` で world 座標に変換 → 全 keyframe を
+連結 → PLY (binary_little_endian) 出力。numpy のみ、open3d 不要。
+CloudCompare は PLY を直接開けるので PCD への変換は不要。
+
+CloudCompare での計測手順:
 
 1. CloudCompare 2.12.x 以降を `sudo apt install cloudcompare` で導入 (Ubuntu 22.04 の universe にあり)
-2. `${RUN_DIR}/glim-out/dump.pcd` (または `map.pcd`) を開く
+2. 上で吐いた `${RUN_DIR}/glim-out/map.ply` を開く
 3. **Point picking ツール** (ショートカット `P`、または右クリック → Pick Points; CC のバージョン差で Edit / Display / Tools メニューのどこに置かれるか変わるためショートカットが安定) で 3 点ピックモードに入る
 4. 走行開始直後にスキャンした壁面の 3 点 (角・特徴点・床との交点 等) と、走行終端で同じ壁面の対応 3 点をピック
-4. 各組の 3D 座標差を取り、3 点平均距離を ADR-0003 Alternatives の `loop_error_wall_3pt_m` row に記録
-5. FAST-LIO SAM 側でも同じ壁・同じ 3 点を選んで同様に計測
+5. 各組の 3D 座標差を取り、3 点平均距離を ADR-0003 Alternatives の `loop_error_wall_3pt_m` row に記録
+6. FAST-LIO SAM 側でも同じ壁・同じ 3 点を選んで同様に計測 (FAST-LIO SAM は `map.pcd` を直接吐くので export 手順は不要)
 
 **4.1 と 4.2 は別物**: 4.1 は SLAM 内部誤差、4.2 は世界座標系での物理誤差。両方記録すること。
+
+#### 4.2.1 数値代替: `m5r3_b1_numeric.py` (CloudCompare が使えない/難航時)
+
+CloudCompare の 3 点ピック GUI が使えない環境 (headless / GUI 不慣れ /
+点数が多すぎて落ちる) では、以下の数値代替が同等の物理量を返す:
+
+```bash
+python3 scripts/m5r3_b1_numeric.py \
+  ${RUN_DIR}/glim-out/map.ply \
+  --json ${RUN_DIR}/glim-out/b1_numeric.json
+```
+
+原点半径 5m の円柱に含まれる点で z ヒストグラム (bin 0.1m) を組み、
+「同一地面が 2 層に分かれているかどうか」を機械判定する。走行始点と
+終点の LiDAR スキャンが同じ (x, y) 領域を再観測するので、ループ閉合
+に誤差があれば地面点が z 方向に 2 層に別れる。ピーク間隔 =
+loop_error_wall_3pt_m 相当 (物理単位 m)。
+
+`traj_lidar.txt` の end-to-start dz と独立に測る指標なので、両者が
+一致すれば SLAM の per-axis 誤差が地図に忠実に反映されている強い
+証拠になる (2026-07-10 の本番マップで 1.394 m vs 1.303 m = 7% 差で
+一致)。ボーナスで壁面 radial ピーク doubling も見るが、壁厚 300mm
+との区別が付かないので参考値扱い。
 
 ### 5. 数値の ADR-0003 反映
 

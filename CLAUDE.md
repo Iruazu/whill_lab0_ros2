@@ -64,6 +64,10 @@ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor # performance
   入れて永続化する (Claude は `~/.bashrc` を編集しない。ユーザー手動)
 - **CPU governor**: 再起動で `powersave` に戻るため、録画/SLAM 前に毎セッション
   `sudo cpupower frequency-set -g performance` を実行する
+- **NVIDIA suspend/resume**: サスペンド→レジューム後、GPU 使用プロセス
+  (GLIM 等) が `cudaErrorUnknown` で起動直後に落ちる。初回のみ
+  `sudo ./scripts/install_nvidia_suspend_fix.sh` を実行 → 再起動しておく
+  (Issue #76、詳細: `docs/ja/host-setup-nvidia-suspend.md`)
 - 録画後は `ros2 bag info <bag-dir>` で `/velodyne_points` count ≈ 走行秒 × 10、
   `/imu/data_rep145` count ≈ 走行秒 × 100 を確認。半分以下なら録画破棄して再録
 

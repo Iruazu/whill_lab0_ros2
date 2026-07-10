@@ -122,6 +122,59 @@ Phase B 計測中に判明: PCMK-G3X (MPU-9250 + LPC1343F USB firmware) は `lin
 - **M5R-7 (#51) パイプライン統合**: bag → GLIM → ERASOR → 占有格子 → `docs/maps/<site>/` の E2E 文書化
 - **IMU 符号永続対策 Issue (本 ADR §「IMU 符号規約の波及」発の派生)**: `whill_sensors_bringup/` に `/imu/data_raw` → `/imu/data_corrected` の REP-145 化 republisher を追加。再録 bag の符号統一、EKF 設定の波及確認
 
+### 本番マップ確定: `docs/maps/campus/` (2026-07-10)
+
+M5-R 出力の最終確定版。取得経路の 25 倍近いスケール (1310 m ループ) で
+GLIM を回して品質を実測した。
+
+**取得と定量指標**:
+
+| 指標 | 値 | 出所 |
+|---|---:|---|
+| bag | 2162 s / 12.8 GiB (2026-07-10-campus-outer-final) | `bag_info` |
+| loop length | 1310.098 m | `m5r3_loop_error.py` |
+| **end-to-start (trajectory)** | **1.317 m (0.10%)** | 同 |
+| per-axis (dx / dy / **dz**) | +0.107 / -0.161 / **+1.303** | 同 |
+| yaw drift | -0.16° | 同 |
+| **B1 数値代替** (地面 z 層 gap) | **1.394 m** | `m5r3_b1_numeric.py`、traj dz と 7.0% 差で独立一致 |
+| GLIM 実行時間 | 691.8 s (bag の 32%) | `manifest.yaml` |
+| Peak VRAM (GLIM) | 3297 MiB | 同 |
+| starved anchor (占有格子) | **0.0%** | `investigate_thin_corridor.py` (relative z-slice 有効時) |
+| 目視判定 (3 視点) | **PASS** | offline_viewer |
+
+**Phase B (2026-06-21) からのスケール変化と学び**:
+- ループ長: 52.6 m → 1310 m (25x)
+- loop_error: 0.838 m / 1.6% → 1.317 m / **0.10%** (相対誤差は 16x 改善、絶対値は 1.6x 増)
+- スケーリング: 47 分 / 1310 m の中規模ループでは per-axis dz が支配的
+  (dx/dy はほぼゼロに近く、Z 方向の drift 主体)
+
+**T_lidar_imu 校正の反復**:
+- Phase B (06-21) は M4R-2 の noetic 由来 extrinsic を使用
+- 07-08 audit で LiDAR がほぼ水平 (pitch -0.5°)、IMU が tilt という
+  シナリオが判明 → `GLIM_TLI_FROM_AUDIT=1` env-gate 導入 (commit `494ea77`)
+- 07-10 pre-run で IMU 再測定 → RPY(-4.09°, -7.61°, 0°) → audit quat
+  を更新 (commit `39bf794`)
+- 詳細は `docs/ja/imu-coordinate-audit.md` §8
+
+**残る既知事項 (M6-R 引き継ぎ)**:
+- **map tilt 1.81°** (traj z 平面フィット結果、残差 RMS 1.32 m)。
+  GLIM の world z axis が真の gravity と 1.81° ズレている。localizer
+  の gravity-aware factor 設計時に影響する可能性
+- **IMU better ratios 低い** (trans=0.03 / vel=0.07)。bag 47 分の
+  大半で LiDAR 主導、IMU 予測寄与が薄い。localization で IMU 予測に
+  頼る設計を組む場合はここが弱点になる
+- **bias_acc 未収束**。マップ品質には影響しないが、上と同じ理由で引き継ぎ
+
+**成果物**:
+- `docs/maps/campus/README.md` — 定量指標 + 特記事項 + 再生成手順
+- `docs/maps/campus/metadata.yaml` — ADR-0005 準拠のメタデータ
+- `docs/maps/campus/occupancy.{pgm,yaml}` — Nav2 map_server 入力
+- `docs/maps/campus/traj_lidar.txt` — 占有格子生成用トラジェクトリ
+- `docs/maps/campus/static.pcd` — DUFOMap 出力、gitignore
+
+**M5-R 完了判定**: 上記が揃った時点で M5-R (親方針 §4 マイルストーン表)
+は Done。次は M6-R (運用 localizer + Nav2 再統合) に着手可能。
+
 ## 関連
 
 - 親方針: [`../plans/2026-06-11-platform-pivot.md`](../plans/2026-06-11-platform-pivot.md) §3.3 (採用候補)、§3.4 (ライセンス方針)、§7 (本 ADR の起案要請)
