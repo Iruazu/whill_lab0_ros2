@@ -82,8 +82,35 @@ docs/m5r-bench-data/**/*.pcd
 docs/m5r-bench-data/**/*.bin
 docs/m5r-bench-data/**/*.txt
 docs/m5r-bench-data/**/*.log
+docs/m5r-bench-data/**/*.ply
 !docs/m5r-bench-data/**/run.log
 !docs/m5r-bench-data/**/manifest.yaml
+# GLIM per-run config/ copies (~15 JSON per run × dozens of runs = hundreds of
+# near-duplicate files). Reproducible from scripts/m5r3_run_glim.sh + the
+# T_lidar_imu values recorded in docs/ja/calibration-ledger.md — no
+# reason to preserve every copy in git history. The manifest.yaml records
+# which config source was used per run.
+docs/m5r-bench-data/**/glim-out*/config/
+# GLIM per-keyframe dumps (000000/ ... NNNNNN/) contain the per-frame
+# binary point / covariance / normal / intensity dumps and a data.txt
+# with T_world_origin. The binaries are already covered by the *.bin
+# rule above; data.txt is *.txt-covered. Adding the parent directory
+# rule for clarity and to catch any future non-standard files inside.
+docs/m5r-bench-data/**/glim-out*/[0-9][0-9][0-9][0-9][0-9][0-9]/
+
+# docs/m6r-bench-data/ holds M6-R smoke test artifacts. Same principle
+# as m5r-bench-data: bag / heavy binaries / raw text logs are ignored;
+# run.log + manifest.yaml + summary docs (README, run_config.yaml)
+# stay tracked.
+docs/m6r-bench-data/**/bag/
+docs/m6r-bench-data/**/*.pcd
+docs/m6r-bench-data/**/*.bin
+docs/m6r-bench-data/**/*.txt
+docs/m6r-bench-data/**/*.log
+docs/m6r-bench-data/**/*.ply
+!docs/m6r-bench-data/**/run.log
+!docs/m6r-bench-data/**/manifest.yaml
+!docs/m6r-bench-data/**/*.md
 !docs/m5r-bench-data/**/*.md
 
 .claude/settings.local.json
