@@ -216,6 +216,29 @@ CloudCompare での計測手順:
 
 **4.1 と 4.2 は別物**: 4.1 は SLAM 内部誤差、4.2 は世界座標系での物理誤差。両方記録すること。
 
+#### 4.2.1 数値代替: `m5r3_b1_numeric.py` (CloudCompare が使えない/難航時)
+
+CloudCompare の 3 点ピック GUI が使えない環境 (headless / GUI 不慣れ /
+点数が多すぎて落ちる) では、以下の数値代替が同等の物理量を返す:
+
+```bash
+python3 scripts/m5r3_b1_numeric.py \
+  ${RUN_DIR}/glim-out/map.ply \
+  --json ${RUN_DIR}/glim-out/b1_numeric.json
+```
+
+原点半径 5m の円柱に含まれる点で z ヒストグラム (bin 0.1m) を組み、
+「同一地面が 2 層に分かれているかどうか」を機械判定する。走行始点と
+終点の LiDAR スキャンが同じ (x, y) 領域を再観測するので、ループ閉合
+に誤差があれば地面点が z 方向に 2 層に別れる。ピーク間隔 =
+loop_error_wall_3pt_m 相当 (物理単位 m)。
+
+`traj_lidar.txt` の end-to-start dz と独立に測る指標なので、両者が
+一致すれば SLAM の per-axis 誤差が地図に忠実に反映されている強い
+証拠になる (2026-07-10 の本番マップで 1.394 m vs 1.303 m = 7% 差で
+一致)。ボーナスで壁面 radial ピーク doubling も見るが、壁厚 300mm
+との区別が付かないので参考値扱い。
+
 ### 5. 数値の ADR-0003 反映
 
 各 SLAM の以下をテーブルに転記する:

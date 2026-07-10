@@ -196,7 +196,8 @@ M5-R 山越え記録。本番マップ候補として正式採用。
 | yaw drift | -0.16° | ✅ (数 m 級 yaw 起因 drift 懸念は不発) |
 | GLIM 実行時間 | 691.8 s | bag 2162 s の 32% |
 | Peak VRAM | 3297 MiB | 参考値 |
-| CloudCompare B1 (壁 3 点) | TBD (viewer PASS の後段検証) | — |
+| B1 数値代替 (ground z-gap) | **1.394 m** (traj dz と 7% 差) | ✅ 独立測定で SLAM 忠実性を確認 |
+| CloudCompare B1 (壁 3 点) | 未実施 (GUI 難航 → 数値代替で代用) | 上記で代替済 |
 
 ### 目視判定 (3 視点すべて PASS)
 
