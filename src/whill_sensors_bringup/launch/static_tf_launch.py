@@ -86,15 +86,21 @@ def generate_launch_description():
         # 再現性が低い)。ただし 30 秒静置テスト (scratchpad/
         # imu_stability_check.py) で「触らなければ 0.03° 未満の drift」を
         # 確認 → 5 分録画中は動かない見込み。
-        # 最終確定した固定状態の gravity 実測 (500 サンプル、5 秒):
-        #   pitch = -7.76°  (-0.1354 rad)
-        #   roll  = -3.52°  (-0.0614 rad)
-        # 上記を反映。今日の GRIL-Calib 校正 bag はこの物理状態と TF chain
-        # が一致する。走行中の振動でズレる可能性は残るので、今後 IMU を
-        # 触るたびに scratchpad/imu_live_check.py で再検算すること。
+        #
+        # 2026-07-10 朝の再測定 (走行前 sanity check):
+        # 走行日を跨いだ状態で scratchpad/imu_live_check.py を 3 連続実行。
+        # 各軸ばらつき 0.003 m/s² 未満で完全に安定した実測平均:
+        #   ax = +1.397  ay = -0.699  az = +9.782
+        # frame_audit.py で逆算 (roundtrip Δ=0 で厳密):
+        #   pitch = -8.11°  (-0.1415 rad)
+        #   roll  = -4.09°  (-0.0713 rad)
+        # 昨日値 (-3.52° / -7.76°) との差は roll -0.57°、pitch -0.35° で
+        # 溝の ± 2-3° 再固定バラツキ範囲。物理再固定はしていない (触らずに
+        # 一晩置いただけ) が、締結の応力緩和で微沈み込みしたものと解釈。
+        # 走行はこの新値の commit と紐づく。
         _static_tf('static_tf_imu',
                    0.38, -0.03, 0.47,
-                   -0.0614, -0.1354, 0.0,   # roll=-3.52°, pitch=-7.76°, yaw=0 (2026-07-09 final)
+                   -0.0713, -0.1415, 0.0,   # roll=-4.09°, pitch=-8.11°, yaw=0 (2026-07-10 morning)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne

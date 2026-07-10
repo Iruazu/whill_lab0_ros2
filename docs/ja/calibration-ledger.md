@@ -43,14 +43,14 @@ Bringup 後 (IMU 静止状態):
 python3 scratchpad/imu_live_check.py
 ```
 
-期待値 (§base_link → imu_link ref 2026-07-09 10:52 最終再固定後):
+期待値 (§base_link → imu_link ref 2026-07-10 朝の再測定後):
 
 | 項目 | 期待 | tolerance | 判定 |
 |------|------|-----------|------|
-| ax   | +1.340 | ± 0.05 | ✓ or 中断 |
-| ay   | -0.604 | ± 0.05 | ✓ or 中断 |
-| az   | +9.815 | ± 0.05 | ✓ or 中断 |
-| gx   | -0.01845 | ± 0.005 | ✓ or 中断 |
+| ax   | +1.397 | ± 0.05 | ✓ or 中断 |
+| ay   | -0.699 | ± 0.05 | ✓ or 中断 |
+| az   | +9.782 | ± 0.05 | ✓ or 中断 |
+| gx   | -0.0184 | ± 0.005 | ✓ or 中断 |
 
 **中断条件**: いずれか tolerance 外 = IMU マウントが動いている or ハーネス緩み。
 その場合は物理再固定 → `frame_audit.py` で TF 再計算 → static_tf 更新 →
@@ -118,7 +118,7 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 ---
 
 
-## 現時点の正 (as of 2026-07-09)
+## 現時点の正 (as of 2026-07-10)
 
 ### base_link → imu_link
 | 成分 | 値 | 根拠 |
@@ -126,17 +126,20 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 | x    | +0.38 m  | PR #61 実測 (後輪車軸線から前方 38 cm) |
 | y    | -0.03 m  | PR #61 実測 (車体中心から右 3 cm) |
 | z    | +0.47 m  | PR #61 実測 (地面から 47 cm、base_link は「地面」定義) |
-| roll | -0.0614 rad (-3.52°) | 2026-07-09 10:52 gravity 実測 (2 回目マウント再固定後) |
-| pitch| -0.1354 rad (-7.76°) | 同上 |
+| roll | -0.0713 rad (-4.09°) | 2026-07-10 朝 gravity 実測 (3 連続で ±0.003 内安定を確認) |
+| pitch| -0.1415 rad (-8.11°) | 同上 |
 | yaw  | 0 | axis-aligned re-mount 前提 |
 
-- 対応 commit: **`aed1e4d`** (`fix(sensors_bringup): finalize base_link->imu_link after 07-09 2nd remount`)
-- 実測手順: `scratchpad/imu_live_check.py`
+- 対応 commit: **(this commit)** (`fix(sensors_bringup): re-audit base_link->imu_link for 07-10 recording`)
+- 実測手順: `scratchpad/imu_live_check.py` (静止 5 秒) → 逸脱時 `scratchpad/frame_audit.py --ax ... --ay ... --az ...` で RPY 逆算
 - 実測時の期待値 (500 サンプル、5 秒、WHILL 静止時):
-  - ax ≈ +1.34 m/s²
-  - ay ≈ -0.60 m/s²
-  - az ≈ +9.82 m/s²
-  - gx ≈ -0.019 rad/s (WHILL 固有の gyro bias、除去しない — GLIM 内蔵推定に任せる)
+  - ax ≈ +1.397 m/s²
+  - ay ≈ -0.699 m/s²
+  - az ≈ +9.782 m/s²
+  - gx ≈ -0.0184 rad/s (WHILL 固有の gyro bias、除去しない — GLIM 内蔵推定に任せる)
+- **昨日値との差**: roll -0.57°、pitch -0.35° (溝の ± 2-3° 再固定バラツキ範囲)。
+  物理再固定はせず一晩置いただけで発生 → 締結の応力緩和による微沈み込みと解釈。
+  以後同傾向が続くなら固定機構の見直し検討 (今日の走行はこの新値のまま進める)
 - **走行前後で必ずチェック**: マウント再現性が ± 2° あるため、
   bag 収録前と収録後の両方でこの数値を再現しているか確認する。ズレたら
   その bag の T_lidar_imu を実測値ベースで再計算する必要あり (`scratchpad/frame_audit.py`)
@@ -177,8 +180,10 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 
 | Date       | Change                                      | Commit |
 |------------|---------------------------------------------|--------|
-| 2026-07-10 | lo-only xml に MaxAutoParticipantIndex=100 追加 (bringup で participant 枯渇 → 4 ノード死亡) | (this commit) |
-| 2026-07-09 | initial ledger作成 (今日の反省を受けて)      | (this commit) |
+| 2026-07-10 | base_link → imu_link 再測定 (roll -4.09°, pitch -8.11°、昨日値から -0.57°/-0.35° の応力緩和分) | (this commit) |
+| 2026-07-10 | lo-only xml に MaxAutoParticipantIndex=100 追加 (bringup で participant 枯渇 → 4 ノード死亡) | `d5c6eff` |
+| 2026-07-09 | 朝一チェックリスト §0 追加                   | `f81d6c1` |
+| 2026-07-09 | initial ledger作成 (今日の反省を受けて)      | `deb317d` |
 | 2026-07-09 | GLIM audit T_lidar_imu 追加 (env-gated)     | `494ea77` |
 | 2026-07-09 | base_link → imu_link 2nd remount           | `aed1e4d` |
 | 2026-07-09 | base_link → imu_link 1st remount           | `171b01d` |
