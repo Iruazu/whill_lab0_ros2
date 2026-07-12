@@ -425,7 +425,121 @@ M4-R / M5-R 規約を踏襲。
   - 今日の bag は薄暮〜夜間取得。反射光の false return が NDT スコアに
     与える影響を M6R-1 smoke test で観測
 
-## 10. 後続フェーズへの引き渡し
+## 10. PR #75 修正リスト (M6R-2 live PASS 後の恒久化)
+
+2026-07-12 の M6R-2 live acceptance で PASS した「solo 直接実行 + yaml 追記 +
+Wi-Fi off/on」構成を、`m6r_bringup_launch.py` 一発で再現できる状態に恒久化する。
+実測根拠は `docs/m6r-bench-data/2026-07-12-acceptance-campus/manifest.yaml`。
+
+### 10.1 launch script の 3 点修正
+
+いずれも `src/whill_safety/launch/m6r_bringup_launch.py` (および必要なら
+`src/whill_safety/config/m6r_lidar_localization.yaml`) を書き換える。
+まとめて 1 コミットで PR #75 に載せる。
+
+- **imu remap の追加**:
+  upstream `lidar_localization.launch.py` は `imu_topic` (default `/imu`) を
+  受け取り内部で `/imu` へ remap する。M4-R チェーンは `/imu/data_raw`
+  (RT 9 軸 IMU 生値) と、`imu_sign_corrector` (Issue #56) が符号反転して
+  再 publish した **`/imu/data_rep145`** (REP-145 準拠の specific-force) を
+  持つ。現状は接続されていない。
+  `IncludeLaunchDescription` の `launch_arguments` に
+  `'imu_topic': '/imu/data_rep145'` を追加する。
+  **なぜ `/imu/data_raw` ではなく `/imu/data_rep145` か**:
+  今日 (2026-07-12) は `use_imu_preintegration:=false` で IMU を消費しない
+  ため、値としてはどちらでも無害。ただし将来 `true` に切り替えた際、
+  `/imu/data_raw` (符号未反転) だと preintegration / de-skew が REP-145
+  逆側の重力ベクトルで積分されて発散する地雷になる。
+  M4-R EKF (`ekf_odom.yaml:109`) と M6R-1 smoke (`m6r_smoke_test.sh:199`)
+  も同じ理由で `/imu/data_rep145` を採用済。
+- **`use_imu_preintegration` の default 化**:
+  upstream default は `true` だが、これが有効だと `/imu` への sync 待ちで
+  scan callback が永久 stall する ([[m6r2-scan-processing-stall]])。
+  M4-R では EKF が既に IMU を消費しており、localizer 側の preintegration は
+  重複。`launch_arguments` に `'use_imu_preintegration': 'false'` を明示的に
+  追加する (arg として外に出しつつ default false)。
+  実装コメントには `2026-07-12 M6R-2 live で確定した回避策 (upstream default
+  true は /imu 未接続時に scan callback を永久 stall させる)` の主旨を
+  明記する。
+- **default site を `campus` へ切替**:
+  `_DEFAULT_SITE = 'campus-outdoor-corrected'` は 7号館発進マップ。工農研横
+  発進では fitness 12 全 reject の正しい挙動になる (M6R-1 smoke の校正済み
+  値と混同しない)。オープンキャンパスデモ本番マップである `campus` を
+  default にする。`campus-outdoor-corrected` は M6R-1 の smoke で必要な
+  ときだけ `site:=campus-outdoor-corrected` で明示的に指定する運用に変更。
+
+### 10.2 DDS 恒久対策 (新 xml + lo-only 降格)
+
+2026-07-12 の 2 日間で 5 番目の地雷として確定した ([[m6r-dds-tethering-hazard]])。
+
+**新 xml (`configs/cyclonedds-runtime.xml`)** を作成し、以下の性質を満たす:
+
+- `<Interfaces>` は **明示的な許可列挙方式**にする:
+  **lo と LiDAR 有線 NIC のみを `<NetworkInterface name="…"/>` で列挙**する。
+  それ以外の IF (Wi-Fi、USB tethering、Docker bridge 等) は列挙しないことで
+  自動的に除外される。「除外」ではなく「許可した IF だけ使う」方針であり、
+  新しい NIC が生えたときに自動的に無視される点が安全側。
+  具体的な LiDAR NIC 名 (例: `enp*` / `eth*`) は次回 LiDAR 接続時にユーザーが
+  `ip -brief link show` の結果を渡す (M6R-2 close 時に決まる)。
+- `<AllowMulticast>` は `spdp` または `true` に戻す (SPDP unicast race を
+  回避)。lo-only xml の `false` は逆振りだった
+- `<DontRoute>true</DontRoute>` は残す (万一 IF が拾われたときの防波堤)
+- `<MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>` は継承 (2026-07-10
+  実測、bringup ノード数)
+
+**旧 `configs/cyclonedds-lo-only.xml` は `configs/cyclonedds-bag-record.xml`
+にリネームし、コメントで「bag 録画専用」と明記**する。これは M5-R の
+2026-07-08 gap 対策 (deb317d) の意図 (「外部ピアに UDP を投げない」) を
+保った上位互換の切替である。
+
+**`~/.bashrc` の `CYCLONEDDS_URI` を新 xml (`cyclonedds-runtime.xml`) に
+書き換える**:
+リネームだけだと `CYCLONEDDS_URI=file:.../cyclonedds-lo-only.xml` が指す先が
+消えて全シェルが起動時に警告 (最悪 DDS 初期化失敗) になる。以下を同一
+PR #75 に含める:
+- `~/.bashrc` を運用 default (`cyclonedds-runtime.xml`) に書き換える手順書を
+  `src/whill_safety/README.md` に短く追加 (Claude は bashrc を編集しない
+  規約のため、ユーザー手動)
+- bag 録画時は運用者が terminal 単位で
+  `export CYCLONEDDS_URI=file://.../configs/cyclonedds-bag-record.xml` に
+  切り替える運用を推奨 (bashrc は運用 default のまま)
+
+**acceptance 条件**: 新 xml 導入後の検証走行で、`ros2 bag record`
+`/velodyne_points /imu/data_rep145 /whill/odom /tf` の 4 topic が全て正しく
+記録できること (`/imu/data_rep145` は M5-R の `m6r_record_calib_bag.sh` と
+同じ record セットで、EKF / localizer が消費する後段トピック)。壊れ bag
+(tf_static 1 件のみ、24.9 KiB) を before として
+`docs/m6r-bench-data/2026-07-12-acceptance-campus/bag/` に保存済。
+
+### 10.3 起動シーケンス手順書
+
+人間依存の抜けを避けるため、operator 手順を `src/whill_safety/README.md`
+に短く追加する (script 化は M6R-3 で `whill_safety` パッケージにまとめる):
+
+1. **Terminal A**: `ros2 launch whill_localization odom_bringup_launch.py`
+2. **30 秒待機**: `/velodyne_points` 10Hz / `/imu/data_raw` 100Hz /
+   `/whill/odom` 定常を目視で確認
+3. **Terminal B**: `ros2 launch whill_safety m6r_bringup_launch.py site:=campus`
+   (10.1 修正後は odom_bringup を IncludeLaunchDescription で 2 回起動する
+   構成のままにするか、A の起動を前提とする構成に切るかを PR #75 で決める。
+   現状 launch は前者。M6R-2 live では A → B の分割は使わず、solo でやった。)
+4. **20 秒待機**: lifecycle が `unconfigured → inactive → active` に自動遷移し
+   `[lidar_localization]: activate` が出るまで待つ
+5. **Terminal C**: RViz で `2D Pose Estimate` を publish。map 原点 = 発進点
+   なら identity (0,0,0)、そうでなければ RViz の pose ツール
+
+### 10.4 検証走行
+
+10.1〜10.3 反映後の PR #75 を merge 前に、再度屋外で:
+- 4 topic 記録の acceptance (10.2)
+- static 1 分 fitness < 0.05
+- 走行 5 分 reject ゼロ
+
+を再確認する。bag は `docs/m6r-bench-data/2026-07-12-acceptance-campus/` を
+上書きせず、`docs/m6r-bench-data/YYYY-MM-DD-verify-campus/` を新規作成する
+(壊れ bag を歴史的証拠として保持するため)。
+
+## 11. 後続フェーズへの引き渡し
 
 - **M7 (dispatch)**: 7/20 頃に `m6r_bringup_launch.py + nav_launch.py`
   2 段起動で「initial pose → goal 送信 → 走行 → 到着」の最低構成が動く
@@ -439,8 +553,10 @@ M4-R / M5-R 規約を踏襲。
     T_lidar_imu 再校正)
   - GLIM loop closure 改善 (motion-rich bag 収録)
   - camera_link target-based 再校正 (旧 M6R-6)
+  - campus マップ tilt 1.81° の de-tilt (2026-07-12 実測で無害と確定、
+    緊急課題から降格。[[map-tilt-1p81-deg-harmless]])
 
-## 11. ADR の候補
+## 12. ADR の候補
 
 - **ADR-0006**: localizer 選定 (lidar_localization_ros2 rsasaki0109 v1.1.0
   BSD-2)。M6R-1 で proposed、M6R-5 で accepted
@@ -449,7 +565,7 @@ M4-R / M5-R 規約を踏襲。
 - **ADR 候補 (demo 後)**: camera_link 再校正、IMU/T_lidar_imu 再校正、
   GLIM loop closure 改善 (旧 M6R-6 と Issue #64 を吸収)
 
-## 12. 次のアクション
+## 13. 次のアクション
 
 1. **今日 (2026-07-07)**:
    - [x] 屋外 bag 収録 2 本 (campus-loop, campus-half-v3)

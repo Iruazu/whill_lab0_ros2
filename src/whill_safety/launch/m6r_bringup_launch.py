@@ -39,7 +39,7 @@ Mutual exclusion:
 To operate:
 
     ros2 launch whill_safety m6r_bringup_launch.py \\
-        site:=campus-outdoor-corrected
+        site:=campus
 
 Then in RViz, use "2D Pose Estimate" to publish `/initialpose`. The
 localizer converges in a few seconds, `map -> odom` starts flowing,
@@ -68,7 +68,11 @@ from launch.substitutions import LaunchConfiguration
 
 _MAPS_ROOT_ENV = 'WHILL_MAPS_ROOT'
 _DEFAULT_MAPS_ROOT_REL = os.path.join('docs', 'maps')
-_DEFAULT_SITE = 'campus-outdoor-corrected'   # M6R-1-verified map, PR #74
+# 2026-07-12 M6R-2 live acceptance PASS was at the `campus` map's origin
+# (工農研横). `campus-outdoor-corrected` is the M6R-1 smoke map (7号館
+# 発進地点) and would reject every scan on a chair started at 工農研横.
+# Keep the smoke map available via explicit `site:=campus-outdoor-corrected`.
+_DEFAULT_SITE = 'campus'
 
 
 def _repo_root_from_pkg_share(pkg_share):
@@ -146,6 +150,24 @@ def _generate_localizer_launch(context):
             launch_arguments={
                 'localization_param_dir': tmp.name,
                 'cloud_topic': '/velodyne_points',
+                # /imu is remapped to the REP-145 sign-corrected topic
+                # (imu_sign_corrector, Issue #56), not the raw driver
+                # output. Today (2026-07-12) use_imu_preintegration is
+                # false so this value is not consumed, but future flips to
+                # true would silently integrate the wrong-sign gravity if
+                # /imu/data_raw were wired here. Matches M4-R EKF
+                # (ekf_odom.yaml:109) and M6R-1 smoke_test.sh:199.
+                'imu_topic': '/imu/data_rep145',
+                # Upstream default is true. That path syncs each scan
+                # against /imu preintegration; with /imu absent (which is
+                # our operating condition — use_imu:false in the yaml)
+                # the scan callback stalls forever. Verified 2026-07-12
+                # M6R-2 live: a solo run with this flag flipped false is
+                # what unblocked the acceptance PASS (docs/m6r-bench-data/
+                # 2026-07-12-acceptance-campus/manifest.yaml, root cause
+                # #2). M4-R EKF already consumes IMU downstream, so any
+                # preintegration inside the localizer would double-count.
+                'use_imu_preintegration': 'false',
                 # The M4-R static TF chain already publishes base_link ->
                 # velodyne (PR #61 / PR #74 pitch fix). Suppressing the
                 # upstream's own base -> lidar identity avoids two

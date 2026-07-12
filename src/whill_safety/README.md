@@ -14,14 +14,83 @@ hookups here too.
 ## Launching
 
 ```
-ros2 launch whill_safety m6r_bringup_launch.py site:=campus-outdoor-corrected
+ros2 launch whill_safety m6r_bringup_launch.py site:=campus
 ```
 
 `site` names a directory under `docs/maps/`. The launch resolves
 `docs/maps/<site>/static.pcd` at launch time and injects it as the
-localizer's `map_path`. To change the NDT tuning (score_threshold,
-resolution, etc.), edit `config/m6r_lidar_localization.yaml`; to change
-which map is loaded, pass a different `site`.
+localizer's `map_path`. Default site is **`campus`** (the
+2026-07-12 M6R-2 live acceptance map — 工農研横 origin). The
+`campus-outdoor-corrected` map (7号館 発進、M6R-1 smoke, PR #74) is
+still available via `site:=campus-outdoor-corrected` but is not the
+default: launching that map on a chair positioned at 工農研横 will
+reject every scan.
+
+To change the NDT tuning (score_threshold, resolution, etc.), edit
+`config/m6r_lidar_localization.yaml`; to change which map is loaded,
+pass a different `site`.
+
+## Boot sequence (operator, 5 steps)
+
+Human-order-dependent — until M6R-3 wraps this as a single script, run
+these steps in this order. Two `ros2 launch` windows and one RViz.
+
+1. **Terminal A** (sensors + M4-R EKF, ~10 s to settle):
+   ```
+   ros2 launch whill_localization odom_bringup_launch.py
+   ```
+2. **Wait ~30 s**. Verify in a fresh terminal:
+   ```
+   ros2 topic hz /velodyne_points     # ~10 Hz
+   ros2 topic hz /imu/data_raw        # ~100 Hz (imu_sign_corrector then
+                                      #   republishes as /imu/data_rep145)
+   ros2 topic hz /whill/odom          # ~2.5 Hz
+   ```
+3. **Terminal B** (M6-R localizer):
+   ```
+   ros2 launch whill_safety m6r_bringup_launch.py site:=campus
+   ```
+   Note: `m6r_bringup_launch.py` includes `odom_bringup_launch.py`
+   internally, so if you started Terminal A only for pre-flight, kill
+   it before Terminal B (mutual exclusion — see below). During the
+   2026-07-12 acceptance we ran the localizer solo directly because
+   we were still isolating root causes; the fix list is now inside
+   the launch script.
+4. **Wait ~20 s**. Confirm the lifecycle transitioned:
+   ```
+   ros2 lifecycle get /lidar_localization    # active [3]
+   ```
+5. **Terminal C** (RViz): click **2D Pose Estimate** on the map. For a
+   chair already positioned at the map's origin (`campus` map from
+   工農研横 is this case), the identity pose (0, 0, 0) is correct;
+   otherwise drag on the map. `/initialpose` publishes, the localizer
+   converges within a few seconds, and `map -> odom` starts flowing.
+
+## DDS runtime configuration
+
+`~/.bashrc` must point `CYCLONEDDS_URI` at the runtime xml:
+
+```
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-runtime.xml
+```
+
+The runtime xml uses an **allow-list** of network interfaces (lo + LiDAR
+wired NIC only) so that Wi-Fi / tethering / Docker bridges cannot
+interfere with the `/velodyne_points` data path — the specific failure
+mode that took 2 days of M6R-2 debugging to isolate (see
+`docs/ja/plans/2026-06-24-m6r-localization.md` §10.2). The LiDAR NIC
+name is a TODO in the xml; update it (`ip -brief link show`) the first
+time you connect a live VLP-16.
+
+For **bag recording** switch the current terminal only (leave
+`~/.bashrc` on the runtime xml):
+
+```
+export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-bag-record.xml
+ros2 daemon stop && ros2 daemon start
+ros2 bag record /velodyne_points /imu/data_rep145 /whill/odom /tf
+```
 
 For bag replay use `scripts/m6r_smoke_test.sh` instead — it sets
 `use_sim_time`, publishes `/initialpose` on a delay so it lands after
