@@ -51,18 +51,19 @@
     <General>
       <!--
         許可列挙方式: 列挙した IF だけを DDS が使う。列挙しなければ自動除外。
-        Wi-Fi (wlo1)、USB tethering、Docker/podman/lxc bridge、VPN tun は
-        書かないことで自動的に除外される。新 NIC が生えても自動無視。
+        本機 (Alienware x15 R2) の実 IF 割り当て:
+          lo               = loopback (許可)
+          wlo1             = 内蔵 Wi-Fi / テザリング (除外 = 列挙しない)
+          enx00e04c6808dc  = USB 有線 LiDAR アダプタ (許可)
 
-        TODO(M6R-2 close, next LiDAR connection): 本機で
-          ip -brief link show | grep UP
-        を実行し、LiDAR 有線 NIC 名 (例: enp*、eth*) を確認して以下の
-        コメントアウトを外し `enpXsY` を実 NIC 名に置換してコミットする。
-        置換前は lo のみ使用 = 単機開発時の DDS 動作は保たれる。
+        enx* 命名は udev の MAC 由来 (00:e0:4c:68:08:dc)。同一アダプタなら
+        再起動・再接続後も不変。アダプタを交換した場合は
+          ip -brief link show
+        で新 MAC 由来の名前を確認し、この enx… を書き換えて再 commit する。
       -->
       <Interfaces>
         <NetworkInterface name="lo"/>
-        <!-- <NetworkInterface name="enpXsY"/> LiDAR 有線 NIC (要確定) -->
+        <NetworkInterface name="enx00e04c6808dc"/>
       </Interfaces>
       <!--
         SPDP だけ multicast 復活。旧 lo-only.xml の AllowMulticast=false は
