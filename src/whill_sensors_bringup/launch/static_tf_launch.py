@@ -72,12 +72,35 @@ def generate_launch_description():
         # この傾きは純粋に pitch = -8° として表される (tf2 の R_y(-8°) が
         # +x を斜め上に向ける、gravity 検算で確認)。
         #
-        # 未確認: pitch の符号は光学的推測 (front-high なら pitch 負) に依存。
-        # 新 bag を取って GLIM の drift が改善するか、または gravity 定常値が
-        # base_link 系で正しく (0, 0, -g) に近くなるかを実測して確認する。
+        # 2026-07-09 audit (docs/ja/imu-coordinate-audit.md §3): 2026-07-08
+        # campus-outer bag 冒頭 10 秒 (WHILL 停止) の /imu/data_rep145 を
+        # 1000 サンプル取得し gravity 逆算した結果:
+        #   pitch 実測 = -7.66°  (元の -8° 設定と 0.34° 差、実質一致)
+        #   roll  実測 = -5.77°  (元の 0° 設定と 5.77° 差 → audit で判明)
+        # roll の未検出は、マウント溝が「後方低・前方高」だけでなく「右側低・
+        # 左側高」も併せ持っていたことを示す (溝が横方向にも斜めに切ってある)。
+        #
+        # 2026-07-09 10:41-10:52 現地再測定: GRIL-Calib 校正 bag 撮影直前に
+        # IMU 目視 → マジックテープに微スライドが疑われ、手押しで再固定を
+        # 2 回試行。各固定で pitch/roll が ± 2-3° 動くことが判明 (溝の
+        # 再現性が低い)。ただし 30 秒静置テスト (scratchpad/
+        # imu_stability_check.py) で「触らなければ 0.03° 未満の drift」を
+        # 確認 → 5 分録画中は動かない見込み。
+        #
+        # 2026-07-10 朝の再測定 (走行前 sanity check):
+        # 走行日を跨いだ状態で scratchpad/imu_live_check.py を 3 連続実行。
+        # 各軸ばらつき 0.003 m/s² 未満で完全に安定した実測平均:
+        #   ax = +1.397  ay = -0.699  az = +9.782
+        # frame_audit.py で逆算 (roundtrip Δ=0 で厳密):
+        #   pitch = -8.11°  (-0.1415 rad)
+        #   roll  = -4.09°  (-0.0713 rad)
+        # 昨日値 (-3.52° / -7.76°) との差は roll -0.57°、pitch -0.35° で
+        # 溝の ± 2-3° 再固定バラツキ範囲。物理再固定はしていない (触らずに
+        # 一晩置いただけ) が、締結の応力緩和で微沈み込みしたものと解釈。
+        # 走行はこの新値の commit と紐づく。
         _static_tf('static_tf_imu',
                    0.38, -0.03, 0.47,
-                   0.0, -0.1396, 0.0,   # roll=0, pitch=-8°, yaw=0 (2026-07-08 remount)
+                   -0.0713, -0.1415, 0.0,   # roll=-4.09°, pitch=-8.11°, yaw=0 (2026-07-10 morning)
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne

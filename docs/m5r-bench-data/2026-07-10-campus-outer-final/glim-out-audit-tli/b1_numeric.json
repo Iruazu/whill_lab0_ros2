@@ -1,0 +1,91 @@
+{
+  "map_ply": "docs/m5r-bench-data/2026-07-10-campus-outer-final/glim-out-audit-tli/map.ply",
+  "radius_m": 5.0,
+  "bin_m": 0.1,
+  "n_points_total": 13048020,
+  "n_points_in_cylinder": 32477,
+  "ground": {
+    "n_points": 32477,
+    "z_min": -3.928283929824829,
+    "z_max": 7.917495250701904,
+    "bin_size_m": 0.1,
+    "peaks_top8_by_count": [
+      {
+        "z": 0.600984580376569,
+        "count": 3097
+      },
+      {
+        "z": -0.7926364996853996,
+        "count": 731
+      },
+      {
+        "z": 1.895061297576968,
+        "count": 556
+      },
+      {
+        "z": 3.5873154662236444,
+        "count": 398
+      },
+      {
+        "z": 5.876835812039736,
+        "count": 268
+      },
+      {
+        "z": 5.180025272008751,
+        "count": 207
+      }
+    ],
+    "ground_verdict": {
+      "n_peaks_detected": 6,
+      "p1_z": -0.7926364996853996,
+      "p1_count": 731,
+      "p2_z": 0.600984580376569,
+      "p2_count": 3097,
+      "gap_m": 1.3936210800619686,
+      "verdict": "2-layer (loop-error visible)"
+    }
+  },
+  "walls": {
+    "n_wall_points": 18037,
+    "z_slice_m": [
+      -0.2926364996853996,
+      1.7073635003146004
+    ],
+    "bin_size_m": 0.1,
+    "radial_peaks_top8_by_count": [
+      {
+        "r": 4.35,
+        "count": 1003
+      },
+      {
+        "r": 4.65,
+        "count": 901
+      },
+      {
+        "r": 3.6500000000000004,
+        "count": 648
+      },
+      {
+        "r": 2.3500000000000005,
+        "count": 375
+      },
+      {
+        "r": 1.85,
+        "count": 170
+      }
+    ],
+    "wall_doubling": {
+      "detected": true,
+      "r1": 4.35,
+      "r1_count": 1003,
+      "r2": 4.65,
+      "r2_count": 901,
+      "gap_m": 0.3000000000000007,
+      "note": "同一壁面が radial 方向に 2 ピーク → doubling が起きている"
+    }
+  },
+  "b1_summary": {
+    "loop_error_ground_z_layer_gap_m": 1.3936210800619686,
+    "loop_error_wall_radial_gap_m": 0.3000000000000007
+  }
+}

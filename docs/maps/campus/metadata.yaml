@@ -1,0 +1,35 @@
+# docs/maps/campus/metadata.yaml — M5-R 本番マップの取得経緯 + パラメータ。
+# スキーマ正本は docs/maps/README.md「metadata.yaml スキーマ」節。
+# 品質数値と特記事項は隣接の README.md を参照。
+
+# bag 取得時刻 (走行開始、JST)
+acquired_at: "2026-07-10T15:07:43+09:00"
+
+# 経路の一行要約
+route_summary: "宇都宮大学キャンパス外周ループ 1310 m、start/end 同一地点で反時計回り 1 周 (36 min 2 s)"
+
+# 取得時天候
+weather: "outdoor, midday (07-10 15:07-15:43 JST), dry surface, moderate sun"
+
+# 採用 SLAM (ADR-0003)
+slam_method: "glim"
+
+# SLAM per-run config: 各 run が glim-out/config/ にコピーを持つ設計
+# (scripts/m5r3_run_glim.sh)。オリジナルは koide3/glim の share config を
+# scripts/m5r3_run_glim.sh 内で patch (T_lidar_imu = audit RPY(-4.09°, -7.61°)
+# / ring_field=ring / topics=/imu/data_rep145 + /velodyne_points)。
+# audit-tli 版 T_lidar_imu quaternion:
+#   (-0.035606, -0.066319, -0.002368, 0.997163)  [commit 39bf794]
+slam_params: "docs/m5r-bench-data/2026-07-10-campus-outer-final/glim-out-audit-tli/config/"
+
+# DUFOMap 1.1.1 default (pip install dufomap)。ADR-0004 の推奨値。
+erasor_params:
+    voxel_size_m: 0.2
+    pr_threshold: 0.8
+    rr_threshold: 0.2
+
+# 元 bag への repo 相対パス
+source_bag: "docs/m5r-bench-data/2026-07-10-campus-outer-final/bag/"
+
+# occupancy.pgm 生成 commit (relative z-slice + trajectory anchor + r=2m free)
+commit: "7a9924a"
