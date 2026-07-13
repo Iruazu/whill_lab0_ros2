@@ -52,9 +52,17 @@
       <!--
         許可列挙方式: 列挙した IF だけを DDS が使う。列挙しなければ自動除外。
         本機 (Alienware x15 R2) の実 IF 割り当て:
-          lo               = loopback (許可)
+          lo               = loopback (必須、許可)
           wlo1             = 内蔵 Wi-Fi / テザリング (除外 = 列挙しない)
-          enx00e04c6808dc  = USB 有線 LiDAR アダプタ (許可)
+          enx00e04c6808dc  = USB 有線 LiDAR アダプタ (許可、optional)
+
+        LiDAR NIC は presence_required="false" を付ける。既定 (未指定 = true)
+        だと LiDAR 未接続時に該当 IF が見つからず
+          "does not match an available interface"
+          "rmw_create_node: failed to create domain"
+        で ROS が全滅する (2026-07-14 実測、屋内開発が不可能になる)。
+        presence_required="false" にすると LiDAR 未接続時は lo のみで
+        起動し、接続すれば自動的に enx… も使うようになる。
 
         enx* 命名は udev の MAC 由来 (00:e0:4c:68:08:dc)。同一アダプタなら
         再起動・再接続後も不変。アダプタを交換した場合は
@@ -63,7 +71,7 @@
       -->
       <Interfaces>
         <NetworkInterface name="lo"/>
-        <NetworkInterface name="enx00e04c6808dc"/>
+        <NetworkInterface name="enx00e04c6808dc" presence_required="false"/>
       </Interfaces>
       <!--
         SPDP だけ multicast 復活。旧 lo-only.xml の AllowMulticast=false は
