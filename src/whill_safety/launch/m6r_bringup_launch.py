@@ -185,6 +185,11 @@ def generate_launch_description():
         'launch',
         'odom_bringup_launch.py',
     )
+    safety_launch = os.path.join(
+        get_package_share_directory('whill_safety'),
+        'launch',
+        'safety_launch.py',
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
 
@@ -201,11 +206,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'use_sim_time',
             default_value='false',
-            description='Forwarded to the M4-R EKF and to the localizer. '
-                        'Keep false for live sensor operation. Flip true '
-                        'if you are launching this against a bag played '
-                        'with --clock (rare — scripts/m6r_smoke_test.sh '
-                        'is the usual bag-replay entry point).'),
+            description='Forwarded to the M4-R EKF, the localizer, and '
+                        'the safety layer. Keep false for live sensor '
+                        'operation. Flip true if you are launching this '
+                        'against a bag played with --clock (rare — '
+                        'scripts/m6r_smoke_test.sh is the usual bag-'
+                        'replay entry point).'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
@@ -216,4 +222,12 @@ def generate_launch_description():
         # `site` arg is resolved (and validated to an actual file on disk)
         # before the upstream launch loads.
         OpaqueFunction(function=_generate_localizer_launch),
+
+        # M6R-3 lite safety layer (failsafe_node + twist_mux). Runs
+        # regardless of whether Nav2 (M6R-4) is up: with no Nav2 there
+        # is simply nothing on /cmd_vel_nav for the mux to forward, and
+        # /cmd_vel_safety fires only when a failsafe layer trips.
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(safety_launch),
+            launch_arguments={'use_sim_time': use_sim_time}.items()),
     ])

@@ -3,13 +3,37 @@
 Runtime safety layer for the WHILL chair — the M6-R / M7 / M9 destination
 package for anything that keeps the chair from moving when it shouldn't.
 
-M6R-2 (this iteration) ships the **bringup composition**: sensors +
-WHILL driver + M4-R EKF + M6-R scan-to-map localizer, in one launch. M6R-3
-will add the **failsafe node** (3-layer subscription to
-`/reinitialization_requested`, `/alignment_status`, and `/pcl_pose`
-continuity) plus a `twist_mux` gate on `/cmd_vel`, both landing inside
-this same package. M9 will land the physical-E-stop and remote-stop
-hookups here too.
+M6R-2 shipped the **bringup composition**: sensors + WHILL driver + M4-R
+EKF + M6-R scan-to-map localizer, in one launch. M6R-3 lite (per
+ADR-0007 §Demo-scope reduction) adds a minimal **failsafe_node**
+(A layer: `/reinitialization_requested`; B layer: `/alignment_status`
+fitness threshold + `/pcl_pose` silence watchdog) plus a `twist_mux`
+gate on `/cmd_vel`, both inside this package. M9 will add the
+physical-E-stop and remote-stop hookups here too.
+
+## Runtime dependencies (apt)
+
+```
+sudo apt install -y \
+  ros-humble-twist-mux \
+  ros-humble-diagnostic-updater
+```
+
+`twist_mux` is the arbiter for the shared `/cmd_vel` bus; `safety_launch.py`
+starts it and remaps its output. `diagnostic_updater` is a transitive
+dependency of `twist_mux` but is called out explicitly here because of a
+version-pinning trap: on hosts where apt updates have been held back for
+a while, an older `diagnostic-updater` (≤ 4.0.6) can be installed alongside
+a newer `twist_mux` and the ABI mismatch surfaces at runtime as
+`twist_mux` **exiting immediately with code 127**
+(missing symbol at dynamic-link time — no useful stderr in the launch
+log). Installing both with the same `apt install` line above forces
+them to the same repository snapshot and avoids the trap.
+
+If `apt install` reports either package as already at the newest version
+but `twist_mux` still exits 127, run `apt list --upgradable | grep -E
+'twist-mux|diagnostic'` and follow up with `sudo apt upgrade` for those
+packages specifically.
 
 ## Launching
 

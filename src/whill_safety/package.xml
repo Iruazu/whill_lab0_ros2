@@ -41,14 +41,12 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
 
-  <!-- M6R-3 failsafe node dependencies (planned; will be uncommented
-       when failsafe_node.py + safety_launch.py land):
-    <exec_depend>rclpy</exec_depend>
-    <exec_depend>std_msgs</exec_depend>
-    <exec_depend>diagnostic_msgs</exec_depend>
-    <exec_depend>geometry_msgs</exec_depend>
-    <exec_depend>twist_mux</exec_depend>
-  -->
+  <!-- M6R-3 lite failsafe (Issue #67, ADR-0007 demo-scope reduction). -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
