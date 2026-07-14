@@ -65,6 +65,9 @@ restores map_server + planner_server bringup on top of it.
 """
 
 import os
+import tempfile
+
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -122,9 +125,32 @@ def _resolve_map_yaml(context):
     # when this file is wrapped by IncludeLaunchDescription, so hard-code
     # the paths here inside OpaqueFunction where the LaunchContext is
     # already active. See docs/session-2026-05-08.md.
-    nav2_params = os.path.join(nav_share, 'config', 'nav2_params.yaml')
+    nav2_params_src = os.path.join(nav_share, 'config', 'nav2_params.yaml')
     p2ls_params = os.path.join(nav_share, 'config',
                                'pointcloud_to_laserscan.yaml')
+
+    # Bake the resolved map path directly into a per-run copy of
+    # nav2_params.yaml, then hand every Nav2 node that yaml as its only
+    # parameters entry. The alternative (parameters=[<yaml>, {dict}]) was
+    # unreliable in humble: with the yaml's `yaml_filename: ""` load
+    # winning over the dict override at least on this host, map_server
+    # ended up serving whatever default the yaml carried (the M5-c
+    # hardcode of `docs/maps/lab-legacy-m5b/lab.yaml`) instead of the
+    # site-resolved path. Mirrors m6r_bringup_launch.py's template →
+    # temp yaml → include pattern for the localizer.
+    with open(nav2_params_src) as f:
+        params = yaml.safe_load(f)
+    params['map_server']['ros__parameters']['yaml_filename'] = map_yaml
+
+    tmp = tempfile.NamedTemporaryFile(
+        prefix='whill_nav2_params_',
+        suffix='.yaml',
+        delete=False,
+        mode='w',
+    )
+    yaml.safe_dump(params, tmp)
+    tmp.close()
+    nav2_params = tmp.name
 
     lifecycle_nodes = [
         'map_server',
@@ -154,8 +180,7 @@ def _resolve_map_yaml(context):
             executable='map_server',
             name='map_server',
             output='screen',
-            parameters=[nav2_params,
-                        {'yaml_filename': map_yaml}],
+            parameters=[nav2_params],
         ),
         Node(
             package='nav2_planner',
