@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>whill_perception</name>
+  <version>0.1.0</version>
+  <description>
+    Perception preprocessing for the WHILL chair. First node: patchworkpp_node,
+    a wrapper around the BSD-2-Clause Patchwork++ ground segmentation C++ core
+    (src/third_party/patchwork_plusplus/cpp/). Splits /velodyne_points into
+    ground and non-ground clouds so downstream Nav2 obstacle_layer sees only
+    the non-ground return. Written to keep the runtime stack permissive —
+    upstream's ROS 2 wrapper declares GPL-3.0 in package.xml, which is why we
+    do not use it directly.
+  </description>
+
+  <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>eigen</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
