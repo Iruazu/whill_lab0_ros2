@@ -110,6 +110,56 @@ ros2 topic hz /velodyne_points_no_ground # ~10 Hz (output, matches input)
   during playback (headroom target: sustained < 80% on the Alienware
   x15 R2)
 
+## Environment (verified 2026-07-14)
+
+Findings pinned down during bag-replay verification. New hosts running
+this node must match these before Phase C.
+
+### QoS observed on this deployment
+
+| Topic | Publisher | Reliability | Notes |
+|-------|-----------|:-----------:|-------|
+| `/velodyne_points` | VLP-16 driver (live) *and* `ros2 bag play` | **RELIABLE** | Non-default for the driver, but this is what we measured on both live and bag inputs. `patchworkpp_node` subscribes with `SensorDataQoS()` (best-effort), which accepts a reliable publisher without complaint |
+| `/velodyne_points_no_ground` | `patchworkpp_node` (this) | **BEST_EFFORT** | Standard sensor-data pattern; matches downstream `pointcloud_to_laserscan_node`'s subscription default |
+
+**RViz side**: to display `/velodyne_points_no_ground`, set the
+PointCloud2 display's **Topic → Reliability Policy = Best Effort**.
+Default is Reliable, which will silently fail to subscribe.
+
+### UDP receive buffer (sysctl, permanent)
+
+Large PointCloud2 frames overflow the DDS default UDP receive buffer
+during bag replay — the live driver rate does not, but bag-player
+bursts do. Fixed permanently on this host:
+
+```bash
+# /etc/sysctl.d/60-ros2-dds-buffer.conf
+net.core.rmem_max     = 26214400   # 25 MB
+net.core.rmem_default = 26214400   # 25 MB
+```
+
+Apply after edit: `sudo sysctl --system`.
+
+The same risk applies to Phase C field runs where a bag is being
+recorded on the same host — combined record + subscribe hits the same
+recv path. A host missing this sysctl setting must not run this node
+plus a `ros2 bag record` in parallel.
+
+### Silent-failure retrospective (2 incidents, closed)
+
+Two failures were caught during 2026-07-14 verification and now have
+guards + environment fixes so a fresh checkout does not re-hit them:
+
+1. **RNR intensity column missing** — Patchwork++ core with RNR on
+   rejects frames whose input matrix is Nx3 (no intensity). Since
+   commit `ceb3bb3` the wrapper converts to Nx4 and adds two
+   `WARN_THROTTLE(5s)` guards (input has no `intensity` field / core
+   returned 0 ground + 0 non-ground).
+2. **UDP fragment loss on bag replay** — fixed by the 25 MB rmem
+   sysctl above.
+
+Both are documented for the future — see [`docs/decisions/0011-ground-removal-choice.md`](../../docs/decisions/0011-ground-removal-choice.md) "Silent-failure retrospective".
+
 ## Parameters
 
 See `config/patchworkpp.yaml`. Field data must precede parameter

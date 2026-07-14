@@ -2,9 +2,9 @@
 
 Language: [日本語](../../ja/decisions/0011-ground-removal-choice.md) | [English](0011-ground-removal-choice.md)
 
-- Status: **proposed** (drafted 2026-07-14; promoted to accepted after bag-replay verification and the M6R4-3 field run)
-- Date: 2026-07-14
-- Deciders: Iruazu (pending approval)
+- Status: **accepted** (2026-07-14 bag-replay verification passed AC1-AC3; AC4 confirmed with the M6R4-3 field run)
+- Date: 2026-07-14 drafted / 2026-07-14 accepted
+- Deciders: Iruazu
 
 ## Context
 
@@ -173,6 +173,69 @@ out of scope for this ADR.
 
 AC1-AC3 can be met with bag replay. AC4 is met alongside M6R4-3 V4.
 All four passing promotes this ADR to accepted.
+
+## Verification results (2026-07-14 bag replay)
+
+Replayed `docs/m6r-bench-data/2026-07-14-verify-campus/bag/` against
+this branch (commit `ceb3bb3`):
+
+| AC | Verdict | Measured |
+|----|---------|----------|
+| AC1 build | PASS | `colcon build --packages-select whill_perception` 7.16 s, no stderr |
+| AC1 rate  | PASS | `/velodyne_points_no_ground` = **9.857 Hz** (window 100, sustained 30 s+, std dev **0.0004 s**) |
+| AC2 visual| PASS | RViz confirms asphalt / ramp / manhole rings removed; buildings, poles, pedestrians retained (screenshot captured) |
+| AC3 CPU   | PASS | `patchworkpp_node` = **2.3% total CPU / 1.6-2.7 ms per frame** (comfortably below the single-core 80% target) |
+| AC4 drive | Pending — decided with M6R4-3 | — |
+
+Representative frame split (mid-bag): `in 29184 pts / ground 8047 / non-ground 21137`. Ground share **26-30%** stayed stable across the run.
+
+**AC1-AC3 passing promoted this ADR to accepted** (see Status). AC4 is
+still to be judged with M6R4-3 V4, but the AC1-AC3 outcome makes it
+tractable to relax the downstream p2ls `min_height` back toward
+capturing curbs (paired update in ADR-0009).
+
+### Ground share at low mount height
+
+The 26-30% ground share is structurally normal for the WHILL's low
+mount (`sensor_height = 0.79 m`). The VLP-16 16-ring beam pattern spans
+±15° around horizontal; the lower the sensor, the fewer rings hit the
+ground within a given range (the ground subtends a smaller solid angle
+under the sensor). Autoware-class high mounts (~1.9 m) sit at 60-70%
+ground share, but chasing that number on this vehicle would over-cull
+non-ground returns. Recording this so a future reader does not mistake
+the low share for a bug.
+
+### Silent-failure retrospective (2 incidents)
+
+Two silent failures were hit and closed during the M6R4-b implementation
+window. Documented here for the next author writing a similar node:
+
+1. **RNR intensity column missing** (2026-07-14 bag replay, first
+   attempt). Patchwork++ core requires a 4th column (intensity) in the
+   input when RNR is on; otherwise it prints
+   `RNR requires intensity information !` to stdout and drops the whole
+   frame. The initial wrapper converted PointCloud2 → Nx3 (xyz only),
+   so every frame was rejected — `/velodyne_points_no_ground` still
+   published, but `getGround()` / `getNonground()` were both empty.
+   RViz just showed nothing; no ERROR/WARN surfaced through ROS. Fix
+   (`ceb3bb3`): (a) convert to Nx4, (b) `WARN_THROTTLE` when the input
+   has no `intensity` field, (c) `WARN_THROTTLE` when
+   `ground.rows() == 0 && nonground.rows() == 0` after estimateGround.
+   Two ROS-side guards that do not rely on the core's single stdout
+   print.
+
+2. **UDP fragment loss** (2026-07-14 bag replay, second attempt). Large
+   PointCloud2 frames overwhelmed the DDS default UDP receive buffer
+   during bag playback, dropping fragments piecewise. The live driver's
+   pacing is gentle enough not to hit this in normal operation, but bag
+   playback bursts far above the intended send rate and exposed it.
+   Fixed permanently by `net.core.rmem_max` / `rmem_default = 25 MB` in
+   `/etc/sysctl.d/60-ros2-dds-buffer.conf`. The same risk applies to
+   simultaneous bag record during M6R4-3 field runs — a host without
+   this sysctl setting must not run this node in that combined mode.
+   Scoped beyond a node-level ADR, but recorded here as an environment
+   requirement (details in `src/whill_perception/README.md`
+   *Environment* section).
 
 ## Related
 

@@ -2,9 +2,9 @@
 
 Language: [日本語](0011-ground-removal-choice.md) | [English](../../en/decisions/0011-ground-removal-choice.md)
 
-- Status: **proposed** (2026-07-14 起草、bag replay 検証と M6R4-3 走行で accepted 化)
-- Date: 2026-07-14
-- Deciders: Iruazu (承認待ち)
+- Status: **accepted** (2026-07-14 bag replay 検証で AC1-AC3 PASS、AC4 は M6R4-3 走行で確定)
+- Date: 2026-07-14 起草 / 2026-07-14 accepted
+- Deciders: Iruazu
 
 ## 背景
 
@@ -165,6 +165,61 @@ downstream の `p2ls_node` の subscribe を `/velodyne_points` から
 
 AC1-AC3 は bag replay で成立可能。AC4 は M6R4-3 の V4 完了時に併せて
 判定する。全 pass で本 ADR を accepted に昇格。
+
+## 検証結果 (2026-07-14 bag replay)
+
+`docs/m6r-bench-data/2026-07-14-verify-campus/bag/` を再生した本 branch
+(commit `ceb3bb3`) の実測:
+
+| AC | 判定 | 実測値 |
+|----|------|--------|
+| AC1 build | PASS | `colcon build --packages-select whill_perception` 7.16 s、stderr なし |
+| AC1 rate  | PASS | `/velodyne_points_no_ground` = **9.857 Hz** (window 100, 30 s+, std dev **0.0004 s**) |
+| AC2 visual| PASS | RViz 目視でアスファルト・ランプ・マンホールの ring 消失、建物・柱・歩行者が残存 (スクショ取得済) |
+| AC3 CPU   | PASS | `patchworkpp_node` = **2.3% CPU 全体 / 1.6-2.7 ms per frame** (単一 core 80% headroom 十分) |
+| AC4 drive | 未確定 (M6R4-3 走行で判定) | — |
+
+代表 frame の内訳 (bag 中盤): `in 29184 pts / ground 8047 / non-ground 21137`。ground 比率 **26-30%** は M6R4-b 全体を通して安定。
+
+**AC1-AC3 が pass したので本 ADR を accepted に昇格した** (Status 参照)。
+AC4 は M6R4-3 の V4 で判定するが、地面除去が入った状態で下流の p2ls
+`min_height` を curb 捕獲方向に緩められる (ADR-0009 と連動) 見通しが立った。
+
+### 低マウントでの ground 比率について
+
+ground 比率 26-30% は WHILL の低マウント (`sensor_height = 0.79 m`) では
+構造的に正常。VLP-16 の 16 ring は水平面 ±15° に分布しており、マウントが
+低いほど地面ヒットする ring 数が減る (地面までの立体角が小さい)。Autoware
+車両の高マウント (~1.9 m) では ground 比率が 60-70% に達するのが標準だが、
+本車両でその値を目指すと非地面点を過剰に落とすことになる。将来の読者が
+この差分を異常と誤解しないよう明記しておく。
+
+### Silent-failure 顛末 (2 件)
+
+M6R4-b の実装過程で 2 件の silent failure を踏み、いずれもガード + 環境
+恒久化で再発を潰した。次に類似ノードを書く人向けの記録として残す。
+
+1. **RNR intensity 列欠落** (2026-07-14 bag replay 1 回目)。Patchwork++
+   core は RNR 有効時に入力の 4 列目 (intensity) を必須とし、無い場合
+   stdout に `RNR requires intensity information !` を出して frame を弾く。
+   初回実装は Nx3 (xyz のみ) だったため入力全 frame が rejected、
+   `/velodyne_points_no_ground` は publish されるが getGround / getNonground
+   両方 0 点。RViz では「何も見えない」だけで、ROS layer には ERROR も
+   WARN も来なかった。修正 (`ceb3bb3`): (a) 変換を Nx4 に、(b) 入力に
+   `intensity` field が無ければ WARN_THROTTLE、(c) `ground.rows() == 0 &&
+   nonground.rows() == 0` を出力後に検知して WARN_THROTTLE。core stdout の
+   単一 print に依存しない ROS 側のガードを 2 段入れた。
+
+2. **UDP フラグメント損失** (2026-07-14 bag replay 2 回目)。大型 PointCloud2
+   の bag replay は DDS の default UDP recv buffer で溢れ、断片的にフレーム
+   ロスが出た。実機ドライバは burst が緩いので問題化しなかったが、bag
+   player は intended send rate の何倍もの瞬発を出すため露見した。
+   `/etc/sysctl.d/60-ros2-dds-buffer.conf` で `net.core.rmem_max` / `rmem_default`
+   を 25 MB に恒久化して解消。M6R4-3 の bag record 併用走行でも同リスクが
+   あるため、同 sysctl が入っていないホストで本ノードを回すときは要注意。
+   本 ADR は「ノード側の障害検知」を主目的にする範囲を超えるが、環境要件
+   としてここに記録する (詳細は `src/whill_perception/README.md` の
+   Environment 節を参照)。
 
 ## 関連
 
