@@ -1,0 +1,126 @@
+# M6-R §10.4 verify走行 — campus map
+# 場所: 工農研横 (campus マップの origin)
+# 走行日: 2026-07-14 (ディレクトリ名も走行日ベースに揃えた)
+# Result: PASS (3 条件すべて)
+#
+# 位置づけ: 2026-07-12 の M6R-2 live acceptance PASS 後、§10 修正 (commit
+# 0855834) + NIC 実名化 (bc06411) + presence_required=false 修正 (52ee995)
+# を反映した runtime.xml + m6r_bringup_launch.py の再現性検証。§10.4 の
+# 3 条件を通過することが PR #75 merge の前提。
+
+phase: M6R-2
+issue: 66
+pr: 75
+plan_ref: docs/ja/plans/2026-06-24-m6r-localization.md
+plan_section: "§10.4"
+date: 2026-07-14
+operator: Iruazu
+location:
+  description: 宇都宮大学キャンパス — 工農研横 (campus マップの origin)
+  map_origin_matches_start: true
+
+# --------------------------------------------------------------------
+# 構成 (§10 修正後の恒久版)
+# --------------------------------------------------------------------
+setup:
+  bringup_mode: launch (m6r_bringup_launch.py — solo 直接実行ではない)
+  launch_command: |
+    ros2 launch whill_safety m6r_bringup_launch.py site:=campus
+  dds:
+    runtime: cyclonedds-runtime.xml (実名化 + presence_required=false)
+    lidar_nic: enx00e04c6808dc (接続時 auto-picked)
+    bashrc: CYCLONEDDS_URI → configs/cyclonedds-runtime.xml
+  commits_verified:
+    - 0855834  # fix(m6r): §10 PR #75 fix list
+    - bc06411  # fix(dds): resolve LiDAR NIC — enx00e04c6808dc
+    - 52ee995  # fix(dds): mark LiDAR NIC presence_required=false
+
+map:
+  site: campus
+  static_pcd: docs/maps/campus/static.pcd (M5-R 本番マップ、2026-07-10)
+  map_size_points: 9649880
+
+# --------------------------------------------------------------------
+# §10.4 の 3 条件
+# --------------------------------------------------------------------
+acceptance:
+  cond_1_launch_one_shot:
+    description: launch 一発起動で localizer が稼働
+    result: PASS
+    evidence:
+      alignment_status_message: ok
+      has_converged: true
+      pcl_pose_hz: ~10
+      fitness: 良好 (静止時、閾値 6.0 に対して十分低い)
+  cond_2_manual_10min:
+    description: 手動走行 ~10 分で reject 発生なし
+    result: PASS
+    duration_min: 10.5   # 627.7s / 60
+    reject_count: 0
+  cond_3_bag_record_4_topics:
+    description: 4 topic (velodyne_points, imu/data_rep145, whill/odom, tf) を bag record できる
+    result: PASS
+    bag_dir: bag/  # gitignore で除外 (3.7 GiB、再現可能なのでリポには残さない)
+    bag_size_gib: 3.7
+    duration_s: 627.7
+    total_messages: 95179
+    topics:
+      /velodyne_points:
+        count: 6187
+        rate_hz: 9.86      # 6187 / 627.7
+        expected_hz: 10
+      /imu/data_rep145:
+        count: 62760
+        rate_hz: 100.0
+        expected_hz: 100
+      /whill/odom:
+        count: 1569
+        rate_hz: 2.5
+        expected_hz: 2.5
+      /tf:
+        count: 24663
+        rate_hz: 39.3
+    before_after:
+      before: docs/m6r-bench-data/2026-07-12-acceptance-campus/bag/  # tf_static 1 件のみ、24.9 KiB (壊れ bag、DDS 対策 before 証拠)
+      after: 上記 4 topic 全て所定 rate
+
+# --------------------------------------------------------------------
+# 補足検証 (52ee995 presence_required=false)
+# --------------------------------------------------------------------
+presence_required_check:
+  # 2026-07-14 昼、屋内、LiDAR 未接続状態で
+  disconnected_state: |
+    新シェルで `ros2 topic list` が正常応答。
+    以前は "does not match an available interface" / "rmw_create_node: failed to create domain" で全滅していた。
+  connected_state: |
+    LiDAR (enx00e04c6808dc) 接続後の launch で enx が自動的に採用され、
+    /velodyne_points が定常 9.86 Hz で流れた (cond_3 の実測値)。
+
+# --------------------------------------------------------------------
+# ディレクトリ命名の note
+# --------------------------------------------------------------------
+directory_naming:
+  # 走行日 = 2026-07-14。ディレクトリも走行日ベースに揃えた
+  # (docs/m6r-bench-data/ の他のディレクトリ 2026-07-08-*, 2026-07-12-* と同規約)。
+  # 初回作成時は 2026-07-15-verify-campus だったが、走行日に合わせて rename 済。
+  actual_run_date: 2026-07-14
+  directory_name: 2026-07-14-verify-campus
+
+# --------------------------------------------------------------------
+# 判定
+# --------------------------------------------------------------------
+verdict:
+  acceptance_10_4: PASS
+  gates_ready_to_close:
+    - M6R-2 live 恒久化 (0855834 が実世界で再現)
+    - DDS 恒久対策 (許可列挙 + presence_required)
+  next_actions:
+    - PR #75 を Ready for review
+    - code-reviewer による priority-sorted findings 提示
+    - user merge → Issue #66 close
+    - M6R-3 (failsafe, Issue #67) 着手 (ADR-0007 draft から)
+
+related_memory:
+  - m6r2-live-acceptance-pass  # 2026-07-12 の一次 PASS
+  - m6r-dds-tethering-hazard   # DDS 恒久対策の背景
+  - m6r-autonomy-gate           # M6R-3 merge までは維持
