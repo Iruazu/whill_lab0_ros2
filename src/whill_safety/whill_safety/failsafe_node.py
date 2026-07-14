@@ -28,7 +28,7 @@ from rclpy.node import Node
 from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import Bool
 from diagnostic_msgs.msg import DiagnosticArray
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
 
 
 FITNESS_MAX = 1.0
@@ -71,8 +71,15 @@ class FailsafeNode(Node):
             Bool, '/reinitialization_requested', self._on_reinit, 10)
         self.create_subscription(
             DiagnosticArray, '/alignment_status', self._on_alignment, 10)
+        # PoseWithCovarianceStamped: lidar_localization_ros2 publishes
+        # /pcl_pose as PoseWithCovarianceStamped (covariance is used by
+        # the M6R-2 alignment gate). An earlier PoseStamped subscription
+        # here silently type-mismatched — B:pcl_pose_silent never had a
+        # last_pose_time to time out against, so failsafe layer B could
+        # not observe a genuine localizer stall. Verified in Phase B on
+        # 2026-07-14 that the fixed type reaches the callback.
         self.create_subscription(
-            PoseStamped, '/pcl_pose', self._on_pcl_pose, 10)
+            PoseWithCovarianceStamped, '/pcl_pose', self._on_pcl_pose, 10)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
         self.create_timer(1.0 / PUBLISH_HZ, self._tick)
