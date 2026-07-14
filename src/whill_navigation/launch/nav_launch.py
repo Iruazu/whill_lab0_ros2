@@ -1,65 +1,156 @@
-"""Top-level Nav2 bringup for the WHILL chair.
+"""Nav2 lifecycle bringup for the WHILL chair (M6R4-1 + M6R4-2).
 
-NOTE (M4-R close, 2026-06-20): This launch is intentionally left in a
-broken state. M4R-4 / Issue #38 removed `tf_bridge_launch.py` because the
-`map -> camera_init` identity it published violates the platform-pivot
-plan (§5 禁止 1). The Nav2 nodes below still reference the bringup that
-the old TF bridge enabled, so launching this file currently produces a
-graph with no `map` frame author — Nav2 will start but not localise.
+Composes map_server + planner_server + controller_server + behavior_server
++ bt_navigator + velocity_smoother behind lifecycle_manager, plus a
+pointcloud_to_laserscan bridge that feeds the costmap obstacle layer.
+The upstream `m6r_bringup_launch.py` (whill_safety, M6R-2 + M6R-3 lite)
+is expected to be running in parallel and supplies the
+`map -> odom -> base_link` TF chain, `failsafe_node`, and `twist_mux`;
+this launch adds nothing to those.
 
-The fix is M6-R: replace the identity bridge with a real scan-to-map
-localizer (`lidar_localization_ros2` or equivalent) that publishes
-`map -> odom`. Until then this file is left visible (not renamed to
-`.disabled`) so contributors trip on the breakage on purpose instead of
-silently inheriting a stale dependency.
+  ros2 launch whill_safety   m6r_bringup_launch.py site:=campus     # terminal A
+  ros2 launch whill_navigation nav_launch.py       site:=campus     # terminal B
 
-What stays composed below, untouched, so M6-R can drop the localizer in
-without re-deriving the Nav2 wiring:
+Site selection: pass `site:=<name>`. Resolves to `docs/maps/<site>/
+occupancy.yaml` at launch time and injects it into map_server. Matches the
+M6R-2 convention where `site:=campus` loads `docs/maps/campus/static.pcd`,
+so the same value picks the pgm/yaml for Nav2 and the pcd for the
+localizer.
 
-  - map_server + planner_server + controller_server + behavior_server
-    + bt_navigator + velocity_smoother behind lifecycle_manager
-  - velocity_smoother remaps `/cmd_vel_smoothed -> /whill/controller/cmd_vel`
-    so the WHILL driver consumes the rate-limited stream directly.
+cmd_vel routing (matches ADR-0007 M6R-3 lite twist_mux, PR #79):
 
-cmd_vel routing (unchanged):
-  controller_server  ─┐
-                      ├─> /cmd_vel ─> velocity_smoother ─> /whill/controller/cmd_vel
-  behavior_server    ─┘                              (remapped from /cmd_vel_smoothed)
+    controller_server  ─┐
+                        ├─> /cmd_vel_nav ─┐
+    behavior_server    ─┘                 │
+                                          ├─> twist_mux (priority: safety > nav)
+    failsafe_node ─> /cmd_vel_safety ─────┘
+                                          │
+                                          └─> /cmd_vel ─> velocity_smoother
+                                                              │
+                                                              └─> /whill/controller/cmd_vel
 
-velocity_smoother enforces real acceleration limits — RPP itself doesn't
-ramp, so without the smoother the chair gets a 0 → desired_linear_vel
-step which felt dangerous to a seated rider on the first M5-d run.
+Nav2 nodes publish to `/cmd_vel_nav`, twist_mux picks between it and
+`/cmd_vel_safety`, and the mux output `/cmd_vel` feeds velocity_smoother.
+The M6R4-1 scope is the two remaps below; twist_mux itself lives in the
+whill_safety package (M6R-3 lite).
+
+Obstacle observation path (M6R4-2):
+
+    /velodyne_points (sensor QoS, best-effort)
+        │
+        └─> pointcloud_to_laserscan_node ─> /scan (reliable)
+                                                │
+                                                └─> obstacle_layer of
+                                                    local + global costmaps
+
+nav2_costmap_2d's ObstacleLayer expects reliable QoS on observation
+sources; pointcloud_to_laserscan republishes at reliable, so obstacle_
+layer subscribes without an explicit QoS override.
+`use_collision_detection` stays false through M6R4-2 (see nav2_params.yaml)
+and flips to true in M6R4-3 once the layer is verified against the M5-R
+campus map on the chair.
+
+Deliberately not in this launch:
+
+  - **Localization.** `m6r_bringup_launch.py` (M6R-2) publishes
+    `map -> odom`. Do not include a second localizer here.
+  - **failsafe_node / twist_mux.** Live on the whill_safety side
+    (safety_launch.py, included from m6r_bringup_launch.py). This launch
+    only needs the topic contract (`/cmd_vel_nav` in, `/cmd_vel` out).
+
+Historical: at M4-R close (2026-06-20) this file was intentionally left
+in a broken state (default map pointed at `lab-legacy-m5b`, no localizer
+authoring `map -> odom`). M6R-2 landed the localizer, this M6R4-1 change
+restores map_server + planner_server bringup on top of it.
 """
 
 import os
+import tempfile
+
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def generate_launch_description():
+_MAPS_ROOT_ENV = 'WHILL_MAPS_ROOT'
+_DEFAULT_MAPS_ROOT_REL = os.path.join('docs', 'maps')
+# Match m6r_bringup_launch.py (whill_safety) which defaults site to
+# 'campus' for the M5-R production map. Consistent site names across
+# launches let a single `site:=<name>` argument fan out to both.
+_DEFAULT_SITE = 'campus'
+
+
+def _repo_root_from_pkg_share(pkg_share):
+    """Recover the repo root from an installed package share dir.
+
+    Mirrors the escape hatch in whill_safety/m6r_bringup_launch.py so the
+    two launches resolve `docs/maps/<site>/` identically.
+    """
+    return os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
+
+
+def _resolve_map_yaml(context):
+    """Resolve `docs/maps/<site>/occupancy.yaml` from the site arg.
+
+    Runs at launch time (OpaqueFunction) so the site LaunchConfiguration
+    is available and the file is validated before map_server tries to
+    load it. map_server's own error path on a missing yaml is a lifecycle
+    CONFIGURE failure with a stale-looking log line; failing early here
+    gives a direct message with the resolved path.
+    """
+    site = LaunchConfiguration('site').perform(context)
+
+    pkg_share = get_package_share_directory('whill_navigation')
+    maps_root = os.environ.get(_MAPS_ROOT_ENV)
+    if not maps_root:
+        maps_root = os.path.join(_repo_root_from_pkg_share(pkg_share), _DEFAULT_MAPS_ROOT_REL)
+    map_yaml = os.path.abspath(os.path.join(maps_root, site, 'occupancy.yaml'))
+
+    if not os.path.isfile(map_yaml):
+        raise RuntimeError(
+            f'nav_launch: occupancy.yaml not found for site={site!r}.\n'
+            f'  Looked at: {map_yaml}\n'
+            f'  Set {_MAPS_ROOT_ENV}=<path> to override the maps registry '
+            f'root, or run:\n'
+            f'    ls {maps_root}\n'
+            f'  to see the available sites.'
+        )
+
     nav_share = get_package_share_directory('whill_navigation')
+    # Substitutions into Node(parameters=[...]) resolve to empty string
+    # when this file is wrapped by IncludeLaunchDescription, so hard-code
+    # the paths here inside OpaqueFunction where the LaunchContext is
+    # already active. See docs/session-2026-05-08.md.
+    nav2_params_src = os.path.join(nav_share, 'config', 'nav2_params.yaml')
+    p2ls_params = os.path.join(nav_share, 'config',
+                               'pointcloud_to_laserscan.yaml')
 
-    # Hardcode the params path at launch description build time, not via
-    # LaunchConfiguration — substitutions into Node(parameters=[...])
-    # resolve to empty string when this file is wrapped by
-    # IncludeLaunchDescription. See docs/session-2026-05-08.md.
-    nav2_params = os.path.join(nav_share, 'config', 'nav2_params.yaml')
+    # Bake the resolved map path directly into a per-run copy of
+    # nav2_params.yaml, then hand every Nav2 node that yaml as its only
+    # parameters entry. The alternative (parameters=[<yaml>, {dict}]) was
+    # unreliable in humble: with the yaml's `yaml_filename: ""` load
+    # winning over the dict override at least on this host, map_server
+    # ended up serving whatever default the yaml carried (the M5-c
+    # hardcode of `docs/maps/lab-legacy-m5b/lab.yaml`) instead of the
+    # site-resolved path. Mirrors m6r_bringup_launch.py's template →
+    # temp yaml → include pattern for the localizer.
+    with open(nav2_params_src) as f:
+        params = yaml.safe_load(f)
+    params['map_server']['ros__parameters']['yaml_filename'] = map_yaml
 
-    # The saved map yaml is workspace-relative (not installed under any
-    # package share), so allow override via the `map` launch arg.
-    # Legacy M5-b path. M5R-5 (#47) renamed docs/m5-maps/ -> docs/maps/
-    # lab-legacy-m5b/ to align with the new `docs/maps/<site>/` registry
-    # (docs/maps/README.md). M5R-7 (#51) will re-aim this at the M5-R
-    # pipeline output (`docs/maps/<site>/occupancy.yaml`). Kept pointed at
-    # the legacy path until then because map_server resolves this default
-    # at lifecycle CONFIGURE; switching it to a not-yet-existing M5-R
-    # output before #51 would just trade one broken default for another.
-    default_map_yaml = os.path.expanduser(
-        '~/whill_lab0_ros2/docs/maps/lab-legacy-m5b/lab.yaml')
+    tmp = tempfile.NamedTemporaryFile(
+        prefix='whill_nav2_params_',
+        suffix='.yaml',
+        delete=False,
+        mode='w',
+    )
+    yaml.safe_dump(params, tmp)
+    tmp.close()
+    nav2_params = tmp.name
 
     lifecycle_nodes = [
         'map_server',
@@ -70,25 +161,26 @@ def generate_launch_description():
         'velocity_smoother',
     ]
 
-    return LaunchDescription([
-        DeclareLaunchArgument(
-            'map',
-            default_value=default_map_yaml,
-            description='Absolute path to the map yaml consumed by map_server.'),
-
-        # NOTE: No localization include here. The M5-a `tf_bridge_launch.py`
-        # (map -> camera_init identity) was removed by M4R-4 / Issue #38.
-        # M6-R is responsible for wiring a scan-to-map localizer that
-        # publishes `map -> odom` and slotting its include statement at this
-        # position.
-
+    return [
+        # QoS bridge from best-effort /velodyne_points to reliable /scan
+        # so nav2_costmap_2d's obstacle_layer (reliable-by-default in
+        # humble) can subscribe. Not a lifecycle node — starts at process
+        # launch and streams as soon as /velodyne_points appears.
+        Node(
+            package='pointcloud_to_laserscan',
+            executable='pointcloud_to_laserscan_node',
+            name='pointcloud_to_laserscan',
+            output='screen',
+            parameters=[p2ls_params],
+            remappings=[('cloud_in', '/velodyne_points'),
+                        ('scan', '/scan')],
+        ),
         Node(
             package='nav2_map_server',
             executable='map_server',
             name='map_server',
             output='screen',
-            parameters=[nav2_params,
-                        {'yaml_filename': LaunchConfiguration('map')}],
+            parameters=[nav2_params],
         ),
         Node(
             package='nav2_planner',
@@ -103,8 +195,9 @@ def generate_launch_description():
             name='controller_server',
             output='screen',
             parameters=[nav2_params],
-            # Publishes raw /cmd_vel; velocity_smoother picks it up and
-            # produces the rate-limited stream the chair actually consumes.
+            # Remap the raw output to /cmd_vel_nav so twist_mux (M6R-3
+            # lite) can prioritize failsafe /cmd_vel_safety over it.
+            remappings=[('/cmd_vel', '/cmd_vel_nav')],
         ),
         Node(
             package='nav2_behaviors',
@@ -112,6 +205,10 @@ def generate_launch_description():
             name='behavior_server',
             output='screen',
             parameters=[nav2_params],
+            # Recovery behaviours (spin/backup/wait) also publish via
+            # /cmd_vel by default; funnel them through twist_mux the same
+            # way so a recovery cannot bypass the safety mux.
+            remappings=[('/cmd_vel', '/cmd_vel_nav')],
         ),
         Node(
             package='nav2_bt_navigator',
@@ -126,9 +223,12 @@ def generate_launch_description():
             name='velocity_smoother',
             output='screen',
             parameters=[nav2_params],
-            # Smoother subscribes /cmd_vel (default) and publishes
-            # /cmd_vel_smoothed. Remap the output straight to the WHILL
+            # Smoother subscribes /cmd_vel (twist_mux output) and
+            # publishes /cmd_vel_smoothed. Remap the output to the WHILL
             # driver's input topic so we don't need a separate relay.
+            # RPP itself does not ramp, so without the smoother the chair
+            # sees a 0 -> desired_linear_vel step that a seated rider
+            # feels as a lurch (first noticed on live M5-d).
             remappings=[('/cmd_vel_smoothed', '/whill/controller/cmd_vel')],
         ),
         Node(
@@ -143,4 +243,26 @@ def generate_launch_description():
                 'bond_timeout': 4.0,
             }],
         ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            'site',
+            default_value=_DEFAULT_SITE,
+            description='Name of the map directory under docs/maps/ to '
+                        'load. Resolves to <maps_root>/<site>/'
+                        'occupancy.yaml at launch time. Override the '
+                        'maps root with WHILL_MAPS_ROOT if not launching '
+                        'from a colcon workspace that mirrors this repo '
+                        'layout. Should match the value passed to '
+                        'm6r_bringup_launch.py.'),
+
+        # No localization include. m6r_bringup_launch.py (whill_safety,
+        # M6R-2) is expected to be running in parallel and publishes
+        # map -> odom. Adding a second localizer here would race for the
+        # same TF edge.
+
+        OpaqueFunction(function=_resolve_map_yaml),
     ])

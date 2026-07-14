@@ -1,0 +1,52 @@
+# pointcloud_to_laserscan bridge for the Nav2 obstacle_layer (M6R4-2).
+#
+# nav2_costmap_2d's ObstacleLayer in humble expects observation sources at
+# reliable QoS, but /velodyne_points is best-effort sensor QoS. Running
+# pointcloud_to_laserscan_node here republishes as reliable /scan and
+# collapses the ring point cloud to a single 2D ring at chair height.
+# ADR-0009 records the parameter selection.
+#
+# Height band is set from the M4-R static TF measurements plus 2026-07-14
+# Phase B field observation:
+#   - base_link is at floor level (ground plane), publisher: static_tf_launch
+#   - velodyne sits ~0.9 m above base_link on the WHILL chassis
+#   - **min_height = 0.25 m** (interim). Original -0.2 m intercepted ground
+#     undulation (manholes, potholes, slope crossings) and marked lethal
+#     cells that inflated across wide bands. Phase B live tuning found
+#     0.25 m clears flat ground and moderate potholes but leaves undulation
+#     spikes on sloped tarmac. Root cause is that the 2D slice is base_link-
+#     flat and cannot follow terrain — min_height alone will not fix it.
+#     ADR-0009 records the trade-off and points at ground filtering
+#     (Patchwork++ / voxel_layer / D435 depth) as the M7-era resolution.
+#   - max_height = 1.6 m keeps a standing person's torso and dropped legs
+#     while ignoring ceiling returns from indoor bringup runs.
+#
+# Trade-off note: min_height 0.25 loses **curb-height (~0.15 m) and
+# crouched-child (< 0.25 m) obstacles**. Rely on the footprint circumscribed
+# radius (0.45 m) plus the inflation_layer for standoff, and keep the
+# operator-in-the-loop assumption from ADR-0007 §Demo-scope reduction.
+#
+# Do not tighten range_min below 0.5 m without re-verifying: the WHILL
+# chassis top plate sits inside 0.5 m of the sensor origin and returns
+# to itself; a smaller range_min re-introduces self-reflections that get
+# marked as obstacles under the chair.
+
+/**:
+  ros__parameters:
+    target_frame: base_link
+    transform_tolerance: 0.1
+    min_height: 0.25
+    max_height: 1.6
+    angle_min: -3.141592
+    angle_max:  3.141592
+    # 0.5 deg per beam — matches VLP-16 horizontal resolution at 10 Hz
+    # rotation, so we don't average across rays we didn't actually see.
+    angle_increment: 0.008726646
+    scan_time: 0.1
+    range_min: 0.5
+    # Match obstacle_layer.raytrace_max_range in nav2_params.yaml so a
+    # ray that clears an obstacle out to 25 m does clear the cell — a
+    # shorter scan range here would leave stale cells around the chair.
+    range_max: 25.0
+    use_inf: true
+    inf_epsilon: 1.0

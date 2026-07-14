@@ -47,6 +47,7 @@
 - **ライセンス**: BSD-3-Clause で統一
 - **package.xml の exec_depend を必ず正確に**書く。ament_cmake は `buildtool_depend` のみ
 - **launch ファイル**: `IncludeLaunchDescription` で wrap される可能性を考慮、`LaunchConfiguration` をパス resolve に使わず launch description 生成時にハードコードする (既存の `fast_lio_launch.py` と `nav_launch.py` のコメント参照)
+- **launch を編集したら push 前に `ros2 launch <pkg> <launch>.py --show-args` を必ず走らせる**。Python の import エラー (module 名間違い・非公開 API 等) は colcon build を通過するが `--show-args` は launch description を評価するので import 段で落ちる。例: `SetRemap` は `launch_ros.actions` にあり `launch.actions` にはない (2026-07-14 実機で ImportError 発覚済)。build 通過 + syntax OK は不十分
 
 ## ランタイム環境の前提 (本機 = Alienware x15 R2)
 

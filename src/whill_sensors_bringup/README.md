@@ -31,7 +31,7 @@ ros2 run tf2_tools view_frames
 
 | Action | Source | Effect |
 |--------|--------|--------|
-| `velodyne-all-nodes-VLP16-launch.py` | `velodyne` (Group A upstream) | `/velodyne_points`, `/scan` |
+| `velodyne-all-nodes-VLP16-launch.py` (with `/scan` → `/scan_raw` remap) | `velodyne` (Group A upstream) | `/velodyne_points`, `/scan_raw` — see `sensors_launch.py` docstring for the rename rationale |
 | `rs_launch.py` | `realsense2_camera` (Group A upstream) | `/camera/camera/color/...`, `/camera/camera/depth/...` |
 | `imu_launch.py` | this package | `/imu/data_raw`, `/imu/mag`, `/imu/temperature` (after auto `configure → activate`) |
 | `imu_sign_corrector` (spawned by `imu_launch.py`) | this package | `/imu/data_rep145` — `/imu/data_raw` with `linear_acceleration.{x,y,z}` negated (Issue #56) |
