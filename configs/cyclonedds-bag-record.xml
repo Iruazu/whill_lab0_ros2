@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  CycloneDDS 恒久設定: loopback 限定 + マルチキャスト無効化
+  CycloneDDS 設定: bag 録画専用 (loopback 限定 + マルチキャスト無効化)
 
-  Why:
+  ⚠ この xml は bag 録画時のみ使用。localization / Nav2 / M6-R 運用には
+  `cyclonedds-runtime.xml` を使うこと。
+
+  Why (旧 cyclonedds-lo-only.xml、2026-07-08 M5-R gap 対策 deb317d):
     2026-07-08 campus-outer bag (47 分) の bag time 1325 秒地点で 4.77 秒間の
     IMU/LiDAR 完全停止が発生。原因はテザリング接続中の CycloneDDS が外部ピア
     (10.130.7.163 / 172.20.10.2 等) への UDP 送信を延々リトライしてハング。
@@ -11,21 +14,23 @@
     「録画前に WiFi を OFF する」という運用は 47 分の一発勝負では弱すぎるため
     (人間依存の抜けが致命的)、DDS 側で構造的に外部ピアを見せない設定にする。
 
-  How to use:
-    ~/.bashrc に以下 2 行を追加 (既存の RMW 行と併存):
-      export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-      export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-lo-only.xml
+  Why (「録画専用」への降格、2026-07-12 M6R-2 live):
+    Interfaces=lo + AllowMulticast=false の逆振り構成は SPDP unicast race を
+    招き、localizer の subscription match が起動ごとに不安定化する
+    (rmw_cyclonedds#376)。運用 (subscription が確実に成立してほしい局面) には
+    向かない。ただし bag 録画は「録画中に外部 IP へ UDP を投げない」ことだけ
+    保証できれば十分なので、本 xml をそのまま流用する。運用側は
+    cyclonedds-runtime.xml (許可列挙方式 + AllowMulticast=spdp) を使う。
 
-    設定反映後、以下で lo だけ使っているか確認:
+  How to use (bag 録画時のみ):
+    terminal 単位で切り替え (~/.bashrc は運用 default = runtime.xml のまま):
+      export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-bag-record.xml
       ros2 daemon stop && ros2 daemon start
-      ss -uan | grep -E "0\.0\.0\.0:[0-9]+ " | head  # 全 wildcard bind は使わないはず
+      ros2 bag record /velodyne_points /imu/data_rep145 /whill/odom /tf
 
-  Verify (10 分推奨):
-    ターミナル A: ros2 launch whill_localization odom_bringup_launch.py
-    ターミナル B: timeout 30 ros2 topic hz /velodyne_points --qos-reliability best_effort
-    ターミナル C (途中で): WiFi 接続/切断/デザリング切替 を意図的に発生
-      → /velodyne_points hz が乱れなければ OK
-      → ros2 topic echo で外部 IP へのエラーログが出ていないこと
+  Verify (録画中):
+    ros2 topic hz /velodyne_points  → ~10 Hz が安定
+    ros2 bag info <bag-dir>          → 全 4 topic の count が想定値
 -->
 <CycloneDDS xmlns="https://cdds.io/config"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

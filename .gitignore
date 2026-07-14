@@ -113,6 +113,17 @@ docs/m6r-bench-data/**/*.ply
 !docs/m6r-bench-data/**/*.md
 !docs/m5r-bench-data/**/*.md
 
+# docs/m6r-bench-data/ holds M6-R smoke test / live acceptance / verify
+# artifacts. Rosbag directories are multi-GiB; track only descriptive
+# artifacts (manifest.yaml, per-run txt/log dumps, READMEs).
+# Historical exception: 2026-07-12-acceptance-campus/bag/ was a 24 KiB
+# broken bag intentionally committed as "before" evidence for the DDS
+# xml fix (already tracked before this rule; gitignore does not affect
+# tracked files).
+docs/m6r-bench-data/**/bag/
+!docs/m6r-bench-data/**/manifest.yaml
+!docs/m6r-bench-data/**/*.md
+
 .claude/settings.local.json
 # Map artifacts — PCD point clouds are large; track only pgm/yaml/metadata.
 # The `docs/maps/<site>/` registry convention is defined in docs/maps/README.md

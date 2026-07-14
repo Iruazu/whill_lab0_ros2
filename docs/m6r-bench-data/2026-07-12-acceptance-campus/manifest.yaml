@@ -1,0 +1,185 @@
+# M6R-2 live acceptance — campus map, outdoor
+# Site: 工農研横 (campus マップの発進点 = origin)
+# Result: PASS (signal chain + semantic 両方)
+#
+# 判定根拠は「静止 fitness ≪ 閾値」「12 分走行で全フレーム accept /
+# reject ゼロ」「発進点への帰還が semantic に整合」の 3 点。
+# tilt 1.81° の遠方影響は最悪ケースでも閾値 6.0 に対し 20 倍マージン
+# (実測 ~0.3) だったため、de-tilt は緊急課題からバックログへ降格。
+
+phase: M6R-2
+issue: 66
+pr: 75
+plan_ref: docs/ja/plans/2026-06-24-m6r-localization.md
+date: 2026-07-12
+operator: Iruazu
+location:
+  description: 宇都宮大学キャンパス — 工農研横 (campus マップの origin)
+  map_origin_matches_start: true
+
+# --------------------------------------------------------------------
+# 構成 (開通した組み合わせ)
+# --------------------------------------------------------------------
+#
+# NOTE: このセッションでは launch script (m6r_bringup_launch.py) を
+# 使わず、solo で lidar_localization_node を直接実行した。原因の切り分け
+# フェーズだったためで、恒久解は §10 (PR #75 修正リスト) 参照。
+# launch script 直しは次セッションで一括で入れる。
+setup:
+  bringup_mode: solo (localizer を直接実行し、m6r_bringup_launch.py は不使用)
+  launch_command: |
+    /home/systemlab/whill_lab0_ros2/install/lidar_localization_ros2/lib/lidar_localization_ros2/lidar_localization_node \
+      --params-file /tmp/m6r_live_solo.yaml \
+      -r /cloud:=/velodyne_points
+  lifecycle: manual (configure → activate。直接実行では自動遷移しない)
+
+map:
+  site: campus
+  static_pcd: docs/maps/campus/static.pcd
+  map_size_points: 9649880
+  built: 2026-07-10 本番マップ
+  tilt_deg: 1.81
+  tilt_verdict: |
+    de-tilt は緊急課題からバックログへ降格。localization を阻害しない。
+    tilt 影響最大の遠方でも実測 fitness ~0.3 (閾値 6.0 に対し 20 倍マージン)。
+
+localizer_config_overrides:
+  base_config: config/m6r_lidar_localization.yaml (whill_safety)
+  overrides_over_base:
+    - enable_debug: true         # 診断のため
+    - use_imu_preintegration: false   # /imu 不在で scan callback が永久 stall する
+                                      # のを回避 (§10 で default 化予定)
+  set_initial_pose: false        # 手動で /initialpose を publish
+  initialpose:
+    frame_id: map
+    position: [0.0, 0.0, 0.0]
+    orientation: [0.0, 0.0, 0.0, 1.0]
+
+dds:
+  runtime: default (CYCLONEDDS_URI unset)
+  workaround: |
+    Wi-Fi (テザリング) を一度 off → on した後に data path が開通。
+    tethering IF (10.130.7.163) が生きたままだと ddsi_udp_conn_write
+    失敗の嵐で大容量 topic (/velodyne_points ~2MB@10Hz) が配送されない。
+    小型 topic (/imu, /initialpose, /tf) は通るため発見困難だった。
+  policy_shift: |
+    lo-only xml (configs/cyclonedds-lo-only.xml) は「bag 録画専用」に降格。
+    運用は default DDS。ただしテザリング IF が DDS を壊すため、
+    Interfaces= に lo + LiDAR 有線のみ列挙する新 xml を §10 で作成する
+    (「lo-only の安全性」と「data path の信頼性」を両立する上位互換)。
+
+boot_sequence:
+  # 人間依存回避のため §10 で script 化予定
+  - step: 1
+    name: sensors
+    detail: whill_localization/odom_bringup_launch.py 起動
+  - step: 2
+    name: 30s warmup
+    detail: /velodyne_points 10Hz、/imu 100Hz、/whill/odom が定常
+  - step: 3
+    name: localizer
+    detail: solo 直接実行 or launch script (§10 修正後)
+  - step: 4
+    name: 20s wait
+    detail: lifecycle unconfigured → inactive → active。map load 完了確認
+  - step: 5
+    name: initialpose
+    detail: RViz 2D Pose Estimate、frame=map、origin (0,0,0)
+
+# --------------------------------------------------------------------
+# 実測値
+# --------------------------------------------------------------------
+results:
+  static_1min:
+    fitness_range: [0.0186, 0.0193]  # 操作者目視、開通直後の 1 分
+    has_converged: 1
+    align_time_ms: ~5.5
+    delta_angle_deg: [0.01, 0.03]     # cm / 百分度級の安定性
+  driving_12min:
+    duration_min: 12
+    trajectory: キャンパス半周 → 発進点へ帰還
+    fitness_typical: <0.1
+    fitness_worst: ~0.3               # 速度高め・遠方 (tilt 影響最大)
+    reject_count: 0                    # 全フレーム accept
+    return_to_origin: semantic に整合
+  # 保存済み localizer log (521 frames、静止 + 短距離走行区間) から抽出:
+  log_extract_from_terminal_b:
+    frame_count: 521
+    has_converged_1_ratio: 1.0        # 全 521 frame OK
+    fitness_min_observed: 0.0629518
+    fitness_max_observed: 0.0827226
+    fitness_p50: 0.0709437
+    fitness_p95: 0.0759160
+    fitness_p99: 0.0789292
+    align_time_min_s: 0.00440
+    align_time_max_s: 0.00719
+    # NOTE: fitness 0.019 の静止極値は log 保存を始める前の open 直後
+    # 区間で観測されたもの。log 内のサンプルは静止 + 短距離移動なので
+    # やや高めに出ている。どちらも「reject ゼロ・全 converge」の事実は同じ。
+
+# --------------------------------------------------------------------
+# 5 連地雷 (2 日間で全特定)
+# --------------------------------------------------------------------
+root_causes_discovered:
+  - id: 1
+    name: /imu remap 漏れ (初日特定済)
+    where: m6r_bringup_launch.py
+    fix: |
+      §10 で imu_topic:='/imu/data_rep145' を forward
+      (2026-07-12 レビュー確定: 生値 /imu/data_raw ではなく
+      imu_sign_corrector が REP-145 符号補正して再 publish した
+      /imu/data_rep145 を渡す。今日は use_imu_preintegration=false
+      で消費しないが、将来 true 時の地雷回避)
+  - id: 2
+    name: use_imu_preintegration=1 が /imu 不在で scan callback を永久 stall
+    where: lidar_localization_ros2 upstream default
+    fix: §10 で default false 化 (項目 1 の症状としては伏線)
+  - id: 3
+    name: launch script の pkg check false negative
+    where: m6r_solo_launch.sh
+    fix: 既に除去済
+  - id: 4
+    name: マップ場所違い (campus-outdoor-corrected を工農研横で読んだ)
+    where: 運用手順 (default site が 7号館発進 map だった)
+    fix: §10 で default site=campus
+    lesson: fitness 12 全 reject は正しい動作だった (7号館 map vs 工農研横実世界)
+  - id: 5
+    name: lo-only CycloneDDS の大容量 data path 問題
+    where: configs/cyclonedds-lo-only.xml (現行) + テザリング IF 併存
+    fix: §10 で「lo + LiDAR 有線 IF 明示」xml 新設 (bag record 専用に降格)
+    signature: subscription match は成立するが /velodyne_points が届かない
+    detection_difficulty: 小型 topic (/imu, /tf, /initialpose) は通るため見えにくい
+
+# --------------------------------------------------------------------
+# 証拠
+# --------------------------------------------------------------------
+evidence:
+  bag:
+    path: bag/
+    status: 削除せず保存 (「record も同じ data path 問題を踏む」証拠として)
+    contents_summary: tf_static 1 件のみ (24.9 KiB)
+    reason_kept: |
+      DDS 恒久対策の acceptance 条件を「4 topic が全部記録できること」に
+      するため、この壊れ bag は before 側の一次証拠として意味がある。
+      §10 の DDS xml 導入後の検証走行で新 bag を取得する。
+  terminal_b_localizer_log:
+    path: terminal_b_localizer.log
+    frames: 521
+    status: 一次証拠 (fitness / align / has_converged / delta_angle を含む)
+
+# --------------------------------------------------------------------
+# 判定
+# --------------------------------------------------------------------
+verdict:
+  signal_chain: PASS   # scan callback 発火、TF publish、全 converge
+  semantic: PASS       # 静止・移動・帰還すべて map と整合
+  m6r2_live_acceptance: PASS
+  followups_moved_to_next_session:
+    - PR #75 に §10 修正リスト最終版を反映
+    - DDS 恒久対策 xml で 4 topic 全記録の再現走行 bag 取得
+    - M6R-3 (failsafe/twist_mux) 着手
+
+related_memory:
+  - project_m6r2_scan_processing_stall (この manifest で PASS 更新される)
+  - project_m6r_dds_discovery_race (lo-only 降格 + 新 xml 方針で上書き)
+  - project_m6r_autonomy_gate (M6R-3 merge までゲートは維持)

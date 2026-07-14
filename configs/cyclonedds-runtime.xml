@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CycloneDDS 恒久設定: 運用時 (localization / Nav2 / M6-R bringup) 用
+
+  Why:
+    2026-07-12 M6R-2 live acceptance で 5 番目の地雷として確定した
+    「default DDS + テザリング/Wi-Fi IF 併存で /velodyne_points だけ配送
+    されない (小型 topic は通る)」問題への恒久対策。
+
+    旧 configs/cyclonedds-lo-only.xml (2026-07-08 gap 対策 deb317d) は
+    Interfaces=lo + AllowMulticast=false の逆振り構成だったため、今度は
+    SPDP unicast race で localizer subscription match が不安定化していた
+    (rmw_cyclonedds#376)。
+
+    本 xml は「lo-only の安全性 (外部ピアに UDP を投げない)」を保ちつつ
+    「data path の信頼性 (subscription match が確実に成立)」を両立する。
+
+  How (方針):
+    - Interfaces は **許可列挙方式**。lo と LiDAR 有線 NIC を明示し、
+      それ以外 (Wi-Fi、USB tethering、Docker bridge 等) は列挙しないだけで
+      自動的に除外される。新 NIC が追加されても自動的に無視される安全側。
+    - AllowMulticast=spdp: SPDP のみ multicast 復活 (unicast race 回避)、
+      endpoint data は unicast 維持
+    - DontRoute=true: 万一 IF が拾われたときの防波堤
+
+  How to use:
+    ~/.bashrc に以下 2 行を追加 (既存の RMW 行と併存):
+      export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-runtime.xml
+
+    bag 録画時は terminal 単位で cyclonedds-bag-record.xml に切り替える
+    運用を推奨 (bashrc は運用 default のまま)。
+
+  Verify (LiDAR 接続後):
+    ip -brief link show | grep UP
+      → LiDAR 有線 NIC 名 (例: enp*、eth*) を確認し、以下の Interfaces
+        セクションに <NetworkInterface name="…"/> を追加してコミット
+    ros2 daemon stop && ros2 daemon start
+    ros2 launch whill_safety m6r_bringup_launch.py site:=campus
+      → /velodyne_points が定常 10Hz、subscription match 100% 成立
+
+  acceptance (§10.4):
+    ros2 bag record /velodyne_points /imu/data_rep145 /whill/odom /tf
+    → 4 topic 全て記録できること (壊れ bag は
+       docs/m6r-bench-data/2026-07-12-acceptance-campus/bag/ に before として保存)
+-->
+<CycloneDDS xmlns="https://cdds.io/config"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
+  <Domain id="any">
+    <General>
+      <!--
+        許可列挙方式: 列挙した IF だけを DDS が使う。列挙しなければ自動除外。
+        本機 (Alienware x15 R2) の実 IF 割り当て:
+          lo               = loopback (必須、許可)
+          wlo1             = 内蔵 Wi-Fi / テザリング (除外 = 列挙しない)
+          enx00e04c6808dc  = USB 有線 LiDAR アダプタ (許可、optional)
+
+        LiDAR NIC は presence_required="false" を付ける。既定 (未指定 = true)
+        だと LiDAR 未接続時に該当 IF が見つからず
+          "does not match an available interface"
+          "rmw_create_node: failed to create domain"
+        で ROS が全滅する (2026-07-14 実測、屋内開発が不可能になる)。
+        presence_required="false" にすると LiDAR 未接続時は lo のみで
+        起動し、接続すれば自動的に enx… も使うようになる。
+
+        enx* 命名は udev の MAC 由来 (00:e0:4c:68:08:dc)。同一アダプタなら
+        再起動・再接続後も不変。アダプタを交換した場合は
+          ip -brief link show
+        で新 MAC 由来の名前を確認し、この enx… を書き換えて再 commit する。
+      -->
+      <Interfaces>
+        <NetworkInterface name="lo"/>
+        <NetworkInterface name="enx00e04c6808dc" presence_required="false"/>
+      </Interfaces>
+      <!--
+        SPDP だけ multicast 復活。旧 lo-only.xml の AllowMulticast=false は
+        SPDP unicast race を招いていた (rmw_cyclonedds#376 型)。
+      -->
+      <AllowMulticast>spdp</AllowMulticast>
+      <!-- 万一 IF が拾われたときの防波堤 -->
+      <DontRoute>true</DontRoute>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <!--
+        2026-07-10 実測、bringup ノード数 (whill + ekf + imu_sign_corrector
+        + realsense + velodyne 系 + ros2 daemon 等) は既定 9 を軽く超える
+        ため 100 に引き上げ。旧 lo-only.xml から継承。
+      -->
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

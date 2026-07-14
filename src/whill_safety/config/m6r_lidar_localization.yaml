@@ -1,0 +1,42 @@
+# M6-R runtime localizer parameters.
+#
+# NDT_OMP tuned for our VLP-16 point density. Originally calibrated on the
+# campus-outdoor-corrected map (M6R-1 smoke run_config.yaml at
+# docs/m6r-bench-data/2026-07-08-smoke-campus-outdoor-corrected/ reached
+# fitness_score 0.011 vs threshold 6.0). Same params re-verified on the
+# `campus` map (M6R-2 §10.4 verify走行 2026-07-14, fitness range 0.02-0.3,
+# reject count 0) so the tuning is not tied to a specific site. These are
+# what ADR-0006 pins for the demo.
+#
+# map_path is intentionally left empty. It is filled in at launch time by
+# m6r_bringup_launch.py from the `site` argument (default 'campus' —
+# the 2026-07-10 M5-R production map used for M6R-2 acceptance), so this
+# file stays site-agnostic and lives with the launch rather than
+# duplicating one copy per map. To change NDT tuning: edit here (not
+# per-site). To change map: pass `site:=<name>` to the launch.
+#
+# `use_imu: false` and `set_initial_pose: false` follow ADR-0006 §3.D and
+# the live-operation contract (RViz 2D Pose Estimate publishes the initial
+# pose; the M4-R EKF supplies odom -> base_link separately, no IMU coupling
+# inside the localizer).
+
+/**:
+  ros__parameters:
+    registration_method: NDT_OMP
+    score_threshold: 6.0
+    ndt_resolution: 1.0
+    ndt_step_size: 0.1
+    ndt_num_threads: 8
+    ndt_max_iterations: 25
+    transform_epsilon: 0.01
+    voxel_leaf_size: 0.5
+    enable_scan_voxel_filter: true
+    scan_max_range: 80.0
+    scan_min_range: 1.0
+    scan_period: 0.1
+    cloud_queue_depth: 1
+    use_pcd_map: true
+    map_path: ""            # overridden by m6r_bringup_launch.py from `site` arg
+    set_initial_pose: false  # RViz 2D Pose Estimate drives /initialpose
+    use_imu: false
+    enable_map_odom_tf: true
