@@ -16,12 +16,11 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
-# TODO(M6R-3): uncomment when failsafe_node lands
-# install(
-#   PROGRAMS
-#     ${PROJECT_NAME}/failsafe_node.py
-#   DESTINATION lib/${PROJECT_NAME}
-#   RENAME failsafe_node
-# )
+install(
+  PROGRAMS
+    ${PROJECT_NAME}/failsafe_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME failsafe_node
+)
 
 ament_package()

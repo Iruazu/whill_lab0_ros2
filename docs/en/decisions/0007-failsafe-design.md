@@ -11,6 +11,13 @@ Language: [日本語](../../ja/decisions/0007-failsafe-design.md) | [English](00
 > Full English translation will be produced when the ADR is promoted to
 > `accepted` at M6R-5.
 
+> **2026-07-14 scope-reduction note**: M6R-3 is being implemented as a
+> "lite" subset for the 2026-08-01 demo (operator walks beside the chair
+> with physical joystick override, so hysteresis / jump detection / G4
+> hardware trials are deferred). See §Demo-scope reduction in the
+> Japanese version for the full lite-vs-full delta table and the
+> restoration path.
+
 ## Summary
 
 Adds a `failsafe_node` to the `whill_safety` package (created at M6R-2) plus

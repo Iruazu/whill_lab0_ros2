@@ -3,8 +3,13 @@
 Language: [日本語](0007-failsafe-design.md) | [English](../../en/decisions/0007-failsafe-design.md)
 
 - Status: **proposed** (M6R-3 着手時起案、M6R-5 完了時 accepted 化予定)
-- Date: 2026-07-14
+- Date: 2026-07-14 起案 / 2026-07-14 dessin-scope 縮小反映
 - Deciders: Iruazu (承認待ち)
+
+> **2026-07-14 スコープ縮小メモ**: 本 ADR の §Decision は「フル版」の設計。
+> 2026-08-01 デモに向けて **M6R-3 の実装は下記 §Demo-scope reduction の
+> lite 版に一時縮小**する (デモ運用条件で lite が成立するため)。lite 版
+> の restore path は §Demo-scope reduction 末尾に記載。
 
 ## 背景
 
@@ -168,3 +173,76 @@ Nav2 の cmd_vel 出力は `/cmd_vel` → `/cmd_vel_nav` に remap (M6R-4 の
 3. `docs/ja/m6r-failsafe-design.md` に閾値の再測定手順 (どの bag を再生して
    どの CLI で確認するか) が書かれている
 4. code-reviewer による priority-sorted findings が resolve 済み
+
+## Demo-scope reduction (2026-07-14 追記)
+
+### 決定
+
+2026-08-01 オープンキャンパスデモに向けた **M6R-3 の実装は本 ADR §Decision
+の「lite サブセット」に一時縮小**する。上位互換 (=フル版) の実装は本 ADR
+に記載のまま残し、デモ後の M6-R フォローアップとして復元する。
+
+### 何をやり、何をやらないか (Lite vs Full の差分)
+
+| 項目 | Full (本 ADR §Decision) | **Lite (M6R-3 lite で実装、Issue #67 lite)** |
+|------|------------------------|--------------------------------------------|
+| A 層 手動遮断 | ✓ | ✓ (実装: `LAYER_A_HOLD_S=1.0s` の再ラッチ方式) |
+| B 層 fitness 閾値 | ✓ (WINDOW_S=2.0s) | ✓ (同一) |
+| B 層 has_converged=false 継続 | ✓ | ✓ (同一) |
+| B 層 pcl_pose silence | ✓ (`PCL_POSE_TIMEOUT_S=1.0s`) | ✓ (同一) |
+| **C 層 jump 検知** (連続 3 フレーム差分 > 0.5m) | ✓ | **✗ 未実装** |
+| **SAFE_HOLD ヒステリシス** (3s) | ✓ | **✗ 未実装** (条件解除で即復帰) |
+| **G4 実機 3 試験** (手動 / ノイズ点群 / 視野遮蔽) | 必須 | **バックログ** (デモ後) |
+| BBS_2D 収束まで cmd_vel_safety 活性化 | ✓ | **未実装** (BBS_2D 自体を運用でオフ) |
+| watchdog 各 topic 1s | ✓ | 部分的 (pcl_pose silence で相当機能) |
+| twist_mux 優先度 | safety=100 > nav=10 | **同一** (据え置き) |
+| 検証 | bag replay + 実機 G4 3 試験 | **bag 相当 mock 検証のみ** (実測 fitness 分布 0.02-0.3 で false positive 0、reinit 発火、fitness=5.0 で発火。詳細 PR #76 本文) |
+
+### 縮小の理由 (受け入れ可能な risk trade-off)
+
+デモ運用の実態が「操作者が椅子の横に立ち随伴、必要時に WHILL 物理ジョイス
+ティックで即介入」という有人監視モードであり、以下が既に成立している:
+
+- 物理ジョイスティックは WHILL ドライバの入力層で処理され、`cmd_vel` 経路
+  とは独立に即遮断できる。つまり **人が横に立っていれば failsafe より速い
+  hard override が常に存在**する
+- SAFE_HOLD が無いことで生じる懸念 = 閾値付近での ON/OFF 振動は、操作者が
+  目視で「振動 = 発散リスク」と読み取り、その場でジョイスティックに切替
+  できる。飛び越えの被害はない
+- jump 検知が無いことで生じる懸念 = 1 フレームの偶発的な localizer ジャン
+  プを見逃す。ただし M4-R EKF が `odom -> base_link` の連続性を吸収する層
+  として既に入っており、pcl_pose silence (1s) と fitness 閾値 (2s 継続) で
+  実害のあるジャンプは間接的に捕捉される
+- G4 3 試験は「無人走行時に事故を起こさない」保証のためのハードルであり、
+  操作者随伴条件では緩められる。デモ後 (無人配車を目指す段階) で必須
+
+### 復元経路 (Lite → Full)
+
+デモ後、いずれかの状況で Full 版に昇格する:
+
+1. **反復デモ / 無人試験** — 操作者随伴条件を外す予定が出た時点で G4 3 試験
+   を実施、jump 検知 + SAFE_HOLD を実装
+2. **failsafe が想定外に発火 or 見逃した** — バックログ Issue を起点に
+   Full 版の該当層を先行実装
+3. **M7 (dispatch) の無人配車機能を実装する時点** — 呼び出し先までの空車
+   移動は無人走行なので Full 版が前提条件
+
+Full 復元時の変更対象:
+- `src/whill_safety/whill_safety/failsafe_node.py` に jump 検知 (`/pcl_pose`
+  連続 3 フレーム差分 > 0.5m) と SAFE_HOLD (3s) を追加
+- `docs/ja/m6r-failsafe-design.md` を新設、G4 実機 3 試験の手順と閾値
+  再測定手順を記録
+- 本 ADR を `accepted` 化 (§M6R-5 accepted 化条件を満たす)
+
+### Lite 版の受け入れ (デモ merge 条件)
+
+以下 3 点で M6R-3 lite の merge を認める:
+
+1. `colcon build --packages-select whill_safety` PASS
+2. Mock 検証 3 phase 全 PASS: baseline 15s = false positive 0 / reinit 発火
+   と 1s 復帰 / fitness=5.0 で 2s 後発火 (詳細 PR #76 本文)
+3. 本 §Demo-scope reduction が ADR-0007 に追記済み
+
+上記が満たされば **Issue #67 は close せず**、本セクションで指定した
+バックログ項目 (jump 検知 / SAFE_HOLD / G4 3 試験 / BBS_2D 自動停止) を
+「M6R-3 follow-up」として残す。

@@ -1,0 +1,34 @@
+# M6R-3 lite twist_mux — priority-based cmd_vel arbitration.
+#
+# Output topic (twist_mux internal name `cmd_vel_out`) is remapped to
+# `/cmd_vel` in safety_launch.py, so downstream (M6R-4: Nav2 velocity_
+# smoother, or the WHILL driver directly) subscribes to `/cmd_vel` as
+# usual.
+#
+# Priority scheme (ADR-0007 §twist_mux 優先度):
+#   safety     100   failsafe_node zero-twist (highest wins)
+#   navigation  10   Nav2 controller_server (M6R-4)
+#   # teleop   50    manual /cmd_vel_teleop — RESERVED for M9 (physical
+#                    E-stop / remote-stop / on-chair emergency joystick
+#                    routing). Slot left open here so a future PR only
+#                    has to uncomment.
+#
+# Timeout 0.5 s per input: a publisher going silent for longer than this
+# is treated as "no longer commanding". failsafe_node publishes 20 Hz
+# ONLY while a layer is active, so silence on /cmd_vel_safety means
+# "safe, let nav pass through" — precisely the intent.
+twist_mux:
+  ros__parameters:
+    topics:
+      safety:
+        topic: /cmd_vel_safety
+        timeout: 0.5
+        priority: 100
+      navigation:
+        topic: /cmd_vel_nav
+        timeout: 0.5
+        priority: 10
+      # teleop:  # M9 slot — see priority comment above
+      #   topic: /cmd_vel_teleop
+      #   timeout: 0.5
+      #   priority: 50
