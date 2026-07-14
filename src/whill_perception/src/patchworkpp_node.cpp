@@ -11,11 +11,14 @@
 //   pub  cloud_no_ground  sensor_msgs/PointCloud2  (~10 Hz, xyz only,
 //                                                    same header frame_id)
 //
-// The point cloud is copied into an Eigen matrix (Nx3), handed to
-// PatchWorkpp::estimateGround, and the getNonground() Nx3 output is
-// converted back to a PointCloud2. Ground return / intensity fields
-// downstream of xyz are dropped by design — obstacle_layer only needs
-// the geometry.
+// The point cloud is copied into an Eigen matrix (Nx4 = x,y,z,intensity),
+// handed to PatchWorkpp::estimateGround, and the getNonground() Nx3
+// output is converted back to a PointCloud2 (xyz only — obstacle_layer
+// only needs the geometry). The 4th column is required because
+// Patchwork++ RNR (Reflected Noise Removal) uses intensity and rejects
+// the whole frame with a "RNR requires intensity information !" print
+// otherwise (2026-07-14 bag replay finding). Rather than disabling RNR
+// — which is useful for VLP-16 reflections — we feed it what it wants.
 
 #include <chrono>
 #include <memory>
@@ -32,17 +35,34 @@ namespace whill_perception {
 
 namespace {
 
-Eigen::MatrixXf PointCloud2ToEigenXYZ(const sensor_msgs::msg::PointCloud2 & msg)
+bool HasField(const sensor_msgs::msg::PointCloud2 & msg, const std::string & name)
+{
+  for (const auto & f : msg.fields) {
+    if (f.name == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// PointCloud2 → Eigen::MatrixXf(N x 4) = x, y, z, intensity.
+// VLP-16 publishes fields x,y,z,intensity,ring,time at point_step 22 —
+// x/y/z/intensity are individually word-aligned but not necessarily
+// contiguous 4-float blocks, so use one iterator per field (which
+// honours field.offset) instead of a raw float4 reinterpret_cast.
+Eigen::MatrixXf PointCloud2ToEigenXYZI(const sensor_msgs::msg::PointCloud2 & msg)
 {
   const size_t n = static_cast<size_t>(msg.height) * static_cast<size_t>(msg.width);
-  Eigen::MatrixXf out(n, 3);
+  Eigen::MatrixXf out(n, 4);
   sensor_msgs::PointCloud2ConstIterator<float> it_x(msg, "x");
   sensor_msgs::PointCloud2ConstIterator<float> it_y(msg, "y");
   sensor_msgs::PointCloud2ConstIterator<float> it_z(msg, "z");
-  for (size_t i = 0; i < n; ++i, ++it_x, ++it_y, ++it_z) {
+  sensor_msgs::PointCloud2ConstIterator<float> it_i(msg, "intensity");
+  for (size_t i = 0; i < n; ++i, ++it_x, ++it_y, ++it_z, ++it_i) {
     out(i, 0) = *it_x;
     out(i, 1) = *it_y;
     out(i, 2) = *it_z;
+    out(i, 3) = *it_i;
   }
   return out;
 }
@@ -139,24 +159,53 @@ private:
 
   void OnCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
   {
-    Eigen::MatrixXf cloud = PointCloud2ToEigenXYZ(*msg);
+    // Absence of `intensity` means Patchwork++ RNR will silently reject
+    // the frame and produce empty ground/nonground. Detect at the ROS
+    // boundary and emit an actionable log instead — either the sensor
+    // driver changed its field layout, or somebody is piping a
+    // non-VLP-16 cloud in.
+    if (!HasField(*msg, "intensity")) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+        "input /cloud_in has no 'intensity' field — Patchwork++ RNR will "
+        "reject every frame. Republish with intensity, or set "
+        "enable_RNR:=false (loses reflected-noise removal).");
+      // Publish an empty non-ground so downstream nodes see fresh data
+      // and can distinguish "no obstacles" from "no publish at all".
+      pub_->publish(EigenXYZToPointCloud2(Eigen::MatrixX3f(0, 3), msg->header));
+      return;
+    }
+
+    Eigen::MatrixXf cloud = PointCloud2ToEigenXYZI(*msg);
     if (cloud.rows() == 0) {
       RCLCPP_WARN(get_logger(), "empty PointCloud2 — passing through as empty non-ground");
-      pub_->publish(*msg);
+      pub_->publish(EigenXYZToPointCloud2(Eigen::MatrixX3f(0, 3), msg->header));
       return;
     }
 
     patchwork_->estimateGround(cloud);
     const Eigen::MatrixX3f nonground = patchwork_->getNonground();
+    const Eigen::MatrixX3f ground    = patchwork_->getGround();
     const double time_taken_ms       = static_cast<double>(patchwork_->getTimeTaken()) / 1000.0;
 
-    auto out = EigenXYZToPointCloud2(nonground, msg->header);
-    pub_->publish(std::move(out));
+    // Silent-failure guard: input had points but Patchwork++ returned
+    // an entirely empty split (0 ground + 0 nonground). That is the
+    // shape of the RNR-rejects-frame path and any future core rejection
+    // mode we do not yet know about.
+    if (nonground.rows() == 0 && ground.rows() == 0) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+        "Patchwork++ produced 0 ground / 0 non-ground from %ld input points — "
+        "core likely rejected the frame (check the stdout for a print like "
+        "'RNR requires intensity information !').",
+        static_cast<long>(cloud.rows()));
+    }
+
+    pub_->publish(EigenXYZToPointCloud2(nonground, msg->header));
 
     if (++frames_since_log_ >= stats_log_period_) {
       RCLCPP_INFO(get_logger(),
-        "in %ld pts / non-ground %ld pts / %.1f ms (avg over last %d frames)",
+        "in %ld pts / ground %ld / non-ground %ld / %.1f ms (last %d frames)",
         static_cast<long>(cloud.rows()),
+        static_cast<long>(ground.rows()),
         static_cast<long>(nonground.rows()),
         time_taken_ms,
         stats_log_period_);
