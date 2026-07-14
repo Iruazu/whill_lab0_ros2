@@ -30,37 +30,43 @@ To change the NDT tuning (score_threshold, resolution, etc.), edit
 `config/m6r_lidar_localization.yaml`; to change which map is loaded,
 pass a different `site`.
 
-## Boot sequence (operator, 5 steps)
+## Boot sequence (operator)
 
-Human-order-dependent — until M6R-3 wraps this as a single script, run
-these steps in this order. Two `ros2 launch` windows and one RViz.
+`m6r_bringup_launch.py` already includes `odom_bringup_launch.py`, so the
+minimum steady-state run is just steps 4 + 5 + 6 below. Steps 1-3 are an
+*optional* pre-flight that verifies the sensor pipe alone before adding
+the localizer on top; skip 1-3 if the sensors were already confirmed
+healthy in a previous session.
 
-1. **Terminal A** (sensors + M4-R EKF, ~10 s to settle):
+**If you use the pre-flight (steps 1-3), Terminal A MUST be killed
+before Terminal B is started** — running both in parallel violates the
+mutual exclusion below (double publisher on `odom -> base_link`, TF
+jitter, localizer fighting the doubled odom stream).
+
+1. **[Optional pre-flight] Terminal A** (sensors + M4-R EKF, ~10 s to
+   settle):
    ```
    ros2 launch whill_localization odom_bringup_launch.py
    ```
-2. **Wait ~30 s**. Verify in a fresh terminal:
+2. **[Optional pre-flight] Wait ~30 s**, verify in a fresh terminal:
    ```
    ros2 topic hz /velodyne_points     # ~10 Hz
    ros2 topic hz /imu/data_raw        # ~100 Hz (imu_sign_corrector then
                                       #   republishes as /imu/data_rep145)
    ros2 topic hz /whill/odom          # ~2.5 Hz
    ```
-3. **Terminal B** (M6-R localizer):
+3. **[Optional pre-flight] Ctrl-C Terminal A**. Wait until the
+   `ros2 launch` process fully exits (~2 s) before step 4 — leaving it
+   half-shut-down is what trips the double-publisher case.
+4. **Terminal B** (M6-R localizer + sensors + EKF, one command):
    ```
    ros2 launch whill_safety m6r_bringup_launch.py site:=campus
    ```
-   Note: `m6r_bringup_launch.py` includes `odom_bringup_launch.py`
-   internally, so if you started Terminal A only for pre-flight, kill
-   it before Terminal B (mutual exclusion — see below). During the
-   2026-07-12 acceptance we ran the localizer solo directly because
-   we were still isolating root causes; the fix list is now inside
-   the launch script.
-4. **Wait ~20 s**. Confirm the lifecycle transitioned:
+5. **Wait ~20 s**. Confirm the lifecycle transitioned:
    ```
    ros2 lifecycle get /lidar_localization    # active [3]
    ```
-5. **Terminal C** (RViz): click **2D Pose Estimate** on the map. For a
+6. **Terminal C** (RViz): click **2D Pose Estimate** on the map. For a
    chair already positioned at the map's origin (`campus` map from
    工農研横 is this case), the identity pose (0, 0, 0) is correct;
    otherwise drag on the map. `/initialpose` publishes, the localizer

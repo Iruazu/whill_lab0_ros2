@@ -539,6 +539,17 @@ PR #75 に含める:
 上書きせず、`docs/m6r-bench-data/YYYY-MM-DD-verify-campus/` を新規作成する
 (壊れ bag を歴史的証拠として保持するため)。
 
+**結果: PASS (2026-07-14)**。詳細は
+`docs/m6r-bench-data/2026-07-14-verify-campus/manifest.yaml`:
+- launch 一発起動で localizer active、`alignment_status.message: ok`、
+  `has_converged: true`、`/pcl_pose` ~10 Hz
+- 手動走行 ~10.5 分 (627.7 s)、reject 0 件
+- 4 topic bag record: `/velodyne_points` 6187 msg (9.86 Hz)、
+  `/imu/data_rep145` 62760 msg (100 Hz)、`/whill/odom` 1569 msg (2.5 Hz)、
+  `/tf` 24663 msg。3.7 GiB / 95179 msg 総計
+- `presence_required="false"` (52ee995) 経由で LiDAR 未接続シェルも
+  正常動作を確認
+
 ## 11. 後続フェーズへの引き渡し
 
 - **M7 (dispatch)**: 7/20 頃に `m6r_bringup_launch.py + nav_launch.py`
