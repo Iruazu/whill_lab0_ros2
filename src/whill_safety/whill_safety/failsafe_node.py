@@ -21,8 +21,11 @@ bypasses this path, so we accept the small risk of brief flapping on
 condition-clear in exchange for keeping the code minimal for 2026-08-01.
 """
 
+import signal
+
 import rclpy
 from rclpy.node import Node
+from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import Bool
 from diagnostic_msgs.msg import DiagnosticArray
 from geometry_msgs.msg import PoseStamped, Twist
@@ -153,8 +156,30 @@ class FailsafeNode(Node):
             self._pub.publish(Twist())
 
 
+def _raise_keyboard_interrupt(*_):
+    raise KeyboardInterrupt()
+
+
 def main():
-    rclpy.init()
+    # Clean shutdown path for `ros2 launch` and manual Ctrl-C.
+    #
+    # rclpy's default signal handling (SignalHandlerOptions.ALL) shuts down
+    # the context inside the C-level signal handler, which races the wait-
+    # set `rclpy.spin` is blocked on. In humble that surfaces as a bare
+    # `rclpy._rclpy_pybind11.RCLError: the given context is not valid`
+    # leaking out of spin — neither `KeyboardInterrupt` nor
+    # `ExternalShutdownException` — and the process exits 1 with a
+    # traceback.
+    #
+    # Trading rclpy's handlers for plain Python handlers keeps the exit
+    # path Pythonic: SIGINT (Python default) raises KeyboardInterrupt,
+    # and we install the same for SIGTERM so `ros2 launch` teardown also
+    # exits cleanly. rclpy.try_shutdown() in `finally` is the idempotent
+    # variant so double-shutdown does not error either.
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
+    signal.signal(signal.SIGINT, _raise_keyboard_interrupt)
+    signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
+
     node = FailsafeNode()
     try:
         rclpy.spin(node)
@@ -162,7 +187,7 @@ def main():
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':
