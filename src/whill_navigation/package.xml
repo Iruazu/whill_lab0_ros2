@@ -4,12 +4,12 @@
   <name>whill_navigation</name>
   <version>0.1.0</version>
   <description>
-    Nav2 bringup for the WHILL chair. Provides the lifecycle node graph
+    Nav2 bringup for the WHILL chair. Composes the Nav2 lifecycle nodes
     (map_server, planner_server, controller_server, behavior_server,
-    bt_navigator, velocity_smoother) intentionally left in an unstartable
-    state at the end of M4-R: tf_bridge_launch.py was removed by M4R-4
-    (Issue #38) and M6-R is expected to wire a scan-to-map localizer in
-    its place. Composes the M4-R odom bringup from whill_localization.
+    bt_navigator, velocity_smoother) on top of the M6R-2 scan-to-map
+    localizer + M6R-3 lite twist_mux, plus a pointcloud_to_laserscan
+    bridge that feeds the obstacle_layer of both local and global
+    costmaps.
   </description>
 
   <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
@@ -17,7 +17,6 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <exec_depend>whill_localization</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
@@ -27,6 +26,7 @@
   <exec_depend>nav2_bt_navigator</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_velocity_smoother</exec_depend>
+  <exec_depend>pointcloud_to_laserscan</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

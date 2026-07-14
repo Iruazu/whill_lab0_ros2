@@ -1,80 +1,148 @@
 # whill_navigation
 
-Nav2 bringup for the WHILL chair.
+Nav2 lifecycle bringup for the WHILL chair.
 
-This package is the M5 home base. It composes the Nav2 lifecycle nodes
-the chair needs to follow a goal pose, on top of whatever produces the
-`map -> odom -> base_link` TF chain.
+The M6-R plan splits Nav2 restoration into four sub-milestones on top of
+the M6R-2 localizer + M6R-3 lite failsafe / twist_mux
+(`whill_safety/m6r_bringup_launch.py`, PR #75 and PR #79). This README
+tracks where the package stands within that split.
 
-Status as of 2026-06-20 (M4-R close): `tf_bridge_launch.py` has been
-physically removed. The `map -> camera_init` identity it published was
-the FAST-LIO-as-runtime-localizer shortcut from M5-a; the platform-pivot
-plan (§5 禁止 1) requires it gone before the new architecture lands.
-`nav_launch.py` is **intentionally left in a broken state** — its Nav2
-nodes still expect a `map` frame, but no localizer is currently wired
-in. M6-R will drop a scan-to-map localizer into the include slot and
-restore working bringup. Until then this package provides only the Nav2
-lifecycle node graph; do not expect `ros2 launch whill_navigation
-nav_launch.py` to localise.
+| phase | scope | status |
+|-------|-------|--------|
+| M6R4-1 + M6R4-2 | Nav2 lifecycle bringup on the M5-R campus map, `pointcloud_to_laserscan` bridge, obstacle_layer on both costmaps, `/cmd_vel_nav` remap, `allow_unknown: false` | in progress (Issue #80, bundled) |
+| M6R4-3 | `use_collision_detection: true` reinstated + E2E goal + human blocking demo | not started |
+| M6R4-4 | Optional `NavigateToPose` CLI wrapper (M7 preview) | optional, judged after M6R4-3 |
 
-## TF tree check (M4-R)
+Governing plan: [`docs/ja/plans/2026-07-14-m6r4-nav2-obstacle-layer.md`](../../docs/ja/plans/2026-07-14-m6r4-nav2-obstacle-layer.md).
 
-To verify the M4-R `odom -> base_link -> {imu_link, velodyne,
-camera_link}` chain without Nav2, use the unified odom bringup from
-`whill_localization`:
+## What it launches
+
+`ros2 launch whill_navigation nav_launch.py site:=campus` starts:
+
+- `pointcloud_to_laserscan` — QoS bridge, `/velodyne_points` (best-effort
+  sensor QoS) → `/scan` (reliable). Feeds obstacle_layer of both
+  costmaps. Not a lifecycle node.
+- `map_server` — loads `docs/maps/<site>/occupancy.yaml`
+- `planner_server` — `NavfnPlanner` with `allow_unknown: false`
+- `controller_server` — `RegulatedPurePursuitController`, `/cmd_vel`
+  remapped to `/cmd_vel_nav` (see `cmd_vel routing` below)
+- `behavior_server` — `spin` / `backup` / `wait`, also remapped to
+  `/cmd_vel_nav`
+- `bt_navigator` — canonical nav2_bringup plugin set
+- `velocity_smoother` — subscribes twist_mux output `/cmd_vel`,
+  publishes `/whill/controller/cmd_vel` (remapped from
+  `/cmd_vel_smoothed`)
+- `lifecycle_manager_navigation` — autostart, brings the six Nav2
+  lifecycle nodes above to `active [3]`
+
+No localizer, failsafe_node, or twist_mux is launched here.
+`m6r_bringup_launch.py` (whill_safety, M6R-2 + M6R-3 lite) is the
+authority for the localization stack and safety layer, and must be
+running in a separate terminal.
+
+## Operating (M6R4-1 scope)
 
 ```bash
-ros2 launch whill_localization odom_bringup_launch.py
-# in another terminal
-ros2 run tf2_tools view_frames
+# Terminal A — sensors + odom + localizer + failsafe + twist_mux
+ros2 launch whill_safety m6r_bringup_launch.py site:=campus
+
+# Terminal B — Nav2 lifecycle + pointcloud_to_laserscan (this package)
+ros2 launch whill_navigation nav_launch.py site:=campus
+
+# Terminal C — publish initial pose in RViz (2D Pose Estimate), then
+# send a 5 m goal. M6R4-1 verifies "planner outputs a Path" and M6R4-2
+# verifies "obstacle_layer draws a person" — the chair does not drive
+# (use_collision_detection stays false until M6R4-3).
+ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
+  "{pose: {header: {frame_id: 'map'}, pose: {position: {x: 5.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}"
+ros2 topic echo /plan --once
 ```
 
-The output `frames.pdf` should show `odom -> base_link` (published by
-the `robot_localization` `ekf_filter_node`) and the three
-`base_link -> sensor` static edges.
+`site:=campus` is the default and matches `m6r_bringup_launch.py`
+convention. To point at a different map registry root (bag-replay smoke
+runs, alternate hosts), set `WHILL_MAPS_ROOT`. The launch validates the
+`docs/maps/<site>/occupancy.yaml` path at launch time and errors out
+before map_server sees it if the file is missing.
 
-## Historical M5-a TF tree (removed)
-
-For context, the M5-a `tf_bridge_launch.py` set up this tree. It is no
-longer published by this package; the diagram is preserved as a record
-of what M6-R needs to replace:
+## cmd_vel routing (M6R-3 lite, ADR-0007 §twist_mux 優先度)
 
 ```
-map                                       (whill_navigation, identity — removed)
-└── camera_init                           (FAST-LIO, runtime — frozen as a localizer)
-    └── body                              (FAST-LIO, runtime)
-        └── base_link                     (whill_navigation, identity — removed)
-            ├── imu_link                  (whill_sensors_bringup, M4R-2)
-            ├── velodyne                  (whill_sensors_bringup, M4R-2)
-            └── camera_link               (whill_sensors_bringup, M4R-2)
-                ├── camera_depth_frame    (realsense2_camera)
-                ├── camera_color_frame    (realsense2_camera)
-                └── ...
+controller_server  ─┐
+                    ├─> /cmd_vel_nav (priority 10) ─┐
+behavior_server    ─┘                               │
+                                                    ├─> twist_mux ─> /cmd_vel
+failsafe_node ─> /cmd_vel_safety (priority 100) ────┘
+                                                    │
+                                                    └─> /cmd_vel ─> velocity_smoother
+                                                                        │
+                                                                        └─> /whill/controller/cmd_vel
 ```
 
-The two identity hops (`map -> camera_init` and `body -> base_link`)
-were structurally incapable of fixing P1/P2/P3 in the platform-pivot
-diagnosis: a `map` frame fixed to the FAST-LIO start pose accumulates
-all of FAST-LIO's drift directly into the world frame, and there was no
-re-localization path. M6-R replaces both with a proper localizer.
+Nav2 nodes publish to `/cmd_vel_nav`, twist_mux picks between it and
+`/cmd_vel_safety` from `failsafe_node`, and the mux output (`cmd_vel_out`
+remapped to `/cmd_vel` in `safety_launch.py`) feeds `velocity_smoother`.
+That routing means:
 
-## Open items / next sub-milestones
+- If `failsafe_node` fires (localizer divergence or reinit request),
+  twist_mux switches to safety zero-twist. Nav2 keeps publishing
+  `/cmd_vel_nav` but the chair does not move. See the M6R-4 plan §8 for
+  the protocol.
+- To cancel a stuck goal use `ros2 action send_goal --cancel-all
+  /navigate_to_pose` rather than killing Nav2 nodes.
 
-- **M6-R — scan-to-map localizer.** Pick between
-  `lidar_localization_ros2` (NDT-OMP, default candidate per the
-  platform-pivot plan §3.3) and alternatives, add the include in
-  `nav_launch.py` at the marked slot, restore initial-pose UX.
-- **M6-R — failsafe node.** Watch matching score / covariance, gate
-  `cmd_vel` on divergence (§3.3 of the plan).
-- **M6-R — obstacle layer + `use_collision_detection: true`.** Currently
-  disabled because the M5-a map quality fed ghost obstacles into the
-  costmap; depends on the M5-R map pipeline.
+## TF chain expected while active
+
+```
+map                       (lidar_localization_ros2, M6R-2)
+└── odom                  (ekf_filter_node, M4-R, 30 Hz)
+    └── base_link         (EKF-integrated)
+        ├── imu_link      (whill_sensors_bringup, M4R-2 static)
+        ├── velodyne      (whill_sensors_bringup, M4R-2 static, PR #74 pitch)
+        └── camera_link   (whill_sensors_bringup, M4R-2 static)
+```
+
+`ros2 run tf2_tools view_frames` should show a single-parent chain with
+no duplicate publishers on any edge. If a second author appears, check
+that `odom_bringup_launch.py` is not being launched in parallel with
+`m6r_bringup_launch.py` (the latter's docstring covers the mutual
+exclusion).
+
+## Acceptance criteria (M6R4-1 + M6R4-2)
+
+From Issue #80. Summarised:
+
+**M6R4-1 (T1-T5, indoor + outdoor static):**
+
+- Six Nav2 lifecycle nodes reach `active [3]` within 90 s
+- `/map`, `/cmd_vel_nav`, `/pcl_pose`, `/odometry/filtered`, `/scan` all
+  present
+- `/alignment_status has_converged: true` after `/initialpose` publish;
+  `/pcl_pose` at 8-12 Hz for 30 s
+- `NavigateToPose` for a 5 m goal produces `/plan` within 5 s
+- `frames.pdf` shows the `map → odom → base_link → {sensor}` chain
+
+**M6R4-2 (U1-U6, outdoor static):**
+
+- `/scan` at 9-11 Hz for 60 s
+- `/local_costmap/costmap` at 4-6 Hz for 30 s
+- A person standing 2 m in front of the chair shows up in
+  `/local_costmap/costmap` as an obstacle cell and clears when they
+  step aside (raytrace_max_range = 25.0)
+- No false-positive inflation in an otherwise static scene for 60 s
+
+Real driving is out of scope — verification stops at the planner
+outputting a Path and the obstacle_layer rendering a person cell. The
+chair does not drive until `use_collision_detection: true` is flipped in
+M6R4-3, at which point the V1-V6 E2E acceptance runs.
 
 ## Caveats
 
-- The M5-d (goal-following) and M5-e (tuning) milestones are frozen
-  per the platform-pivot plan. Do not add new features that assume
-  the removed `tf_bridge_launch.py` exists.
-- This README's `Open items` section reflects the M6-R plan; check
-  `docs/ja/plans/2026-06-11-platform-pivot.md` §4 for the
-  authoritative milestone definition before starting work.
+- `use_collision_detection: false` is intentional through M6R4-2 and
+  flips true in M6R4-3 after the obstacle_layer has been verified live
+  (U1-U6 PASS on the chair, not just yaml load). Do not flip early —
+  yaml-load PASS does not confirm the height band picks up people.
+- `allow_unknown: false` restricts routing to the outer loop of the
+  campus map. If a v2 map fills the interior, revisit ADR-0010.
+- The M5-d (goal-following) and M5-e (tuning) milestones are frozen per
+  the platform-pivot plan §5. Do not resurrect them or add features that
+  assume the removed `tf_bridge_launch.py`.
