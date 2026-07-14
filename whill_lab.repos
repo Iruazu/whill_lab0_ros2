@@ -81,3 +81,28 @@ repositories:
     type: git
     url: https://github.com/rsasaki0109/ndt_omp_ros2.git
     version: humble
+
+  # --- M6R-4b Ground removal preprocessing ---
+  # Patchwork++ (KAIST Urban Robotics Lab, IROS'22). Concentric-zone
+  # model with region-wise plane fitting + A-GLE + RNR + TGR. Chosen for
+  # the 2D-slice obstacle_layer's structural failure on gradient + local
+  # unevenness observed at 工農研横 2026-07-14 Phase B (see
+  # docs/decisions/0011-ground-removal-choice.md).
+  #
+  # License note (important): the repo root LICENSE is BSD-2-Clause
+  # (KAIST, 2024) covering the C++ core under cpp/. The ros/ subtree
+  # has an internal license contradiction — ros/LICENSE claims MIT
+  # (KISS-ICP authors) but ros/package.xml declares GPL-3.0. We take
+  # only the BSD-2-Clause cpp/ core and write our own permissive ROS 2
+  # wrapper in src/whill_perception/. To keep colcon from building the
+  # GPL-declared ros/ package, drop a COLCON_IGNORE after vcs import:
+  #
+  #   vcs import src < whill_lab.repos
+  #   touch src/third_party/patchwork_plusplus/ros/COLCON_IGNORE
+  #
+  # Bumping this pin requires reconfirming the license story upstream
+  # has not degraded further.
+  third_party/patchwork_plusplus:
+    type: git
+    url: https://github.com/url-kaist/patchwork-plusplus.git
+    version: v1.4.1
