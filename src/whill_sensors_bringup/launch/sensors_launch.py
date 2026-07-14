@@ -32,8 +32,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import GroupAction, IncludeLaunchDescription, SetRemap
+from launch.actions import GroupAction, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+# SetRemap lives under launch_ros.actions in humble (not launch.actions).
+# Importing from launch.actions raises ImportError at launch time.
+from launch_ros.actions import SetRemap
 
 
 def _include(pkg_share, *path_parts):
