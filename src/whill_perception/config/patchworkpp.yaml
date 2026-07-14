@@ -1,0 +1,34 @@
+# Patchwork++ ground segmentation params (M6R4-b).
+#
+# Defaults are the Patchwork++ struct defaults from
+# src/third_party/patchwork_plusplus/cpp/patchworkpp/include/patchwork/
+# patchworkpp.h — only the fields that must diverge from those defaults
+# for the WHILL / VLP-16 / campus deployment are listed here.
+#
+# sensor_height (0.79 m) comes from the M4-R static TF measurement
+# (base_link → velodyne z-translation, whill_sensors_bringup PR #61
+# with the PR #74 pitch correction). If the LiDAR mount is redone the
+# calibration ledger updates and this value must move with it.
+#
+# max_range = 25.0 m matches the pointcloud_to_laserscan / obstacle_layer
+# raytrace_max_range in whill_navigation/config/nav2_params.yaml so a
+# far obstacle observed and cleared here does not get resurrected there.
+#
+# All other fields left at struct default. Reintroduce them here only
+# when the field data shows a specific behaviour to tune.
+
+/**:
+  ros__parameters:
+    verbose:        false
+
+    # Sensor geometry.
+    sensor_height:  0.79
+    min_range:      1.0     # WHILL body self-return standoff (~0.5 m from LiDAR)
+    max_range:      25.0
+
+    # Ground vs vertical thresholds — keep at struct default while we
+    # validate on the campus bag. Break out of default only when a
+    # specific failure mode is observed.
+
+    # Diagnostic cadence — every 100 frames ≈ every 10 s at 10 Hz.
+    stats_log_period_frames: 100
