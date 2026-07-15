@@ -3,10 +3,15 @@
 # History: this file was drafted in M5-c as a conservative first-cut for
 # indoor demo. M6R4-1 (Issue #80) points it at the M5-R campus map and
 # retargets the topic plumbing at the M4-R EKF + M6R-3 lite twist_mux
-# rather than FAST-LIO. M6R4-2 adds the obstacle layer. M6R4-b (PR #83,
-# ADR-0011) drops in Patchwork++ ground removal upstream of p2ls. M6R4-c
-# (PR #84) flips p2ls's input to the non-ground cloud and relaxes
-# min_height. This M6R4-3 change flips use_collision_detection to true.
+# rather than FAST-LIO. M6R4-2 will add the obstacle layer; M6R4-3 will
+# flip use_collision_detection back on.
+#
+# What this file deliberately does NOT do yet (deferred to later M6R-4
+# phases; do not flip them out of order):
+# - use_collision_detection stays false. Landing in M6R4-3 once
+#   obstacle_layer has been verified live against the M5-R campus map.
+#   Do not flip early — verified live means U1-U6 PASS on the chair, not
+#   just yaml load.
 #
 # Topic plumbing (M6R-3 lite, ADR-0007 §4):
 #   /odometry/filtered     <- ekf_filter_node (M4-R, 30 Hz odom -> base_link)
@@ -130,16 +135,10 @@ controller_server:
       use_velocity_scaled_lookahead_dist: true
       min_approach_linear_velocity: 0.05
       approach_velocity_scaling_dist: 0.6
-      # Enabled by M6R4-3. Preconditions cleared:
-      #   - obstacle_layer publishes with Patchwork++ upstream (ADR-0011,
-      #     PR #83) + M6R4-c min_height relax (PR #84)
-      #   - M5-R campus map is DUFOMap-cleaned, no M5-b-era phantoms
-      # RPP carrot lookahead now blocks against lethal cells so the chair
-      # brakes on obstacles instead of running them over. Recovery
-      # (spin / backup / wait) fires only if the chair truly cannot make
-      # progress — the operator with joystick sits above this per ADR-0007
-      # §Demo-scope reduction.
-      use_collision_detection: true
+      # Stays false through M6R4-1 and M6R4-2. M6R4-3 flips this to true
+      # once obstacle_layer is publishing and M5-R map has been verified
+      # free of the M5-b-era phantom obstacles.
+      use_collision_detection: false
       max_allowed_time_to_collision_up_to_carrot: 1.0
       use_regulated_linear_velocity_scaling: true
       use_cost_regulated_linear_velocity_scaling: false
