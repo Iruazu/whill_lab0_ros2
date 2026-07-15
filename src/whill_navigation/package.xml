@@ -8,8 +8,8 @@
     (map_server, planner_server, controller_server, behavior_server,
     bt_navigator, velocity_smoother) on top of the M6R-2 scan-to-map
     localizer + M6R-3 lite twist_mux, plus a pointcloud_to_laserscan
-    bridge that feeds the obstacle_layer of both local and global
-    costmaps.
+    bridge (fed by whill_perception's Patchwork++ ground-removal node)
+    that feeds the obstacle_layer of both local and global costmaps.
   </description>
 
   <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
@@ -27,6 +27,14 @@
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_velocity_smoother</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <exec_depend>whill_perception</exec_depend>
+
+  <!-- ament_index_python (get_package_share_directory) and python3-yaml
+       (yaml.safe_load / safe_dump for the per-run baked nav2 params
+       file) are imported directly in launch/nav_launch.py. Mirrors the
+       whill_safety pattern (which has the same shape). -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

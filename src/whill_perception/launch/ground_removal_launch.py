@@ -2,8 +2,9 @@
 
 Runs `patchworkpp_node` as an out-of-lifecycle process. Subscribes to
 `/velodyne_points` (VLP-16, SensorDataQoS) and publishes to
-`/velodyne_points_no_ground`, which downstream `pointcloud_to_laserscan`
-(m6r/4-nav2-obstacle-layer PR #81) can be pointed at once #81 lands.
+`/velodyne_points_no_ground`. Downstream `pointcloud_to_laserscan` in
+`whill_navigation/launch/nav_launch.py` consumes this output — the
+remap flip landed in M6R4-c (PR #84).
 
   ros2 launch whill_perception ground_removal_launch.py
 
@@ -33,9 +34,8 @@ def generate_launch_description():
             output='screen',
             parameters=[params_yaml],
             # Remap the wrapper's abstract topic names to the concrete
-            # site topics. Downstream (M6R4-2 pointcloud_to_laserscan)
-            # picks up /velodyne_points_no_ground once its input is
-            # flipped from /velodyne_points.
+            # site topics. Downstream (whill_navigation p2ls_node,
+            # flipped in M6R4-c) subscribes to /velodyne_points_no_ground.
             remappings=[
                 ('cloud_in', '/velodyne_points'),
                 ('cloud_no_ground', '/velodyne_points_no_ground'),

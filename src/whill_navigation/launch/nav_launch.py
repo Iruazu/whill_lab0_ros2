@@ -1,8 +1,22 @@
-"""Nav2 lifecycle bringup for the WHILL chair (M6R4-1 + M6R4-2).
+"""Nav2 lifecycle bringup for the WHILL chair (M6R4-1 + M6R4-2 + M6R4-c).
 
 Composes map_server + planner_server + controller_server + behavior_server
 + bt_navigator + velocity_smoother behind lifecycle_manager, plus a
-pointcloud_to_laserscan bridge that feeds the costmap obstacle layer.
+Patchwork++ ground-removal preprocessor and a pointcloud_to_laserscan
+bridge that feeds the costmap obstacle layer.
+
+Pipeline (M6R4-c onwards):
+
+    /velodyne_points  ─▶ patchworkpp_node (whill_perception)
+                                  │
+                                  └─▶ /velodyne_points_no_ground
+                                             │
+                                             └─▶ pointcloud_to_laserscan_node
+                                                    │
+                                                    └─▶ /scan
+                                                             │
+                                                             └─▶ obstacle_layer
+
 The upstream `m6r_bringup_launch.py` (whill_safety, M6R-2 + M6R-3 lite)
 is expected to be running in parallel and supplies the
 `map -> odom -> base_link` TF chain, `failsafe_node`, and `twist_mux`;
@@ -34,21 +48,29 @@ Nav2 nodes publish to `/cmd_vel_nav`, twist_mux picks between it and
 The M6R4-1 scope is the two remaps below; twist_mux itself lives in the
 whill_safety package (M6R-3 lite).
 
-Obstacle observation path (M6R4-2):
+Obstacle observation path (M6R4-c update to M6R4-2):
 
-    /velodyne_points (sensor QoS, best-effort)
+    /velodyne_points  (SensorDataQoS, best-effort)
         │
-        └─> pointcloud_to_laserscan_node ─> /scan (reliable)
-                                                │
-                                                └─> obstacle_layer of
-                                                    local + global costmaps
+        └─> patchworkpp_node (whill_perception, ADR-0011)
+                │
+                └─> /velodyne_points_no_ground  (best-effort, xyz only)
+                        │
+                        └─> pointcloud_to_laserscan_node
+                                │
+                                └─> /scan  (reliable)
+                                        │
+                                        └─> obstacle_layer of
+                                            local + global costmaps
 
 nav2_costmap_2d's ObstacleLayer expects reliable QoS on observation
-sources; pointcloud_to_laserscan republishes at reliable, so obstacle_
-layer subscribes without an explicit QoS override.
-`use_collision_detection` stays false through M6R4-2 (see nav2_params.yaml)
-and flips to true in M6R4-3 once the layer is verified against the M5-R
-campus map on the chair.
+sources; pointcloud_to_laserscan republishes at reliable, so
+obstacle_layer subscribes without an explicit QoS override.
+Ground removal (M6R4-c) is inserted between the driver and the slice
+so p2ls's height band can relax back toward capturing curbs without
+resurrecting the sloped-ground false-lethals from Phase B 2026-07-14.
+`use_collision_detection` stays false through M6R4-c and flips to true
+in M6R4-3 once V1-V6 confirm behaviour on the chair.
 
 Deliberately not in this launch:
 
@@ -71,7 +93,12 @@ import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -161,18 +188,31 @@ def _resolve_map_yaml(context):
         'velocity_smoother',
     ]
 
+    ground_removal_launch = os.path.join(
+        get_package_share_directory('whill_perception'),
+        'launch', 'ground_removal_launch.py')
+
     return [
-        # QoS bridge from best-effort /velodyne_points to reliable /scan
-        # so nav2_costmap_2d's obstacle_layer (reliable-by-default in
-        # humble) can subscribe. Not a lifecycle node — starts at process
-        # launch and streams as soon as /velodyne_points appears.
+        # Patchwork++ ground removal (ADR-0011). Sits between the LiDAR
+        # driver and p2ls so the slice below sees terrain-relative
+        # obstacles instead of a raw base_link-flat cut. Publishes
+        # /velodyne_points_no_ground on SensorDataQoS (best-effort);
+        # p2ls's own subscription is also best-effort.
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(ground_removal_launch),
+        ),
+        # QoS bridge from best-effort /velodyne_points_no_ground to
+        # reliable /scan so nav2_costmap_2d's obstacle_layer
+        # (reliable-by-default in humble) can subscribe. Not a lifecycle
+        # node — starts at process launch and streams once patchworkpp_node
+        # is producing non-ground output.
         Node(
             package='pointcloud_to_laserscan',
             executable='pointcloud_to_laserscan_node',
             name='pointcloud_to_laserscan',
             output='screen',
             parameters=[p2ls_params],
-            remappings=[('cloud_in', '/velodyne_points'),
+            remappings=[('cloud_in', '/velodyne_points_no_ground'),
                         ('scan', '/scan')],
         ),
         Node(

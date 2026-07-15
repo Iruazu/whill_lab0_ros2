@@ -6,25 +6,35 @@
 # collapses the ring point cloud to a single 2D ring at chair height.
 # ADR-0009 records the parameter selection.
 #
-# Height band is set from the M4-R static TF measurements plus 2026-07-14
-# Phase B field observation:
+# Height band final for M6R4-c: the input is /velodyne_points_no_ground
+# (Patchwork++ output, ADR-0011) instead of the raw driver cloud, so
+# `min_height` no longer hides sloped-ground false lethals. Field A/B
+# on 2026-07-15 (0.05 vs 0.10) picked 0.05 — captured pedestrian legs
+# (~4 points sustained on a person 2 m ahead), zero false lethals on
+# slopes / raised manholes for both values.
+#
+# 5 cm curbs on the campus test loop measured below this cut line and
+# are intentionally out of scope for the obstacle_layer — a single 2D
+# slice cannot separate them from ground undulation without also
+# painting the undulation. The chair traverses these, and the routing
+# side (map annotations / operator judgement) covers avoidance where
+# needed. Rationale + full A/B in ADR-0009.
+#
+# Historical (kept for context):
+#   - 2026-07-14 Phase B set min_height = 0.25 m as a workaround for the
+#     2D-slice-on-terrain-flat false lethals (docs/decisions/0009).
+#   - ADR-0011 landed the Patchwork++ preprocessor, moving the workaround
+#     upstream and freeing min_height to relax again.
+#
+# Other params:
 #   - base_link is at floor level (ground plane), publisher: static_tf_launch
 #   - velodyne sits ~0.9 m above base_link on the WHILL chassis
-#   - **min_height = 0.25 m** (interim). Original -0.2 m intercepted ground
-#     undulation (manholes, potholes, slope crossings) and marked lethal
-#     cells that inflated across wide bands. Phase B live tuning found
-#     0.25 m clears flat ground and moderate potholes but leaves undulation
-#     spikes on sloped tarmac. Root cause is that the 2D slice is base_link-
-#     flat and cannot follow terrain — min_height alone will not fix it.
-#     ADR-0009 records the trade-off and points at ground filtering
-#     (Patchwork++ / voxel_layer / D435 depth) as the M7-era resolution.
-#   - max_height = 1.6 m keeps a standing person's torso and dropped legs
-#     while ignoring ceiling returns from indoor bringup runs.
-#
-# Trade-off note: min_height 0.25 loses **curb-height (~0.15 m) and
-# crouched-child (< 0.25 m) obstacles**. Rely on the footprint circumscribed
-# radius (0.45 m) plus the inflation_layer for standoff, and keep the
-# operator-in-the-loop assumption from ADR-0007 §Demo-scope reduction.
+#   - max_height = 1.6 m keeps a standing person's torso + head, drops
+#     indoor ceiling returns
+#   - range_min 0.5 m avoids WHILL chassis self-return (within 0.5 m of
+#     the LiDAR origin)
+#   - range_max 25.0 m matches obstacle_layer.raytrace_max_range so
+#     "seen and cleared" cells are consistent between p2ls and Nav2
 #
 # Do not tighten range_min below 0.5 m without re-verifying: the WHILL
 # chassis top plate sits inside 0.5 m of the sensor origin and returns
@@ -35,7 +45,7 @@
   ros__parameters:
     target_frame: base_link
     transform_tolerance: 0.1
-    min_height: 0.25
+    min_height: 0.05
     max_height: 1.6
     angle_min: -3.141592
     angle_max:  3.141592

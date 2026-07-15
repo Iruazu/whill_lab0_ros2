@@ -17,8 +17,9 @@ terrain.
 
 Ground removal *before* the 2D slice fixes this at the source. The
 downstream slice then sees only obstacles standing above the terrain,
-and the min/max height band can be relaxed back toward capturing curbs
-and low-hanging debris.
+and the min/max height band can be relaxed back toward capturing low
+steps / pedestrian legs (landed at 0.05 m in ADR-0009 §Verification
+2026-07-15 A/B).
 
 ## Pipeline (after `whill_perception` is wired in)
 
@@ -36,12 +37,10 @@ and low-hanging debris.
                                  └─> obstacle_layer of local/global costmaps
 ```
 
-Before m6r/4-nav2-obstacle-layer (PR #81) merges, the downstream side
-still consumes `/velodyne_points` directly. After #81 merges the
-`p2ls_node` remap in `whill_navigation/launch/nav_launch.py` needs to
-change from `/velodyne_points` to `/velodyne_points_no_ground`; that
-change belongs to a follow-up PR (see governing plan §"Integration
-order").
+M6R4-c (PR #84) landed the remap flip: `p2ls_node.cloud_in` in
+`whill_navigation/launch/nav_launch.py` now points at
+`/velodyne_points_no_ground`. The upstream `/velodyne_points` topic
+stays available for diagnostics and RViz overlay.
 
 ## Algorithm
 
