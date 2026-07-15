@@ -2,9 +2,9 @@
 
 Language: [日本語](../../ja/decisions/0009-p2ls-height-band.md) | [English](0009-p2ls-height-band.md)
 
-- Status: **proposed** (drafted 2026-07-14; promoted to accepted after the M6R4-b (ADR-0011) landing lets `min_height` be re-tuned)
-- Date: 2026-07-14
-- Deciders: Iruazu (pending approval)
+- Status: **accepted** (2026-07-15 field A/B confirmed min_height = 0.05; AC1-AC5 all PASS)
+- Date: 2026-07-14 (drafted) / 2026-07-15 (accepted)
+- Deciders: Iruazu
 
 ## Context
 
@@ -29,7 +29,7 @@ Committed in `src/whill_navigation/config/pointcloud_to_laserscan.yaml`.
 |-----------|-------|-----------|
 | `target_frame` | `base_link` | Matches Nav2 costmap `robot_base_frame` |
 | `transform_tolerance` | 0.1 s | Lower bound that admits the M4-R EKF (30 Hz) + M6R-2 localizer (10 Hz) |
-| `min_height` | **0.25 m** (interim; re-tuned after M6R4-b lands) | 2026-07-14 Phase B measured -0.2 painting manholes / ruts lethal. 0.25 clears flat sections but leaves spikes on sloped ground (see §Verification below) |
+| `min_height` | **0.05 m** (2026-07-15 A/B) | With Patchwork++ (ADR-0011) removing the ground upstream, a parallel 0.05 vs 0.10 field A/B showed zero false lethals on slopes / raised manholes at either value. 0.05 keeps ~4 sustained returns on a person's legs (2 m ahead); 0.10 sheds those returns without any safety-margin gain (see §Verification 2026-07-15 A/B) |
 | `max_height` | 1.6 m | Keeps a standing person's torso + head, drops indoor ceiling returns |
 | `range_min` | 0.5 m | Removes WHILL chassis self-reflections (within 0.5 m of the LiDAR origin) |
 | `range_max` | 25.0 m | Matches `obstacle_layer.raytrace_max_range`. A shorter range here leaves cells uncleared as the chair passes |
@@ -67,14 +67,22 @@ output. Only p2ls's `/scan` reaches `obstacle_layer` (`2f26d0b`).
 
 ## Alternatives
 
-### Alternative A: lower `min_height` to capture curbs (~0.15 m)
+### Alternative A: lower `min_height` to capture ~5 cm curbs
 
-- **Rejected**: 2026-07-14 Phase B measured -0.2 producing false
-  positives on undulating ground. As long as the slice is a
-  single-threshold cut of a terrain-flat world, `min_height` is a
+- **Rejected (pre-Patchwork++)**: 2026-07-14 Phase B measured -0.2
+  producing false positives on undulating ground. As long as the slice
+  is a single-threshold cut of a terrain-flat world, `min_height` is a
   trade-off, not a fix
 - **Path forward**: ADR-0011 (Patchwork++ ground removal) removes the
-  ground upstream, which lets this ADR's `min_height` relax back down
+  ground upstream, which lets this ADR's `min_height` relax back down —
+  confirmed in the 2026-07-15 A/B
+- **Post-Patchwork++ limit (2026-07-15 A/B)**: the real campus-loop
+  curbs measured ~5 cm, not the assumed 12-15 cm. That is below the
+  0.05 cut line, and lowering further collapses onto the same
+  ground-vs-obstacle ambiguity — Patchwork++ classifies a 5 cm rise as
+  "ground". This step class (~5 cm) is intentionally out of scope for
+  this layer; the chair traverses them, and routing side (map
+  annotation / operator judgement) covers avoidance where needed
 
 ### Alternative B: use `velodyne_laserscan_node`'s `/scan` directly
 
@@ -101,20 +109,22 @@ output. Only p2ls's `/scan` reaches `obstacle_layer` (`2f26d0b`).
 
 ## Consequences
 
-- **Curbs (~0.15 m) and crouched children (< 0.25 m) are not captured**
-  under this ADR's interim value. After M6R4-b (ADR-0011) lands,
-  `min_height` gets relaxed toward ~0.05 m — at which point this ADR
-  gets promoted to accepted
+- **~5 cm steps (including real campus curbs) are out of scope for
+  this layer**. Ground removal (ADR-0011) plus a 0.05 m slice cannot
+  separate them from ground undulation by construction; routing side
+  (map annotation / operator judgement) covers those
+- **People (standing / walking)**: 0.05 m keeps ~4 sustained returns
+  on the legs and paints them lethal on `local_costmap` — enough
+  signal for the intended costmap use (2026-07-15 A/B measurement)
+- **Tall weeds** paint lethal at both values. Not resolvable in code;
+  pre-demo route grooming (mow / route around) is captured in the
+  [demo prep checklist](../m6r-demo-prep-checklist.md)
 - **Operator-in-the-loop** stays required: paired with ADR-0007
   §Demo-scope reduction, the demo needs an operator with joystick
   override available
 - **Single publisher on `/scan`** is committed here
   (velodyne_laserscan_node → `/scan_raw`). M6R4-b uses the same route,
   so the contract "`/scan` = p2ls output" stays firm
-- **Downstream integration**: alongside ADR-0011's acceptance, a
-  follow-up PR flips `pointcloud_to_laserscan_node.cloud_in` from
-  `/velodyne_points` to `/velodyne_points_no_ground` — out of scope
-  here
 
 ## Verification (2026-07-14 Phase B, 工農研横)
 
@@ -129,27 +139,39 @@ Outdoor measurements on `f110f2f` (min_height = 0.25):
 | RViz static view | flat sections show clearing donuts correctly |
 | U3-U6 (person standing) | **Suspended**: sloped patches still spike at min_height 0.25 and swamp the person-obstacle signal. Resume after ADR-0011's Patchwork++ ground removal lands |
 
-**U3-U6's suspension is a limit of this ADR's interim value, not a
-bridge-integration failure.** With ADR-0011 accepted (2026-07-14) and a
-follow-up PR flipping p2ls's input to Patchwork++'s non-ground output,
-U3-U6 becomes tractable alongside a `min_height` re-tune.
+**U3-U6's suspension was a limit of this ADR's interim value, not a
+bridge-integration failure.** With ADR-0011 accepted (2026-07-14) and
+M6R4-c flipping p2ls's input to Patchwork++'s non-ground output, the
+2026-07-15 A/B closes both `min_height` and U3-U6 (see below).
 
-## Acceptance conditions
+## Verification (2026-07-15 A/B, outdoor)
+
+Two p2ls instances running side-by-side on Patchwork++'s
+`/velodyne_points_no_ground`, one at `min_height = 0.05`, one at
+`0.10`. Observed simultaneously against the same scene:
+
+| Metric | 0.05 | 0.10 | Rationale |
+|--------|------|------|-----------|
+| False lethals on slopes + raised manholes | **0** | **0** | Phase B false obstacles gone. Patchwork++ ground removal absorbs the lower-bound margin at either value |
+| Sustained returns on legs (person, 2 m ahead) | **~4** | fewer | Enough signal for costmap use. 0.10 drops returns without any safety-margin gain |
+| ~5 cm curb detection | not detected | not detected | By design (see §Alternative A). Below the 0.05 cut, Patchwork++ classifies as "ground" |
+| Tall weeds | lethal | lethal | Not resolvable in code; route-grooming issue |
+
+**Decision**: adopt `min_height = 0.05`.
+
+## Acceptance conditions — all PASS
 
 - **AC1** (build & QoS): `colcon build --packages-select whill_navigation
-  whill_sensors_bringup` passes (currently PASS). `ros2 topic info /scan`
-  shows publisher count = 1 (SetRemap effective). `ros2 topic hz /scan`
-  holds 9-11 Hz for 30 s
+  whill_sensors_bringup` PASS. `ros2 topic info /scan` publisher
+  count = 1 (SetRemap effective). `ros2 topic hz /scan` holds
+  9-11 Hz for 30 s (PASS)
 - **AC2** (Phase A/T1-T5): 2026-07-14 measurement PASS
 - **AC3** (Phase B/T3-T4): 2026-07-14 measurement PASS
-- **AC4** (U3-U6, person-standing obstacle): revisit after ADR-0011
-  lands and the p2ls remap flip follow-up. RViz must render the
-  person's obstacle on local_costmap and clear when they step aside
-- **AC5** (min_height re-tune): after AC4 passes, relaxing min_height
-  to ~0.05 m must not resurrect the Phase B 2026-07-14 false-lethal
-  baseline (judged alongside ADR-0011 AC4)
-
-AC1-AC3 pass; AC4-AC5 are the ADR-0011-coupled follow-up.
+- **AC4** (U3-U6, person-standing obstacle): 2026-07-15 A/B PASS. Legs
+  visible on local_costmap and clearing tracks the person's departure
+- **AC5** (min_height re-tune): 2026-07-15 A/B PASS. 0.05 drops the
+  Phase B 2026-07-14 false-lethal spike count to 0 while keeping the
+  person-obstacle signal
 
 ## Related
 

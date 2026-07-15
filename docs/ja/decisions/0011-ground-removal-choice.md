@@ -18,7 +18,7 @@ M6R4-2 で Nav2 obstacle_layer に `pointcloud_to_laserscan` の 2D 輪切りを
   超えて lethal 化する
 - `min_height` を -0.2 → 0.25 まで持ち上げると平坦部はクリーンだが、
   起伏路面では spike が残る (2026-07-14 実測)
-- しきい値の上げ下げは trade-off でしかない: 上げれば curb (~0.15 m) と
+- しきい値の上げ下げは trade-off でしかない: 上げれば低段差と
   crouched child (< 0.25 m) が見えなくなる
 
 原因は「単一しきい値の輪切り」が terrain-flat な世界を前提としていること。
@@ -145,8 +145,9 @@ downstream の `p2ls_node` の subscribe を `/velodyne_points` から
   を `/velodyne_points_no_ground` に切り替える follow-up PR (本 ADR の
   scope 外) が必要
 - **min_height 見直し**: 地面除去が入れば slice の `min_height` を再度
-  緩めて curb (~0.15 m) を捉える方向にチューニングし直せる。session B の
-  ADR-0009 (p2ls パラメータ選定) と連動して更新
+  緩めて低段差 / 人の脚を捕獲する方向にチューニングし直せる。ADR-0009
+  §検証結果 2026-07-15 A/B で 0.05 に確定 (実地縁石は 5 cm 前後で本層の
+  検出対象外という運用も併せて確定)
 - **上流ライセンス issue 報告**: `url-kaist/patchwork-plusplus` に対して
   `ros/LICENSE` (MIT) と `ros/package.xml` (GPL-3.0) の矛盾を報告する PR /
   Issue を出すのが upstream fix として妥当。本 ADR 範囲外だが follow-up
@@ -182,8 +183,8 @@ AC1-AC3 は bag replay で成立可能。AC4 は M6R4-3 の V4 完了時に併�
 代表 frame の内訳 (bag 中盤): `in 29184 pts / ground 8047 / non-ground 21137`。ground 比率 **26-30%** は M6R4-b 全体を通して安定。
 
 **AC1-AC3 が pass したので本 ADR を accepted に昇格した** (Status 参照)。
-AC4 は M6R4-3 の V4 で判定するが、地面除去が入った状態で下流の p2ls
-`min_height` を curb 捕獲方向に緩められる (ADR-0009 と連動) 見通しが立った。
+AC4 は M6R4-3 の V4 で判定するが、下流の p2ls `min_height` を 0.05 に
+緩められることは ADR-0009 §検証結果 2026-07-15 A/B で確認済。
 
 ### 低マウントでの ground 比率について
 

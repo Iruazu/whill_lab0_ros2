@@ -6,17 +6,19 @@
 # collapses the ring point cloud to a single 2D ring at chair height.
 # ADR-0009 records the parameter selection.
 #
-# Height band updated for M6R4-c: the input is now
-# /velodyne_points_no_ground (Patchwork++ output, ADR-0011) instead of the
-# raw driver cloud, so `min_height` no longer has to hide sloped-ground
-# false lethals. Relaxing it back toward 0.05 m restores curb capture
-# (~0.15 m) and pedestrian legs down to knee height.
+# Height band final for M6R4-c: the input is /velodyne_points_no_ground
+# (Patchwork++ output, ADR-0011) instead of the raw driver cloud, so
+# `min_height` no longer hides sloped-ground false lethals. Field A/B
+# on 2026-07-15 (0.05 vs 0.10) picked 0.05 — captured pedestrian legs
+# (~4 points sustained on a person 2 m ahead), zero false lethals on
+# slopes / raised manholes for both values.
 #
-# TENTATIVE (draft): min_height = 0.05 m. Field A/B against 0.10 m is
-# planned for 2026-07-14 evening or 2026-07-15 morning (two p2ls
-# instances side-by-side, one at each value). The winning value stays
-# committed before this PR (m6r/4c) is ready-ed. Rationale on both
-# sides is in the PR body.
+# 5 cm curbs on the campus test loop measured below this cut line and
+# are intentionally out of scope for the obstacle_layer — a single 2D
+# slice cannot separate them from ground undulation without also
+# painting the undulation. The chair traverses these, and the routing
+# side (map annotations / operator judgement) covers avoidance where
+# needed. Rationale + full A/B in ADR-0009.
 #
 # Historical (kept for context):
 #   - 2026-07-14 Phase B set min_height = 0.25 m as a workaround for the

@@ -18,8 +18,8 @@ see the [governing plan](../../ja/plans/2026-07-14-m6r4-nav2-obstacle-layer.md))
   seams) push the ground past that threshold and paint lethal cells
 - Raising `min_height` from -0.2 to 0.25 cleaned the flat sections but
   left spikes on sloped tarmac (measured live)
-- The threshold is a trade-off: pushing it higher also loses curbs
-  (~0.15 m) and crouched children (< 0.25 m)
+- The threshold is a trade-off: pushing it higher also loses low
+  steps and crouched children (< 0.25 m)
 
 Root cause: a single-threshold horizontal slice assumes a flat world.
 Terrain-following ground estimation removes the problem at the source.
@@ -151,8 +151,10 @@ out of scope for this ADR.
 - **Downstream integration**: after PR #81 merges, a follow-up flips
   `p2ls_node`'s subscription topic — out of scope here
 - **min_height re-tune**: with ground removed upstream, the p2ls
-  `min_height` can be relaxed back toward capturing curbs (~0.15 m).
-  Coordinate with session B's ADR-0009 (p2ls parameter selection)
+  `min_height` can be relaxed back toward capturing low steps / legs.
+  Landed at 0.05 in ADR-0009 §Verification 2026-07-15 A/B (with the
+  operational note that real ~5 cm curbs are out of scope for this
+  layer)
 - **Upstream license issue**: file an issue / PR against
   `url-kaist/patchwork-plusplus` for the `ros/LICENSE` (MIT) vs
   `ros/package.xml` (GPL-3.0) contradiction. Follow-up outside this ADR
@@ -190,9 +192,8 @@ this branch (commit `ceb3bb3`):
 Representative frame split (mid-bag): `in 29184 pts / ground 8047 / non-ground 21137`. Ground share **26-30%** stayed stable across the run.
 
 **AC1-AC3 passing promoted this ADR to accepted** (see Status). AC4 is
-still to be judged with M6R4-3 V4, but the AC1-AC3 outcome makes it
-tractable to relax the downstream p2ls `min_height` back toward
-capturing curbs (paired update in ADR-0009).
+still to be judged with M6R4-3 V4, but the downstream p2ls `min_height`
+was already relaxed to 0.05 in ADR-0009 §Verification 2026-07-15 A/B.
 
 ### Ground share at low mount height
 
