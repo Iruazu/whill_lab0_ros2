@@ -56,45 +56,46 @@ pass a different `site`.
 
 ## Boot sequence (operator)
 
-`m6r_bringup_launch.py` already includes `odom_bringup_launch.py`, so the
-minimum steady-state run is just steps 4 + 5 + 6 below. Steps 1-3 are an
-*optional* pre-flight that verifies the sensor pipe alone before adding
-the localizer on top; skip 1-3 if the sensors were already confirmed
-healthy in a previous session.
+**One bringup terminal only.** `m6r_bringup_launch.py` transitively
+includes the sensor drivers, WHILL driver, M4-R EKF, localizer, and
+safety layer. Running any additional bringup (`sensors_launch.py`,
+`odom_bringup_launch.py`, ...) in parallel duplicates every node in
+the subtree — see §Mutual exclusion below and the field measurement
+(2026-07-16, `/velodyne_points` at 39.4 Hz under a doubled bringup).
 
-**If you use the pre-flight (steps 1-3), Terminal A MUST be killed
-before Terminal B is started** — running both in parallel violates the
-mutual exclusion below (double publisher on `odom -> base_link`, TF
-jitter, localizer fighting the doubled odom stream).
+Sensor pre-flight is NOT a separate launch — verify in-place after
+step 1.
 
-1. **[Optional pre-flight] Terminal A** (sensors + M4-R EKF, ~10 s to
-   settle):
-   ```
-   ros2 launch whill_localization odom_bringup_launch.py
-   ```
-2. **[Optional pre-flight] Wait ~30 s**, verify in a fresh terminal:
-   ```
-   ros2 topic hz /velodyne_points     # ~10 Hz
-   ros2 topic hz /imu/data_raw        # ~100 Hz (imu_sign_corrector then
-                                      #   republishes as /imu/data_rep145)
-   ros2 topic hz /whill/odom          # ~2.5 Hz
-   ```
-3. **[Optional pre-flight] Ctrl-C Terminal A**. Wait until the
-   `ros2 launch` process fully exits (~2 s) before step 4 — leaving it
-   half-shut-down is what trips the double-publisher case.
-4. **Terminal B** (M6-R localizer + sensors + EKF, one command):
+1. **Bringup terminal** (single command):
    ```
    ros2 launch whill_safety m6r_bringup_launch.py site:=campus
    ```
-5. **Wait ~20 s**. Confirm the lifecycle transitioned:
+2. **Fresh terminal — verify no duplicate nodes** (mandatory before
+   proceeding):
    ```
+   ros2 node list | sort | uniq -c | sort -rn | head
+   # every count MUST be 1. A "2 /velodyne_driver_node" line means a
+   # duplicate bringup is running — kill the extra one before AC runs.
+   ```
+3. **Fresh terminal — sensor sanity** (once nodes are singletons):
+   ```
+   ros2 topic hz /velodyne_points     # ~10 Hz (a doubled bringup shows
+                                      # ~20 Hz or higher — bail out and
+                                      # re-check node list)
+   ros2 topic hz /imu/data_rep145     # ~100 Hz (REP-145 corrected)
+   ros2 topic hz /whill/odom          # ~2.5 Hz
    ros2 lifecycle get /lidar_localization    # active [3]
    ```
-6. **Terminal C** (RViz): click **2D Pose Estimate** on the map. For a
-   chair already positioned at the map's origin (`campus` map from
-   工農研横 is this case), the identity pose (0, 0, 0) is correct;
-   otherwise drag on the map. `/initialpose` publishes, the localizer
-   converges within a few seconds, and `map -> odom` starts flowing.
+4. **RViz** (fresh terminal): click **2D Pose Estimate** on the map.
+   For a chair already positioned at the map's origin (`campus` map
+   from 工農研横 is this case), the identity pose (0, 0, 0) is
+   correct; otherwise drag on the map. `/initialpose` publishes, the
+   localizer converges within a few seconds, and `map -> odom` starts
+   flowing.
+
+To also start the D435 camera (opt-in — not consumed by the M6-R
+stack today, USB 2.1 enumeration has bitten past sessions), append
+`realsense:=true` to step 1's command line.
 
 ## DDS runtime configuration
 
@@ -129,26 +130,40 @@ the bag's clock is live, and produces the ADR-0006 evidence bundle
 
 ## Mutual exclusion — read before running
 
-`m6r_bringup_launch.py` **includes** `whill_localization/
-odom_bringup_launch.py`. Running both in parallel would have
-`robot_localization` publish `odom -> base_link` twice on the same TF
-edge. Symptoms: TF listeners see unbounded jitter and the localizer's
-scan-to-map correction fights the doubled odom stream.
+`m6r_bringup_launch.py` **transitively includes**:
 
-`m6r_bringup_launch.py` **replaces** `whill_localization/
-localization_launch.py` (FAST-LIO). Do not run both. FAST-LIO was
-frozen as a runtime localizer by the 2026-06-11 platform pivot; it
-survives in the repo for offline map-making only
-(`docs/ja/plans/2026-06-11-platform-pivot.md` §5).
+```
+m6r_bringup_launch.py
+├── odom_bringup_launch.py           (whill_localization)
+│   ├── sensors_launch.py            (whill_sensors_bringup)
+│   │   ├── velodyne-all-nodes-VLP16-launch.py (with /scan → /scan_raw)
+│   │   ├── rs_launch.py             (opt-in via realsense:=true, default off)
+│   │   ├── imu_launch.py            (rt_usb_9axisimu_driver + imu_sign_corrector)
+│   │   └── static_tf_launch.py      (base_link → imu_link/velodyne/camera_link)
+│   ├── whill_launch.py              (whill_bringup — WHILL driver)
+│   └── ekf_odom_launch.py           (whill_localization — M4-R EKF)
+├── OpaqueFunction → lidar_localization.launch.py (M6-R scan-to-map localizer)
+└── safety_launch.py                 (whill_safety — failsafe_node + twist_mux)
+```
 
-Effective operator rule: at any given moment, exactly one of the three
-launches below is running:
+Running **any** of the launches inside that tree in parallel with
+`m6r_bringup_launch.py` duplicates every node in the subtree.
+Measured 2026-07-16 field with `sensors_launch.py` started
+alongside: `/velodyne_points` at 39.4 Hz (4× normal), RealSense USB
+device contention loop, doubled EKF / failsafe / lidar_localization /
+twist_mux — AC4 could not be executed.
+
+Effective operator rule: exactly one of the three launches below is
+running at any moment.
 
 - `whill_localization/odom_bringup_launch.py` — for M4-R-only debugging
   (odom stack without a map)
 - `whill_localization/localization_launch.py` — for offline FAST-LIO
   map making (M5-R prerequisite; runs against a bag, no live vehicle)
 - `whill_safety/m6r_bringup_launch.py` — full M6-R operation (live)
+
+None of these compose with a separate `sensors_launch.py` — the sensor
+stack is already inside each.
 
 ## Expected TF chain
 
