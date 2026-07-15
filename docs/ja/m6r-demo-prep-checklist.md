@@ -34,14 +34,41 @@ Language: [日本語](m6r-demo-prep-checklist.md) | [English](../en/m6r-demo-pre
 (RMW, CPU governor, sysctl, NVIDIA suspend fix)。ここでは M6-R 統合
 デモに固有の項目のみを列挙する。
 
+### 起動手順 (bringup は 1 terminal のみ)
+
+```
+ros2 launch whill_safety m6r_bringup_launch.py site:=campus
+```
+
+これが sensor drivers + WHILL driver + M4-R EKF + M6-R localizer +
+safety layer を全て起動する。`sensors_launch.py` や
+`odom_bringup_launch.py` を並行起動しないこと (2026-07-16 field で
+全ノード二重化、`/velodyne_points` 39.4 Hz、RealSense USB contention
+loop、AC4 中断)。詳細は `src/whill_safety/README.md` §Mutual exclusion。
+
+### 検証チェック (bringup 起動 ~20 秒後)
+
+- [ ] **ノード重複ゼロ** (必須): `ros2 node list | sort | uniq -c | sort -rn | head`
+      で全 count = 1。`2 /velodyne_driver_node` 等が出たら並行起動している
+      → 余分な launch を止めてから AC 実施
+- [ ] **/velodyne_points が 10 Hz**: `ros2 topic hz /velodyne_points` で
+      9-11 Hz。20 Hz 前後や 40 Hz 近辺なら duplicate bringup の兆候
 - [ ] `map -> odom -> base_link` の TF chain が 1 本鎖 (`ros2 run
       tf2_tools view_frames`)
 - [ ] `/alignment_status.has_converged: true` かつ `fitness < 1.0`
       (静止状態、初期位置合わせ後)
 - [ ] `/scan` の publisher count = 1 (velodyne_laserscan の
-      `/scan_raw` remap 有効)
+      `/scan_raw` remap 有効): `ros2 topic info /scan`
 - [ ] operator 随伴、ジョイスティック介入可能 (ADR-0007 §Demo-scope
       reduction)
+
+### RealSense (opt-in、通常 off)
+
+D435 は M6-R runtime stack が消費していない。USB 2.1 認識問題があるため
+起動対象から外している (`sensors_launch.py` の `realsense` arg default
+false)。camera-specific test を意図的に走らせるときのみ `realsense:=true`
+を bringup コマンドに付与。付与時は改めて USB 点検 (`lsusb` で D435
+検出 + `/dev/bus/usb/` の権限) をチェックリストに追加すること
 
 ## 関連
 

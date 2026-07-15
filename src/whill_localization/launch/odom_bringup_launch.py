@@ -37,6 +37,14 @@ Mutual exclusion:
   - `localization_launch.py` is retained only for offline FAST-LIO
     map-making (M5-R prerequisite). Use it standalone, never alongside
     this launch.
+  - Do NOT run `whill_sensors_bringup/sensors_launch.py` in parallel.
+    This launch INCLUDES it — starting both duplicates the velodyne
+    driver, IMU driver, and static TF publisher. Measured
+    `/velodyne_points` at 39.4 Hz on 2026-07-16 field with a doubled
+    bringup.
+  - Do NOT run `whill_safety/m6r_bringup_launch.py` in parallel either.
+    m6r_bringup includes THIS launch, so the parallel run triples up
+    the entire M4-R odom layer.
 
 Mutual exclusion is documented in `src/whill_localization/README.md`
 as the authoritative source.
@@ -81,9 +89,18 @@ def generate_launch_description():
                         'matches live chair operation; flip to true if you '
                         'replay a sensor + /whill/odom bag with --clock and '
                         'want the EKF to consume bag timestamps.'),
+        DeclareLaunchArgument(
+            'realsense',
+            default_value='false',
+            description='Forwarded to sensors_launch.py to start the D435 '
+                        'driver. Off by default — see sensors_launch.py '
+                        'docstring for rationale.'),
 
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(sensors_launch)),
+            PythonLaunchDescriptionSource(sensors_launch),
+            launch_arguments={
+                'realsense': LaunchConfiguration('realsense'),
+            }.items()),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(whill_launch)),

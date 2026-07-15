@@ -14,10 +14,25 @@ drivers and adds:
 
 ## Quick start
 
+**Standalone use is for sensor-only smoke tests.** This launch is
+transitively included by `whill_localization/odom_bringup_launch.py`
+and `whill_safety/m6r_bringup_launch.py`. Do NOT run it in parallel
+with either — 2026-07-16 field measured `/velodyne_points` at 39.4 Hz
+with a doubled bringup, plus RealSense USB device contention. For the
+full M6-R stack use `m6r_bringup_launch.py` in ONE terminal.
+
+Sensor-only test:
+
 ```bash
 source /opt/ros/humble/setup.bash
 source ~/whill_lab0_ros2/install/setup.bash
 ros2 launch whill_sensors_bringup sensors_launch.py
+```
+
+To also start the D435 (opt-in, default off — see §RealSense below):
+
+```bash
+ros2 launch whill_sensors_bringup sensors_launch.py realsense:=true
 ```
 
 In a second terminal:
@@ -32,7 +47,7 @@ ros2 run tf2_tools view_frames
 | Action | Source | Effect |
 |--------|--------|--------|
 | `velodyne-all-nodes-VLP16-launch.py` (with `/scan` → `/scan_raw` remap) | `velodyne` (Group A upstream) | `/velodyne_points`, `/scan_raw` — see `sensors_launch.py` docstring for the rename rationale |
-| `rs_launch.py` | `realsense2_camera` (Group A upstream) | `/camera/camera/color/...`, `/camera/camera/depth/...` |
+| `rs_launch.py` (opt-in via `realsense:=true`, default off) | `realsense2_camera` (Group A upstream) | `/camera/camera/color/...`, `/camera/camera/depth/...` — only when the launch arg is flipped on |
 | `imu_launch.py` | this package | `/imu/data_raw`, `/imu/mag`, `/imu/temperature` (after auto `configure → activate`) |
 | `imu_sign_corrector` (spawned by `imu_launch.py`) | this package | `/imu/data_rep145` — `/imu/data_raw` with `linear_acceleration.{x,y,z}` negated (Issue #56) |
 | `static_tf_launch.py` | this package | `base_link → imu_link / velodyne / camera_link` |
@@ -80,6 +95,14 @@ passthrough for backward compatibility and debugging.
 
 ## Launch arguments
 
+`sensors_launch.py` exposes:
+
+- `realsense` (default `false`) — start the Intel RealSense D435
+  driver. Off by default because the D435 is not consumed by the M6-R
+  runtime stack today, and USB 2.1 enumeration issues have burned
+  launch cycles when the camera is plugged in but unused. Flip to
+  `true` only for camera-specific smoke tests.
+
 `imu_launch.py` exposes:
 
 - `port` (default `/dev/imu`) — serial path for the IMU. The repo udev
@@ -91,4 +114,26 @@ Override per-launch with:
 
 ```bash
 ros2 launch whill_sensors_bringup imu_launch.py port:=/dev/ttyACM0 frame_id:=imu
+```
+
+## RealSense (opt-in)
+
+The D435 is currently unused by the M6-R runtime stack; camera-based
+localization or perception is not on the roadmap until M7+. Reasons
+to keep it off by default:
+
+- USB 2.1 enumeration issues have caused the D435 to appear on
+  `lsusb` but fail to start via `rs_launch.py`, burning a launch
+  cycle before the failure is visible in RViz.
+- When two processes try to claim the D435 (e.g. accidentally
+  starting `sensors_launch.py` while `m6r_bringup_launch.py` is
+  already running), the second one goes into an error loop that
+  drowns other launch output.
+
+To enable it explicitly:
+
+```bash
+ros2 launch whill_sensors_bringup sensors_launch.py realsense:=true
+# or, threaded through the full bringup:
+ros2 launch whill_safety m6r_bringup_launch.py site:=campus realsense:=true
 ```

@@ -90,8 +90,13 @@ This is the M4R-4 / Issue #38 path: sensors + `whill_driver` + EKF
 launch together; do not mix it with `localization_launch.py` (FAST-LIO)
 in the same session.
 
-For debugging individual pieces, the three-terminal variant from M4R-3
-still works:
+For debugging individual pieces the three-terminal variant from M4R-3
+is still available. **This variant is mutually exclusive with
+`odom_bringup_launch.py` and with `whill_safety/m6r_bringup_launch.py`**
+— starting any of those three-terminal pieces alongside a full
+bringup duplicates that node. 2026-07-16 field: `sensors_launch.py`
+started alongside `m6r_bringup_launch.py` produced `/velodyne_points`
+at 39.4 Hz (4×) and a RealSense USB contention loop.
 
 ```bash
 # Terminal 1: sensor drivers + static TFs

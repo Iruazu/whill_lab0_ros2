@@ -23,20 +23,36 @@ localizer's `map_path` param via a generated per-run yaml under
 `/tmp/`. The rest of the NDT tuning (score_threshold, ndt_resolution,
 ...) comes from `config/m6r_lidar_localization.yaml` verbatim.
 
-Mutual exclusion:
+Mutual exclusion (this launch is transitive — running ANY of the
+included launches in parallel duplicates the entire subtree):
 
-  - Do NOT run `whill_localization/odom_bringup_launch.py` in parallel
-    with this launch. This launch INCLUDES it — starting both would
-    have `robot_localization` publish `odom -> base_link` twice on
-    the same TF edge and both `map_server` (from nav_launch.py, when
-    that lands at M6R-4) and this localizer would collide on the map
-    frame if unsupervised.
-  - Do NOT run `whill_localization/localization_launch.py` (FAST-LIO)
-    in parallel either. FAST-LIO was frozen as a runtime localizer by
-    the 2026-06-11 platform pivot; it is retained only for offline
-    map-making.
+  - Do NOT run `whill_sensors_bringup/sensors_launch.py`. This launch
+    includes it via `odom_bringup_launch.py`. 2026-07-16 field
+    measured `/velodyne_points` at 39.4 Hz (4× normal) with the
+    parallel run, RealSense contended for the USB device and looped
+    on error, and every safety-critical node (ekf, failsafe,
+    lidar_localization, twist_mux) doubled.
+  - Do NOT run `whill_localization/odom_bringup_launch.py`. Same
+    reason — this launch includes it directly.
+  - Do NOT run `whill_localization/localization_launch.py` (FAST-LIO).
+    FAST-LIO was frozen as a runtime localizer by the 2026-06-11
+    platform pivot; it is retained only for offline map-making.
 
-To operate:
+Node ownership (which launch is the sole author):
+
+  velodyne_driver_node, velodyne_pointcloud_transform_node,
+  velodyne_laserscan_node               -> sensors_launch (included)
+  rt_usb_9axisimu_driver, imu_sign_corrector,
+  static_transform_publisher × 3        -> sensors_launch (included)
+  whill_driver                          -> odom_bringup (included)
+  ekf_filter_node                       -> odom_bringup (included)
+  lidar_localization                    -> this launch
+  failsafe_node, twist_mux              -> safety_launch (included)
+
+Everything above is authored ONCE by this bringup. Running anything
+extra at the sensor / odom / localizer layer duplicates those nodes.
+
+To operate (SINGLE terminal — do not open a second bringup terminal):
 
     ros2 launch whill_safety m6r_bringup_launch.py \\
         site:=campus
@@ -45,9 +61,19 @@ Then in RViz, use "2D Pose Estimate" to publish `/initialpose`. The
 localizer converges in a few seconds, `map -> odom` starts flowing,
 and `/pcl_pose` tracks the chair through the map.
 
+Verification (fresh terminal, after ~20 s):
+
+    ros2 node list | sort | uniq -c | sort -rn | head
+    # every count MUST be 1 — a "2 /velodyne_driver_node" line means a
+    # duplicate bringup is running
+
 For bag replay use `scripts/m6r_smoke_test.sh` instead of this launch;
 that script sets `use_sim_time` and publishes an initial pose from a
 script, both of which live-operation does not need.
+
+RealSense: pass `realsense:=true` to also start the D435. Default off
+because the D435 is not consumed by the M6-R runtime stack and past
+USB 2.1 enumeration issues make an accidental start expensive.
 """
 
 import os
@@ -212,11 +238,22 @@ def generate_launch_description():
                         'against a bag played with --clock (rare — '
                         'scripts/m6r_smoke_test.sh is the usual bag-'
                         'replay entry point).'),
+        DeclareLaunchArgument(
+            'realsense',
+            default_value='false',
+            description='Forward to sensors_launch to start the D435. Off '
+                        'by default — the D435 is not consumed by the M6-R '
+                        'runtime stack, and past USB 2.1 enumeration issues '
+                        'make an accidental start expensive. Flip true for '
+                        'camera-specific tests.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(odom_bringup_launch),
-            launch_arguments={'use_sim_time': use_sim_time}.items()),
+            launch_arguments={
+                'use_sim_time': use_sim_time,
+                'realsense': LaunchConfiguration('realsense'),
+            }.items()),
 
         # M6-R scan-to-map localizer. Wrapped in an OpaqueFunction so the
         # `site` arg is resolved (and validated to an actual file on disk)

@@ -39,14 +39,44 @@ Environment preconditions (RMW, CPU governor, sysctl, NVIDIA suspend
 fix) live in [CLAUDE.md §Runtime environment](../../CLAUDE.md). This
 section lists only items specific to the M6-R integration demo.
 
+### Bringup — single terminal only
+
+```
+ros2 launch whill_safety m6r_bringup_launch.py site:=campus
+```
+
+Starts sensor drivers + WHILL driver + M4-R EKF + M6-R localizer +
+safety layer. Do NOT launch `sensors_launch.py` or
+`odom_bringup_launch.py` in parallel (2026-07-16 field: every node
+doubled, `/velodyne_points` at 39.4 Hz, RealSense USB contention loop,
+AC4 aborted). See `src/whill_safety/README.md` §Mutual exclusion.
+
+### Verification (~20 s after bringup)
+
+- [ ] **Zero duplicate nodes** (mandatory):
+      `ros2 node list | sort | uniq -c | sort -rn | head` — every count
+      MUST be 1. A `2 /velodyne_driver_node` line means a duplicate
+      bringup is running; kill it before proceeding to AC
+- [ ] **/velodyne_points at 10 Hz**: `ros2 topic hz /velodyne_points`
+      should sit at 9-11 Hz. Anywhere near 20 or 40 Hz means a doubled
+      bringup
 - [ ] `map -> odom -> base_link` TF chain is a single chain
       (`ros2 run tf2_tools view_frames`)
 - [ ] `/alignment_status.has_converged: true` with `fitness < 1.0`
       at rest after initial pose alignment
 - [ ] `/scan` publisher count = 1 (velodyne_laserscan's `/scan_raw`
-      remap is active)
+      remap is active): `ros2 topic info /scan`
 - [ ] Operator in-the-loop with joystick override available
       (ADR-0007 §Demo-scope reduction)
+
+### RealSense (opt-in, normally off)
+
+The D435 is not consumed by the M6-R runtime stack, and USB 2.1
+enumeration issues have burned launch cycles when the camera is
+plugged in but unused — so `sensors_launch.py`'s `realsense` arg
+defaults to false. Pass `realsense:=true` only for camera-specific
+tests, and add a USB inspection step to this checklist for those
+runs (`lsusb` shows D435, `/dev/bus/usb/` permissions).
 
 ## Related
 

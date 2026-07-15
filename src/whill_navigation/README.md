@@ -103,9 +103,11 @@ map                       (lidar_localization_ros2, M6R-2)
 
 `ros2 run tf2_tools view_frames` should show a single-parent chain with
 no duplicate publishers on any edge. If a second author appears, check
-that `odom_bringup_launch.py` is not being launched in parallel with
-`m6r_bringup_launch.py` (the latter's docstring covers the mutual
-exclusion).
+that neither `odom_bringup_launch.py` nor `sensors_launch.py` is being
+launched in parallel with `m6r_bringup_launch.py` (the latter's
+docstring covers the full mutual-exclusion tree). Also run
+`ros2 node list | sort | uniq -c | sort -rn | head` — every count MUST
+be 1.
 
 ## Acceptance criteria (M6R4-1 + M6R4-2)
 
