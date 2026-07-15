@@ -62,6 +62,19 @@ loop、AC4 中断)。詳細は `src/whill_safety/README.md` §Mutual exclusion�
 - [ ] operator 随伴、ジョイスティック介入可能 (ADR-0007 §Demo-scope
       reduction)
 
+### マップ variant 選択 (Task #13 salt cleanup)
+
+`docs/maps/campus/occupancy.pgm` は M5-R 時代 (Patchwork++ 導入前) の
+地面ノイズを salt として焼き込んでいる (2026-07-16 field 立証)。demo
+本番では salt を除去した cleaned 版を使う:
+
+```
+ros2 launch whill_navigation nav_launch.py site:=campus map_variant:=cleaned
+```
+
+初回起動時に `/map` を RViz OccupancyGrid で表示し、traversed 経路上の
+黒 salt が消えていることを目視確認する (cleaning_diff.png と照合)。
+
 ### RealSense (opt-in、通常 off)
 
 D435 は M6-R runtime stack が消費していない。USB 2.1 認識問題があるため
@@ -76,3 +89,5 @@ false)。camera-specific test を意図的に走らせるときのみ `realsense
 - [ADR-0011: 地面除去手法選定](decisions/0011-ground-removal-choice.md)
 - [ADR-0007: failsafe / twist_mux](decisions/0007-failsafe-design.md)
   §Demo-scope reduction
+- [`../maps/campus/README.md`](../maps/campus/README.md) §3 (map salt
+  の焼き込み経緯と対策)

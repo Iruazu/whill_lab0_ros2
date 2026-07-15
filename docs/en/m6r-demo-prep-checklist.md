@@ -69,6 +69,19 @@ AC4 aborted). See `src/whill_safety/README.md` §Mutual exclusion.
 - [ ] Operator in-the-loop with joystick override available
       (ADR-0007 §Demo-scope reduction)
 
+### Map variant selection (Task #13 salt cleanup)
+
+`docs/maps/campus/occupancy.pgm` has baked-in ground-noise salt from
+the pre-Patchwork++ M5-R pipeline (verified in the field 2026-07-16).
+For demo runs, use the salt-cleaned variant:
+
+```
+ros2 launch whill_navigation nav_launch.py site:=campus map_variant:=cleaned
+```
+
+On first launch, display `/map` as OccupancyGrid in RViz and verify
+the traversed-path salt is gone (compare with `cleaning_diff.png`).
+
 ### RealSense (opt-in, normally off)
 
 The D435 is not consumed by the M6-R runtime stack, and USB 2.1
@@ -84,3 +97,5 @@ runs (`lsusb` shows D435, `/dev/bus/usb/` permissions).
 - [ADR-0011: ground removal choice](decisions/0011-ground-removal-choice.md)
 - [ADR-0007: failsafe / twist_mux](decisions/0007-failsafe-design.md)
   §Demo-scope reduction
+- [`../maps/campus/README.md`](../maps/campus/README.md) §3 (map salt
+  origin and mitigation)
