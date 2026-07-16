@@ -105,7 +105,18 @@ SetRemap('/scan' → '/scan_raw')` で velodyne 側の出力を rename。p2ls �
 
 - **5 cm 級の低段差 (実地縁石を含む) は本層では検出対象外**。ADR-0011 の
   地面除去 + 本 ADR の輪切り 0.05 m という組み合わせでは原理上分離不能
-  なため、routing 側 (map annotation / operator 判断) で対処する
+  なため、routing 側で対処する
+  - **2026-07-16 field 追加確認**: デモ経路上に数 cm 段差 (タイル継ぎ目、
+    縁石下端) が occupancy 上 free として存在し、実走時に chair が
+    進入する事象を目視確認。ADR 制定時の想定「経路側で回避」が
+    自動迂回ではなく **明示的な経路制約** として運用される必要がある
+  - **短期対策 (P0, デモ必須)**: `docs/maps/campus/occupancy_cleaned.pgm`
+    に GIMP で通行禁止帯を塗り込み、段差箇所を occupied 化する。
+    経路踏査結果と塗り込み手順は [デモ準備チェックリスト](../m6r-demo-prep-checklist.md)
+    に記録
+  - **中期対策 (post-demo, 検討)**: Nav2 Keepout Filter の正式導入で
+    「pgm 塗り込みではなく filter layer として経路制約を宣言」する
+    構造へ移行 (map 生成パイプの再走を伴わずに制約を更新可能に)
 - **人の脚 (立位・歩行)** は 0.05 m カットで常時 ~4 点捕捉、`local_costmap`
   で lethal 化する — costmap 用途に十分な情報量 (2026-07-15 A/B 実測)
 - **背の高い雑草** は両値で lethal 化する。コード側で分離不能なため、

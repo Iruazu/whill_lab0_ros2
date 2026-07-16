@@ -112,7 +112,21 @@ output. Only p2ls's `/scan` reaches `obstacle_layer` (`2f26d0b`).
 - **~5 cm steps (including real campus curbs) are out of scope for
   this layer**. Ground removal (ADR-0011) plus a 0.05 m slice cannot
   separate them from ground undulation by construction; routing side
-  (map annotation / operator judgement) covers those
+  handles those
+  - **2026-07-16 field addendum**: on the demo route, a few centimetre
+    steps (tile seams, curb bottoms) sit on the path free in occupancy
+    and the chair drives into them. The ADR-time "routing side handles
+    it" assumption has to be turned into an **explicit route
+    constraint** — passive avoidance by physical layout is not enough
+    on this course
+  - **Short-term mitigation (P0, demo-critical)**: paint no-go bands
+    into `docs/maps/campus/occupancy_cleaned.pgm` with GIMP so those
+    step locations read as occupied. Route walkthrough and paint
+    procedure captured in the [demo prep checklist](../m6r-demo-prep-checklist.md)
+  - **Medium-term mitigation (post-demo, under evaluation)**: adopt
+    Nav2 Keepout Filter so route constraints are declared as a filter
+    layer instead of baked into the pgm — allowing constraint updates
+    without rerunning the map generation pipeline
 - **People (standing / walking)**: 0.05 m keeps ~4 sustained returns
   on the legs and paints them lethal on `local_costmap` — enough
   signal for the intended costmap use (2026-07-15 A/B measurement)
