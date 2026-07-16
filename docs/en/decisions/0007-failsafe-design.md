@@ -59,8 +59,15 @@ interaction (progress_checker / recovery) is in the Japanese version.
 **V2 / V3 redefinition**: V2 = "person enters 1.5-2 m forward sector
 → `/cmd_vel = 0` within 1 s + `D:forward_blocked` in log"; V3 =
 "person exits sector → Layer D released within 1 s + Nav2 resumes";
-V6.4 added = "verify sector geometry at ±30° boundaries, distances
-1.5 / 2.0 / 2.5 m".
+V6.4 added = (a) sector geometry check at ±30° boundaries, distances
+1.5 / 2.0 / 2.5 m, plus (b) **path-side spectator false-trip check**
+(open campus demo has onlookers along the route; ±30° @ 2 m has a tip
+half-width of `2.0 × tan30° ≈ 1.155 m`, so a spectator 1 m off the
+path edge sits inside the sector). Field decision from V6.4 (b) —
+(A) operational rule = keep onlookers ≥ 2 m off the path, or (B)
+tighten sector to ±25° (half-width @ 2 m ≈ 0.93 m so 1 m off-path
+just barely clears). Decision recorded via ADR update after the field
+run.
 
 **Operational gate** (mandatory pre-drive check): documented in the
 demo prep checklist.
