@@ -13,6 +13,11 @@ Layers (per ADR-0007 §Demo-scope reduction):
        - /alignment_status fitness_score > FITNESS_MAX for FITNESS_WINDOW_S
        - /alignment_status has_converged == false for FITNESS_WINDOW_S
        - /pcl_pose silent for PCL_POSE_TIMEOUT_S
+  C  /velodyne_points_no_ground silent for PERCEPTION_TIMEOUT_S
+     (patchworkpp_node crash / hang. M6R4-3 F3 mitigation: with
+     use_collision_detection: true, a silent perception pipe would
+     leave stale obstacle_layer cells while the chair moves. Layer C
+     forces a stop within ~2 s of the pipe going silent.)
 
 Deliberately omitted (post-demo backlog): jump detection (3-frame /pcl_pose
 delta), SAFE_HOLD release hysteresis, G4 hardware 3-test acceptance. The
@@ -25,15 +30,21 @@ import signal
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import Bool
 from diagnostic_msgs.msg import DiagnosticArray
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
+from sensor_msgs.msg import PointCloud2
 
 
 FITNESS_MAX = 1.0
 FITNESS_WINDOW_S = 2.0
 PCL_POSE_TIMEOUT_S = 1.0
+# /velodyne_points_no_ground publishes at ~10 Hz (matches VLP-16 rate).
+# 2 s silent = 20 missed frames; that is well past any realistic
+# scheduling jitter and definitively means patchworkpp_node is down.
+PERCEPTION_TIMEOUT_S = 2.0
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
 
@@ -65,6 +76,7 @@ class FailsafeNode(Node):
         self._fitness_bad_since = None
         self._converged_bad_since = None
         self._last_pose_time = None
+        self._last_perception_time = None
         self._active_prev = ()
 
         self.create_subscription(
@@ -80,6 +92,15 @@ class FailsafeNode(Node):
         # 2026-07-14 that the fixed type reaches the callback.
         self.create_subscription(
             PoseWithCovarianceStamped, '/pcl_pose', self._on_pcl_pose, 10)
+        # Layer C: /velodyne_points_no_ground is Patchwork++'s output
+        # (whill_perception, ADR-0011). Sensor-data QoS (BEST_EFFORT +
+        # KEEP_LAST 5) matches the publisher; a Reliable subscription
+        # would silently fail to receive, which would falsely trip Layer C
+        # from launch. Only the message arrival timestamp is used; the
+        # payload is discarded — cheap for a 10 Hz PointCloud2.
+        self.create_subscription(
+            PointCloud2, '/velodyne_points_no_ground',
+            self._on_perception, qos_profile_sensor_data)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
         self.create_timer(1.0 / PUBLISH_HZ, self._tick)
@@ -87,6 +108,7 @@ class FailsafeNode(Node):
         self.get_logger().info(
             f'failsafe_node ready: fitness > {FITNESS_MAX} for '
             f'{FITNESS_WINDOW_S}s | pcl_pose silent > {PCL_POSE_TIMEOUT_S}s | '
+            f'perception silent > {PERCEPTION_TIMEOUT_S}s | '
             f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz')
 
     def _now_s(self):
@@ -131,6 +153,9 @@ class FailsafeNode(Node):
     def _on_pcl_pose(self, msg):
         self._last_pose_time = self._now_s()
 
+    def _on_perception(self, msg):
+        self._last_perception_time = self._now_s()
+
     def _active_layers(self):
         now = self._now_s()
         out = []
@@ -148,6 +173,13 @@ class FailsafeNode(Node):
         if self._last_pose_time is not None \
                 and now - self._last_pose_time > PCL_POSE_TIMEOUT_S:
             out.append('B:pcl_pose_silent')
+        # Layer C perception watchdog: same "arm on first reception"
+        # pattern so bringup does not trip during the ~1 s window
+        # patchworkpp needs to load its config and receive its first
+        # scan.
+        if self._last_perception_time is not None \
+                and now - self._last_perception_time > PERCEPTION_TIMEOUT_S:
+            out.append('C:perception_silent')
         return tuple(out)
 
     def _tick(self):
