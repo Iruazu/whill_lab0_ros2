@@ -342,6 +342,43 @@ Layer D 発火中の Nav2 側挙動:
 安全側判定は変わらない。field 実測後に決定、決定は本 ADR §Layer D の
 更新で追記。
 
+### 夜間残像所見 (2026-07-16 late)
+
+夜間の人通り増で **local_costmap の残像が planner 経路に迂回を発生**
+させる頻度が上昇。原因は 2D raytracing のジオメトリ限界:
+
+- **別の障害物の陰**: 手前の実在物でビームが残像まで届かない
+- **高さの問題**: raytracing は `/scan` の 2D 平面で行われるため、遠方
+  の床近くにはビームが物理的に存在しない (VLP-16 の下向きビームは
+  近距離で地面に当たる)。人の足元 (z 低め) の残像は距離が離れるほど
+  掃除ビーム不在
+
+これは設定でなくジオメトリの限界。デモ対策の役割分担:
+
+- **安全 (chair を止める)**: Layer D (生 scan 直視) が担う。costmap は
+  見ない → 幽霊で誤停止しない、実在の人だけを止める
+- **経路品質 (幽霊で迂回しない)**: `cost_scaling_factor` を 3.0 → 5.0
+  で inflation 裾を圧縮 (radius=0.5 は robot_radius=0.45 との差 +0.05
+  のギリギリなので radius は下げない)。幽霊 1 セルの経路への影響が
+  減少
+- **完全解決の見送り**: `spatio_temporal_voxel_layer` (時間減衰プラグ
+  イン) 差し替えはデモ前に検証時間を捻出できず却下、post-demo backlog
+
+### V2/V3 追加観察項目 (夜間残像との切り分け)
+
+field で以下を確認 (Layer D が costmap でなく生 scan を見ていることの
+実証):
+
+- 人が sector 外へ退避 → 1 s 以内に Layer D 解放 → chair 走行再開
+- 退避後、costmap には**残像が紫のまま残っていてよい**
+- **残像で Layer D が再発火しないこと** (再発火すれば Layer D が誤って
+  costmap 参照している = 実装バグ)
+
+### post-demo backlog
+
+- `spatio_temporal_voxel_layer` (voxel + temporal decay) への差し替え
+  検討 (ADR 別立て)。3D voxel 表現で近似的に高さ問題も緩和される可能性
+
 ### 運用ゲート (デモ手順に必須)
 
 走行前 (bringup ~20 秒後):
