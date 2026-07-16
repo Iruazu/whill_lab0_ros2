@@ -246,3 +246,110 @@ Full 復元時の変更対象:
 上記が満たされば **Issue #67 は close せず**、本セクションで指定した
 バックログ項目 (jump 検知 / SAFE_HOLD / G4 3 試験 / BBS_2D 自動停止) を
 「M6R-3 follow-up」として残す。
+
+## Layer D — 前方扇形 perception gate (2026-07-16 追記、proposed)
+
+### 動機
+
+2026-07-16 field で V2 (人が chair 前方 3-4 m 静止 → 停止) が **fail**。
+`use_collision_detection: true` + obstacle_layer の人 lethal 化 + salt-
+cleaned map の 3 条件を満たしていても停止しない事象を確認。
+
+原因の確定:
+
+- RPP `collision_check` の実効射程 = `max_allowed_time_to_collision_up_to_carrot × desired_linear_vel = 1.0 × 0.3 = 0.3 m` に過ぎない
+- 加えて評価対象は **carrot (lookahead 0.8 m) 経路上のみ**
+- planner が人を避ける経路を引き直せば「経路上の障害物」条件自体が
+  成立しない
+
+つまり **「障害物で停止 → 退去で再開」の要件は Nav2 のどの層にも
+実装されていない**。demo 要件を満たすには専用の停止判定を入れる必要が
+ある。
+
+### 却下された代案 (A: RPP 側射程拡大)
+
+- `max_allowed_time_to_collision_up_to_carrot` を数秒に拡大 → 実効
+  射程は伸びるが、依然として carrot 経路 (lookahead 依存) 上のみ
+- 拡大するほど「回避」と「停止」の責務が RPP に混在。planner 側は
+  「経路を作る」責務に純化するのが Nav2 の設計思想
+- lookahead を変えるとチューニング (蛇行) が再発する脆さ
+
+### 採用 (B: failsafe Layer D)
+
+停止を **safety 層の責務**として、RPP は回避に専念させる。Layer A/B/C
+と同居する自然な拡張。cmd_vel ゲートは Nav2 の内部状態と独立に働く
+ため確実。
+
+**購読**: `/scan` (`sensor_msgs/LaserScan`, reliable QoS, ~10 Hz)。
+p2ls_node の出力なので frame は `base_link`、angle は +x 前方の 0
+基準。追加 subscription 1 本のみ (existing PointCloud2 layer C とは
+別 topic)。
+
+**判定**: base_link 前方扇形内の scan 点数が閾値以上 → 遮断。パラメータ:
+
+| パラメータ | 値 | 根拠 |
+|-----------|-----|------|
+| `FORWARD_SECTOR_HALF_ANGLE_RAD` | 30° | WHILL 幅 0.6 m を 1.15 m 距離でカバー。cone 60° は反応の必要な前方視野に十分 |
+| `FORWARD_SECTOR_MIN_M` | 0.5 m | p2ls `range_min` と一致、WHILL 車体上面の自己反射を除外 |
+| `FORWARD_SECTOR_MAX_M` | 2.0 m | `desired_linear_vel = 0.3 m/s` で 6.7 s 反応余裕。velocity_smoother `max_decel = 0.5 m/s²` で停止距離 0.09 m ≪ 2.0 m |
+| `FORWARD_POINT_COUNT_MIN` | 5 点 | /scan `angle_increment = 0.5°` で ±30° = 120 beam、人 0.5 m 幅 @ 2 m ≈ 15° = 30 beam、5 点はその 1/6 で単発 ghost では発火しない |
+| `FORWARD_CLEAR_HYSTERESIS_S` | 0.5 s | 10 Hz scan の 5 連続クリアで解放、Layer A の再ラッチ方式と同構造。瞬断で ON/OFF 振動しない |
+
+**発火 / 解放パターン** (Layer A の再ラッチ方式と同):
+- scan callback で sector 内点数 ≥ 閾値 → `_forward_last_blocked_time = now`
+- `_active_layers` で `now - _forward_last_blocked_time < HYSTERESIS_S` の間 `D:forward_blocked` 出力
+- 継続クリア HYSTERESIS_S 経過で自動解放
+
+**起動時 arming**: Layer C と同じ「first-message-arm」で
+`_forward_last_blocked_time is None` の間は発火しない。起動直後の
+false trip を避ける。
+
+### BT / Nav2 との相互作用
+
+Layer D 発火中の Nav2 側挙動:
+
+1. `/cmd_vel = 0` (twist_mux が Layer D を通す)
+2. `/odometry/filtered` velocity ≈ 0
+3. `nav2_controller::SimpleProgressChecker` (`required_movement_radius: 0.5 m / movement_time_allowance: 10.0 s`) が 10 秒経過で `IsStuck` トリガー
+4. BT が recovery (spin / backup / wait) に遷移。spin の回転 cmd_vel も Layer D で遮断されるので chair は動かない。allow_reversing=false で backup は無効。wait のみ実効。
+5. Recovery タイムアウト後、BT が Goal aborted を返す可能性
+
+**リスク**: 人が > 10-30 s 静止だと Goal fail。デモ経路では人退避は
+数秒想定で問題なしと判断。field で誤 Goal aborted が観測されたら
+`movement_time_allowance` を 30-60 s に拡大する。
+
+### V2/V3 の再定義 (Layer D 基準)
+
+| # | 従来判定 | Layer D 基準 |
+|---|---------|-------------|
+| V2 | 走行中の人横断 → 1 s 以内に `/cmd_vel_nav.linear.x < 0.05` | 前方 1.5-2 m 内に人立位 → **1 s 以内**に `/cmd_vel = 0` (twist_mux 出力)、failsafe log `D:forward_blocked` |
+| V3 | 退避 5 s 以内に `/cmd_vel_nav > 0.1` | sector 外退避 → **1 s 以内** (0.5s hysteresis + scan 遅延) に Layer D 解放、`/cmd_vel_nav` 復活で走行再開 |
+| V6.4 (追加) | — | 静止状態で人を左右 30° 境界と距離 1.5 / 2.0 / 2.5 m に立たせて発火有無を確認 (geometry 実測) |
+
+### 運用ゲート (デモ手順に必須)
+
+走行前 (bringup ~20 秒後):
+
+```bash
+# collision_detection の effective 値
+ros2 param get /controller_server FollowPath.use_collision_detection
+# 期待: Boolean value is: true
+
+# Layer D armed の startup log 確認
+ros2 topic echo /rosout | grep -E "failsafe_node ready|forward_blocked"
+# 期待: "forward_blocked > 5 pts in ±30° @ 0.5-2.0 m, hysteresis 0.5s"
+
+# 動作テスト (手を前方に翳して 2 秒待つ)
+ros2 topic hz /cmd_vel_safety
+# 期待: 遮断中は 20 Hz publish
+```
+
+デモ準備チェックリストに追記済 (`docs/ja/m6r-demo-prep-checklist.md`)。
+
+### Accepted 化条件
+
+以下 3 点満了で proposed → accepted:
+
+1. 明朝 field で V2/V3 (Layer D 基準) PASS
+2. V6.4 (sector geometry 実測) PASS
+3. 30 min 連続走行 (V4) で false-trip 0 (path 沿いの静止建物 / 木で発火しないこと)

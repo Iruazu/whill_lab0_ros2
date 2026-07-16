@@ -69,6 +69,29 @@ AC4 aborted). See `src/whill_safety/README.md` §Mutual exclusion.
 - [ ] Operator in-the-loop with joystick override available
       (ADR-0007 §Demo-scope reduction)
 
+### Pre-drive gate: use_collision_detection + Layer D armed (mandatory)
+
+Layer D (forward sector perception gate, ADR-0007 §Layer D proposed)
+must be active and `use_collision_detection: true` must actually reach
+the controller before any drive:
+
+```bash
+# effective value of collision_detection
+ros2 param get /controller_server FollowPath.use_collision_detection
+# expect: Boolean value is: true
+
+# Layer D armed startup log
+ros2 topic echo /rosout | grep -E "failsafe_node ready|forward_blocked"
+# expect: "forward_blocked > 5 pts in ±30° @ 0.5-2.0 m, hysteresis 0.5s"
+
+# behavioural test (hold a hand ~1 m in front of the chair for 2 s)
+ros2 topic hz /cmd_vel_safety
+# expect: 20 Hz while blocked, publishing stops when the hand is removed
+```
+
+Do not start the demo if any of the three checks fails (V2 stop
+requirement is not being met).
+
 ### Map variant selection (Task #13 salt cleanup)
 
 `docs/maps/campus/occupancy.pgm` has baked-in ground-noise salt from

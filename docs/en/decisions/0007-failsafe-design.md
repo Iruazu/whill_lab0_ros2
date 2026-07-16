@@ -34,3 +34,37 @@ Thresholds derive from the 2026-07-12 M6R-2 live acceptance and the
 
 See the Japanese version for the full decision, rejected alternatives, and
 promotion criteria.
+
+## Layer D — Forward sector perception gate (2026-07-16 addendum, proposed)
+
+**Trigger**: 2026-07-16 field found V2 (stop for person 3-4 m ahead)
+failing even with `use_collision_detection: true` + person visible on
+`local_costmap`. RPP's collision reach is
+`max_allowed_time_to_collision_up_to_carrot × desired_linear_vel =
+1.0 × 0.3 = 0.3 m`, evaluated only along the carrot (lookahead 0.8 m).
+Once the planner replans around the person the "obstacle on path"
+condition no longer holds. The "stop for obstacle → resume on clear"
+demo requirement is not implemented in any Nav2 layer.
+
+**Rejected**: extending RPP's own reach (mixes stop/avoid
+responsibilities, still coupled to carrot geometry).
+
+**Adopted**: add Layer D to `failsafe_node`. Subscribes to `/scan`
+(reliable, ~10 Hz, base_link frame from p2ls), counts points inside a
+forward sector (±30°, 0.5-2.0 m). ≥ 5 points → gate `/cmd_vel` via
+`/cmd_vel_safety`; continuous clear for 0.5 s releases (same
+re-latch pattern as Layer A). Rationale for every value + BT
+interaction (progress_checker / recovery) is in the Japanese version.
+
+**V2 / V3 redefinition**: V2 = "person enters 1.5-2 m forward sector
+→ `/cmd_vel = 0` within 1 s + `D:forward_blocked` in log"; V3 =
+"person exits sector → Layer D released within 1 s + Nav2 resumes";
+V6.4 added = "verify sector geometry at ±30° boundaries, distances
+1.5 / 2.0 / 2.5 m".
+
+**Operational gate** (mandatory pre-drive check): documented in the
+demo prep checklist.
+
+**Promotion criteria**: V2 + V3 + V6.4 PASS on the field, plus V4 30-
+min drive with zero false trips against static path-side buildings /
+trees.

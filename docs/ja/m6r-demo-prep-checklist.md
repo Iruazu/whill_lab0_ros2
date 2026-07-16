@@ -62,6 +62,29 @@ loop、AC4 中断)。詳細は `src/whill_safety/README.md` §Mutual exclusion�
 - [ ] operator 随伴、ジョイスティック介入可能 (ADR-0007 §Demo-scope
       reduction)
 
+### 走行前 gate: use_collision_detection + Layer D armed (必須)
+
+Layer D (前方扇形 perception gate、ADR-0007 §Layer D proposed) が active
+であること、および `use_collision_detection: true` が effective に
+反映されていることを**走行前に必ず**確認する:
+
+```bash
+# collision_detection の effective 値
+ros2 param get /controller_server FollowPath.use_collision_detection
+# 期待: Boolean value is: true
+
+# Layer D armed の startup log
+ros2 topic echo /rosout | grep -E "failsafe_node ready|forward_blocked"
+# 期待: "forward_blocked > 5 pts in ±30° @ 0.5-2.0 m, hysteresis 0.5s"
+
+# 動作テスト (手を chair 前方 1 m 距離に翳して 2 秒)
+ros2 topic hz /cmd_vel_safety
+# 期待: 遮断中は 20 Hz publish、手を外すと publish 停止
+```
+
+3 つとも期待通りでなければ demo 開始してはならない (V2 停止要件が
+成立していない状態)。
+
 ### マップ variant 選択 (Task #13 salt cleanup)
 
 `docs/maps/campus/occupancy.pgm` は M5-R 時代 (Patchwork++ 導入前) の
