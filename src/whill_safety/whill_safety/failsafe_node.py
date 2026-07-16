@@ -18,6 +18,15 @@ Layers (per ADR-0007 §Demo-scope reduction):
      use_collision_detection: true, a silent perception pipe would
      leave stale obstacle_layer cells while the chair moves. Layer C
      forces a stop within ~2 s of the pipe going silent.)
+  D  /scan has >= FORWARD_POINT_COUNT_MIN points inside a forward
+     base_link sector (±FORWARD_SECTOR_HALF_ANGLE_RAD, distance
+     FORWARD_SECTOR_MIN_M..FORWARD_SECTOR_MAX_M). Continuous clear for
+     FORWARD_CLEAR_HYSTERESIS_S releases. M6R4-3 V2 blocker mitigation
+     (2026-07-16 field): RPP's own collision_check reaches only ~0.3 m
+     along the carrot, and once the planner replans around the person
+     the "obstacle on path" condition drops entirely. Layer D provides
+     the stop-for-obstacle behaviour independently of Nav2 planning.
+     See ADR-0007 §Layer D for the geometry rationale.
 
 Deliberately omitted (post-demo backlog): jump detection (3-frame /pcl_pose
 delta), SAFE_HOLD release hysteresis, G4 hardware 3-test acceptance. The
@@ -26,6 +35,7 @@ bypasses this path, so we accept the small risk of brief flapping on
 condition-clear in exchange for keeping the code minimal for 2026-08-01.
 """
 
+import math
 import signal
 
 import rclpy
@@ -35,7 +45,7 @@ from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import Bool
 from diagnostic_msgs.msg import DiagnosticArray
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import LaserScan, PointCloud2
 
 
 FITNESS_MAX = 1.0
@@ -45,6 +55,19 @@ PCL_POSE_TIMEOUT_S = 1.0
 # 2 s silent = 20 missed frames; that is well past any realistic
 # scheduling jitter and definitively means patchworkpp_node is down.
 PERCEPTION_TIMEOUT_S = 2.0
+# Layer D — forward sector perception gate. Rationale in ADR-0007
+# §Layer D. Half-angle 30° covers the chair's 0.6 m width out to 1.15 m
+# on either side; distance 0.5-2.0 m gives ~6.7 s reaction budget at
+# desired_linear_vel = 0.3 m/s (velocity_smoother stop distance from
+# max_decel = 0.5 m/s² is only 0.09 m). Point threshold 5 is 1/6 of a
+# person's ~30-beam silhouette at 2 m, so single ghost returns do not
+# fire. Hysteresis 0.5 s = 5 consecutive clear scans at 10 Hz — same
+# re-latch pattern as LAYER_A_HOLD_S.
+FORWARD_SECTOR_HALF_ANGLE_RAD = math.radians(30.0)
+FORWARD_SECTOR_MIN_M = 0.5
+FORWARD_SECTOR_MAX_M = 2.0
+FORWARD_POINT_COUNT_MIN = 5
+FORWARD_CLEAR_HYSTERESIS_S = 0.5
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
 
@@ -77,6 +100,7 @@ class FailsafeNode(Node):
         self._converged_bad_since = None
         self._last_pose_time = None
         self._last_perception_time = None
+        self._forward_last_blocked_time = None
         self._active_prev = ()
 
         self.create_subscription(
@@ -101,6 +125,12 @@ class FailsafeNode(Node):
         self.create_subscription(
             PointCloud2, '/velodyne_points_no_ground',
             self._on_perception, qos_profile_sensor_data)
+        # Layer D: /scan is p2ls_node's output (whill_navigation
+        # nav_launch.py). Reliable QoS by default (nav2 ObstacleLayer
+        # expects reliable), so the default subscription depth of 10 is
+        # fine here — no explicit qos_profile needed.
+        self.create_subscription(
+            LaserScan, '/scan', self._on_scan, 10)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
         self.create_timer(1.0 / PUBLISH_HZ, self._tick)
@@ -109,6 +139,10 @@ class FailsafeNode(Node):
             f'failsafe_node ready: fitness > {FITNESS_MAX} for '
             f'{FITNESS_WINDOW_S}s | pcl_pose silent > {PCL_POSE_TIMEOUT_S}s | '
             f'perception silent > {PERCEPTION_TIMEOUT_S}s | '
+            f'forward_blocked > {FORWARD_POINT_COUNT_MIN} pts in '
+            f'±{math.degrees(FORWARD_SECTOR_HALF_ANGLE_RAD):.0f}° @ '
+            f'{FORWARD_SECTOR_MIN_M}-{FORWARD_SECTOR_MAX_M} m, '
+            f'hysteresis {FORWARD_CLEAR_HYSTERESIS_S}s | '
             f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz')
 
     def _now_s(self):
@@ -156,6 +190,24 @@ class FailsafeNode(Node):
     def _on_perception(self, msg):
         self._last_perception_time = self._now_s()
 
+    def _on_scan(self, msg):
+        # Count /scan returns inside the forward safety sector. Short-
+        # circuit as soon as the threshold is met — no reason to keep
+        # counting once Layer D is going to fire; the callback runs at
+        # the scan rate and the gate stays engaged for HYSTERESIS_S
+        # regardless of the exact count.
+        count = 0
+        angle = msg.angle_min
+        for r in msg.ranges:
+            if math.isfinite(r) \
+                    and FORWARD_SECTOR_MIN_M <= r <= FORWARD_SECTOR_MAX_M \
+                    and abs(angle) <= FORWARD_SECTOR_HALF_ANGLE_RAD:
+                count += 1
+                if count >= FORWARD_POINT_COUNT_MIN:
+                    self._forward_last_blocked_time = self._now_s()
+                    return
+            angle += msg.angle_increment
+
     def _active_layers(self):
         now = self._now_s()
         out = []
@@ -180,6 +232,12 @@ class FailsafeNode(Node):
         if self._last_perception_time is not None \
                 and now - self._last_perception_time > PERCEPTION_TIMEOUT_S:
             out.append('C:perception_silent')
+        # Layer D forward-sector gate: fires while the sector is blocked
+        # and stays engaged for HYSTERESIS_S after the last blocked
+        # scan. Same first-message-arm pattern as Layer A/C.
+        if self._forward_last_blocked_time is not None \
+                and now - self._forward_last_blocked_time < FORWARD_CLEAR_HYSTERESIS_S:
+            out.append('D:forward_blocked')
         return tuple(out)
 
     def _tick(self):
