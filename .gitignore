@@ -131,6 +131,11 @@ docs/m6r-bench-data/**/bag/
 # `lab-legacy-m5b/` (the renamed `docs/m5-maps/` from before the convention).
 docs/maps/**/*.pcd
 
+# GIMP working files for manual salt cleanup (Task #13). The tracked
+# artifact is the final flattened *.pgm; the .xcf keeps layers/edit
+# history and is disposable.
+docs/maps/**/*.xcf
+
 # tf2_tools view_frames and RViz write diagnostic / session files to the
 # repo root as a side effect of normal development (each `ros2 run tf2_tools
 # view_frames` adds two more files). Excluding them here, rather than

@@ -23,6 +23,9 @@ DUFOMap 経由で生成した静的マップ。
 | `static.pcd` | DUFOMap 後の静的 PCD (13M 点、208 MB) | no (gitignored) |
 | `occupancy.pgm` | 2D 占有格子 (6640 x 6295 @ 0.05 m/px) | yes |
 | `occupancy.yaml` | Nav2 map_server メタデータ | yes |
+| `occupancy_cleaned.pgm` | 上記から salt を除去した版 (Task #13) | yes |
+| `occupancy_cleaned.yaml` | 同メタデータ (image のみ差替) | yes |
+| `cleaning_diff.png` | クリーニング前後 diff (removed cells = 赤) | yes |
 | `metadata.yaml` | 取得経緯・パラメータ・出典 | yes |
 | `traj_lidar.txt` | GLIM LiDAR トラジェクトリ (TUM 形式、21300 pose) | yes |
 | `README.md` | 本ファイル | yes |
@@ -119,7 +122,43 @@ Tilt の真の原因は 2 候補:
 routing を追加し、`docs/maps/campus/` に merge or `docs/maps/campus-v2/`
 として別 site を立てる。
 
-### 3. Occupancy grid は relative z-slice + trajectory anchor + r=2m free
+### 3. Occupancy grid は地面ノイズ salt を焼き込んでいる (Task #13 で緩和)
+
+M5-R パイプ (GLIM → DUFOMap → `m5r_pcd_to_occupancy.py`) は Patchwork++
+導入前の設計で、DUFOMap は動的物体を除くが地面除去は行わない。走行時に
+LiDAR が拾った地面近傍点 (勾配、マンホール、路面凸凹) が occupied cell
+に焼き込まれ、Nav2 costmap 上で固定 lethal として現れる。
+
+2026-07-16 field で RViz の `/map` (Transient Local) 単独表示 + local
+costmap 重畳の 2 スクショによって「/map の黒 salt と local costmap 紫
+lethal の位置が完全一致、no_ground 点群は無相関」を確定。
+
+**確定した salt の統計** (原 pgm):
+
+- Occupied cells (value=0): 581,514 (1.39% of total)
+- Connected components: 482,195
+- 分布: 1 cell = 395,546 comps / 2-3 cells = 82,567 / 4-10 cells = 4,082
+- **最大 blob size = 10 cells** — 連続輪郭 (壁/建物) は value=0 側に
+  1 つも存在しない。walls は value=205 (unknown) 側に、traj 沿いの
+  通行帯は value=254 (free) として encode されている
+
+短期対策: `scripts/clean_isolated_occupancy.py` で
+`--min-blob-size 4` (既定) の connected-components フィルタで
+1-3 cell の孤立点を除去 → `occupancy_cleaned.pgm` (97.19% 削減)。
+Nav2 は `map_variant:=cleaned` で切替:
+
+```bash
+ros2 launch whill_navigation nav_launch.py site:=campus map_variant:=cleaned
+```
+
+原 pgm は tracked のまま残す (再現性、A/B 比較)。詳細は
+[[project-campus-map-salt]] memo と
+[`../../../scripts/clean_isolated_occupancy.py`](../../../scripts/clean_isolated_occupancy.py)。
+
+中期対策 (Task #14, post-demo): Patchwork++ で地面除去した点群を
+GLIM/DUFOMap → occupancy に再投入して salt-free マップを再生成 (根治)。
+
+### 4. Occupancy grid は relative z-slice + trajectory anchor + r=2m free
 
 `scripts/m5r_pcd_to_occupancy.py` (commit `7a9924a`) のデフォルト設定
 での生成物。従来の "fixed z-slice + single anchor" 版とは意味的に別物

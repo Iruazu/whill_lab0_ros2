@@ -121,21 +121,31 @@ def _repo_root_from_pkg_share(pkg_share):
 
 
 def _resolve_map_yaml(context):
-    """Resolve `docs/maps/<site>/occupancy.yaml` from the site arg.
+    """Resolve `docs/maps/<site>/occupancy[_<variant>].yaml` from args.
 
     Runs at launch time (OpaqueFunction) so the site LaunchConfiguration
     is available and the file is validated before map_server tries to
     load it. map_server's own error path on a missing yaml is a lifecycle
     CONFIGURE failure with a stale-looking log line; failing early here
     gives a direct message with the resolved path.
+
+    `map_variant` is empty by default (loads `occupancy.yaml`). Passing
+    e.g. `map_variant:=cleaned` loads `occupancy_cleaned.yaml` — the
+    Task #13 salt-cleaned map produced by
+    `scripts/clean_isolated_occupancy.py` (2026-07-16 field baked-salt
+    finding). The variant only changes the pgm reference; origin /
+    resolution / thresholds carry over verbatim.
     """
     site = LaunchConfiguration('site').perform(context)
+    map_variant = LaunchConfiguration('map_variant').perform(context)
 
     pkg_share = get_package_share_directory('whill_navigation')
     maps_root = os.environ.get(_MAPS_ROOT_ENV)
     if not maps_root:
         maps_root = os.path.join(_repo_root_from_pkg_share(pkg_share), _DEFAULT_MAPS_ROOT_REL)
-    map_yaml = os.path.abspath(os.path.join(maps_root, site, 'occupancy.yaml'))
+    yaml_name = ('occupancy.yaml' if not map_variant
+                 else f'occupancy_{map_variant}.yaml')
+    map_yaml = os.path.abspath(os.path.join(maps_root, site, yaml_name))
 
     if not os.path.isfile(map_yaml):
         raise RuntimeError(
@@ -293,11 +303,22 @@ def generate_launch_description():
             default_value=_DEFAULT_SITE,
             description='Name of the map directory under docs/maps/ to '
                         'load. Resolves to <maps_root>/<site>/'
-                        'occupancy.yaml at launch time. Override the '
-                        'maps root with WHILL_MAPS_ROOT if not launching '
-                        'from a colcon workspace that mirrors this repo '
-                        'layout. Should match the value passed to '
-                        'm6r_bringup_launch.py.'),
+                        'occupancy[_<variant>].yaml at launch time. '
+                        'Override the maps root with WHILL_MAPS_ROOT if '
+                        'not launching from a colcon workspace that '
+                        'mirrors this repo layout. Should match the '
+                        'value passed to m6r_bringup_launch.py.'),
+        DeclareLaunchArgument(
+            'map_variant',
+            default_value='',
+            description='Which occupancy yaml to load. Empty (default) '
+                        'loads occupancy.yaml — the original M5-R map. '
+                        '`map_variant:=cleaned` loads '
+                        'occupancy_cleaned.yaml, the Task #13 '
+                        'salt-cleaned version produced by '
+                        'scripts/clean_isolated_occupancy.py. Any other '
+                        'value selects occupancy_<value>.yaml if that '
+                        'sibling file exists.'),
 
         # No localization include. m6r_bringup_launch.py (whill_safety,
         # M6R-2) is expected to be running in parallel and publishes
