@@ -399,10 +399,113 @@ ros2 topic hz /cmd_vel_safety
 
 デモ準備チェックリストに追記済 (`docs/ja/m6r-demo-prep-checklist.md`)。
 
-### Accepted 化条件
+### Incident 2026-07-16 late: サイレント QoS 非互換
 
-以下 3 点満了で proposed → accepted:
+**事象**: 立ち塞がり試験 (V2 前段) で **Layer D 不動作 → 接触 (実害
+なし、試験内)**。
 
-1. 明朝 field で V2/V3 (Layer D 基準) PASS
-2. V6.4 (sector geometry 実測) PASS
-3. 30 min 連続走行 (V4) で false-trip 0 (path 沿いの静止建物 / 木で発火しないこと)
+**原因の解剖**:
+
+1. `failsafe_node.py:132-133` で `/scan` の subscription QoS が
+   `10` (depth のみ、reliability は **default = RELIABLE**) だった
+2. p2ls は `/scan` を **BEST_EFFORT** で publish (2026-07-16 field
+   `ros2 topic info /scan --verbose` および `T2` 起動ログの
+   `No messages will be sent to it` で実証)
+3. RELIABLE 購読 × BEST_EFFORT 配信は QoS 不互換 → **subscribe は
+   成立するが 1 メッセージも届かない** (DDS の silent drop)
+4. `_forward_last_blocked_time` は初回スキャン受信で arm する設計
+   (first-message-arm) → 受信ゼロで **未武装のまま無音**
+5. `_active_layers` は `_forward_last_blocked_time is None` を「発火
+   条件不成立」として扱う → chair 前方に人が立っても Layer D は
+   一切発火しない
+6. 起動ログには `failsafe_node ready: ... forward_blocked > 5 pts in
+   ...` の armed 記述が出るが、それは **subscription を作った** ことの
+   ログであり、**メッセージが届いた** ことのログではない → 運用者は
+   「Layer D 準備できた」と誤解
+
+**手本は 7 行上にあった**: 同じファイルの Layer C 購読
+(`_on_perception`) は `qos_profile_sensor_data` を明示していた
+(BEST_EFFORT + KEEP_LAST 5、best-effort 購読は reliable / best-effort
+どちらの publisher とも互換)。Layer D の同型 pattern を書いていれば
+本 incident は起きなかった。
+
+**教訓 (今後の全 subscription に適用)**:
+
+- センサー系 topic (/scan / /velodyne_points / /camera/*) は
+  **既定で `qos_profile_sensor_data`** を使う。RELIABLE を要求する
+  文書 (ADR-0009 等) が仮にあっても、実配信側が変わる可能性がある
+  ため、購読側 best-effort が安全側デフォルト
+- **first-message-arm を使う layer には必ず dead-input watchdog を
+  付ける** (下記)
+- 起動ログの `ready` は「subscribe した」の意味であって「message が
+  届いた」の保証ではない。運用ゲートは message 到達を積極的に検証
+  する側に立つ
+
+### 修正 (2026-07-16 late incident)
+
+**Fix 1 — QoS**: `failsafe_node.py` の `/scan` subscription を
+`qos_profile_sensor_data` に変更。Layer C と同型。
+
+**Fix 2 — dead-input watchdog**: 全 first-message-arm 系 layer に対し、
+起動から `STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0` 秒経過時点で未武装なら
+`get_logger().error(...)` で叫ぶ:
+
+```
+DEAD INPUT after 10s: ['D:/scan'] — these subscriptions received ZERO
+messages. Likely DDS/QoS mismatch, wrong topic name, or upstream not
+running. The listed failsafe layers CANNOT ARM. Do not drive.
+```
+
+`_dead_input_warned` フラグで single-shot、繰り返し alarm しない。
+チェック対象は `_last_pose_time` (Layer B), `_last_perception_time`
+(Layer C), `_last_scan_time` (Layer D、本 fix で新設)。将来 layer を
+追加する時は同一 pattern で watchdog check を足すこと。
+
+**Fix 3 — blocking preflight**: `scripts/m6r_preflight.sh` を新設。
+以下 4 段階で exit 1 まで走らせる:
+
+1. `use_collision_detection: true` の実効値
+2. `/failsafe_node` が `ros2 node list` に存在
+3. **12 秒待って `/rosout` に `DEAD INPUT` が出ないこと** (watchdog 経路)
+4. Live-fire hand test: 手を chair 前方 1.5 m に翳して 5 秒、
+   `/cmd_vel_safety` が >= 15 Hz publish していること
+
+デモ運用手順は「preflight 実行 → exit 0 を目視 → 初 goal 発行」の順を
+必須化。demo prep checklist §走行前 gate から本スクリプトへリンク。
+
+**Fix 4 — `FORWARD_SECTOR_MIN_M` を 0.5 → 1.0**: Layer D の下限を
+Patchwork++ の `min_range: 1.0` に一致させる。従来 draft は 0.5 だった
+が、Patchwork++ が 1.0 m 以内を self-return として捨てているため /scan
+に 0.5-1.0 m の点は元々来ない (silent no-op)。0.5 と書いてあると
+「0.5 m の障害物を掴む」と読める嘘になる。
+
+**副作用**: 0.5-1.0 m の障害物には Layer D は反応しない (以前も反応
+していなかった)。これは Patchwork++ の設計上の限界であり、
+`FORWARD_SECTOR_MIN_M` の値ではない。0.5-1.0 m でも人検知したい場合は
+**Patchwork++ min_range を 0.5 に下げる** 変更が本筋 (post-demo、下記
+backlog)。
+
+### Post-demo backlog
+
+- **Patchwork++ min_range 0.5 化の検討**: 現行 1.0 m は WHILL body
+  self-return 対策として書かれているが、`whill_navigation/config/
+  pointcloud_to_laserscan.yaml` の `range_min: 0.5` の comment
+  「self-return は LiDAR 原点から 0.5 m 圏内」と矛盾する。実測して
+  0.5 m まで下げられれば Layer D も 0.5 m 化できる。ADR-0011 の
+  fine-tune として別立て
+- **failsafe_node status publisher (`/failsafe_status`)** の実装で
+  preflight を script でなく publisher/subscriber ベースにする
+  (ADR-0007 §Decision に元々書かれている Full 版の仕様)
+
+### Accepted 化条件 (更新)
+
+以下 4 点満了で proposed → accepted:
+
+1. 明朝 field で V2/V3 (Layer D 基準) PASS — 上記 fix 適用後
+2. V6.4 (sector geometry 実測) PASS — `FORWARD_SECTOR_MIN_M = 1.0`
+   反映後の実距離で
+3. 30 min 連続走行 (V4) で false-trip 0 (path 沿いの静止建物 / 木で
+   発火しないこと)
+4. **`scripts/m6r_preflight.sh` が field で exit 0 を返す**。DEAD INPUT
+   watchdog が正常に叫ぶことは意図的な QoS mismatch 注入で verify
+   (post-demo 可)

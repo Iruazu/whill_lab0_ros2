@@ -62,6 +62,26 @@ loop、AC4 中断)。詳細は `src/whill_safety/README.md` §Mutual exclusion�
 - [ ] operator 随伴、ジョイスティック介入可能 (ADR-0007 §Demo-scope
       reduction)
 
+### 走行前 gate — `scripts/m6r_preflight.sh` (blocking、必須)
+
+2026-07-16 late incident (silent QoS mismatch で Layer D 無音、接触)
+以降、走行前 gate は **blocking script 経由**を必須化。
+
+```bash
+scripts/m6r_preflight.sh
+```
+
+exit 0 まで **絶対に goal を発行しない**。exit 1 なら script が指す
+原因 (failsafe_node 未起動 / DEAD INPUT / /cmd_vel_safety 未 publish)
+を先に潰す。script の中身は:
+
+1. `use_collision_detection: true` の実効値
+2. `/failsafe_node` alive
+3. dead-input watchdog 経路: 12 秒待って `/rosout` に `DEAD INPUT`
+   がないこと (subscription が届いていない layer があれば失敗)
+4. Live-fire hand test: 手を chair 前方 1.5 m に翳し、
+   `/cmd_vel_safety >= 15 Hz` publish
+
 ### 走行前 gate: use_collision_detection + Layer D armed (必須)
 
 Layer D (前方扇形 perception gate、ADR-0007 §Layer D proposed) が active

@@ -57,17 +57,31 @@ PCL_POSE_TIMEOUT_S = 1.0
 PERCEPTION_TIMEOUT_S = 2.0
 # Layer D — forward sector perception gate. Rationale in ADR-0007
 # §Layer D. Half-angle 30° covers the chair's 0.6 m width out to 1.15 m
-# on either side; distance 0.5-2.0 m gives ~6.7 s reaction budget at
-# desired_linear_vel = 0.3 m/s (velocity_smoother stop distance from
-# max_decel = 0.5 m/s² is only 0.09 m). Point threshold 5 is 1/6 of a
-# person's ~30-beam silhouette at 2 m, so single ghost returns do not
-# fire. Hysteresis 0.5 s = 5 consecutive clear scans at 10 Hz — same
-# re-latch pattern as LAYER_A_HOLD_S.
+# on either side; distance 1.0-2.0 m matches the effective downstream
+# perception coverage — Patchwork++ filters points closer than 1.0 m as
+# WHILL body self-return (whill_perception/config/patchworkpp.yaml
+# `min_range: 1.0`), so /scan is silent below 1.0 m by design. Layer D
+# min was 0.5 in the draft but that was aspirational; the honest number
+# is 1.0 until Patchwork++ is re-evaluated (post-demo, see ADR-0007
+# §Layer D "Patchwork++ min_range alignment"). 2.0 m gives ~6.7 s
+# reaction budget at desired_linear_vel = 0.3 m/s (velocity_smoother
+# stop distance from max_decel = 0.5 m/s² is only 0.09 m). Point
+# threshold 5 is 1/6 of a person's ~30-beam silhouette at 2 m, so
+# single ghost returns do not fire. Hysteresis 0.5 s = 5 consecutive
+# clear scans at 10 Hz — same re-latch pattern as LAYER_A_HOLD_S.
 FORWARD_SECTOR_HALF_ANGLE_RAD = math.radians(30.0)
-FORWARD_SECTOR_MIN_M = 0.5
+FORWARD_SECTOR_MIN_M = 1.0
 FORWARD_SECTOR_MAX_M = 2.0
 FORWARD_POINT_COUNT_MIN = 5
 FORWARD_CLEAR_HYSTERESIS_S = 0.5
+# Dead-input watchdog: how long we tolerate a first-message-arm layer
+# staying unarmed before shouting ERROR. 2026-07-16 incident: Layer D's
+# /scan subscription defaulted to RELIABLE while p2ls publishes
+# BEST_EFFORT — the QoS mismatch produced a silent subscribe (0
+# messages) and the layer never armed. The chair drove into a person
+# during V2 verification because failsafe stayed dormant. The watchdog
+# turns that failure mode from silent to loud.
+STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
 
@@ -100,8 +114,11 @@ class FailsafeNode(Node):
         self._converged_bad_since = None
         self._last_pose_time = None
         self._last_perception_time = None
+        self._last_scan_time = None
         self._forward_last_blocked_time = None
         self._active_prev = ()
+        self._start_time = self._now_s()
+        self._dead_input_warned = False
 
         self.create_subscription(
             Bool, '/reinitialization_requested', self._on_reinit, 10)
@@ -126,11 +143,16 @@ class FailsafeNode(Node):
             PointCloud2, '/velodyne_points_no_ground',
             self._on_perception, qos_profile_sensor_data)
         # Layer D: /scan is p2ls_node's output (whill_navigation
-        # nav_launch.py). Reliable QoS by default (nav2 ObstacleLayer
-        # expects reliable), so the default subscription depth of 10 is
-        # fine here — no explicit qos_profile needed.
+        # nav_launch.py). p2ls publishes BEST_EFFORT (sensor QoS) —
+        # verified 2026-07-16 field after an incident in which this
+        # subscription defaulted to RELIABLE and received zero messages,
+        # leaving Layer D silently unarmed and the chair driving into a
+        # person during V2 verification. qos_profile_sensor_data
+        # (BEST_EFFORT + KEEP_LAST 5) is compatible with either
+        # publisher policy, so this is the safe choice regardless of
+        # what upstream ends up doing.
         self.create_subscription(
-            LaserScan, '/scan', self._on_scan, 10)
+            LaserScan, '/scan', self._on_scan, qos_profile_sensor_data)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
         self.create_timer(1.0 / PUBLISH_HZ, self._tick)
@@ -191,6 +213,12 @@ class FailsafeNode(Node):
         self._last_perception_time = self._now_s()
 
     def _on_scan(self, msg):
+        # Every scan updates _last_scan_time — this is what the dead-input
+        # watchdog checks. _forward_last_blocked_time only ticks when the
+        # sector is blocked; a silent scan pipe would leave both at None
+        # and the watchdog would not know whether Layer D armed via
+        # "first sector block" or "first scan arrived". Track both.
+        self._last_scan_time = self._now_s()
         # Count /scan returns inside the forward safety sector. Short-
         # circuit as soon as the threshold is met — no reason to keep
         # counting once Layer D is going to fire; the callback runs at
@@ -241,6 +269,33 @@ class FailsafeNode(Node):
         return tuple(out)
 
     def _tick(self):
+        now = self._now_s()
+        # Dead-input watchdog: shout once when the startup budget expires
+        # if any first-message-arm layer has not received its input.
+        # 2026-07-16 incident: Layer D was subscribing to /scan on the
+        # default (RELIABLE) QoS while p2ls publishes BEST_EFFORT — zero
+        # messages, zero armed layers, and a contact test that failed
+        # closed against a person. The gate must not be silent when it
+        # cannot arm.
+        if (not self._dead_input_warned
+                and now - self._start_time > STARTUP_DEAD_INPUT_TIMEOUT_S):
+            missing = []
+            if self._last_pose_time is None:
+                missing.append('B:/pcl_pose')
+            if self._last_perception_time is None:
+                missing.append('C:/velodyne_points_no_ground')
+            if self._last_scan_time is None:
+                missing.append('D:/scan')
+            if missing:
+                self.get_logger().error(
+                    f'DEAD INPUT after '
+                    f'{STARTUP_DEAD_INPUT_TIMEOUT_S:.0f}s: {missing} — '
+                    f'these subscriptions received ZERO messages. Likely '
+                    f'DDS/QoS mismatch, wrong topic name, or upstream '
+                    f'not running. The listed failsafe layers CANNOT '
+                    f'ARM. Do not drive.')
+            self._dead_input_warned = True
+
         active = self._active_layers()
         if active != self._active_prev:
             if active:

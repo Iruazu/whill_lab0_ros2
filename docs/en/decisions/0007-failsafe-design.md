@@ -74,4 +74,55 @@ demo prep checklist.
 
 **Promotion criteria**: V2 + V3 + V6.4 PASS on the field, plus V4 30-
 min drive with zero false trips against static path-side buildings /
-trees.
+trees, plus `scripts/m6r_preflight.sh` exits 0 during real bringup.
+
+## Incident 2026-07-16 late (silent QoS mismatch)
+
+**What happened**: during a V2-preparation blocking-in test, Layer D
+failed to fire and the chair drove into a person (no injury, test
+setting).
+
+**Root cause**: `failsafe_node.py:132-133` subscribed to `/scan` with
+depth `10` and default reliability = RELIABLE. p2ls publishes /scan
+BEST_EFFORT. QoS mismatch: subscription succeeds, zero messages
+delivered, `_forward_last_blocked_time` stays `None`, Layer D never
+arms, `_active_layers` treats it as clear. The startup log line
+`failsafe_node ready: ... forward_blocked > 5 pts ...` reflects that
+the subscription was CREATED, not that any message was RECEIVED — an
+easy misread as "Layer D is ready". The template for the correct QoS
+was seven lines above in the file: Layer C's `_on_perception`
+subscription already used `qos_profile_sensor_data`.
+
+**Lessons** (apply to every subscription going forward):
+
+- Sensor-data topics (`/scan`, `/velodyne_points*`, `/camera/*`)
+  should default to `qos_profile_sensor_data`. A best-effort
+  subscriber is compatible with either publisher policy; ADR docs
+  that claim "reliable" cannot save you from what upstream actually
+  ships.
+- Every first-message-arm layer needs a **dead-input watchdog**.
+- The startup "ready" log is a subscription log, not a data-arrival
+  log. Operational gates must verify data arrival.
+
+**Fixes shipped in the same commit**:
+
+1. Line 133 flipped to `qos_profile_sensor_data`.
+2. `STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0` module constant; `_tick()`
+   checks each first-message-arm layer's `_last_*_time` after the
+   startup budget and shouts one ERROR line naming the missing
+   inputs.
+3. `scripts/m6r_preflight.sh` — blocking pre-drive script. Verifies
+   `use_collision_detection: true`, `/failsafe_node` alive, no
+   `DEAD INPUT` on `/rosout` after 12 s, and a hand-in-front live
+   fire test with `/cmd_vel_safety >= 15 Hz`. Exit 1 anywhere = do
+   not drive.
+4. `FORWARD_SECTOR_MIN_M` raised from 0.5 to 1.0 to match
+   Patchwork++'s `min_range: 1.0` filter. The 0.5 draft value was a
+   lie: /scan is silent below 1.0 m by construction (Patchwork++
+   drops those points as self-return). Post-demo item = revisit
+   Patchwork++'s `min_range` down to 0.5 to widen actual coverage
+   (the pointcloud_to_laserscan comment already documents 0.5 m as
+   the real self-return radius).
+
+Full narrative and the Japanese version's post-demo backlog are in
+[`../../ja/decisions/0007-failsafe-design.md`](../../ja/decisions/0007-failsafe-design.md).
