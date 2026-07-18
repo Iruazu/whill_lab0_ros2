@@ -35,7 +35,21 @@ Algorithm (per --input-yaml grid, all thresholds CLI-overridable):
        count < min_points        → unknown
        (step OR roughness > thr)  → OCCUPIED
        otherwise                  → (free-candidate, may become FREE below)
-  7. Final pgm assembly. Two modes:
+  7. Salt filter (2026-07-18). On this ~3-pts/cell PCD, real curbs and
+     grass patches read as scattered isolated occupied cells (max raw
+     8-conn component size = 4 cells on the campus map), so filtering
+     the raw mask by size wipes everything. Instead: pre-dilate the
+     occupied mask by --cluster-dilate-px (default 1 = 15 cm reach)
+     BEFORE 8-connected labelling, which chains near-adjacent cells
+     into meaningful components (top-5 after dilate: 23k, 12k, 6.7k,
+     6.5k, 5.1k cells), then drop components smaller than
+     --min-cluster-size (default 8 cells = 0.02 m² of ORIGINAL occupied).
+     The returned occupied is (original ∩ surviving-label), so nothing
+     new is added — the filter only removes. Applied ONCE, before the
+     paint guide, red PNG, overlay, and --free-mask composite all read
+     occupied_2d, so the visual guide matches the occupied set that
+     actually locks the final pgm.
+  8. Final pgm assembly. Two modes:
      (a) --free-mask <PNG> (manual mode, preferred as of 2026-07-18):
          pixel value = OCCUPIED where trav says occupied
                      = FREE where mask pixel ≥ --mask-threshold AND not
@@ -46,9 +60,10 @@ Algorithm (per --input-yaml grid, all thresholds CLI-overridable):
          FREE. If --diff-vs is given, unknown cells within --inherit-radius
          of a trav-known cell that are FREE in the reference pgm also
          become FREE.
-  8. Intermediate arrays (count, ground_z, roughness) cached to --cache-npz
+  9. Intermediate arrays (count, ground_z, roughness) cached to --cache-npz
      for fast rerun on threshold sweeps. Cache is invalidated when
-     --max-height-above-ground changes.
+     --max-height-above-ground changes; --min-cluster-size and downstream
+     thresholds re-run against the same cached intermediates in ~5 s.
 
 Auxiliary outputs (always written when --output-pgm is written):
   * <output-pgm-dir>/trav_occupied_only.png — RGBA, same pixel dims as the
@@ -159,6 +174,22 @@ def parse_args():
                         'any classification (metres). Default 2.0 — safe headroom for a '
                         'wheelchair + rider (~1.5 m) while removing tree branches at 3 m+ that '
                         'would otherwise phantom-occupy the map. Set to 0 to disable.')
+    p.add_argument('--min-cluster-size', type=int, default=8,
+                   help='Drop trav-occupied components smaller than N cells before anything '
+                        'downstream (paint guide, overlay, free-mask composite, red PNG) looks '
+                        'at the occupied set. Default 8 cells (= 0.02 m² @ 0.05 m/px). '
+                        'Set to 0 to disable.')
+    p.add_argument('--cluster-dilate-px', type=int, default=1,
+                   help='Radius (cells) of a disk applied to trav-occupied before 8-connected '
+                        'labelling, so real curbs / grass patches that read as morphologically '
+                        'coherent from a few metres away but land as near-adjacent isolated '
+                        'cells on this ~3-pts/cell PCD (2026-07-18 finding: max raw component '
+                        'size = 4 cells on the campus map) get chained into meaningful '
+                        'components before size filtering. The dilated mask is used ONLY to '
+                        'assign labels; the returned occupied set is the intersection of the '
+                        'ORIGINAL cells and the large-enough labels. Default 1 (3x3 kernel, '
+                        'chains any two occupied cells within 1 cell of each other). Set to 0 '
+                        'to label the raw mask directly.')
 
     p.add_argument('--free-mask', type=pathlib.Path,
                    help='Hand-painted PNG (same pixel dimensions as --input-yaml grid) where '
@@ -510,7 +541,8 @@ def main():
     print(f'grid     :   {W} x {H}, origin={origin}, resolution={resolution}')
     print(f'thresholds:  step={args.step_threshold} m | rough_std={args.roughness_threshold} m | '
           f'min_pts={args.min_points} | ground_p={args.ground_percentile}% | '
-          f'rough_band={args.roughness_band} m | max_h={args.max_height_above_ground} m')
+          f'rough_band={args.roughness_band} m | max_h={args.max_height_above_ground} m | '
+          f'min_cluster={args.min_cluster_size} (dilate={args.cluster_dilate_px}px)')
     if args.free_mask is not None:
         print(f'mode      :  MANUAL — free from --free-mask (occupied > free > unknown)')
     else:
@@ -589,6 +621,65 @@ def main():
     # detection (mechanical) from free assignment (human or heuristic):
     # a human accidentally painting over a curb never opens the curb.
     occupied_2d = known_2d & (rough_mask | step_mask)
+
+    # Salt filter — 2026-07-18 field observation: after the h-filter, most
+    # residual red inside the road corridor is 1-3 cell isolated dust.
+    # However on THIS PCD (~3 pts/cell density → known_2d = 1 % of grid)
+    # the naive 8-connectivity view of "cluster" reads real curbs as
+    # scattered isolated cells too — max raw component size is 4 cells,
+    # so filtering by raw 8-conn size wipes everything indiscriminately.
+    #
+    # Fix: --cluster-dilate-px (default 1 = 3x3 kernel, 15 cm reach) pre-
+    # dilates the mask before labelling so cells within 1 cell of each
+    # other are chained into the same component. Real curbs / grass
+    # patches then appear as thousands-of-cell components (top 5 on
+    # campus map: 23412, 12102, 6756, 6477, 5133), and salt stays as
+    # tiny isolated components below --min-cluster-size.
+    #
+    # The DILATED mask is used only to compute labels + component sizes.
+    # The returned occupied set is the intersection of the ORIGINAL cells
+    # and the surviving labels, so the pgm never gains cells that weren't
+    # occupied in the first place — the filter only removes.
+    if args.min_cluster_size > 0:
+        t1 = time.time()
+        n_before = int(occupied_2d.sum())
+        occ_u8 = occupied_2d.astype(np.uint8)
+        if args.cluster_dilate_px > 0:
+            k = 2 * args.cluster_dilate_px + 1
+            kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+            mask_for_label = cv2.dilate(occ_u8, kern)
+        else:
+            mask_for_label = occ_u8
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+            mask_for_label, connectivity=8,
+        )
+        # stats[0] is background (label 0). Areas are one entry per label.
+        component_areas = stats[:, cv2.CC_STAT_AREA]
+        n_components_before = num_labels - 1
+        drop_label = component_areas < args.min_cluster_size
+        drop_label[0] = False   # never drop the background label
+        drop_mask = drop_label[labels]
+        occupied_2d = occupied_2d & ~drop_mask
+        n_after = int(occupied_2d.sum())
+        n_components_after = n_components_before - int(drop_label.sum())
+        n_dropped_cells = n_before - n_after
+        n_dropped_components = n_components_before - n_components_after
+        pct_cells = (100.0 * n_dropped_cells / n_before) if n_before else 0.0
+        pct_components = (100.0 * n_dropped_components / n_components_before) if n_components_before else 0.0
+        # Largest surviving component gives the user a sanity signal on
+        # whether meaningful structures survived (typical curb/grass:
+        # 1000+ cells post-dilate).
+        surviving_sizes = component_areas[1:][~drop_label[1:]]
+        largest = int(surviving_sizes.max()) if surviving_sizes.size > 0 else 0
+        print(f'[cluster] dilate={args.cluster_dilate_px}px + 8-conn label + '
+              f'min_size={args.min_cluster_size}: '
+              f'components {n_components_before:,} → {n_components_after:,} '
+              f'(-{n_dropped_components:,}, {pct_components:.1f}%) | '
+              f'occupied {n_before:,} → {n_after:,} '
+              f'(-{n_dropped_cells:,}, {pct_cells:.1f}%) | '
+              f'largest surviving component {largest:,} cells '
+              f'in {time.time() - t1:.1f} s')
+
     trav_free_2d = known_2d & ~occupied_2d
 
     # Compose the output pgm. Two paths.
