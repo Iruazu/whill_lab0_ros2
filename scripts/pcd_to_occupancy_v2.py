@@ -232,6 +232,10 @@ def parse_args():
     p.add_argument('--no-maxheight', action='store_true')
     p.add_argument('--no-free-evidence', action='store_true')
     p.add_argument('--no-salt-candidates', action='store_true')
+    p.add_argument('--no-roadway-paint-guide', action='store_true',
+                   help='Skip roadway_paint_guide.png (1/4-scale machine_free '
+                        'underlay used as GIMP reference when painting the '
+                        'roadway_mask sidecar).')
 
     p.add_argument('--cache-npz', type=pathlib.Path,
                    help='Save / reuse per-cell intermediates. Invalidated when '
@@ -950,9 +954,42 @@ def main():
 
     if not args.no_hillshade:
         hs_path = args.output_dir / 'underlay_hillshade.png'
-        Image.fromarray(build_hillshade(ground_z2d, resolution), 'RGB').save(hs_path)
+        hs_rgb = build_hillshade(ground_z2d, resolution)
+        Image.fromarray(hs_rgb, 'RGB').save(hs_path)
         layers_written['underlay_hillshade'] = hs_path.name
         print(f'[out] {hs_path}')
+    else:
+        hs_rgb = None
+
+    if not args.no_roadway_paint_guide:
+        # 1/4-scale composite: hillshade base + semi-transparent green over
+        # machine_free (footprint + raycast). The operator paints roadway_
+        # mask.png against this reference. Kept out of the composition
+        # (Rule 1: display-only overlay).
+        guide_path = args.output_dir / 'roadway_paint_guide.png'
+        scale = 4
+        # Downsample hillshade (or ground_z re-rendered) with area interp.
+        if hs_rgb is None:
+            hs_rgb = build_hillshade(ground_z2d, resolution)
+        small_hs = cv2.resize(hs_rgb, (W // scale, H // scale),
+                              interpolation=cv2.INTER_AREA)
+        # Downsample machine_free (bool) with max-pool via dilate → resize.
+        # Using nearest interpolation on the bool is fine at this scale.
+        small_free = cv2.resize(free_evidence.astype(np.uint8),
+                                (W // scale, H // scale),
+                                interpolation=cv2.INTER_AREA)
+        # Any downsampled cell with >= 25% coverage counts as free in guide.
+        small_free_bool = small_free > 63   # 25% of 255
+        rgb_guide = small_hs.astype(np.float32)
+        green = np.array([0, 200, 100], dtype=np.float32)
+        alpha = 0.55
+        rgb_guide[small_free_bool] = (
+            (1.0 - alpha) * rgb_guide[small_free_bool] + alpha * green)
+        rgb_guide = np.clip(rgb_guide, 0, 255).astype(np.uint8)
+        Image.fromarray(rgb_guide, 'RGB').save(guide_path)
+        layers_written['roadway_paint_guide'] = guide_path.name
+        print(f'[out] {guide_path}  '
+              f'({W // scale}x{H // scale}, machine_free α={alpha:.2f} on hillshade)')
 
     if not args.no_maxheight:
         mh_path = args.output_dir / 'underlay_maxheight.png'

@@ -7,15 +7,27 @@ occupied_structure, free_evidence) with two hand-painted sidecar
 masks (keepout_mask, free_mask) into a Nav2-ready pgm + yaml.
 
 Composition rule (2026-07-18 PR #91 review — priority reordered so
-the human can erase machine noise, which is the whole point of v2):
+the human can erase machine noise, which is the whole point of v2;
+2026-07-18 review round 3 added the roadway_mask whitelist):
 
     conflict         = keepout & free_mask            [warn + record]
     erased_by_free   = machine_occ & free_mask & ¬keepout [audit]
     occupied_final   = keepout | (machine_occ & ¬free_mask)
     free_final       = (free_mask | machine_free) & ¬occupied_final
+                       ∩ roadway_mask                 [fail-closed if given]
 
 Priority (highest → lowest):
     keepout  >  free_mask  >  machine_occ  >  machine_free
+
+--roadway-mask (optional): fail-closed whitelist for FREE. Only cells
+    within the operator-painted roadway can become FREE in the final
+    pgm. Cells that WOULD have been FREE but sit outside the roadway
+    are clipped and recorded in clipped_by_roadway.png (magenta) with a
+    count in the diagnostic log. If no --roadway-mask is passed, the
+    composer prints a 1-line warning and falls back to un-clipped
+    behaviour (previous v2 default). Recommended for campus operation:
+    Nav2 planner should never entertain FREE cells outside the
+    driveable corridor.
 
 Rationale:
   * keepout wins over free_mask — if the human explicitly painted
@@ -81,6 +93,9 @@ FREE = 254
 # Audit-layer colours (opaque so they read clearly over any GIMP base).
 COLOR_CONFLICT = (255, 0, 255, 255)          # magenta — keepout ∩ free_mask
 COLOR_ERASED = (255, 220, 0, 255)            # yellow  — machine_occ erased by free_mask
+COLOR_CLIPPED = (255, 0, 255, 255)           # magenta — free cells clipped by roadway_mask
+                                              # (distinct location from conflict so the two
+                                              # never overlap visually)
 
 
 def parse_args():
@@ -103,6 +118,14 @@ def parse_args():
     p.add_argument('--free-mask', type=pathlib.Path,
                    help='Bright pixels add FREE and CAN erase machine_occ. '
                         'Erased cells recorded in erased_by_free.png.')
+    p.add_argument('--roadway-mask', type=pathlib.Path,
+                   help='Optional fail-closed whitelist for FREE. Cells that '
+                        'would have been FREE but sit OUTSIDE this mask are '
+                        'clipped and recorded in clipped_by_roadway.png. When '
+                        'omitted, the composer prints a warning and falls back '
+                        'to un-clipped behaviour. Recommended for campus '
+                        'operation — Nav2 should not plan outside the '
+                        'operator-defined driveable corridor.')
     p.add_argument('--mask-threshold', type=int, default=128,
                    help='Grayscale threshold on sidecar masks above which a '
                         'pixel counts as painted (0-255). Default 128 — '
@@ -260,12 +283,31 @@ def main():
         free_mask = load_sidecar_mask(args.free_mask, hw, args.mask_threshold)
         print(f'[side ] free_mask         : {int(free_mask.sum()):>10,} cells '
               f'(L≥{args.mask_threshold})')
+    # roadway_mask: fail-closed whitelist. If absent, all cells whitelisted
+    # (equivalent to legacy behaviour) but WITH a warning so the operator
+    # knows planning space is not fenced.
+    roadway_provided = args.roadway_mask is not None
+    if roadway_provided:
+        if not args.roadway_mask.is_file():
+            raise SystemExit(f'--roadway-mask not found: {args.roadway_mask}')
+        roadway_mask = load_sidecar_mask(args.roadway_mask, hw, args.mask_threshold)
+        print(f'[side ] roadway_mask      : {int(roadway_mask.sum()):>10,} cells '
+              f'(L≥{args.mask_threshold})  ← fail-closed FREE whitelist')
+    else:
+        roadway_mask = np.ones(hw, dtype=bool)   # accept everything
+        print(f'[warn ] no --roadway-mask supplied. FREE cells are NOT clipped '
+              f'to a driveable corridor; Nav2 may plan into off-limits areas.')
 
     # Compose. Priority: keepout > free_mask > machine_occ > machine_free.
+    # Roadway whitelist applies AFTER the free/occupied resolution — a
+    # cell painted by keepout stays OCCUPIED even outside roadway (safe:
+    # obstacles do not shrink based on whitelist).
     conflict = keepout & free_mask
     erased_by_free = machine_occ & free_mask & ~keepout
     occupied_final = keepout | (machine_occ & ~free_mask)
-    free_final = (free_mask | machine_free) & ~occupied_final
+    free_would_be = (free_mask | machine_free) & ~occupied_final
+    free_final = free_would_be & roadway_mask
+    clipped_by_roadway = free_would_be & ~roadway_mask
 
     # Diagnostics.
     n_occ = int(occupied_final.sum())
@@ -275,6 +317,7 @@ def main():
     n_erased = int(erased_by_free.sum())
     n_keepout_new = int((keepout & ~machine_occ).sum())
     n_keepout_reinforcing = int((keepout & machine_occ).sum())
+    n_clipped = int(clipped_by_roadway.sum())
 
     print()
     print(f'== composition ==')
@@ -286,6 +329,9 @@ def main():
           f'(audit → erased_by_free.png)')
     print(f'  conflict keepout∩free    : {n_conflict:>12,}  '
           f'(keepout wins → conflict.png)')
+    if roadway_provided:
+        print(f'  clipped_by_roadway       : {n_clipped:>12,}  '
+              f'(would-be-FREE outside whitelist → clipped_by_roadway.png)')
     if n_conflict > 0:
         print(f'  [warn] {n_conflict:,} cells have BOTH keepout and free_mask painted. '
               f'keepout wins per priority rule; inspect conflict.png to reconcile intent.')
@@ -331,6 +377,10 @@ def main():
             erased_path = args.output_pgm.parent / 'erased_by_free.png'
             save_audit_layer(erased_path, erased_by_free, COLOR_ERASED)
             print(f'[out] {erased_path}  ({n_erased:,} yellow cells)')
+        if n_clipped > 0:
+            clipped_path = args.output_pgm.parent / 'clipped_by_roadway.png'
+            save_audit_layer(clipped_path, clipped_by_roadway, COLOR_CLIPPED)
+            print(f'[out] {clipped_path}  ({n_clipped:,} magenta cells)')
 
     print(f'\n== total wall time: {time.time() - t0:.1f} s ==')
     return 0

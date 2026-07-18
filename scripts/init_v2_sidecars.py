@@ -19,7 +19,7 @@ import yaml
 from PIL import Image
 
 
-SIDECAR_NAMES = ('keepout_mask.png', 'free_mask.png')
+SIDECAR_NAMES = ('keepout_mask.png', 'free_mask.png', 'roadway_mask.png')
 
 
 def main():

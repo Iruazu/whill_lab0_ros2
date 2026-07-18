@@ -93,14 +93,17 @@ def parse_args():
                         'straight-line spec, so zero tolerance produces false '
                         'negatives.')
     p.add_argument('--m1-lateral-tolerance-m', type=float, default=0.10,
-                   help='Same principle as --m2-lateral-tolerance-m but for M1. '
-                        'When searching for the OCCUPIED cell nearest to '
-                        'expected_step_xy, sample within ±this many m '
-                        'perpendicular to the segment. Real curbs are 2-3 px '
-                        'thick (5-15 cm) and slightly off any specified line. '
-                        'Default 0.10 m = ±2 cells. Smaller than M2 because '
-                        'position accuracy is the M1 metric — the tolerance '
-                        'is just to find the curb, not to define its width.')
+                   help='SEARCH WIDTH (探索幅) along the section line for M1. '
+                        'Not a pass/fail relaxation — the ±1 cell threshold on '
+                        'Δ to expected_step_xy is unchanged. This flag only '
+                        'widens the AREA in which we look for OCCUPIED cells '
+                        'before measuring their distance to expected_step_xy. '
+                        'Real curbs are 2-3 px thick and drift off any user-'
+                        'specified straight line, so a zero-width search '
+                        'produces false negatives ("no OCCUPIED on segment") '
+                        'even when the curb is clearly present 1-2 px off-axis. '
+                        'Default 0.10 m = ±2 cells at 5 cm/px. Set to 0 to '
+                        'restore strict on-axis search.')
     return p.parse_args()
 
 
@@ -129,12 +132,17 @@ def load_pgm_with_yaml(yaml_path):
 
 
 def evaluate_m1(pgm, resolution, origin, section, lateral_tolerance_m=0.10):
-    """M1 with lateral tolerance band around segment.
+    """M1 with a SEARCH-WIDTH tolerance band around the segment (探索幅).
 
-    Search cells within ±lat_cells perpendicular to the segment for
-    OCCUPIED (rather than restricting to on-axis cells only). Then
-    report the closest one to expected_step_xy. Real curbs are 2-3 px
-    thick and drift off any user-specified straight line.
+    Behaviour: search cells within ±lat_cells perpendicular to the segment
+    for OCCUPIED (i.e. a strip of width 2*lat_cells+1 pixels, centred on
+    the segment line). Report the closest such OCCUPIED cell to
+    expected_step_xy. PASS threshold is ±1 cell on THAT distance — the
+    tolerance widens the AREA of search, NOT the pass criterion.
+
+    Rationale: real curbs are 2-3 px thick and drift ±1-3 px off any
+    user-specified straight line. Zero-width search reports "no OCCUPIED
+    on segment" false-negatives even when the curb is obviously there.
     """
     H, W = pgm.shape
     ox, oy = float(origin[0]), float(origin[1])

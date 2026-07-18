@@ -12,6 +12,7 @@ layers:
   free_evidence: free_evidence.png
   salt_candidates: salt_candidates.png
   underlay_hillshade: underlay_hillshade.png
+  roadway_paint_guide: roadway_paint_guide.png
   underlay_maxheight: underlay_maxheight.png
 thresholds:
   ground_percentile: 5.0

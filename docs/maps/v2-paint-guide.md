@@ -5,9 +5,10 @@
 ## 前提
 
 - Stage 1 は既に走行済 (`v2_layers.yaml` が存在)。
-- 合成規則: **keepout > free_mask > machine_occ > machine_free** (2026-07-18 確定、以後変更禁止)。
+- 合成規則: **keepout > free_mask > machine_occ > machine_free**、さらに **fail-closed roadway_mask** で FREE 全体をクリップ (2026-07-18 確定、以後変更禁止)。
   - `free_mask` は machine_occ を消去できる → 路面 salt 除去に使う。
   - `keepout` は全てに勝つ → 機械が拾い漏れた障害物 (透明ポール、低段差等) の追加に使う。
+  - `roadway_mask` は FREE のホワイトリスト → 塗った内側だけが最終 FREE になる。外側の FREE 候補は `clipped_by_roadway.png` に記録され UNKNOWN 化 (fail-closed で Nav2 が回廊外に計画しないことを保証)。
 
 ## 手順
 
