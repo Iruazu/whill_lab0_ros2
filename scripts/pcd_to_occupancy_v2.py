@@ -190,11 +190,18 @@ def parse_args():
                         'trajectory anchor. Default 2.0.')
     p.add_argument('--traj-stride', type=float, default=1.0,
                    help='Trajectory downsample stride (m). Default 1.0.')
-    p.add_argument('--free-raycast', action='store_true',
+    p.add_argument('--free-raycast', dest='free_raycast', action='store_true',
+                   default=True,
                    help='Also cast Bresenham rays from each anchor to occupied '
-                        'cells within --max-range m (720 angular bin dedup). Off '
-                        'by default; ON expands machine_free significantly at '
-                        '~30-60 s cost. Use for A/B against v1.')
+                        'cells within --max-range m (720 angular bin dedup). '
+                        'DEFAULT ON (2026-07-18 decision) — campus operation '
+                        'needs the wider machine_free coverage (~14%% vs 4%% '
+                        'footprint-only) so Nav2 has room to plan around, and '
+                        'the composer priority (keepout > free_mask > '
+                        'machine_occ > machine_free) means the v1 curb-'
+                        'penetration risk cannot re-emerge. Use '
+                        '--no-free-raycast to opt out (baseline / speed).')
+    p.add_argument('--no-free-raycast', dest='free_raycast', action='store_false')
     p.add_argument('--max-range', type=float, default=20.0,
                    help='Bresenham ray max distance (m). Only used with '
                         '--free-raycast. Default 20 = Velodyne VLP-16 outdoor '

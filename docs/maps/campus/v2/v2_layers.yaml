@@ -25,7 +25,7 @@ thresholds:
   cluster_dilate_px: 0
   anchor_free_radius: 2.0
   traj_stride: 1.0
-  free_raycast: false
+  free_raycast: true
   max_range: 20.0
 source:
   pcd: docs/maps/campus/static.pcd
