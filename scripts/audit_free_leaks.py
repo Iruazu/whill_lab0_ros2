@@ -15,15 +15,30 @@ Runs against a Nav2 pgm (values 0/205/254) and reports:
         Also lists the top-N cell coordinates (map frame) for manual
         inspection when > 0.
 
-  (b) 段差越境 free metric
-        FREE cells that are NOT reachable from any trajectory anchor
-        via the traversable graph (traversable = ¬OCCUPIED). These are
-        FREE cells cut off from the traj by walls / step lines, i.e.
-        the raycast leaked over an occupied barrier into the property
-        side. Also reports the maximum "intrusion depth" (Euclidean
-        distance in metres from each leaked cell to the nearest OCC
-        cell — how deep the leak went past the barrier).
-        Metric: (count, max_depth_m). Ideal = (0, 0).
+  (b) 段差越境 free metric — CAVEAT: NOT IMPLEMENTED PER ORIGINAL SPEC
+        Original spec (2026-07-18 PR #91 review round 3): count FREE
+        cells on the 敷地側 (property side, opposite of Rule-3 chair-
+        accessible) of a step/structure occupied line, with maximum
+        intrusion depth past the barrier. Would require identifying,
+        for each occupied cell, its 敷地-side direction (from Rule 3
+        accessibility) then flood-filling FREE cells outward on that
+        side.
+
+        This script implements a WEAKER PROXY: FREE cells that are not
+        reachable from any trajectory anchor via the traversable graph
+        (traversable = ¬OCCUPIED). A leak that FINGERS past a wall
+        but stays CONNECTED to the traj-reachable region (via a gap
+        elsewhere) is missed. On the campus map this proxy has always
+        returned 0 both before and after P0 fix, indicating it is
+        insensitive to the phenomenon of interest.
+
+        Impact is contained by --roadway-mask (fail-closed FREE
+        whitelist) since a proper roadway_mask clips ALL out-of-
+        corridor FREE cells regardless of their reachability, which
+        is the operational safety we care about. Proper metric_b
+        implementation is tracked as a backlog issue (see PR #91
+        review round 4). Do NOT rely on the current metric_b=0 as
+        evidence of "no cross-barrier leak".
 
 Usage:
 
@@ -126,12 +141,14 @@ def metric_a_building_leak(pgm, window, unknown_ratio):
 
 
 def metric_b_step_bypass(pgm, traj_px, traj_py):
-    """Return (count, max_depth_m_or_None, leak_mask). See file docstring.
+    """PROXY implementation — see file docstring "CAVEAT" note.
 
-    Uses connected-components on the traversable graph (¬OCCUPIED). Any
-    FREE cell not in the traj-connected component was cut off from the
-    trajectory by an OCCUPIED barrier — the ray leaked through / past
-    an obstacle line.
+    Returns (count, max_depth_m_or_None, leak_mask). This connected-
+    components approach detects only FREE regions that are COMPLETELY
+    isolated from the traj-reachable component, missing the more
+    common case of a FREE finger that extends past a barrier but
+    stays connected to the main free region via a gap. Proper
+    implementation per the original spec is a backlog issue.
     """
     is_occ = pgm == OCCUPIED
     is_free = pgm == FREE
