@@ -1,27 +1,42 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""gen_auto_free_mask.py — auto-generate a free_mask sidecar for 1-cell
-strictly-isolated OCCUPIED cells inside the operator's roadway_mask.
+"""gen_auto_free_mask.py — auto-generate a free_mask sidecar for small
+(≤ 3 cell) isolated OCCUPIED blobs inside the operator's roadway_mask.
 
 Rule 2 application (INPUT, not OUTPUT modification): the composer treats
 this sidecar exactly like a human-painted free_mask, i.e. it erases
 machine_occ where painted (audit trail via erased_by_free.png). No
 morphological operation is applied to the OUTPUT pgm — Rule 1 preserved.
 This script's job is only to identify which cells the operator would
-have painted themselves under Rule 2's "auto-remove is 1-cell strictly
-isolated dust only" rule, and to save that painted intent as a PNG the
-composer consumes.
+have painted themselves under Rule 2's "auto-remove is small isolated
+dust" rule, and to save that painted intent as a PNG the composer
+consumes.
 
-Semantics:
+Semantics (2026-07-18 revision: 1 cell → ≤ 3 cells):
   A cell qualifies for free_mask_auto if
-    (i) it is machine_occ (union of Stage 1 occupied_step + occupied_structure)
-   (ii) it is INSIDE the operator's roadway_mask (any painted cell)
-  (iii) its 8-neighbourhood contains NO OTHER machine_occ cell
+    (i)  it is machine_occ (union of Stage 1 occupied_step + occupied_structure)
+   (ii)  it is INSIDE the operator's roadway_mask (any painted cell)
+  (iii)  it belongs to a machine_occ 8-connected component of size ≤ 3
+         cells (≤ 15 cm at 5 cm/px)
 
-Also outputs salt_candidates_2to3.csv — coordinates of the 2-3 cell
-blobs INSIDE roadway_mask. These are NOT auto-deleted (Rule 2 strict:
-only truly isolated 1-cell). The operator inspects the CSV later and
-decides case-by-case whether to paint free_mask or leave occupied.
+Rationale for expanding to ≤ 3 cells (2026-07-18):
+  The roadway_mask is a HUMAN acknowledgement that the enclosed area is
+  driveable pavement. A ≤ 3 cell (≤ 15 cm) floating occupied blob on
+  approved pavement is not worth carrying as a static Nav2 lethal:
+    * if the blob is real (small step, low kerb rise, cable cover),
+      Nav2's local costmap will pick it up from live LiDAR at approach
+      time — that is the local obstacle layer's job.
+    * if the blob is salt (DUFOMap residual, low-height noise), keeping
+      it as static lethal breaks Nav2 planning connectivity for no
+      benefit.
+  Rule 2 is otherwise unchanged: we auto-delete only what is
+  STRUCTURALLY isolated (8-conn component size ≤ 3), and NEVER auto-
+  delete anything outside the roadway_mask.
+
+salt_candidates_2to3.csv is still emitted for the audit trail — the
+operator can inspect the 2-3 cell blobs that were auto-freed to
+double-check the decision. 1-cell components are omitted from the CSV
+since they are too small to be worth per-blob review.
 
 Usage:
 
@@ -142,20 +157,27 @@ def main():
     per_cell_area = np.zeros(hw, dtype=np.int32)
     per_cell_area[machine_occ] = areas[labels[machine_occ]]
 
-    # (1) 1-cell isolated INSIDE roadway → free_mask_auto.
-    auto_free = machine_occ & roadway & (per_cell_area == 1)
+    # (1) ≤ 3 cell blobs INSIDE roadway → free_mask_auto.
+    auto_free = machine_occ & roadway & (per_cell_area <= 3) & (per_cell_area > 0)
     n_auto = int(auto_free.sum())
-    print(f'[out] 1-cell isolated (in roadway): {n_auto:>10,} cells → free_mask_auto')
+    # Break the count into per-size bins for the log.
+    n_auto_1 = int((auto_free & (per_cell_area == 1)).sum())
+    n_auto_2 = int((auto_free & (per_cell_area == 2)).sum())
+    n_auto_3 = int((auto_free & (per_cell_area == 3)).sum())
+    print(f'[out] ≤3 cell blobs (in roadway) : {n_auto:>10,} cells → free_mask_auto')
+    print(f'      breakdown:  1-cell = {n_auto_1:>7,}  |  '
+          f'2-cell = {n_auto_2:>7,}  |  3-cell = {n_auto_3:>7,}')
 
-    # (2) 2-3 cell blobs INSIDE roadway → CSV (not deleted).
+    # (2) 2-3 cell blob CSV — audit trail for the operator to
+    # double-check the auto-freed blobs (1-cell entries omitted; too
+    # small to review per-blob).
     blob23_cell = machine_occ & roadway & ((per_cell_area == 2) | (per_cell_area == 3))
-    # Component ids of these cells:
     blob23_labels_in_roadway = np.unique(labels[blob23_cell])
     blob23_labels_in_roadway = blob23_labels_in_roadway[blob23_labels_in_roadway != 0]
     n_blob23_components = int(blob23_labels_in_roadway.size)
     n_blob23_cells = int(blob23_cell.sum())
-    print(f'[out] 2-3 cell blobs (in roadway) : {n_blob23_components:>10,} '
-          f'components / {n_blob23_cells:,} cells → CSV (NOT auto-deleted)')
+    print(f'[out] 2-3 cell blob CSV (audit)  : {n_blob23_components:>10,} '
+          f'components / {n_blob23_cells:,} cells')
 
     # ---- Write free_mask_auto.png (RGBA) ----
     rgba = np.zeros((H, W, 4), dtype=np.uint8)
