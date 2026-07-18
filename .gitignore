@@ -142,7 +142,7 @@ docs/maps/**/*.xcf
 docs/maps/**/.trav_cache.npz
 # Regenerable pgm output. The tracked artifacts are the script (parameters
 # baked in the commit message and yaml), the yaml (thresholds + provenance),
-# and the diff PNG (visual asset for review).
+# and the *.png visual assets (diff, occupied-only, overlay, paint guide).
 docs/maps/**/occupancy_trav.pgm
 
 # tf2_tools view_frames and RViz write diagnostic / session files to the

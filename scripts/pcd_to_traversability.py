@@ -114,6 +114,20 @@ GROUND_SMOOTH_RADIUS_M = 0.25
 # remain visible for human verification of coverage.
 RED_ALPHA = 0.6
 
+# Colours for the paint-guide PNG. Chosen so all three layers are
+# distinguishable at any zoom level without an alpha channel:
+#   background = dark gray (visible against a black GIMP canvas)
+#   cleaned free = mid-gray (obvious but muted, so it does not compete
+#                            visually with the red)
+#   occupied = pure red (unambiguous "do not paint")
+PAINT_GUIDE_BG = (60, 60, 60)
+PAINT_GUIDE_FREE = (120, 120, 120)
+PAINT_GUIDE_OCC = (255, 0, 0)
+# Dilate radius (in cells) for the red on the paint guide. 3 cells @ 0.05
+# m/px = 0.15 m — enough that isolated 1-cell salt is visible at zoom-out
+# without merging genuinely separate obstacles.
+PAINT_GUIDE_DILATE_PX = 3
+
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -184,10 +198,22 @@ def parse_args():
                    help='RGB PNG with --diff-vs as grayscale base and trav-occupied cells '
                         'blended in red (alpha=%.2f). Written only when --diff-vs is provided. '
                         'Default: <output-pgm-dir>/trav_occupied_over_cleaned.png.' % RED_ALPHA)
+    p.add_argument('--output-paint-guide', type=pathlib.Path,
+                   help='RGB PNG (opaque) for GIMP paint-time reference. Dark-gray '
+                        'background, cleaned-free cells in mid-gray, trav-occupied dilated '
+                        'to %d px and drawn in pure red. Written only when --diff-vs is '
+                        'provided. Default: <output-pgm-dir>/trav_paint_guide.png.'
+                        % PAINT_GUIDE_DILATE_PX)
+    p.add_argument('--paint-guide-dilate-px', type=int, default=PAINT_GUIDE_DILATE_PX,
+                   help='Dilation radius (cells) applied to trav-occupied on the paint '
+                        'guide only. Does not affect the pgm or any other output. Default %d.'
+                        % PAINT_GUIDE_DILATE_PX)
     p.add_argument('--no-occupied-png', action='store_true',
                    help='Skip trav_occupied_only.png output.')
     p.add_argument('--no-overlay-png', action='store_true',
                    help='Skip trav_occupied_over_cleaned.png output even when --diff-vs is given.')
+    p.add_argument('--no-paint-guide', action='store_true',
+                   help='Skip trav_paint_guide.png output even when --diff-vs is given.')
 
     p.add_argument('--dry-run', action='store_true',
                    help='Report the classification counts without writing any output files.')
@@ -383,6 +409,45 @@ def build_occupied_only_rgba(occupied_2d):
     rgba[occupied_2d, 0] = 255   # R
     rgba[occupied_2d, 3] = 255   # A
     return rgba
+
+
+def build_paint_guide(occupied_2d, cleaned_gray, dilate_radius_px):
+    """Opaque RGB paint guide for GIMP.
+
+    Layer order (bottom to top):
+      1. Solid PAINT_GUIDE_BG dark-gray background — chosen NOT to be
+         transparent so the user does not have to fight alpha compositing
+         while painting.
+      2. cleaned-map FREE cells recoloured to PAINT_GUIDE_FREE mid-gray.
+         Everything non-free in cleaned (occupied AND unknown) stays as
+         the background so the corridor shapes are visually obvious.
+      3. trav-occupied dilated by dilate_radius_px cells, drawn in pure
+         PAINT_GUIDE_OCC red. Dilation is guide-only — it makes 1-cell
+         salt visible at fit-to-viewport zoom without merging genuinely
+         distinct obstacles at 0.15 m (= 3 cells @ 0.05 m/px).
+
+    Same pixel dimensions as inputs. No alpha channel.
+    """
+    if cleaned_gray.shape != occupied_2d.shape:
+        raise ValueError(
+            f'cleaned shape {cleaned_gray.shape} != occupied shape {occupied_2d.shape}')
+    H, W = occupied_2d.shape
+    rgb = np.empty((H, W, 3), dtype=np.uint8)
+    rgb[..., 0] = PAINT_GUIDE_BG[0]
+    rgb[..., 1] = PAINT_GUIDE_BG[1]
+    rgb[..., 2] = PAINT_GUIDE_BG[2]
+
+    cleaned_free = (cleaned_gray == FREE)
+    rgb[cleaned_free] = PAINT_GUIDE_FREE
+
+    if dilate_radius_px > 0:
+        k = 2 * dilate_radius_px + 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        occ_visual = cv2.dilate(occupied_2d.astype(np.uint8), kernel).astype(bool)
+    else:
+        occ_visual = occupied_2d
+    rgb[occ_visual] = PAINT_GUIDE_OCC
+    return rgb
 
 
 def build_occupied_over_grayscale(base_gray, occupied_2d, alpha=RED_ALPHA):
@@ -640,22 +705,42 @@ def main():
 
     # trav_occupied_over_cleaned.png — visual confirmation of coverage
     # with the cleaned map showing through in the background.
-    if args.diff_vs is not None and not args.no_overlay_png:
+    #
+    # trav_paint_guide.png — dedicated GIMP paint reference (opaque dark-
+    # gray bg + cleaned-free in mid-gray + trav-occupied dilated in pure
+    # red). Reuses the same --diff-vs load and shape check.
+    cleaned_base = None
+    if args.diff_vs is not None and (not args.no_overlay_png or not args.no_paint_guide):
         if not args.diff_vs.is_file():
-            print(f'[overlay] --diff-vs not found: {args.diff_vs} (skipping overlay)')
+            print(f'[diff-vs] --diff-vs not found: {args.diff_vs} (skipping overlay + paint guide)')
         else:
-            base = np.array(Image.open(args.diff_vs))
-            if base.shape != occupied_2d.shape:
-                print(f'[overlay] shape mismatch: base={base.shape} vs '
-                      f'grid={occupied_2d.shape} (skipping overlay)')
+            candidate = np.array(Image.open(args.diff_vs))
+            if candidate.shape != occupied_2d.shape:
+                print(f'[diff-vs] shape mismatch: base={candidate.shape} vs '
+                      f'grid={occupied_2d.shape} (skipping overlay + paint guide)')
             else:
-                overlay_path = args.output_overlay_png or (
-                    args.output_pgm.parent / 'trav_occupied_over_cleaned.png')
-                over = build_occupied_over_grayscale(base, occupied_2d, alpha=RED_ALPHA)
-                overlay_path.parent.mkdir(parents=True, exist_ok=True)
-                Image.fromarray(over, mode='RGB').save(overlay_path)
-                print(f'[out] wrote {overlay_path}  '
-                      f'(RGB, red α={RED_ALPHA} over cleaned base)')
+                cleaned_base = candidate
+
+    if cleaned_base is not None and not args.no_overlay_png:
+        overlay_path = args.output_overlay_png or (
+            args.output_pgm.parent / 'trav_occupied_over_cleaned.png')
+        over = build_occupied_over_grayscale(cleaned_base, occupied_2d, alpha=RED_ALPHA)
+        overlay_path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(over, mode='RGB').save(overlay_path)
+        print(f'[out] wrote {overlay_path}  '
+              f'(RGB, red α={RED_ALPHA} over cleaned base)')
+
+    if cleaned_base is not None and not args.no_paint_guide:
+        guide_path = args.output_paint_guide or (
+            args.output_pgm.parent / 'trav_paint_guide.png')
+        guide = build_paint_guide(occupied_2d, cleaned_base, args.paint_guide_dilate_px)
+        guide_path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(guide, mode='RGB').save(guide_path)
+        n_occ_visual = int((guide == np.array(PAINT_GUIDE_OCC, dtype=np.uint8)).all(axis=-1).sum())
+        print(f'[out] wrote {guide_path}  '
+              f'(RGB, bg={PAINT_GUIDE_BG} free={PAINT_GUIDE_FREE} '
+              f'occ={PAINT_GUIDE_OCC} dilated={args.paint_guide_dilate_px}px, '
+              f'{n_occ_visual:,} red cells after dilation)')
 
     if args.diff_vs is not None and args.output_diff is not None:
         if not args.diff_vs.is_file():
