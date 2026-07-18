@@ -20,7 +20,7 @@
 #     m) that CROSSES the feature roughly perpendicular. For M1, also give
 #     the expected_step_xy = the actual step position on that segment.
 
-grid_yaml: final_rayon.yaml   # relative to this file's directory
+grid_yaml: final.yaml   # confirmed pgm with all sidecars applied (OCC≈435k after user paint + auto ≤3 cell)
 
 m1_sections:
   - id: curb_west_road_01

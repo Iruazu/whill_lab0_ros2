@@ -254,11 +254,16 @@ def main():
     layers = manifest['layers']
 
     # machine_occupied = union of Stage 1 step + structure opaque cells.
+    # Both keys are REQUIRED (2026-07-19 PR #91 close-out): a missing
+    # step or structure layer means the machine_occ set is silently
+    # incomplete, which would let free_mask over-erase the pgm without
+    # any warning. Fail loudly instead.
     machine_occ = np.zeros(hw, dtype=bool)
     for key in ('occupied_step', 'occupied_structure'):
         if key not in layers:
-            print(f'[warn] {key} missing from manifest — skipping')
-            continue
+            raise SystemExit(f'{args.layers_yaml}: required layer key "{key}" '
+                             f'missing from manifest. Regenerate Stage 1 with '
+                             f'scripts/pcd_to_occupancy_v2.py.')
         path = layers_dir / layers[key]
         if not path.is_file():
             raise SystemExit(f'layer file not found: {path}')
@@ -270,8 +275,16 @@ def main():
     print(f'[layer] machine_occ union: {n_machine_occ:>10,} cells')
 
     # machine_free = free_evidence non-transparent cells (raycast or footprint).
+    # Explicit: if --include-free-evidence is on (default) and the layer
+    # is missing from the manifest, this is a Stage 1 regeneration
+    # error, not a silent zero-free run.
     machine_free = np.zeros(hw, dtype=bool)
-    if args.include_free_evidence and 'free_evidence' in layers:
+    if args.include_free_evidence:
+        if 'free_evidence' not in layers:
+            raise SystemExit(f'{args.layers_yaml}: --include-free-evidence is on '
+                             f'but layer key "free_evidence" is missing from the '
+                             f'manifest. Pass --no-include-free-evidence to run '
+                             f'without machine_free, or regenerate Stage 1.')
         path = layers_dir / layers['free_evidence']
         if not path.is_file():
             raise SystemExit(f'layer file not found: {path}')
