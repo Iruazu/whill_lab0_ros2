@@ -261,9 +261,16 @@ def downsample_trajectory(xyz, min_stride_m):
 
 def per_cell_stats(pts, origin, resolution, W, H,
                    ground_percentile, max_height_above_ground):
+    # Nav2 map_server convention: image row 0 is the TOP of the pgm which
+    # corresponds to the HIGHEST map_y (origin_y + H*res). We must flip
+    # y here so that arrays indexed [py, px] load into pgm in the correct
+    # orientation. (Bug fixed 2026-07-18: earlier v2 draft skipped this
+    # flip and produced PNGs that were upside-down against
+    # occupancy_cleaned.pgm — verified 92.5% match with flip vs 20%
+    # without.)
     origin_x, origin_y = float(origin[0]), float(origin[1])
     ix = ((pts[:, 0] - origin_x) / resolution).astype(np.int32)
-    iy = ((pts[:, 1] - origin_y) / resolution).astype(np.int32)
+    iy = (H - 1 - ((pts[:, 1] - origin_y) / resolution).astype(np.int32)).astype(np.int32)
     in_bounds = (ix >= 0) & (ix < W) & (iy >= 0) & (iy < H)
     ix, iy = ix[in_bounds], iy[in_bounds]
     xyz = pts[in_bounds]
@@ -475,6 +482,7 @@ def build_maxheight_rgb(max_z_rel_2d, max_display_m=2.2):
 
 
 def rasterise_footprint_disk(anchors_xy_m, origin, resolution, W, H, radius_m):
+    """Rasterise anchor disks. Nav2 convention: image row 0 = highest map_y."""
     mask = np.zeros((H, W), dtype=np.uint8)
     if radius_m <= 0 or len(anchors_xy_m) == 0:
         return mask.astype(bool)
@@ -482,7 +490,7 @@ def rasterise_footprint_disk(anchors_xy_m, origin, resolution, W, H, radius_m):
     r_cells = max(1, int(round(radius_m / resolution)))
     for xy in anchors_xy_m:
         cx = int(round((xy[0] - ox) / resolution))
-        cy = int(round((xy[1] - oy) / resolution))
+        cy = H - 1 - int(round((xy[1] - oy) / resolution))
         if 0 <= cx < W and 0 <= cy < H:
             cv2.circle(mask, (cx, cy), r_cells, 1, thickness=-1)
     return mask.astype(bool)
@@ -512,7 +520,7 @@ def raycast_free_from_anchors(free_mask, occupied_mask, anchors_xy_m,
     n_anchors = len(anchors_xy_m)
     for i, xy in enumerate(anchors_xy_m):
         a_col = int(round((xy[0] - ox) / resolution))
-        a_row = int(round((xy[1] - oy) / resolution))
+        a_row = H - 1 - int(round((xy[1] - oy) / resolution))
         if not (0 <= a_col < W and 0 <= a_row < H):
             continue
         if not free_mask[a_row, a_col] and not occupied_mask[a_row, a_col]:
