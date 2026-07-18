@@ -109,10 +109,38 @@ output. Only p2ls's `/scan` reaches `obstacle_layer` (`2f26d0b`).
 
 ## Consequences
 
+- **Design lock-in (2026-07-16 field): white cells in this layer mean
+  "free", not "traversable"**. A white cell on the cleaned map only
+  says LiDAR rays passed through — it does not certify the chair can
+  drive over the surface. 5-10 cm curb bottoms, tile seams, and grass
+  patches all read white on the map. Absorbing that gap is the
+  routing layer's job (map annotation / operator judgment); this
+  ADR's height band cannot express the distinction by construction
 - **~5 cm steps (including real campus curbs) are out of scope for
   this layer**. Ground removal (ADR-0011) plus a 0.05 m slice cannot
   separate them from ground undulation by construction; routing side
-  (map annotation / operator judgement) covers those
+  handles those
+  - **2026-07-16 field addendum**: on the demo route, a few centimetre
+    steps (tile seams, curb bottoms) sit on the path free in occupancy
+    and the chair drives into them. The ADR-time "routing side handles
+    it" assumption has to be turned into an **explicit route
+    constraint** — passive avoidance by physical layout is not enough
+    on this course
+  - **Short-term mitigation (P0, demo-critical, Task #16)**: scope
+    expanded from "point-paint steps" to "whitelist a traversable
+    corridor". Walk the demo route to establish the intended
+    corridor, then GIMP-paint suspicious white outside that corridor
+    as occupied. Route walkthrough and paint procedure captured in
+    the [demo prep checklist](../m6r-demo-prep-checklist.md)
+  - **Medium-term mitigation (post-demo, under evaluation)**: adopt
+    Nav2 Keepout Filter so route constraints are declared as a filter
+    layer instead of baked into the pgm — allowing constraint updates
+    without rerunning the map generation pipeline
+  - **Root-cause mitigation (M7 candidate, under evaluation)**:
+    introduce a traversability map at the planner layer to separate
+    "free" from "traversable" explicitly. Own ADR when scoped
+    (Task #14's regeneration will not fix the low-step case — the
+    limit is inherent to this ADR's design)
 - **People (standing / walking)**: 0.05 m keeps ~4 sustained returns
   on the legs and paints them lethal on `local_costmap` — enough
   signal for the intended costmap use (2026-07-15 A/B measurement)

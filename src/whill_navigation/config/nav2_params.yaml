@@ -3,15 +3,13 @@
 # History: this file was drafted in M5-c as a conservative first-cut for
 # indoor demo. M6R4-1 (Issue #80) points it at the M5-R campus map and
 # retargets the topic plumbing at the M4-R EKF + M6R-3 lite twist_mux
-# rather than FAST-LIO. M6R4-2 will add the obstacle layer; M6R4-3 will
-# flip use_collision_detection back on.
-#
-# What this file deliberately does NOT do yet (deferred to later M6R-4
-# phases; do not flip them out of order):
-# - use_collision_detection stays false. Landing in M6R4-3 once
-#   obstacle_layer has been verified live against the M5-R campus map.
-#   Do not flip early — verified live means U1-U6 PASS on the chair, not
-#   just yaml load.
+# rather than FAST-LIO. M6R4-2 adds the obstacle layer. M6R4-b (PR #83,
+# ADR-0011) drops in Patchwork++ ground removal upstream of p2ls. M6R4-c
+# (PR #84) flips p2ls's input to the non-ground cloud and lands
+# min_height 0.05 (ADR-0009 accepted). Task #13 (PR #88) supplies the
+# salt-cleaned map via `map_variant:=cleaned`. **This M6R4-3 change
+# flips use_collision_detection to true** — preconditions met, safety
+# net expanded by failsafe Layer C (perception heartbeat).
 #
 # Topic plumbing (M6R-3 lite, ADR-0007 §4):
 #   /odometry/filtered     <- ekf_filter_node (M4-R, 30 Hz odom -> base_link)
@@ -126,7 +124,13 @@ controller_server:
       desired_linear_vel: 0.3
       max_linear_accel: 0.3          # documentation only (see comment above).
       max_linear_decel: 0.6
-      lookahead_dist: 0.6
+      # 0.6 → 0.8 (2026-07-16 field). Under 0.6 the RPP carrot sat close
+      # enough to the chair that small heading errors produced visible
+      # steering oscillation on straight segments. 0.8 damped the
+      # oscillation without hurting corner convergence. min / max stay
+      # 0.3 / 0.9 because use_velocity_scaled_lookahead_dist clamps
+      # around that range; only the base value shifted.
+      lookahead_dist: 0.8
       min_lookahead_dist: 0.3
       max_lookahead_dist: 0.9
       lookahead_time: 1.5
@@ -135,10 +139,20 @@ controller_server:
       use_velocity_scaled_lookahead_dist: true
       min_approach_linear_velocity: 0.05
       approach_velocity_scaling_dist: 0.6
-      # Stays false through M6R4-1 and M6R4-2. M6R4-3 flips this to true
-      # once obstacle_layer is publishing and M5-R map has been verified
-      # free of the M5-b-era phantom obstacles.
-      use_collision_detection: false
+      # Enabled by M6R4-3 (2026-07-16 field). Preconditions cleared:
+      #   - obstacle_layer publishes with Patchwork++ upstream (ADR-0011,
+      #     PR #83) + M6R4-c min_height 0.05 (PR #84, ADR-0009 accepted)
+      #   - M5-R campus map has salt cleaned by Task #13 (PR #88,
+      #     map_variant:=cleaned)
+      #   - failsafe_node Layer C (perception heartbeat, this PR) catches
+      #     a patchworkpp_node crash within ~2 s so a silent /scan cannot
+      #     drive the chair through stale obstacle_layer cells
+      # RPP carrot lookahead now blocks against lethal cells so the chair
+      # brakes on obstacles instead of running them over. Recovery
+      # (spin / backup / wait) fires only if the chair truly cannot make
+      # progress — the operator with joystick sits above this per ADR-0007
+      # §Demo-scope reduction.
+      use_collision_detection: true
       max_allowed_time_to_collision_up_to_carrot: 1.0
       use_regulated_linear_velocity_scaling: true
       use_cost_regulated_linear_velocity_scaling: false
@@ -164,8 +178,15 @@ local_costmap:
       robot_base_frame: base_link
       use_sim_time: false
       rolling_window: true
-      width: 6
-      height: 6
+      # 6 → 10 (2026-07-16 field). At 6 m rolling window the cells past
+      # the trailing edge froze as ghost lethals (chair moved past an
+      # obstacle but the shifted-out cell still read occupied for the
+      # planner). 10 m gives ~4 s of forward horizon at 0.3 m/s plus
+      # enough trailing buffer that the clearing raytrace stays visible
+      # to global_costmap between updates. planner_frequency stayed at
+      # the desired 1.0 Hz target after the enlargement.
+      width: 10
+      height: 10
       resolution: 0.05
       # Circumscribed radius around base_link. The actual chair is roughly
       # 1.0 m long × 0.6 m wide; a 0.45 m circle conservatively covers it.
@@ -298,7 +319,15 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: OPEN_LOOP
-    max_velocity: [0.3, 0.0, 0.8]       # [vx_max, vy_max, vyaw_max], matches RPP desired_linear_vel.
+    # 2026-07-16 field: vyaw_max 0.8 → 0.5. The 0.8 cap turned out to be
+    # the dominant source of straight-segment weaving — angular
+    # commands maxed at 0.8 rad/s produced overshoot that fed the next
+    # correction. 0.5 tames the yaw slew rate without disabling
+    # rotate-to-heading behaviour (rotate_to_heading_angular_vel stays
+    # 0.8 because in-place rotation was not misbehaving). Empirically
+    # adopted on the final field drive; morning V0 sanity-checks the
+    # straight-line behaviour before running V1-V6.
+    max_velocity: [0.3, 0.0, 0.5]       # [vx_max, vy_max, vyaw_max], matches RPP desired_linear_vel.
     min_velocity: [-0.1, 0.0, -0.8]     # small reverse band for backup recovery.
     max_accel: [0.3, 0.0, 1.0]          # 0.3 m/s² forward — ~1 s to reach 0.3 m/s.
     max_decel: [-0.5, 0.0, -1.0]        # faster decel than accel for safety.

@@ -136,6 +136,15 @@ docs/maps/**/*.pcd
 # history and is disposable.
 docs/maps/**/*.xcf
 
+# Traversability generator caches (Task #22, scripts/pcd_to_traversability.py).
+# The .npz keeps per-cell (count, ground_z, roughness) so threshold sweeps
+# rerun in ~5 s. ~500 MB per site — regenerable from static.pcd in ~10 s.
+docs/maps/**/.trav_cache.npz
+# Regenerable pgm output. The tracked artifacts are the script (parameters
+# baked in the commit message and yaml), the yaml (thresholds + provenance),
+# and the *.png visual assets (diff, occupied-only, overlay, paint guide).
+docs/maps/**/occupancy_trav.pgm
+
 # tf2_tools view_frames and RViz write diagnostic / session files to the
 # repo root as a side effect of normal development (each `ros2 run tf2_tools
 # view_frames` adds two more files). Excluding them here, rather than

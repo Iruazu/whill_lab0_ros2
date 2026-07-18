@@ -103,9 +103,31 @@ SetRemap('/scan' → '/scan_raw')` で velodyne 側の出力を rename。p2ls �
 
 ## 結果
 
+- **設計理解の確定 (2026-07-16 field): 本層の white cell は "free" であり
+  "traversable" ではない**。cleaned map の white は 2D マッピングにおいて
+  LiDAR が貫通した領域を意味するだけで、走行可能性は保証しない。5-10 cm
+  の縁 (縁石下端、タイル継ぎ目) や草地も white 塗りされている事を実機で
+  確認。この差分を吸収するのは routing 層 (map annotation / operator
+  判断) の責務、本 ADR の height band では原理上区別できない
 - **5 cm 級の低段差 (実地縁石を含む) は本層では検出対象外**。ADR-0011 の
   地面除去 + 本 ADR の輪切り 0.05 m という組み合わせでは原理上分離不能
-  なため、routing 側 (map annotation / operator 判断) で対処する
+  なため、routing 側で対処する
+  - **2026-07-16 field 追加確認**: デモ経路上に数 cm 段差 (タイル継ぎ目、
+    縁石下端) が occupancy 上 free として存在し、実走時に chair が
+    進入する事象を目視確認。ADR 制定時の想定「経路側で回避」が
+    自動迂回ではなく **明示的な経路制約** として運用される必要がある
+  - **短期対策 (P0, デモ必須, Task #16)**: 「段差の点塗り」ではなく
+    「デモ運用領域の白の検収 + ホワイトリスト回廊化」の面塗り運用に拡大。
+    `occupancy_cleaned.pgm` に GIMP で「走行可能な回廊」を確定させ、
+    回廊外の疑わしい white は大胆に occupied 化する。経路踏査結果と
+    塗り込み手順は [デモ準備チェックリスト](../m6r-demo-prep-checklist.md)
+    に記録
+  - **中期対策 (post-demo, 検討)**: Nav2 Keepout Filter の正式導入で
+    「pgm 塗り込みではなく filter layer として経路制約を宣言」する
+    構造へ移行 (map 生成パイプの再走を伴わずに制約を更新可能に)
+  - **根本対策 (M7 候補, 検討)**: 経路計画層に traversability map を
+    導入し、「free vs traversable」を明示的に分離。ADR 別立てで検討
+    (Task #14 の再生成でも低段差は残る点は本 ADR の設計上の限界に由来)
 - **人の脚 (立位・歩行)** は 0.05 m カットで常時 ~4 点捕捉、`local_costmap`
   で lethal 化する — costmap 用途に十分な情報量 (2026-07-15 A/B 実測)
 - **背の高い雑草** は両値で lethal 化する。コード側で分離不能なため、

@@ -69,6 +69,50 @@ AC4 aborted). See `src/whill_safety/README.md` §Mutual exclusion.
 - [ ] Operator in-the-loop with joystick override available
       (ADR-0007 §Demo-scope reduction)
 
+### Pre-drive gate — `scripts/m6r_preflight.sh` (blocking, mandatory)
+
+Since the 2026-07-16 late incident (silent QoS mismatch left Layer D
+mute, chair contacted a person during blocking-in test), the pre-drive
+gate must run **through the blocking script**:
+
+```bash
+scripts/m6r_preflight.sh
+```
+
+Do **not** issue any goal until the script exits 0. On exit 1, chase
+the reported cause (failsafe_node not up / DEAD INPUT / no
+`/cmd_vel_safety` publish) before anything else. The script covers:
+
+1. `use_collision_detection: true` effective value
+2. `/failsafe_node` alive
+3. Dead-input watchdog path: wait 12 s, verify no `DEAD INPUT` line on
+   `/rosout` (means every subscription arrived at least once)
+4. Live-fire hand test: hold a hand 1.5 m in front of the chair,
+   `/cmd_vel_safety >= 15 Hz` publish
+
+### Pre-drive gate: use_collision_detection + Layer D armed (mandatory)
+
+Layer D (forward sector perception gate, ADR-0007 §Layer D proposed)
+must be active and `use_collision_detection: true` must actually reach
+the controller before any drive:
+
+```bash
+# effective value of collision_detection
+ros2 param get /controller_server FollowPath.use_collision_detection
+# expect: Boolean value is: true
+
+# Layer D armed startup log
+ros2 topic echo /rosout | grep -E "failsafe_node ready|forward_blocked"
+# expect: "forward_blocked > 5 pts in ±30° @ 0.5-2.0 m, hysteresis 0.5s"
+
+# behavioural test (hold a hand ~1 m in front of the chair for 2 s)
+ros2 topic hz /cmd_vel_safety
+# expect: 20 Hz while blocked, publishing stops when the hand is removed
+```
+
+Do not start the demo if any of the three checks fails (V2 stop
+requirement is not being met).
+
 ### Map variant selection (Task #13 salt cleanup)
 
 `docs/maps/campus/occupancy.pgm` has baked-in ground-noise salt from

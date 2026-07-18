@@ -5,11 +5,24 @@ package for anything that keeps the chair from moving when it shouldn't.
 
 M6R-2 shipped the **bringup composition**: sensors + WHILL driver + M4-R
 EKF + M6-R scan-to-map localizer, in one launch. M6R-3 lite (per
-ADR-0007 §Demo-scope reduction) adds a minimal **failsafe_node**
-(A layer: `/reinitialization_requested`; B layer: `/alignment_status`
-fitness threshold + `/pcl_pose` silence watchdog) plus a `twist_mux`
-gate on `/cmd_vel`, both inside this package. M9 will add the
-physical-E-stop and remote-stop hookups here too.
+ADR-0007 §Demo-scope reduction) adds a minimal **failsafe_node** plus a
+`twist_mux` gate on `/cmd_vel`, both inside this package. M6R4-3
+enables Nav2 `use_collision_detection: true`, which puts the chair
+under obstacle-driven braking — so this package's failsafe now includes
+a **Layer C** perception heartbeat that stops the chair if the
+Patchwork++ pipe dies. M9 will add the physical-E-stop and remote-stop
+hookups here too.
+
+failsafe_node layers:
+
+- **A** — `/reinitialization_requested` operator signal (holds ~1 s).
+- **B** — localizer health: `/alignment_status.fitness_score` above
+  threshold, `has_converged: false`, or `/pcl_pose` silent.
+- **C** — perception heartbeat: `/velodyne_points_no_ground` silent
+  for > 2 s. Catches a `patchworkpp_node` crash / hang so a silent
+  `/scan` cannot let stale obstacle_layer cells drive the chair.
+  Only armed after the first message arrives, so startup does not
+  trip it.
 
 ## Runtime dependencies (apt)
 
