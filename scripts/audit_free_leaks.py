@@ -92,6 +92,12 @@ def parse_args():
                         'distance to the NEAREST OCCUPIED is > this many metres. '
                         'Excludes thin raycast rays that hug walls (not building '
                         'interior leakage) from the count. Default 3.0 m.')
+    p.add_argument('--fragment-erode-m', type=float, default=0.35,
+                   help='Metric (c) FREE connectivity: erode FREE by this radius '
+                        '(m) then count 8-connected components. Smaller = tighter '
+                        'connectivity gate. Default 0.35 m ≈ wheelchair half-width. '
+                        'Lower fragment count = better planning connectivity for '
+                        'Nav2.')
     return p.parse_args()
 
 
@@ -250,10 +256,26 @@ def main():
     print_top_cells('metric b', xs_b, ys_b, args.top, pgm, origin, resolution)
     print()
 
+    # (c) FREE connectivity: erode-and-count.
+    print(f'--- (c) FREE connectivity: erode {args.fragment_erode_m} m then 8-conn count ---')
+    r_cells = max(1, int(round(args.fragment_erode_m / resolution)))
+    k = 2 * r_cells + 1
+    kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    free_bool = (pgm == FREE).astype(np.uint8)
+    eroded = cv2.erode(free_bool, kern)
+    n_frag_labels, _ = cv2.connectedComponents(eroded, connectivity=8)
+    n_fragments = n_frag_labels - 1
+    n_eroded = int(eroded.sum())
+    print(f'  erosion radius: {r_cells} cells ({args.fragment_erode_m} m)')
+    print(f'  eroded FREE cells: {n_eroded:,}')
+    print(f'  connected fragments: {n_fragments:,}  ← lower is better for Nav2 planning')
+    print()
+
     # Machine-readable one-liner for scripting
     print(f'RESULT{tag}: metric_a={n_a} metric_a_refined={n_a_refined} '
           f'metric_b={n_b} max_depth_m='
-          f'{max_depth_px * resolution if (max_depth_px is not None and n_b > 0) else 0:.3f}')
+          f'{max_depth_px * resolution if (max_depth_px is not None and n_b > 0) else 0:.3f} '
+          f'metric_c_fragments={n_fragments}')
     return 0
 
 

@@ -92,7 +92,9 @@ FREE = 254
 
 # Audit-layer colours (opaque so they read clearly over any GIMP base).
 COLOR_CONFLICT = (255, 0, 255, 255)          # magenta — keepout ∩ free_mask
-COLOR_ERASED = (255, 220, 0, 255)            # yellow  — machine_occ erased by free_mask
+COLOR_ERASED_HUMAN = (255, 220, 0, 255)      # yellow  — erased by human free_mask only
+COLOR_ERASED_AUTO = (0, 220, 220, 255)       # cyan    — erased by free_mask_auto only
+COLOR_ERASED_BOTH = (255, 255, 255, 255)     # white   — erased by both sources (rare)
 COLOR_CLIPPED = (255, 0, 255, 255)           # magenta — free cells clipped by roadway_mask
                                               # (distinct location from conflict so the two
                                               # never overlap visually)
@@ -117,7 +119,15 @@ def parse_args():
                         'the same cell (conflict logged + conflict.png).')
     p.add_argument('--free-mask', type=pathlib.Path,
                    help='Bright pixels add FREE and CAN erase machine_occ. '
-                        'Erased cells recorded in erased_by_free.png.')
+                        'Erased cells recorded in erased_by_free.png (yellow '
+                        'for human-source cells).')
+    p.add_argument('--free-mask-auto', type=pathlib.Path,
+                   help='Auto-generated free mask (typically from '
+                        'scripts/gen_auto_free_mask.py — 1-cell isolated '
+                        'occupied inside roadway_mask). OR-ed with '
+                        '--free-mask; erased cells contributed by this '
+                        'source render as CYAN in erased_by_free.png so the '
+                        'operator sees which fixes were automatic vs human.')
     p.add_argument('--roadway-mask', type=pathlib.Path,
                    help='Optional fail-closed whitelist for FREE. Cells that '
                         'would have been FREE but sit OUTSIDE this mask are '
@@ -283,6 +293,16 @@ def main():
         free_mask = load_sidecar_mask(args.free_mask, hw, args.mask_threshold)
         print(f'[side ] free_mask         : {int(free_mask.sum()):>10,} cells '
               f'(L≥{args.mask_threshold})')
+    free_mask_auto = np.zeros(hw, dtype=bool)
+    if args.free_mask_auto is not None:
+        if not args.free_mask_auto.is_file():
+            raise SystemExit(f'--free-mask-auto not found: {args.free_mask_auto}')
+        free_mask_auto = load_sidecar_mask(args.free_mask_auto, hw, args.mask_threshold)
+        print(f'[side ] free_mask_auto    : {int(free_mask_auto.sum()):>10,} cells '
+              f'(L≥{args.mask_threshold})')
+    # Merge for composition (composer treats both sources identically —
+    # audit distinguishes them via colour).
+    free_mask_effective = free_mask | free_mask_auto
     # roadway_mask: fail-closed whitelist. If absent, all cells whitelisted
     # (equivalent to legacy behaviour) but WITH a warning so the operator
     # knows planning space is not fenced.
@@ -302,10 +322,14 @@ def main():
     # Roadway whitelist applies AFTER the free/occupied resolution — a
     # cell painted by keepout stays OCCUPIED even outside roadway (safe:
     # obstacles do not shrink based on whitelist).
-    conflict = keepout & free_mask
-    erased_by_free = machine_occ & free_mask & ~keepout
-    occupied_final = keepout | (machine_occ & ~free_mask)
-    free_would_be = (free_mask | machine_free) & ~occupied_final
+    conflict = keepout & free_mask_effective
+    erased_by_free = machine_occ & free_mask_effective & ~keepout
+    # Per-source erasure attribution for the audit PNG.
+    erased_by_free_human = erased_by_free & free_mask & ~free_mask_auto
+    erased_by_free_auto  = erased_by_free & free_mask_auto & ~free_mask
+    erased_by_free_both  = erased_by_free & free_mask & free_mask_auto
+    occupied_final = keepout | (machine_occ & ~free_mask_effective)
+    free_would_be = (free_mask_effective | machine_free) & ~occupied_final
     free_final = free_would_be & roadway_mask
     clipped_by_roadway = free_would_be & ~roadway_mask
 
@@ -315,6 +339,9 @@ def main():
     n_unknown = W * H - n_occ - n_free
     n_conflict = int(conflict.sum())
     n_erased = int(erased_by_free.sum())
+    n_erased_human = int(erased_by_free_human.sum())
+    n_erased_auto = int(erased_by_free_auto.sum())
+    n_erased_both = int(erased_by_free_both.sum())
     n_keepout_new = int((keepout & ~machine_occ).sum())
     n_keepout_reinforcing = int((keepout & machine_occ).sum())
     n_clipped = int(clipped_by_roadway.sum())
@@ -327,6 +354,10 @@ def main():
           f'(already machine_occ)')
     print(f'  free_mask erased occ     : {n_erased:>12,}  '
           f'(audit → erased_by_free.png)')
+    if args.free_mask_auto is not None or args.free_mask is not None:
+        print(f'    ↳ by human only        : {n_erased_human:>10,}  (yellow)')
+        print(f'    ↳ by auto only         : {n_erased_auto:>10,}  (cyan)')
+        print(f'    ↳ by both              : {n_erased_both:>10,}  (white)')
     print(f'  conflict keepout∩free    : {n_conflict:>12,}  '
           f'(keepout wins → conflict.png)')
     if roadway_provided:
@@ -375,8 +406,23 @@ def main():
             print(f'[out] {conflict_path}  ({n_conflict:,} magenta cells)')
         if n_erased > 0:
             erased_path = args.output_pgm.parent / 'erased_by_free.png'
-            save_audit_layer(erased_path, erased_by_free, COLOR_ERASED)
-            print(f'[out] {erased_path}  ({n_erased:,} yellow cells)')
+            # Compose 3-colour RGBA: yellow = human, cyan = auto, white = both.
+            H_, W_ = erased_by_free.shape
+            rgba = np.zeros((H_, W_, 4), dtype=np.uint8)
+            for mask, colour in (
+                (erased_by_free_human, COLOR_ERASED_HUMAN),
+                (erased_by_free_auto,  COLOR_ERASED_AUTO),
+                (erased_by_free_both,  COLOR_ERASED_BOTH),
+            ):
+                if mask.any():
+                    rgba[mask, 0] = colour[0]
+                    rgba[mask, 1] = colour[1]
+                    rgba[mask, 2] = colour[2]
+                    rgba[mask, 3] = colour[3]
+            Image.fromarray(rgba, 'RGBA').save(erased_path)
+            print(f'[out] {erased_path}  '
+                  f'({n_erased:,} cells: {n_erased_human:,} yellow / '
+                  f'{n_erased_auto:,} cyan / {n_erased_both:,} white)')
         if n_clipped > 0:
             clipped_path = args.output_pgm.parent / 'clipped_by_roadway.png'
             save_audit_layer(clipped_path, clipped_by_roadway, COLOR_CLIPPED)
