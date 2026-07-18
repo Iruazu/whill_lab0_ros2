@@ -1,46 +1,87 @@
 #!/usr/bin/env python3
 """pcd_to_traversability.py — 2D traversability occupancy grid from static.pcd.
 
-Task #22 prototype (2026-07-17). Motivation: cleaned OccupancyGrid's "free"
-means "LiDAR ray passed through", not "chair can drive over" (2026-07-16 field,
-ADR-0009 §Consequences). This script rebuilds a occupancy grid where free
-requires actual local geometry to be flat and step-free.
+Task #22 (2026-07-17 initial; 2026-07-18 h-filter + manual free-mask mode).
+Motivation: cleaned OccupancyGrid's "free" means "LiDAR ray passed through",
+not "chair can drive over" (2026-07-16 field, ADR-0009 §Consequences).
+This script rebuilds a occupancy grid where free requires actual local
+geometry to be flat and step-free.
+
+2026-07-18 revision: free-space auto-detection has proven too fragile on the
+campus point cloud (97 %-unknown gap even with inheritance), so we pivot to
+"trav gives us OCCUPIED, a human paints FREE on top". The script still auto-
+computes traversability occupancy, but the FREE side is now sourced from a
+hand-painted mask via --free-mask. Occupied always beats hand-paint, so a
+human accidentally painting over a curb does not open the curb.
 
 Algorithm (per --input-yaml grid, all thresholds CLI-overridable):
 
   1. XY-bin all points into cells of `resolution` m.
   2. Cell ground_z = per-cell lower percentile of z (default 5%).
      Robust to building tops / tree canopy returns.
-  3. For each cell, keep points within [ground_z, ground_z + roughness_band].
+  3. h-filter (default 2.0 m): drop any point sitting more than
+     --max-height-above-ground metres above the LOCAL ground. Local ground
+     is per-cell ground_z eroded with a small disk so canopy-only cells
+     inherit their neighbours' true ground level rather than trusting their
+     own canopy z. A wheelchair + rider is ~1.3-1.5 m tall; 2.0 m gives
+     safe headroom without keeping tree branches that would otherwise
+     phantom-occupy the map. Applied BEFORE any classification.
+  4. For each cell, keep points within [ground_z, ground_z + roughness_band].
      Fit a local plane z = ax + by + c by least squares (batched 3x3 normal
      equations, closed form). Roughness = RMS of residuals.
-  4. Step check: 8-neighbor abs(ground_z diff). If any neighbor differs by
+  5. Step check: 8-neighbor abs(ground_z diff). If any neighbor differs by
      more than step_threshold, both cells count as a step edge → occupied.
-  5. Classification (per cell):
-       count < min_points        → unknown (205)
-       (step OR roughness > thr)  → occupied (0)
-       otherwise                  → free (254)
-  6. Free inheritance (if --diff-vs given): unknown cells that are (a) not
-     occupied on this pass, (b) free in the reference pgm (typically
-     occupancy_cleaned.pgm), and (c) within --inherit-radius m of a
-     trav-known cell get promoted to free. Rescues the 97 %-unknown gap
-     caused by static.pcd's ~3 pts/cell density without blindly
-     re-importing salt from far-away regions the reference map has no
-     support for.
-  7. Intermediate arrays (count, ground_z, roughness) cached to --cache-npz
-     for fast rerun on threshold sweeps.
+  6. Trav classification (per cell):
+       count < min_points        → unknown
+       (step OR roughness > thr)  → OCCUPIED
+       otherwise                  → (free-candidate, may become FREE below)
+  7. Final pgm assembly. Two modes:
+     (a) --free-mask <PNG> (manual mode, preferred as of 2026-07-18):
+         pixel value = OCCUPIED where trav says occupied
+                     = FREE where mask pixel ≥ --mask-threshold AND not
+                       trav-occupied
+                     = UNKNOWN otherwise
+         Rule: occupied > free > unknown. Trav-occupied always wins.
+     (b) no --free-mask (legacy auto mode): free-candidate cells become
+         FREE. If --diff-vs is given, unknown cells within --inherit-radius
+         of a trav-known cell that are FREE in the reference pgm also
+         become FREE.
+  8. Intermediate arrays (count, ground_z, roughness) cached to --cache-npz
+     for fast rerun on threshold sweeps. Cache is invalidated when
+     --max-height-above-ground changes.
+
+Auxiliary outputs (always written when --output-pgm is written):
+  * <output-pgm-dir>/trav_occupied_only.png — RGBA, same pixel dims as the
+    input map; trav-occupied cells opaque red (255,0,0,255), everything
+    else fully transparent. This is the layer to load over cleaned.pgm in
+    GIMP so a human can paint FREE without overpainting occupied.
+  * <output-pgm-dir>/trav_occupied_over_cleaned.png — RGB, cleaned.pgm as
+    grayscale base with red overlay where trav is occupied. Semi-
+    transparent (RED_ALPHA) so map features remain visible. Only written
+    when --diff-vs is given (needs the base grayscale image).
 
 Output pgm/yaml use --input-yaml's origin/resolution/negate/thresholds so the
 result overlays the existing map exactly.
 
-Usage:
+Usage — pass 1 (produce the red layer to paint on):
     scripts/pcd_to_traversability.py \\
         --input-pcd  docs/maps/campus/static.pcd \\
-        --input-yaml docs/maps/campus/occupancy.yaml \\
+        --input-yaml docs/maps/campus/occupancy_cleaned.yaml \\
         --output-pgm docs/maps/campus/occupancy_trav.pgm \\
         --cache-npz  docs/maps/campus/.trav_cache.npz \\
-        --diff-vs    docs/maps/campus/occupancy_cleaned.pgm \\
-        --output-diff docs/maps/campus/trav_vs_cleaned_diff.png
+        --diff-vs    docs/maps/campus/occupancy_cleaned.pgm
+
+Then in GIMP: open occupancy_cleaned.pgm, place trav_occupied_only.png as a
+top layer, paint FREE (white) on a new middle layer, export that middle
+layer as e.g. campus_manual_free.png at the SAME pixel dimensions.
+
+Usage — pass 2 (composite the human-painted map for Nav2):
+    scripts/pcd_to_traversability.py \\
+        --input-pcd  docs/maps/campus/static.pcd \\
+        --input-yaml docs/maps/campus/occupancy_cleaned.yaml \\
+        --output-pgm docs/maps/campus/occupancy_trav_manual.pgm \\
+        --cache-npz  docs/maps/campus/.trav_cache.npz \\
+        --free-mask  docs/maps/campus/campus_manual_free.png
 """
 
 import argparse
@@ -59,6 +100,19 @@ from PIL import Image
 OCCUPIED = 0
 UNKNOWN = 205
 FREE = 254
+
+# Radius (m) of the disk used to erode per-cell ground_z before the h-filter.
+# A canopy-only cell inherits the min ground_z of any cell within this radius,
+# so tree crowns whose LiDAR shadow left ~1-3 stray cells with only canopy
+# points get rescued to the true ground level of adjacent open ground. Small
+# enough not to blur real terrain (buildings, walls) whose ground_z varies
+# meaningfully over longer distances.
+GROUND_SMOOTH_RADIUS_M = 0.25
+
+# Alpha for the red overlay in trav_occupied_over_cleaned.png. Semi-
+# transparent so the underlying cleaned.pgm features (curbs, edges, salt)
+# remain visible for human verification of coverage.
+RED_ALPHA = 0.6
 
 
 def parse_args():
@@ -86,6 +140,21 @@ def parse_args():
     p.add_argument('--roughness-band', type=float, default=0.3,
                    help='Only points in [ground_z, ground_z + this] contribute to roughness (m). '
                         'Filters building tops / tree canopy from the plane fit. Default 0.3.')
+    p.add_argument('--max-height-above-ground', type=float, default=2.0,
+                   help='Drop points more than this many metres above the LOCAL ground before '
+                        'any classification (metres). Default 2.0 — safe headroom for a '
+                        'wheelchair + rider (~1.5 m) while removing tree branches at 3 m+ that '
+                        'would otherwise phantom-occupy the map. Set to 0 to disable.')
+
+    p.add_argument('--free-mask', type=pathlib.Path,
+                   help='Hand-painted PNG (same pixel dimensions as --input-yaml grid) where '
+                        'white ≥ --mask-threshold marks cells that should be FREE in the '
+                        'output. Composite rule: OCCUPIED(trav) > FREE(mask) > UNKNOWN — trav '
+                        'occupied always wins even if a human accidentally painted over it. '
+                        'When given, --diff-vs inheritance is skipped for the main pgm output.')
+    p.add_argument('--mask-threshold', type=int, default=128,
+                   help='Grayscale threshold on --free-mask above which a pixel counts as '
+                        'painted (0-255). Default 128 — tolerant to GIMP brush anti-aliasing.')
 
     p.add_argument('--cache-npz', type=pathlib.Path,
                    help='Save / reuse per-cell intermediates (count, ground_z, roughness). '
@@ -94,15 +163,31 @@ def parse_args():
                    help='Ignore an existing --cache-npz and rebuild from PCD.')
 
     p.add_argument('--diff-vs', type=pathlib.Path,
-                   help='Reference pgm (e.g. occupancy_cleaned.pgm). If given, unknown cells '
-                        'get free-inheritance (see --inherit-radius), and with --output-diff an '
-                        'RGB overlay is written (red = new occupied vs ref, green = new free).')
+                   help='Reference pgm (e.g. occupancy_cleaned.pgm). If given AND --free-mask is '
+                        'NOT given, unknown cells get free-inheritance (see --inherit-radius). '
+                        'Always used, when given, as the grayscale base for '
+                        'trav_occupied_over_cleaned.png. With --output-diff an additional RGB '
+                        'diff overlay is written (red = new occupied vs ref, green = new free).')
     p.add_argument('--output-diff', type=pathlib.Path)
     p.add_argument('--inherit-radius', type=float, default=0.5,
                    help='Free-inheritance radius (m). Unknown cells within this distance of a '
                         'trav-known cell that are marked free in --diff-vs, and are not otherwise '
                         'occupied on this pass, inherit "free". Set to 0 to disable inheritance. '
-                        'Default 0.5.')
+                        'Ignored when --free-mask is given. Default 0.5.')
+
+    p.add_argument('--output-occupied-png', type=pathlib.Path,
+                   help='RGBA PNG with trav-occupied cells opaque red and everything else '
+                        'fully transparent. Same pixel dimensions as --input-yaml grid. '
+                        'Default: <output-pgm-dir>/trav_occupied_only.png. Use --no-occupied-png '
+                        'to skip.')
+    p.add_argument('--output-overlay-png', type=pathlib.Path,
+                   help='RGB PNG with --diff-vs as grayscale base and trav-occupied cells '
+                        'blended in red (alpha=%.2f). Written only when --diff-vs is provided. '
+                        'Default: <output-pgm-dir>/trav_occupied_over_cleaned.png.' % RED_ALPHA)
+    p.add_argument('--no-occupied-png', action='store_true',
+                   help='Skip trav_occupied_only.png output.')
+    p.add_argument('--no-overlay-png', action='store_true',
+                   help='Skip trav_occupied_over_cleaned.png output even when --diff-vs is given.')
 
     p.add_argument('--dry-run', action='store_true',
                    help='Report the classification counts without writing any output files.')
@@ -124,10 +209,16 @@ def load_map_ref(yaml_path):
 
 
 def per_cell_stats(pts, origin, resolution, W, H,
-                   ground_percentile, roughness_band):
+                   ground_percentile, roughness_band,
+                   max_height_above_ground=0.0):
     """Compute per-cell (count, ground_z, roughness) as flat arrays of length W*H.
 
     Cells with count < 3 have roughness = NaN (plane fit not possible).
+
+    When max_height_above_ground > 0, points sitting more than that many
+    metres above the LOCAL ground are dropped before count / ground_z /
+    roughness are computed. "Local ground" = per-cell ground_z eroded by a
+    small disk so canopy-only cells inherit their neighbours' true ground.
     """
     origin_x, origin_y = float(origin[0]), float(origin[1])
     ix = ((pts[:, 0] - origin_x) / resolution).astype(np.int32)
@@ -148,9 +239,42 @@ def per_cell_stats(pts, origin, resolution, W, H,
         'z':    xyz[:, 2],
     })
 
-    # Step A: count + ground_z per cell.
-    grp = df.groupby('cell', sort=False)
     q = ground_percentile / 100.0
+
+    if max_height_above_ground > 0.0:
+        # First pass: coarse ground_z from ALL in-bounds points so we know
+        # roughly where the ground is under every cell that has points.
+        initial_ground_per = df.groupby('cell', sort=False)['z'].quantile(q).astype(np.float32)
+
+        # Erode ground_z with a disk kernel so canopy-only cells adopt the
+        # min ground_z of nearby cells. Cells that have no valid neighbour
+        # within the radius keep +inf, which means the h-filter accepts
+        # nothing → any points there fail and the cell becomes unknown.
+        initial_ground_flat = np.full(W * H, np.inf, dtype=np.float32)
+        initial_ground_flat[initial_ground_per.index.to_numpy()] = initial_ground_per.to_numpy()
+        initial_ground_2d = initial_ground_flat.reshape(H, W)
+        r_cells = max(1, int(round(GROUND_SMOOTH_RADIUS_M / resolution)))
+        k = 2 * r_cells + 1
+        smooth_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        # cv2.erode on float32 = per-pixel minimum in the kernel window.
+        # borderValue=+inf so image edges do not become artificial low ground.
+        smoothed_ground_2d = cv2.erode(
+            initial_ground_2d, smooth_kernel,
+            borderType=cv2.BORDER_CONSTANT, borderValue=float(np.inf),
+        )
+        smoothed_ground_flat = smoothed_ground_2d.ravel()
+
+        smoothed_per_point = smoothed_ground_flat[df['cell'].to_numpy()]
+        z_arr = df['z'].to_numpy()
+        keep = z_arr <= (smoothed_per_point + max_height_above_ground)
+        n_dropped = int((~keep).sum())
+        print(f'    h-filter: dropped {n_dropped:,} of {len(df):,} points '
+              f'> {max_height_above_ground} m above local ground '
+              f'(smooth radius {GROUND_SMOOTH_RADIUS_M} m = {r_cells} cells)')
+        df = df.iloc[keep].reset_index(drop=True)
+
+    # Step A: count + ground_z per cell (from post-filter points).
+    grp = df.groupby('cell', sort=False)
     count_per = grp.size().rename('count')
     ground_per = grp['z'].quantile(q).rename('ground_z').astype(np.float32)
 
@@ -247,6 +371,62 @@ def build_diff_overlay(pgm, cleaned):
     return rgb
 
 
+def build_occupied_only_rgba(occupied_2d):
+    """RGBA array (H, W, 4) — opaque red where occupied, fully transparent elsewhere.
+
+    Pixel dimensions match occupied_2d exactly, so overlaying this PNG on
+    occupancy_cleaned.pgm in GIMP requires no scaling and cannot drift. The
+    alpha channel is a hard 0/255 mask; nothing is anti-aliased.
+    """
+    H, W = occupied_2d.shape
+    rgba = np.zeros((H, W, 4), dtype=np.uint8)
+    rgba[occupied_2d, 0] = 255   # R
+    rgba[occupied_2d, 3] = 255   # A
+    return rgba
+
+
+def build_occupied_over_grayscale(base_gray, occupied_2d, alpha=RED_ALPHA):
+    """RGB overlay of a semi-transparent red on a grayscale base image.
+
+    Where occupied_2d is True, pixel = (1-alpha) * base + alpha * red.
+    Where False, pixel = base repeated across channels. Same pixel dims
+    as base_gray. alpha=0 means unchanged base, alpha=1 means fully opaque
+    red on occupied cells.
+    """
+    if base_gray.shape != occupied_2d.shape:
+        raise ValueError(
+            f'base_gray shape {base_gray.shape} != occupied_2d shape {occupied_2d.shape}')
+    rgb = np.stack([base_gray, base_gray, base_gray], axis=-1).astype(np.float32)
+    red = np.array([255.0, 0.0, 0.0], dtype=np.float32)
+    rgb[occupied_2d] = (1.0 - alpha) * rgb[occupied_2d] + alpha * red
+    return np.clip(rgb, 0.0, 255.0).astype(np.uint8)
+
+
+def load_free_mask(mask_path, expected_shape, threshold):
+    """Load a hand-painted PNG and return a bool array of the 'painted' region.
+
+    Reads with PIL. If the image is RGB or RGBA, converts to L (luminance)
+    first — a user might paint in whatever mode GIMP defaults to, and we
+    want any bright pixel to count as 'painted' regardless of channel
+    layout. Alpha, if present, gates the mask: a fully transparent pixel
+    cannot be considered painted no matter its RGB.
+    """
+    im = Image.open(mask_path)
+    if im.mode == 'RGBA':
+        alpha = np.array(im.getchannel('A'))
+        gray = np.array(im.convert('L'))
+        painted = (gray >= threshold) & (alpha > 0)
+    else:
+        gray = np.array(im.convert('L'))
+        painted = gray >= threshold
+    if painted.shape != expected_shape:
+        raise ValueError(
+            f'--free-mask shape {painted.shape} != map shape {expected_shape}. '
+            f'The mask PNG must be exported at the exact pixel dimensions of the '
+            f'reference pgm (no scaling, no cropping).')
+    return painted
+
+
 def main():
     args = parse_args()
     if not args.input_pcd.is_file():
@@ -265,9 +445,18 @@ def main():
     print(f'grid     :   {W} x {H}, origin={origin}, resolution={resolution}')
     print(f'thresholds:  step={args.step_threshold} m | rough_std={args.roughness_threshold} m | '
           f'min_pts={args.min_points} | ground_p={args.ground_percentile}% | '
-          f'rough_band={args.roughness_band} m')
+          f'rough_band={args.roughness_band} m | max_h={args.max_height_above_ground} m')
+    if args.free_mask is not None:
+        print(f'mode      :  MANUAL — free from --free-mask (occupied > free > unknown)')
+    else:
+        print(f'mode      :  AUTO — free from trav-known cells' +
+              (f' + inheritance vs {args.diff_vs}' if args.diff_vs is not None else ''))
     print()
 
+    # Cache validity depends on max-height: the intermediates (count,
+    # ground_z, roughness) are all computed AFTER the h-filter, so a
+    # different threshold demands a rebuild. Everything else is applied
+    # post-cache (step/roughness thresholds) and does not invalidate.
     use_cache = (args.cache_npz is not None
                  and args.cache_npz.is_file()
                  and not args.force_recompute)
@@ -276,11 +465,17 @@ def main():
         t1 = time.time()
         print(f'[cache] loading {args.cache_npz} ...')
         cache = np.load(args.cache_npz)
-        count = cache['count']
-        ground_z = cache['ground_z']
-        roughness = cache['roughness']
-        print(f'[cache] {time.time() - t1:.1f} s')
-    else:
+        cached_h = float(cache['max_height_above_ground'][0]) if 'max_height_above_ground' in cache.files else -1.0
+        if abs(cached_h - args.max_height_above_ground) > 1e-6:
+            print(f'[cache] max_height changed ({cached_h} → {args.max_height_above_ground}), recomputing')
+            use_cache = False
+        else:
+            count = cache['count']
+            ground_z = cache['ground_z']
+            roughness = cache['roughness']
+            print(f'[cache] {time.time() - t1:.1f} s')
+
+    if not use_cache:
         t1 = time.time()
         print(f'[pcd] loading ...')
         pts = load_pcd(args.input_pcd)
@@ -291,12 +486,17 @@ def main():
         count, ground_z, roughness = per_cell_stats(
             pts, origin, resolution, W, H,
             args.ground_percentile, args.roughness_band,
+            max_height_above_ground=args.max_height_above_ground,
         )
         print(f'[stats] {time.time() - t1:.1f} s')
 
         if args.cache_npz is not None:
             args.cache_npz.parent.mkdir(parents=True, exist_ok=True)
-            np.savez(args.cache_npz, count=count, ground_z=ground_z, roughness=roughness)
+            np.savez(
+                args.cache_npz,
+                count=count, ground_z=ground_z, roughness=roughness,
+                max_height_above_ground=np.array([args.max_height_above_ground], dtype=np.float64),
+            )
             print(f'[cache] wrote {args.cache_npz}')
 
     count2d = count.reshape(H, W)
@@ -319,66 +519,87 @@ def main():
     )
     print(f'[step] {time.time() - t1:.1f} s')
 
-    # Trav-only classification. Step + rough imply occupied; the rest of
-    # `known_2d` is free. Unknown cells stay unknown until inheritance runs.
+    # Trav-occupied cells drive the red PNG AND always win in the final pgm,
+    # regardless of mode. This is the whole reason we split occupied
+    # detection (mechanical) from free assignment (human or heuristic):
+    # a human accidentally painting over a curb never opens the curb.
     occupied_2d = known_2d & (rough_mask | step_mask)
     trav_free_2d = known_2d & ~occupied_2d
 
+    # Compose the output pgm. Two paths.
     pgm = np.full((H, W), UNKNOWN, dtype=np.uint8)
-    pgm[trav_free_2d] = FREE
-    pgm[occupied_2d] = OCCUPIED
-
-    # Free-inheritance from --diff-vs (option C改). Rescues unknown cells
-    # that are within --inherit-radius of a known cell AND read free in the
-    # reference map AND are not occupied on this pass. All three
-    # conjuncts must hold — inheritance never overrides a fresh occupied
-    # cell, and it never manufactures free where the reference has none.
     inherited_2d = np.zeros((H, W), dtype=bool)
-    ref_free_2d = None
-    if args.diff_vs is not None and args.inherit_radius > 0.0:
-        if not args.diff_vs.is_file():
-            print(f'[inherit] --diff-vs not found: {args.diff_vs} (skipping)')
-        else:
-            ref = np.array(Image.open(args.diff_vs))
-            if ref.shape != pgm.shape:
-                print(f'[inherit] shape mismatch: pgm={pgm.shape} vs ref={ref.shape} (skipping)')
+    manual_free_2d = np.zeros((H, W), dtype=bool)
+
+    if args.free_mask is not None:
+        # MANUAL mode. Free comes entirely from the hand-painted PNG.
+        # Composite rule: OCCUPIED > FREE(painted) > UNKNOWN.
+        if not args.free_mask.is_file():
+            raise SystemExit(f'--free-mask not found: {args.free_mask}')
+        t1 = time.time()
+        painted_2d = load_free_mask(args.free_mask, (H, W), args.mask_threshold)
+        # Free where painted AND not trav-occupied.
+        manual_free_2d = painted_2d & ~occupied_2d
+        pgm[manual_free_2d] = FREE
+        pgm[occupied_2d] = OCCUPIED
+        n_paint = int(painted_2d.sum())
+        n_paint_over_occ = int((painted_2d & occupied_2d).sum())
+        print(f'[mask] painted cells: {n_paint:,} '
+              f'({n_paint_over_occ:,} landed on trav-occupied and were kept as OCCUPIED) '
+              f'in {time.time() - t1:.1f} s')
+    else:
+        # AUTO mode (legacy). Trav-known non-occupied cells are FREE, and
+        # optionally --diff-vs inheritance rescues nearby unknown cells
+        # that read FREE in the reference map.
+        pgm[trav_free_2d] = FREE
+        pgm[occupied_2d] = OCCUPIED
+        if args.diff_vs is not None and args.inherit_radius > 0.0:
+            if not args.diff_vs.is_file():
+                print(f'[inherit] --diff-vs not found: {args.diff_vs} (skipping)')
             else:
-                t1 = time.time()
-                radius_cells = int(round(args.inherit_radius / resolution))
-                k = 2 * radius_cells + 1
-                print(f'[inherit] radius={args.inherit_radius} m = {radius_cells} cells, '
-                      f'dilation kernel {k}x{k} ...')
-                # cv2.dilate wants uint8; the kernel is a rectangle here.
-                # Ellipse would round the reach, but with r=10 the corners
-                # only reach r*sqrt(2)=14 cells (0.71 m) — over the nominal
-                # 0.5 m budget by 40 %. Use ellipse (=disk) so the "within
-                # 0.5 m" statement is honest.
-                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-                dilated_known = cv2.dilate(known_2d.astype(np.uint8), kernel).astype(bool)
-                ref_free_2d = (ref == FREE)
-                inherited_2d = (~occupied_2d) & ref_free_2d & dilated_known & ~known_2d
-                pgm[inherited_2d] = FREE
-                print(f'[inherit] {int(inherited_2d.sum()):,} cells inherited '
-                      f'in {time.time() - t1:.1f} s')
+                ref = np.array(Image.open(args.diff_vs))
+                if ref.shape != pgm.shape:
+                    print(f'[inherit] shape mismatch: pgm={pgm.shape} vs ref={ref.shape} (skipping)')
+                else:
+                    t1 = time.time()
+                    radius_cells = int(round(args.inherit_radius / resolution))
+                    k = 2 * radius_cells + 1
+                    print(f'[inherit] radius={args.inherit_radius} m = {radius_cells} cells, '
+                          f'dilation kernel {k}x{k} ...')
+                    # Ellipse (=disk) kernel so the "within R metres"
+                    # statement is honest at the corners.
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+                    dilated_known = cv2.dilate(known_2d.astype(np.uint8), kernel).astype(bool)
+                    ref_free_2d = (ref == FREE)
+                    inherited_2d = (~occupied_2d) & ref_free_2d & dilated_known & ~known_2d
+                    pgm[inherited_2d] = FREE
+                    print(f'[inherit] {int(inherited_2d.sum()):,} cells inherited '
+                          f'in {time.time() - t1:.1f} s')
 
     n_cells = W * H
     n_occ = int(occupied_2d.sum())
     n_free_trav = int(trav_free_2d.sum())
     n_free_inherit = int(inherited_2d.sum())
-    n_free_total = n_free_trav + n_free_inherit
-    n_unknown = n_cells - n_known - n_free_inherit
+    n_free_manual = int(manual_free_2d.sum())
     n_step = int((step_mask & known_2d).sum())
     n_rough = int((rough_mask & known_2d).sum())
     n_both = int((step_mask & rough_mask & known_2d).sum())
+    # Break out FREE by source so the mode is obvious in the log.
+    n_free_in_pgm = int((pgm == FREE).sum())
+    n_unknown_in_pgm = int((pgm == UNKNOWN).sum())
     print()
     print(f'== classification ==')
     print(f'  total          : {n_cells:>12,}')
     print(f'  known (trav)   : {n_known:>12,}  ({100*n_known/n_cells:6.2f}%)')
-    print(f'  unknown        : {n_unknown:>12,}  ({100*n_unknown/n_cells:6.2f}%)')
-    print(f'  free (total)   : {n_free_total:>12,}  ({100*n_free_total/n_cells:6.2f}%)')
-    print(f'    from trav    : {n_free_trav:>12,}')
-    print(f'    inherited    : {n_free_inherit:>12,}')
-    print(f'  occupied       : {n_occ:>12,}  ({100*n_occ/n_cells:6.2f}%)')
+    print(f'  unknown (pgm)  : {n_unknown_in_pgm:>12,}  ({100*n_unknown_in_pgm/n_cells:6.2f}%)')
+    print(f'  free (pgm)     : {n_free_in_pgm:>12,}  ({100*n_free_in_pgm/n_cells:6.2f}%)')
+    if args.free_mask is not None:
+        print(f'    from mask    : {n_free_manual:>12,}')
+        print(f'    trav-free    : {n_free_trav:>12,}  (dropped: manual mode ignores auto free)')
+    else:
+        print(f'    from trav    : {n_free_trav:>12,}')
+        print(f'    inherited    : {n_free_inherit:>12,}')
+    print(f'  occupied (pgm) : {n_occ:>12,}  ({100*n_occ/n_cells:6.2f}%)')
     print(f'    step-only    : {n_step - n_both:>12,}')
     print(f'    rough-only   : {n_rough - n_both:>12,}')
     print(f'    both         : {n_both:>12,}')
@@ -404,6 +625,37 @@ def main():
     with out_yaml_path.open('w') as f:
         yaml.safe_dump(yaml_out, f, sort_keys=False)
     print(f'[out] wrote {out_yaml_path}')
+
+    # trav_occupied_only.png — the layer a human loads into GIMP to see
+    # exactly which cells the mechanical algorithm called occupied, so
+    # they can paint FREE anywhere the red is NOT.
+    if not args.no_occupied_png:
+        occ_only_path = args.output_occupied_png or (
+            args.output_pgm.parent / 'trav_occupied_only.png')
+        rgba = build_occupied_only_rgba(occupied_2d)
+        occ_only_path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(rgba, mode='RGBA').save(occ_only_path)
+        print(f'[out] wrote {occ_only_path}  '
+              f'(RGBA, {int(occupied_2d.sum()):,} opaque red cells)')
+
+    # trav_occupied_over_cleaned.png — visual confirmation of coverage
+    # with the cleaned map showing through in the background.
+    if args.diff_vs is not None and not args.no_overlay_png:
+        if not args.diff_vs.is_file():
+            print(f'[overlay] --diff-vs not found: {args.diff_vs} (skipping overlay)')
+        else:
+            base = np.array(Image.open(args.diff_vs))
+            if base.shape != occupied_2d.shape:
+                print(f'[overlay] shape mismatch: base={base.shape} vs '
+                      f'grid={occupied_2d.shape} (skipping overlay)')
+            else:
+                overlay_path = args.output_overlay_png or (
+                    args.output_pgm.parent / 'trav_occupied_over_cleaned.png')
+                over = build_occupied_over_grayscale(base, occupied_2d, alpha=RED_ALPHA)
+                overlay_path.parent.mkdir(parents=True, exist_ok=True)
+                Image.fromarray(over, mode='RGB').save(overlay_path)
+                print(f'[out] wrote {overlay_path}  '
+                      f'(RGB, red α={RED_ALPHA} over cleaned base)')
 
     if args.diff_vs is not None and args.output_diff is not None:
         if not args.diff_vs.is_file():
