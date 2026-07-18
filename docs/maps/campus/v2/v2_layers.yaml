@@ -27,6 +27,7 @@ thresholds:
   traj_stride: 1.0
   free_raycast: true
   max_range: 20.0
+  ray_unknown_stop_cells: 3
 source:
   pcd: docs/maps/campus/static.pcd
   ref_yaml: docs/maps/campus/occupancy_cleaned.yaml

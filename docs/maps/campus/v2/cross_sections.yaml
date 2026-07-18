@@ -4,10 +4,12 @@
 #   px = (map_x - origin_x) / resolution
 #   py = H - 1 - (map_y - origin_y) / resolution        (Nav2 flip)
 #
-# STATUS: `status: placeholder` entries are SKIPPED with a warning. Fill in
-#   real coords (from GLIM point cloud, aerial photo overlay, or WHILL run
-#   log) before verification is meaningful. Format is stable — schema
-#   additions only, no renames without notice.
+# STATUS values:
+#   real            — real coords entered; run the metric on this section.
+#   placeholder     — SKIPPED with a warning (default; fill real coords).
+#   not_applicable  — SKIPPED cleanly (feature does not exist on this
+#                     campus / route). Reported as N/A, no warning.
+#                     Example: ditch枠 on a route with no side drains.
 #
 # HOW TO PICK COORDS:
 #   * Start GLIM viewer (offline_viewer or CloudCompare on static.pcd) and
@@ -20,62 +22,68 @@
 
 grid_yaml: final_rayon.yaml   # relative to this file's directory
 
-# =====================================================================
-# M1: 断面照合 (curb + ditch position, ±1 cell = 5 cm)
-# =====================================================================
-# For each section:
-#   - The verifier rasterises the segment start_xy → end_xy into pixels
-#   - Finds the OCCUPIED cell CLOSEST to expected_step_xy
-#   - Reports the distance (in cells). PASS if ≤ 1 cell.
-# expected_side_kind:
-#   "curb"  — step goes UP from chair side (accessible = valley = lower)
-#   "ditch" — step goes DOWN from chair side (accessible = upper). This
-#             tests Rule 3 chair-accessible logic on negative obstacles.
 m1_sections:
-  - id: curb_placeholder_01
-    status: placeholder
-    start_xy: [0.0, 0.0]                # ← 縁石を横断する短い線の起点
-    end_xy:   [0.0, 5.0]                # ← 終点 (5 m 程度、道路→歩道)
-    expected_step_xy: [0.0, 2.5]        # ← 縁石中心の座標
+  - id: curb_west_road_01
+    status: real
+    start_xy: [16.95, 1.25]           # 道路側(南)
+    end_xy:   [16.95, 7.25]           # 敷地側(北)
+    expected_step_xy: [16.95, 4.25]   # pixel (2904, 4402)
     expected_side_kind: curb
     expected_step_height_m: 0.15
-    description: "PLACEHOLDER: 実座標に置換してください"
+    description: "十字路西の直線区間、道路(南)/植栽敷地(北)境界。向きはfree_evidenceで確認済"
 
-  # 側溝 (負障害物) — 必須枠 (2026-07-18 review 決定、chair-accessible が
-  # 谷側に落ちない = 反転しないことを Rule 3 で検証する対象)
+  - id: curb_west_road_02
+    status: real
+    start_xy: [3.80, 0.75]
+    end_xy:   [3.80, 6.75]
+    expected_step_xy: [3.80, 3.75]    # pixel (2640-2642, 4412) の中点
+    expected_side_kind: curb
+    expected_step_height_m: 0.15
+    description: "同境界の西寄り地点"
+
+  - id: curb_east_road_01
+    status: real
+    start_xy: [41.40, 2.25]
+    end_xy:   [41.40, 8.25]
+    expected_step_xy: [41.40, 5.25]   # pixel (3392-3394, 4382) の中点
+    expected_side_kind: curb
+    expected_step_height_m: 0.15
+    description: "十字路東の道路、道路(南)/敷地(北)境界"
+
+  # 側溝 (負障害物) — 2026-07-18 user 確認: 走行キャンパスに該当地形なし。
+  # 実地検証は断念、代替として scripts/tests/test_step_accessible.py の
+  # 合成標高マップ (curb / ditch / no-traj fallback / sub-threshold) で
+  # Rule 3 chair-accessible-side 選択ロジックを assert する。
   - id: ditch_required_01
-    status: placeholder
-    start_xy: [0.0, 0.0]                # ← 側溝を横断する線の起点
-    end_xy:   [0.0, 5.0]                # ← 終点
-    expected_step_xy: [0.0, 2.5]        # ← 側溝縁の座標
+    status: not_applicable
+    start_xy: [0.0, 0.0]
+    end_xy:   [0.0, 5.0]
+    expected_step_xy: [0.0, 2.5]
     expected_side_kind: ditch
     expected_step_height_m: 0.20
-    description: "PLACEHOLDER (必須): 実座標に置換してください"
+    description: "N/A: no ditch on campus route (user confirmed). See scripts/tests/test_step_accessible.py synthetic coverage."
 
-# =====================================================================
-# M2: 縁石線連続率 (v1 vs v2 comparative)
-# =====================================================================
-# For each section:
-#   - Rasterise start_xy → end_xy into pixels along the curb LINE
-#   - Count OCCUPIED cells, compute ratio + longest non-OCCUPIED gap
-#   - Run against v1 (occupancy_cleaned.pgm) AND v2 (final_rayon.pgm)
-#   - PASS if v2_ratio >= v1_ratio (v2 did not break v1's continuity)
 m2_sections:
-  - id: curb_line_placeholder_01
-    status: placeholder
-    start_xy: [0.0, 0.0]                # ← 連続すべき縁石の一端
-    end_xy:   [50.0, 0.0]               # ← 他端 (50 m 程度)
-    expected_length_m: 50.0
-    description: "PLACEHOLDER: 縁石区間の実座標に置換"
-
+  - id: curb_line_west_road_01
+    status: real
+    start_xy: [-9.35, 3.85]           # pixel (2378, 4410) 西の円弧手前
+    end_xy:   [20.00, 4.25]           # pixel (2965, 4402) 東の円弧手前
+    expected_length_m: 29.4
+    description: "十字路西の直線境界、両側の円弧を除いた連続区間"
 # =====================================================================
 # M3: 建物幅 (壁+庇, ±1 cell)
 # =====================================================================
+# IMPORTANT: 各セクションの線分は SINGLE BUILDING のみを串刺しにする
+# 前提。もし複数建物を貫くと、first-OCCUPIED → last-OCCUPIED 距離は
+# 「片端の外壁 → 反対端の建物の遠壁」の合成値となり無意味。建物ごとに
+# 独立したセクションを立てること (道路を挟んで対向する 2 棟なら 2 sections)。
+#
 # For each section:
-#   - start_xy と end_xy は建物の反対側それぞれの外壁の OUTSIDE (道路上)
+#   - start_xy と end_xy は当該建物の両側それぞれの外壁の OUTSIDE (道路上)
 #   - 線分に沿って最初と最後の OCCUPIED cell の距離を測る
 #   - Rule 3 (h=2.2m walkable clearance) により庇 (2.0-2.2m) も pgm に
 #     現れるため、expected_width_m は「壁+庇」の実測値を書く
+#     (CloudCompare で GLIM 点群を実測して確定)
 #   - PASS if |measured - expected| ≤ resolution (5 cm)
 m3_sections:
   - id: bldg_placeholder_01

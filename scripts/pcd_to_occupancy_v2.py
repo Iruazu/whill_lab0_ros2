@@ -206,6 +206,27 @@ def parse_args():
                    help='Bresenham ray max distance (m). Only used with '
                         '--free-raycast. Default 20 = Velodyne VLP-16 outdoor '
                         'effective range.')
+    p.add_argument('--ray-unknown-stop-cells', type=int, default=3,
+                   help='Stop a Bresenham ray when it enters this many CONSECUTIVE '
+                        'cells that have zero PCD evidence in the DILATED data-'
+                        'presence mask (see --data-presence-dilate-cells). Rolls '
+                        'the free-marking back this many cells before stopping, '
+                        'so the ray never claims cells inside a building interior '
+                        '(point-cloud gap) as free. Default 3 (= 15 cm walk into '
+                        'a hole before we call it "unknown terrain"). Only used '
+                        'with --free-raycast.')
+    p.add_argument('--data-presence-dilate-cells', type=int, default=3,
+                   help='Dilate the raw data-presence mask (raw_count > 0) by '
+                        'this radius before it is used as the raycast stopper '
+                        'input. Prevents legitimate pass-through cells (LiDAR '
+                        'ray traversed but no return) from being read as '
+                        '"unknown terrain" — a dilated cell counts as data-'
+                        'present if any DUFOMap point exists within this radius. '
+                        'Default 3 cells (= 15 cm; DUFOMap voxelises at 20 cm '
+                        'so one point per voxel covers a ~4x4 cell area at 5 cm '
+                        'resolution, and this dilation ensures the pass-through '
+                        'volume between points reads present). Only used with '
+                        '--free-raycast.')
 
     p.add_argument('--no-hillshade', action='store_true')
     p.add_argument('--no-maxheight', action='store_true')
@@ -261,6 +282,16 @@ def downsample_trajectory(xyz, min_stride_m):
 
 def per_cell_stats(pts, origin, resolution, W, H,
                    ground_percentile, max_height_above_ground):
+    """Return (count, ground_z, max_z_rel, raw_count) flat arrays of length W*H.
+
+    `raw_count` = number of in-bounds points that landed in each cell BEFORE
+    the h-filter. Used as `data_presence` in main() (a cell with raw_count>0
+    has SOME PCD evidence, regardless of height). This is what the raycast
+    "walked into unknown terrain" check needs to distinguish (a) empty
+    corridor between anchor and wall from (b) point-cloud gap inside a
+    building. Introduced 2026-07-18 to fix the raycast-leak-through-
+    buildings bug reported in PR #91 review.
+    """
     # Nav2 map_server convention: image row 0 is the TOP of the pgm which
     # corresponds to the HIGHEST map_y (origin_y + H*res). We must flip
     # y here so that arrays indexed [py, px] load into pgm in the correct
@@ -279,6 +310,12 @@ def per_cell_stats(pts, origin, resolution, W, H,
     cell = iy.astype(np.int64) * W + ix.astype(np.int64)
     df = pd.DataFrame({'cell': cell, 'z': xyz[:, 2]})
     q = ground_percentile / 100.0
+
+    # raw_count = pre-h-filter cell counts (any height). Feeds the
+    # raycast data_presence check downstream.
+    raw_count_per = df.groupby('cell', sort=False).size()
+    raw_count_flat = np.zeros(W * H, dtype=np.int32)
+    raw_count_flat[raw_count_per.index.to_numpy()] = raw_count_per.to_numpy()
 
     initial_ground_per = df.groupby('cell', sort=False)['z'].quantile(q).astype(np.float32)
     initial_flat = np.full(W * H, np.inf, dtype=np.float32)
@@ -314,7 +351,7 @@ def per_cell_stats(pts, origin, resolution, W, H,
     max_arr = max_per.to_numpy()
     ground_arr = ground_per.to_numpy()
     max_z_rel_flat[max_per.index.to_numpy()] = (max_arr - ground_arr).astype(np.float32)
-    return count_flat, ground_flat, max_z_rel_flat
+    return count_flat, ground_flat, max_z_rel_flat, raw_count_flat
 
 
 def compute_step_accessible_side(ground_z_2d, valid_2d, accessibility_2d,
@@ -496,12 +533,29 @@ def rasterise_footprint_disk(anchors_xy_m, origin, resolution, W, H, radius_m):
     return mask.astype(bool)
 
 
-def raycast_free_from_anchors(free_mask, occupied_mask, anchors_xy_m,
-                               origin, resolution, W, H, max_range_m,
+def raycast_free_from_anchors(free_mask, occupied_mask, data_presence_mask,
+                               anchors_xy_m, origin, resolution, W, H,
+                               max_range_m, unknown_stop_cells=3,
                                n_angular_bins=720):
-    """Bresenham raycast free-marking, ported from v1
-    m5r_pcd_to_occupancy.bresenham_rays_to_free_trajectory. Modifies
-    `free_mask` in place, returns count of NEW free cells.
+    """Bresenham raycast free-marking, extended with two stopping conditions
+    (2026-07-18, PR #91 review P0):
+
+      1. Ray stops on any `occupied_mask` cell (as before — walls, curbs).
+      2. Ray stops after `unknown_stop_cells` CONSECUTIVE cells with
+         `data_presence_mask` == False, and the free-marking is rolled
+         back that many cells before stopping. Prevents the ray from
+         claiming cells inside a building interior (point-cloud gap
+         with no evidence at any height) as free — which was the
+         v1-style leakage bug that motivated this rewrite.
+
+    `data_presence_mask` should be True for any cell that has ANY PCD
+    evidence at ANY height (pre-h-filter). A pure LiDAR pass-through
+    that returned no point AND a building interior both read False;
+    the run-length counter distinguishes them (a real corridor is
+    surrounded by True cells, a building gap is a long True-False-
+    True... run inside the gap).
+
+    Modifies `free_mask` in place. Returns count of NEW free cells.
     """
     if len(anchors_xy_m) == 0:
         return 0
@@ -555,12 +609,38 @@ def raycast_free_from_anchors(free_mask, occupied_mask, anchors_xy_m,
             xs = xs[valid]; ys = ys[valid]
             if xs.size == 0:
                 continue
+            # Stop condition 1: occupied cell.
             occ_here = occupied_mask[ys, xs]
             if occ_here.any():
                 first_occ = int(np.argmax(occ_here))
                 xs = xs[:first_occ]; ys = ys[:first_occ]
                 if xs.size == 0:
                     continue
+            # Stop condition 2 (P0 fix): consecutive-unknown run.
+            if unknown_stop_cells > 0 and xs.size > 0:
+                # Walk the ray, count consecutive cells with
+                # data_presence == False. When the counter reaches N,
+                # cut the ray to the position just BEFORE the run
+                # started (i.e. drop the last N cells to be safe).
+                presence = data_presence_mask[ys, xs]
+                # Find first index where a run of length `unknown_stop_cells`
+                # of consecutive False starts. Vectorised: window sum of
+                # (~presence).astype(int) over rolling length N; any window
+                # with sum == N is a run start.
+                absent = (~presence).astype(np.int8)
+                n = xs.size
+                if n >= unknown_stop_cells:
+                    # cumulative sum trick for rolling window sum
+                    csum = np.concatenate(([0], np.cumsum(absent)))
+                    win = csum[unknown_stop_cells:] - csum[:-unknown_stop_cells]
+                    run_starts = np.where(win == unknown_stop_cells)[0]
+                    if run_starts.size > 0:
+                        first_run_start = int(run_starts[0])
+                        # Keep cells up to (but excluding) the run start.
+                        xs = xs[:first_run_start]
+                        ys = ys[:first_run_start]
+                    if xs.size == 0:
+                        continue
             new_free = ~free_mask[ys, xs] & ~occupied_mask[ys, xs]
             if new_free.any():
                 sel_x = xs[new_free]; sel_y = ys[new_free]
@@ -610,6 +690,7 @@ def write_layer_metadata(output_dir, ref_doc, H, W, layers_written, args):
             'traj_stride': args.traj_stride,
             'free_raycast': args.free_raycast,
             'max_range': args.max_range,
+            'ray_unknown_stop_cells': args.ray_unknown_stop_cells,
         },
         'source': {
             'pcd': str(args.input_pcd),
@@ -654,7 +735,7 @@ def main():
           f'struct_min={args.structure_cluster_min_size} | '
           f'dilate={args.cluster_dilate_px}px')
     print(f'free_ev    : anchor_disk_r={args.anchor_free_radius} m | '
-          f'raycast={"ON (max_range=" + str(args.max_range) + " m)" if args.free_raycast else "OFF"}')
+          f'raycast={"ON (max_range=" + str(args.max_range) + " m, unknown_stop=" + str(args.ray_unknown_stop_cells) + " cells)" if args.free_raycast else "OFF"}')
     print()
 
     use_cache = (args.cache_npz is not None
@@ -670,10 +751,16 @@ def main():
             print(f'[cache] max_height changed ({cached_h} → '
                   f'{args.max_height_above_ground}), recomputing')
             use_cache = False
+        elif 'raw_count' not in cache.files:
+            # Old cache without raw_count (pre-P0-raycast-leak-fix). Must
+            # recompute — data_presence downstream needs raw_count.
+            print(f'[cache] missing raw_count (pre-P0 fix), recomputing')
+            use_cache = False
         else:
             count = cache['count']
             ground_z = cache['ground_z']
             max_z_rel = cache['max_z_rel']
+            raw_count = cache['raw_count']
             print(f'[cache] {time.time() - t1:.1f} s')
 
     if not use_cache:
@@ -683,8 +770,8 @@ def main():
         print(f'[pcd] {len(pts):,} points, {time.time() - t1:.1f} s')
 
         t1 = time.time()
-        print(f'[stats] per-cell count / ground_z / max_z_rel ...')
-        count, ground_z, max_z_rel = per_cell_stats(
+        print(f'[stats] per-cell count / ground_z / max_z_rel / raw_count ...')
+        count, ground_z, max_z_rel, raw_count = per_cell_stats(
             pts, origin, resolution, W, H,
             args.ground_percentile, args.max_height_above_ground,
         )
@@ -695,6 +782,7 @@ def main():
             np.savez(
                 args.cache_npz,
                 count=count, ground_z=ground_z, max_z_rel=max_z_rel,
+                raw_count=raw_count,
                 max_height_above_ground=np.array([args.max_height_above_ground],
                                                  dtype=np.float64),
             )
@@ -703,6 +791,13 @@ def main():
     count2d = count.reshape(H, W)
     ground_z2d = ground_z.reshape(H, W)
     max_z_rel2d = max_z_rel.reshape(H, W)
+    # data_presence: cell has SOME PCD evidence at ANY height (pre-h-filter).
+    # Distinguishes "outdoor with no obstacle in this cell" (data_presence
+    # False, LiDAR ray passed through no return) from "point-cloud gap
+    # inside a building" (also data_presence False). ← BOTH read as false
+    # here; the raycast then relies on adjacent data_presence to tell them
+    # apart via the --ray-unknown-stop-cells counter.
+    data_presence_2d = raw_count.reshape(H, W) > 0
 
     known_2d = count2d >= args.min_points
     n_known = int(known_2d.sum())
@@ -778,12 +873,30 @@ def main():
     free_evidence = footprint_mask.copy()
     if args.free_raycast and (step_filt | struct_filt).any() and anchors_xy is not None:
         t1 = time.time()
+        # Ray stoppers: union of step + structure (P0 fix — v1 only used
+        # structure, which let rays leak past low steps).
         occupied_union = step_filt | struct_filt
+        # Dilate data_presence so pass-through cells (LiDAR ray traversed
+        # but no return) are treated as present. Without this, an outdoor
+        # corridor between DUFOMap points reads as data-void and the
+        # unknown_stop counter fires within a metre of every anchor,
+        # collapsing raycast coverage to ≈ footprint alone.
+        if args.data_presence_dilate_cells > 0:
+            k = 2 * args.data_presence_dilate_cells + 1
+            dp_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+            data_presence_for_ray = cv2.dilate(
+                data_presence_2d.astype(np.uint8), dp_kern).astype(bool)
+        else:
+            data_presence_for_ray = data_presence_2d
         print(f'[raycast] {len(anchors_xy):,} anchors × up to {args.max_range} m '
-              f'against {int(occupied_union.sum()):,} occupied cells ...')
+              f'against {int(occupied_union.sum()):,} occupied cells | '
+              f'data_presence dilated r={args.data_presence_dilate_cells} '
+              f'({int(data_presence_for_ray.sum()):,} cells) | '
+              f'unknown_stop={args.ray_unknown_stop_cells}')
         n_new = raycast_free_from_anchors(
-            free_evidence, occupied_union, anchors_xy,
-            origin, resolution, W, H, args.max_range)
+            free_evidence, occupied_union, data_presence_for_ray, anchors_xy,
+            origin, resolution, W, H, args.max_range,
+            unknown_stop_cells=args.ray_unknown_stop_cells)
         print(f'[raycast] added {n_new:,} free cells in {time.time() - t1:.1f} s')
 
     n_cells = W * H

@@ -16,20 +16,34 @@ Metrics:
     ditch (negative step). Fails LOUDLY if no OCCUPIED cell on the
     segment — that means Rule 3 placement is off, not near.
 
-  M2 縁石線連続率 (v1 vs v2 comparative)
-    For each section: rasterise segment, compute OCCUPIED cell ratio +
-    longest gap. Runs against BOTH v1 (occupancy_cleaned.pgm, via
-    --v1-pgm) AND v2 (final pgm from cross_sections.yaml). PASS if
-    v2_ratio >= v1_ratio — i.e. v2 did not break v1's curb continuity.
-    Longest-gap comparison is reported for information but not part of
-    the pass/fail gate.
+  M2 縁石線連続率 (v1 vs v2 comparative, with lateral tolerance)
+    For each section: rasterise segment; for each pixel on the segment,
+    check for OCCUPIED within a LATERAL BAND of ±--m2-lateral-tolerance-m
+    (default 0.25 m = ±5 cells at 5 cm/px) perpendicular to the segment.
+    Occupancy in the band counts as "on-line". This is essential because
+    real curbs drift ±5-10 px off a straight segment specification, and
+    a strict on-axis walk would show false negatives on healthy curbs.
+    Compute the "on-line" ratio + longest gap for both v1 (occupancy_
+    cleaned.pgm via --v1-pgm) AND v2 (final pgm from cross_sections.yaml).
+    PASS if v2_ratio >= v1_ratio — v2 did not break v1's curb continuity.
 
   M3 建物幅 (壁+庇, ±1 cell)
-    For each section: rasterise segment across a building, find first
-    and last OCCUPIED cells along the segment, compute their linear
-    distance. PASS if |measured - expected_width_m| ≤ resolution.
+    IMPORTANT: assumes the specified segment CROSSES A SINGLE BUILDING.
+    The "measured width" is first-OCCUPIED to last-OCCUPIED linear
+    distance along the segment. If the segment passes through more than
+    one building (or an open area with debris), the measurement is
+    meaningless — split the segment into per-building lines.
+    For each section: rasterise segment, first-to-last OCCUPIED cell
+    distance = measured width. PASS if |measured - expected| ≤ resolution.
     Rule 3 (h=2.2m walkable clearance) admits eaves 2.0-2.2m, so
-    expected_width should be the wall+eave real measurement.
+    expected_width_m should be the wall+eave real measurement (from
+    CloudCompare / GLIM viewer, not just wall-to-wall).
+
+Section statuses:
+  `real`           — section has real coords; run the metric on it.
+  `placeholder`    — skip (yaml default; user has not filled coords yet).
+  `not_applicable` — skip cleanly (e.g. no ditch on this campus). Reports
+                     the entry as N/A rather than a warning.
 
 Usage:
 
@@ -71,6 +85,22 @@ def parse_args():
                         'skips the v2>=v1 gate.')
     p.add_argument('--markdown', action='store_true',
                    help='Emit GitHub-flavored markdown tables (default: plain text).')
+    p.add_argument('--m2-lateral-tolerance-m', type=float, default=0.25,
+                   help='Lateral half-width (m) of the tolerance band around each '
+                        'M2 segment. Occupied cells within this band count as '
+                        '"on the segment" for continuity. Default 0.25 m = ±5 '
+                        'cells at 5 cm/px. Real curbs drift ±5-10 px off '
+                        'straight-line spec, so zero tolerance produces false '
+                        'negatives.')
+    p.add_argument('--m1-lateral-tolerance-m', type=float, default=0.10,
+                   help='Same principle as --m2-lateral-tolerance-m but for M1. '
+                        'When searching for the OCCUPIED cell nearest to '
+                        'expected_step_xy, sample within ±this many m '
+                        'perpendicular to the segment. Real curbs are 2-3 px '
+                        'thick (5-15 cm) and slightly off any specified line. '
+                        'Default 0.10 m = ±2 cells. Smaller than M2 because '
+                        'position accuracy is the M1 metric — the tolerance '
+                        'is just to find the curb, not to define its width.')
     return p.parse_args()
 
 
@@ -98,7 +128,14 @@ def load_pgm_with_yaml(yaml_path):
     return pgm, float(y['resolution']), y['origin']
 
 
-def evaluate_m1(pgm, resolution, origin, section):
+def evaluate_m1(pgm, resolution, origin, section, lateral_tolerance_m=0.10):
+    """M1 with lateral tolerance band around segment.
+
+    Search cells within ±lat_cells perpendicular to the segment for
+    OCCUPIED (rather than restricting to on-axis cells only). Then
+    report the closest one to expected_step_xy. Real curbs are 2-3 px
+    thick and drift off any user-specified straight line.
+    """
     H, W = pgm.shape
     ox, oy = float(origin[0]), float(origin[1])
     x0, y0 = map_to_pixel(*section['start_xy'], ox, oy, resolution, H)
@@ -107,23 +144,56 @@ def evaluate_m1(pgm, resolution, origin, section):
     xs, ys = line_pixels(x0, y0, x1, y1, W, H)
     if xs.size == 0:
         return {'passed': False, 'delta_cells': None, 'reason': 'segment out of grid'}
-    vals = pgm[ys, xs]
-    occ_idx = np.where(vals == OCCUPIED)[0]
-    if occ_idx.size == 0:
+
+    dx = x1 - x0; dy = y1 - y0
+    seg_len = float(np.hypot(dx, dy))
+    if seg_len < 1e-6:
+        return {'passed': False, 'delta_cells': None, 'reason': 'zero-length segment'}
+    nx = -dy / seg_len
+    ny =  dx / seg_len
+    lat_cells = max(1, int(round(lateral_tolerance_m / resolution)))
+
+    # Collect OCCUPIED cells across the lateral band (segment ± lat_cells).
+    all_occ_x = []
+    all_occ_y = []
+    for off in range(-lat_cells, lat_cells + 1):
+        sx = (xs + off * nx).round().astype(int)
+        sy = (ys + off * ny).round().astype(int)
+        valid = (sx >= 0) & (sx < W) & (sy >= 0) & (sy < H)
+        sx = sx[valid]; sy = sy[valid]
+        vals = pgm[sy, sx]
+        occ_here = vals == OCCUPIED
+        if occ_here.any():
+            all_occ_x.append(sx[occ_here])
+            all_occ_y.append(sy[occ_here])
+    if not all_occ_x:
         return {'passed': False, 'delta_cells': None,
-                'reason': 'no OCCUPIED on segment (Rule 3 misplaced?)'}
-    dists = np.hypot(xs[occ_idx] - esxp, ys[occ_idx] - esyp)
+                'reason': f'no OCCUPIED within ±{lateral_tolerance_m} m band '
+                          f'(Rule 3 misplaced? or specify wider band with '
+                          f'--m1-lateral-tolerance-m)'}
+    occ_x = np.concatenate(all_occ_x)
+    occ_y = np.concatenate(all_occ_y)
+    dists = np.hypot(occ_x - esxp, occ_y - esyp)
     min_dist_px = float(dists.min())
     delta_m = min_dist_px * resolution
     return {
         'passed': min_dist_px <= 1.0,
         'delta_cells': min_dist_px,
         'delta_m': delta_m,
-        'n_occ_on_segment': int(occ_idx.size),
+        'n_occ_in_band': int(occ_x.size),
+        'lat_cells': int(lat_cells),
     }
 
 
-def evaluate_m2(pgm_v2, pgm_v1, resolution, origin, section):
+def evaluate_m2(pgm_v2, pgm_v1, resolution, origin, section,
+                lateral_tolerance_m=0.25):
+    """M2 with lateral tolerance band.
+
+    For each pixel on the segment, check `lat_cells` perpendicular
+    steps to each side. If ANY of the 2*lat_cells+1 cells is OCCUPIED,
+    that segment position is "on-line". This handles the ±5-10 px
+    drift of real curbs off user-specified straight lines.
+    """
     H, W = pgm_v2.shape
     ox, oy = float(origin[0]), float(origin[1])
     x0, y0 = map_to_pixel(*section['start_xy'], ox, oy, resolution, H)
@@ -132,11 +202,34 @@ def evaluate_m2(pgm_v2, pgm_v1, resolution, origin, section):
     if xs.size == 0:
         return {'passed': False, 'reason': 'segment out of grid'}
 
-    def stats(pgm):
+    # Perpendicular unit vector (in pixel space) for the tolerance band.
+    dx = x1 - x0; dy = y1 - y0
+    seg_len = float(np.hypot(dx, dy))
+    if seg_len < 1e-6:
+        return {'passed': False, 'reason': 'zero-length segment'}
+    # Perp (perpendicular to segment) unit vector.
+    nx = -dy / seg_len
+    ny =  dx / seg_len
+    lat_cells = max(1, int(round(lateral_tolerance_m / resolution)))
+    # For each offset ∈ [-lat_cells, +lat_cells], sample the pgm along the
+    # shifted line. "on-line" for a segment pixel = ANY offset gives OCCUPIED.
+    def on_line(pgm):
         if pgm is None:
+            return None
+        occ_any = np.zeros(xs.size, dtype=bool)
+        for off in range(-lat_cells, lat_cells + 1):
+            shift_x = (xs + off * nx).round().astype(int)
+            shift_y = (ys + off * ny).round().astype(int)
+            valid = (shift_x >= 0) & (shift_x < W) & (shift_y >= 0) & (shift_y < H)
+            occ_here = np.zeros(xs.size, dtype=bool)
+            occ_here[valid] = pgm[shift_y[valid], shift_x[valid]] == OCCUPIED
+            occ_any |= occ_here
+        return occ_any
+
+    def stats(pgm):
+        occ = on_line(pgm)
+        if occ is None:
             return None, None
-        v = pgm[ys, xs]
-        occ = v == OCCUPIED
         ratio = float(occ.mean()) if occ.size else 0.0
         cur, max_gap = 0, 0
         for b in occ:
@@ -152,16 +245,18 @@ def evaluate_m2(pgm_v2, pgm_v1, resolution, origin, section):
     v1_ratio, v1_gap = stats(pgm_v1)
     if v1_ratio is None:
         return {
-            'passed': None,   # gate skipped without v1
+            'passed': None,
             'v2_ratio': v2_ratio, 'v2_gap': v2_gap,
             'v1_ratio': None,  'v1_gap': None,
             'n_cells': int(xs.size),
+            'lat_cells': int(lat_cells),
         }
     return {
         'passed': v2_ratio >= v1_ratio,
         'v2_ratio': v2_ratio, 'v2_gap': v2_gap,
         'v1_ratio': v1_ratio, 'v1_gap': v1_gap,
         'n_cells': int(xs.size),
+        'lat_cells': int(lat_cells),
     }
 
 
@@ -200,23 +295,23 @@ def format_verdict(result):
 
 
 def print_m1(rows, markdown):
-    header = ['section', 'kind', 'verdict', 'Δ cells', 'Δ m', 'n_occ']
+    header = ['section', 'kind', 'verdict', 'Δ cells', 'Δ m', 'n_occ_band']
     if markdown:
         print('| ' + ' | '.join(header) + ' |')
         print('|' + '|'.join(['---'] * len(header)) + '|')
     else:
-        print(f'{"section":<28} {"kind":<6} {"verdict":<8} {"Δ cells":<10} {"Δ m":<10} {"n_occ":<6}')
-        print('-' * 78)
+        print(f'{"section":<28} {"kind":<6} {"verdict":<8} {"Δ cells":<10} {"Δ m":<10} {"n_occ_band":<10}')
+        print('-' * 82)
     for name, kind, r in rows:
         v = format_verdict(r)
         dc = f'{r["delta_cells"]:.2f}' if r.get('delta_cells') is not None else '—'
         dm = f'{r["delta_m"]:.3f}' if r.get('delta_m') is not None else '—'
-        no = str(r.get('n_occ_on_segment', '—'))
+        no = str(r.get('n_occ_in_band', '—'))
         if markdown:
             note = f' ({r["reason"]})' if r.get('reason') else ''
             print(f'| `{name}` | {kind} | **{v}**{note} | {dc} | {dm} | {no} |')
         else:
-            print(f'{name:<28} {kind:<6} {v:<8} {dc:<10} {dm:<10} {no:<6}')
+            print(f'{name:<28} {kind:<6} {v:<8} {dc:<10} {dm:<10} {no:<10}')
             if r.get('reason'):
                 print(f'    reason: {r["reason"]}')
 
@@ -292,25 +387,49 @@ def main():
         print(f'v1 grid  : (not provided — M2 will report v2-only)')
 
     n_pl = 0
+    n_na = 0
     m1_rows, m2_rows, m3_rows = [], [], []
 
+    def skip_reason(section):
+        s = section.get('status')
+        if s == 'placeholder':
+            return 'placeholder'
+        if s == 'not_applicable':
+            return 'not_applicable'
+        return None
+
     for section in cs.get('m1_sections', []):
-        if section.get('status') == 'placeholder':
-            n_pl += 1
+        reason = skip_reason(section)
+        if reason == 'placeholder':
+            n_pl += 1; continue
+        if reason == 'not_applicable':
+            n_na += 1
+            m1_rows.append((section['id'], section.get('expected_side_kind', '?'),
+                             {'passed': None, 'reason': 'not_applicable'}))
             continue
-        r = evaluate_m1(pgm_v2, resolution, origin, section)
+        r = evaluate_m1(pgm_v2, resolution, origin, section,
+                        lateral_tolerance_m=args.m1_lateral_tolerance_m)
         m1_rows.append((section['id'], section.get('expected_side_kind', '?'), r))
 
     for section in cs.get('m2_sections', []):
-        if section.get('status') == 'placeholder':
-            n_pl += 1
+        reason = skip_reason(section)
+        if reason == 'placeholder':
+            n_pl += 1; continue
+        if reason == 'not_applicable':
+            n_na += 1
+            m2_rows.append((section['id'], {'passed': None, 'reason': 'not_applicable'}))
             continue
-        r = evaluate_m2(pgm_v2, pgm_v1, resolution, origin, section)
+        r = evaluate_m2(pgm_v2, pgm_v1, resolution, origin, section,
+                        lateral_tolerance_m=args.m2_lateral_tolerance_m)
         m2_rows.append((section['id'], r))
 
     for section in cs.get('m3_sections', []):
-        if section.get('status') == 'placeholder':
-            n_pl += 1
+        reason = skip_reason(section)
+        if reason == 'placeholder':
+            n_pl += 1; continue
+        if reason == 'not_applicable':
+            n_na += 1
+            m3_rows.append((section['id'], {'passed': None, 'reason': 'not_applicable'}))
             continue
         r = evaluate_m3(pgm_v2, resolution, origin, section)
         m3_rows.append((section['id'], r))
@@ -319,6 +438,9 @@ def main():
     if n_pl:
         print(f'⚠ {n_pl} placeholder sections SKIPPED. Fill real coords + '
               f'set status: to something other than "placeholder" to enable them.')
+        print()
+    if n_na:
+        print(f'ℹ {n_na} sections marked not_applicable — reported as N/A (not a warning).')
         print()
 
     sep = '\n\n' if args.markdown else '\n'
@@ -340,11 +462,11 @@ def main():
         print('No non-placeholder sections evaluated. Nothing to report.')
         return 0
 
-    # Overall verdict
+    # Overall verdict: N/A (not_applicable) rows do not fail the gate.
     all_ok = (
-        all(r.get('passed') is True for _, _, r in m1_rows)
+        all(r.get('passed') in (True, None) for _, _, r in m1_rows)
         and all(r.get('passed') in (True, None) for _, r in m2_rows)
-        and all(r.get('passed') is True for _, r in m3_rows)
+        and all(r.get('passed') in (True, None) for _, r in m3_rows)
     )
     print()
     if all_ok:
