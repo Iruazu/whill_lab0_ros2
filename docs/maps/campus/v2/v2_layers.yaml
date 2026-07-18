@@ -10,6 +10,7 @@ layers:
   occupied_step: occupied_step.png
   occupied_structure: occupied_structure.png
   free_evidence: free_evidence.png
+  salt_candidates: salt_candidates.png
   underlay_hillshade: underlay_hillshade.png
   underlay_maxheight: underlay_maxheight.png
 thresholds:
@@ -19,11 +20,13 @@ thresholds:
   step_threshold: 0.03
   structure_z_min: 0.1
   structure_z_max: 2.2
-  structure_min_points: 2
-  cluster_min_size: 2
+  step_cluster_min_size: 1
+  structure_cluster_min_size: 1
   cluster_dilate_px: 0
   anchor_free_radius: 2.0
   traj_stride: 1.0
+  free_raycast: false
+  max_range: 20.0
 source:
   pcd: docs/maps/campus/static.pcd
   ref_yaml: docs/maps/campus/occupancy_cleaned.yaml

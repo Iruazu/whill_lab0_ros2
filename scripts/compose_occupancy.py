@@ -3,47 +3,55 @@
 """compose_occupancy.py — Stage 2 of the PCD → OccupancyGrid v2 pipeline.
 
 Composes Stage 1's layer-separated evidence (occupied_step,
-occupied_structure, free_evidence) with two optional hand-painted
-sidecar masks (keepout_mask, free_mask) into a single Nav2-ready
-pgm + yaml. Reads scripts/pcd_to_occupancy_v2.py's v2_layers.yaml
-manifest so the caller only needs to point at the Stage 1 output
-directory + sidecars.
+occupied_structure, free_evidence) with two hand-painted sidecar
+masks (keepout_mask, free_mask) into a Nav2-ready pgm + yaml.
 
-Composition rule (Rule 3 of the v2 design, protecting machine
-occupied from accidental overpaint):
+Composition rule (2026-07-18 PR #91 review — priority reordered so
+the human can erase machine noise, which is the whole point of v2):
 
-    occupied_final = machine_occupied ∪ (keepout_mask ∩ ¬free_mask)
-    free_final     = (machine_free ∪ free_mask) ∩ ¬occupied_final
-    pgm[occupied_final] = 0     (OCCUPIED)
-    pgm[free_final]     = 254   (FREE)
-    everywhere else     = 205   (UNKNOWN)
+    conflict         = keepout & free_mask            [warn + record]
+    erased_by_free   = machine_occ & free_mask & ¬keepout [audit]
+    occupied_final   = keepout | (machine_occ & ¬free_mask)
+    free_final       = (free_mask | machine_free) & ¬occupied_final
 
-Where:
-  * machine_occupied  = union of the opaque cells in occupied_step +
-                        occupied_structure PNGs.
-  * machine_free      = union of the non-transparent cells in
-                        free_evidence PNG.
-  * keepout_mask      = optional PNG; cells with grayscale ≥ threshold
-                        AND (alpha > 0 if RGBA) become human-added
-                        occupied.
-  * free_mask         = optional PNG; same threshold rule; adds free
-                        AND is allowed to override keepout_mask, but
-                        NEVER overrides machine_occupied.
+Priority (highest → lowest):
+    keepout  >  free_mask  >  machine_occ  >  machine_free
 
-Key properties:
-  * OCCUPIED never grows beyond raw evidence positions (Rule 1) —
-    the composer never dilates.
-  * Machine-called occupied cannot be turned into free by any human
-    mask (Rule 3 protection) — misclick-safe.
-  * free_mask CAN undo keepout_mask, so operators can iterate.
-  * All masks share the pgm's exact pixel grid; a size mismatch is
-    a hard error, not silently resampled.
-  * When both sidecars are absent this script produces a "machine-
-    only" pgm — useful for A/B comparison against v1 output.
+Rationale:
+  * keepout wins over free_mask — if the human explicitly painted
+    "this IS an obstacle", nothing else may erase it. Conflicts (both
+    painted) resolve to keepout AND are logged so the operator sees
+    the intent collision.
+  * free_mask wins over machine_occ — v2's whole point is that the
+    human is the truth verdict. Road-surface salt that the mechanical
+    pass caught MUST be erasable, otherwise Stage 2 has no way to
+    remove the false positives Stage 1 admits. An earlier draft made
+    machine_occ unconditionally win; that broke the design intent and
+    was called out in PR #91 review.
+  * machine_occ wins over machine_free — if the mechanical pass saw
+    a step or a wall AND raycast free crossed the same cell (rare),
+    trust the geometry over the ray.
+  * machine_free wins over nothing — cells with no evidence stay
+    UNKNOWN.
+
+The composer never dilates and never smooths — Stage 1's Rule 1
+"output cells are the raw evidence positions" carries through to
+final.pgm unchanged.
+
+Audit outputs (always written next to --output-pgm when non-zero):
+  conflict.png       cells where keepout AND free_mask both painted
+                     (keepout wins; magenta, RGBA opaque). Zero cells
+                     is the healthy state; non-zero means the operator
+                     needs to reconcile intent.
+  erased_by_free.png cells that were machine_occ, went to FREE via
+                     free_mask (yellow, RGBA opaque). NOT an error —
+                     this is exactly the salt-removal channel v2
+                     depends on. Count is the audit of how much
+                     human erasure happened.
 
 Usage:
 
-    # machine-only (no human input yet)
+    # machine-only baseline (no human input yet)
     scripts/compose_occupancy.py \\
         --layers-yaml docs/maps/campus/v2/v2_layers.yaml \\
         --output-pgm  docs/maps/campus/v2/final.pgm
@@ -54,9 +62,6 @@ Usage:
         --keepout-mask docs/maps/campus/v2/keepout_mask.png \\
         --free-mask    docs/maps/campus/v2/free_mask.png \\
         --output-pgm   docs/maps/campus/v2/final.pgm
-
-The sibling <output-pgm>.yaml is written automatically with the same
-resolution / origin / thresholds as the Stage 1 grid.
 """
 
 import argparse
@@ -73,6 +78,10 @@ OCCUPIED = 0
 UNKNOWN = 205
 FREE = 254
 
+# Audit-layer colours (opaque so they read clearly over any GIMP base).
+COLOR_CONFLICT = (255, 0, 255, 255)          # magenta — keepout ∩ free_mask
+COLOR_ERASED = (255, 220, 0, 255)            # yellow  — machine_occ erased by free_mask
+
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -82,20 +91,18 @@ def parse_args():
     p.add_argument('--layers-yaml', required=True, type=pathlib.Path,
                    help='Path to Stage 1 v2_layers.yaml manifest.')
     p.add_argument('--output-pgm', required=True, type=pathlib.Path,
-                   help='Final pgm output. Sibling yaml is written at the '
-                        'same stem with .yaml suffix.')
+                   help='Final pgm output. Sibling yaml + audit PNGs are written '
+                        'next to it.')
     p.add_argument('--output-yaml', type=pathlib.Path,
                    help='Explicit output yaml path (default: --output-pgm '
                         'with .yaml suffix).')
 
     p.add_argument('--keepout-mask', type=pathlib.Path,
-                   help='Grayscale / RGBA PNG (same pixel grid as Stage 1 '
-                        'layers). Bright pixels add OCCUPIED, subject to '
-                        '--free-mask override.')
+                   help='Bright pixels add OCCUPIED. Wins over free_mask on '
+                        'the same cell (conflict logged + conflict.png).')
     p.add_argument('--free-mask', type=pathlib.Path,
-                   help='Grayscale / RGBA PNG. Bright pixels add FREE and '
-                        'can undo --keepout-mask, but never override '
-                        'machine-called occupied (Rule 3 protection).')
+                   help='Bright pixels add FREE and CAN erase machine_occ. '
+                        'Erased cells recorded in erased_by_free.png.')
     p.add_argument('--mask-threshold', type=int, default=128,
                    help='Grayscale threshold on sidecar masks above which a '
                         'pixel counts as painted (0-255). Default 128 — '
@@ -115,8 +122,12 @@ def parse_args():
     p.add_argument('--no-include-free-evidence', dest='include_free_evidence',
                    action='store_false')
 
+    p.add_argument('--no-audit-png', action='store_true',
+                   help='Skip conflict.png and erased_by_free.png even when '
+                        'their counts are non-zero. Not recommended.')
+
     p.add_argument('--dry-run', action='store_true',
-                   help='Compute + report counts, do not write pgm/yaml.')
+                   help='Compute + report counts, do not write pgm/yaml/audit PNGs.')
     return p.parse_args()
 
 
@@ -132,25 +143,19 @@ def load_layers_manifest(path):
 
 
 def load_rgba_opaque(path, expected_hw):
-    """Load PNG and return a bool mask of opaque pixels (alpha == 255).
-
-    For an RGBA PNG produced by pcd_to_occupancy_v2.py, opaque == 255
-    marks the machine's occupied cells and non-zero-but-not-255 marks
-    free_evidence semi-transparent cells. Callers pick which they want.
-    """
+    """Bool mask of pixels with alpha == 255 in an RGBA PNG."""
     im = Image.open(path)
     a = np.array(im)
     if a.shape[:2] != expected_hw:
         raise SystemExit(f'{path}: shape {a.shape[:2]} != expected {expected_hw}. '
                          f'Stage 1 layers and sidecars must share exact pixel dims.')
     if im.mode != 'RGBA':
-        raise SystemExit(f'{path}: expected RGBA, got {im.mode}. '
-                         f'Not a Stage 1 layer PNG?')
+        raise SystemExit(f'{path}: expected RGBA, got {im.mode}.')
     return a[..., 3] == 255
 
 
 def load_rgba_nonempty(path, expected_hw):
-    """Return a bool mask of ANY non-transparent pixel (alpha > 0)."""
+    """Bool mask of any non-transparent (alpha > 0) pixel."""
     im = Image.open(path)
     a = np.array(im)
     if a.shape[:2] != expected_hw:
@@ -161,15 +166,14 @@ def load_rgba_nonempty(path, expected_hw):
 
 
 def load_sidecar_mask(path, expected_hw, threshold):
-    """Load a hand-painted mask PNG and return a bool array of painted cells.
+    """Hand-painted PNG → bool of painted cells.
 
-    Supported modes:
-      L / RGB / P → painted = L ≥ threshold (any bright pixel wins)
-      RGBA        → painted = L ≥ threshold AND alpha > 0
+    L / RGB / P mode: painted = L ≥ threshold.
+    RGBA mode: painted = L ≥ threshold AND alpha > 0 (transparent pixels
+    are never painted regardless of RGB channels).
 
-    L is computed via PIL.Image.convert('L') which uses the ITU-R 601-2
-    luma formula (0.299R + 0.587G + 0.114B). Recommend WHITE (255,255,255)
-    for the paint colour — pure red at L=76 falls below the default
+    L via PIL ITU-R 601-2 luma (0.299R + 0.587G + 0.114B). Recommend
+    painting in WHITE — pure red (L=76) falls below the default
     threshold of 128 and would be silently ignored.
     """
     im = Image.open(path)
@@ -184,6 +188,17 @@ def load_sidecar_mask(path, expected_hw, threshold):
         raise SystemExit(f'{path}: shape {painted.shape} != expected {expected_hw}. '
                          f'Sidecar masks must share exact pixel dims with Stage 1.')
     return painted
+
+
+def save_audit_layer(path, mask, colour):
+    """Write an opaque-colour RGBA PNG at `mask == True`, transparent elsewhere."""
+    H, W = mask.shape
+    rgba = np.zeros((H, W, 4), dtype=np.uint8)
+    rgba[mask, 0] = colour[0]
+    rgba[mask, 1] = colour[1]
+    rgba[mask, 2] = colour[2]
+    rgba[mask, 3] = colour[3]
+    Image.fromarray(rgba, 'RGBA').save(path)
 
 
 def main():
@@ -205,7 +220,7 @@ def main():
     layers_dir = args.layers_yaml.parent
     layers = manifest['layers']
 
-    # ---- Machine-occupied = union of step + structure opaque cells ----
+    # machine_occupied = union of Stage 1 step + structure opaque cells.
     machine_occ = np.zeros(hw, dtype=bool)
     for key in ('occupied_step', 'occupied_structure'):
         if key not in layers:
@@ -221,7 +236,7 @@ def main():
     n_machine_occ = int(machine_occ.sum())
     print(f'[layer] machine_occ union: {n_machine_occ:>10,} cells')
 
-    # ---- Machine-free = free_evidence non-transparent cells ----
+    # machine_free = free_evidence non-transparent cells (raycast or footprint).
     machine_free = np.zeros(hw, dtype=bool)
     if args.include_free_evidence and 'free_evidence' in layers:
         path = layers_dir / layers['free_evidence']
@@ -230,52 +245,61 @@ def main():
         machine_free = load_rgba_nonempty(path, hw)
         print(f'[layer] free_evidence     : {int(machine_free.sum()):>10,} cells (α>0)')
 
-    # ---- Sidecars ----
+    # Sidecars.
     keepout = np.zeros(hw, dtype=bool)
     free_mask = np.zeros(hw, dtype=bool)
     if args.keepout_mask is not None:
         if not args.keepout_mask.is_file():
             raise SystemExit(f'--keepout-mask not found: {args.keepout_mask}')
         keepout = load_sidecar_mask(args.keepout_mask, hw, args.mask_threshold)
-        print(f'[side ] keepout_mask      : {int(keepout.sum()):>10,} cells (L≥{args.mask_threshold})')
+        print(f'[side ] keepout_mask      : {int(keepout.sum()):>10,} cells '
+              f'(L≥{args.mask_threshold})')
     if args.free_mask is not None:
         if not args.free_mask.is_file():
             raise SystemExit(f'--free-mask not found: {args.free_mask}')
         free_mask = load_sidecar_mask(args.free_mask, hw, args.mask_threshold)
-        print(f'[side ] free_mask         : {int(free_mask.sum()):>10,} cells (L≥{args.mask_threshold})')
+        print(f'[side ] free_mask         : {int(free_mask.sum()):>10,} cells '
+              f'(L≥{args.mask_threshold})')
 
-    # ---- Compose ----
-    # Rule 3 protection built into the algebra: machine_occ is always
-    # OR-ed in unconditionally (line 1), so no sidecar can flip a
-    # machine-occupied cell to FREE.
-    occupied_final = machine_occ | (keepout & ~free_mask)
-    free_final = (machine_free | free_mask) & ~occupied_final
+    # Compose. Priority: keepout > free_mask > machine_occ > machine_free.
+    conflict = keepout & free_mask
+    erased_by_free = machine_occ & free_mask & ~keepout
+    occupied_final = keepout | (machine_occ & ~free_mask)
+    free_final = (free_mask | machine_free) & ~occupied_final
 
-    # ---- Diagnostics ----
+    # Diagnostics.
     n_occ = int(occupied_final.sum())
     n_free = int(free_final.sum())
     n_unknown = W * H - n_occ - n_free
-    n_keepout_effective = int((keepout & ~free_mask & ~machine_occ).sum())
-    n_keepout_vetoed_by_free_mask = int((keepout & free_mask).sum())
-    n_free_mask_over_machine_occ = int((free_mask & machine_occ).sum())
+    n_conflict = int(conflict.sum())
+    n_erased = int(erased_by_free.sum())
+    n_keepout_new = int((keepout & ~machine_occ).sum())
+    n_keepout_reinforcing = int((keepout & machine_occ).sum())
+
     print()
     print(f'== composition ==')
-    print(f'  machine_occupied       : {n_machine_occ:>12,}')
-    print(f'  keepout effective (+)  : {n_keepout_effective:>12,}  (added to OCCUPIED)')
-    print(f'  keepout vetoed by free : {n_keepout_vetoed_by_free_mask:>12,}  (free_mask won)')
-    print(f'  free_mask over occ (X) : {n_free_mask_over_machine_occ:>12,}  '
-          f'(REJECTED — Rule 3 protection)')
+    print(f'  machine_occupied         : {n_machine_occ:>12,}')
+    print(f'  keepout new  (adds occ)  : {n_keepout_new:>12,}')
+    print(f'  keepout reinforcing      : {n_keepout_reinforcing:>12,}  '
+          f'(already machine_occ)')
+    print(f'  free_mask erased occ     : {n_erased:>12,}  '
+          f'(audit → erased_by_free.png)')
+    print(f'  conflict keepout∩free    : {n_conflict:>12,}  '
+          f'(keepout wins → conflict.png)')
+    if n_conflict > 0:
+        print(f'  [warn] {n_conflict:,} cells have BOTH keepout and free_mask painted. '
+              f'keepout wins per priority rule; inspect conflict.png to reconcile intent.')
     print(f'  ---')
-    print(f'  OCCUPIED (final)       : {n_occ:>12,}  ({100*n_occ/(W*H):6.2f}%)')
-    print(f'  FREE     (final)       : {n_free:>12,}  ({100*n_free/(W*H):6.2f}%)')
-    print(f'  UNKNOWN  (final)       : {n_unknown:>12,}  ({100*n_unknown/(W*H):6.2f}%)')
+    print(f'  OCCUPIED (final)         : {n_occ:>12,}  ({100*n_occ/(W*H):6.2f}%)')
+    print(f'  FREE     (final)         : {n_free:>12,}  ({100*n_free/(W*H):6.2f}%)')
+    print(f'  UNKNOWN  (final)         : {n_unknown:>12,}  ({100*n_unknown/(W*H):6.2f}%)')
 
     if args.dry_run:
         print(f'\n(dry-run: no files written)')
         print(f'== total wall time: {time.time() - t0:.1f} s ==')
         return 0
 
-    # ---- Write pgm ----
+    # Write pgm.
     pgm = np.full(hw, UNKNOWN, dtype=np.uint8)
     pgm[free_final] = FREE
     pgm[occupied_final] = OCCUPIED
@@ -283,7 +307,7 @@ def main():
     Image.fromarray(pgm, mode='L').save(args.output_pgm)
     print(f'[out] {args.output_pgm}')
 
-    # ---- Write yaml ----
+    # Write yaml.
     out_yaml_path = args.output_yaml or args.output_pgm.with_suffix('.yaml')
     yaml_out = {
         'image': args.output_pgm.name,
@@ -296,6 +320,17 @@ def main():
     with out_yaml_path.open('w') as f:
         yaml.safe_dump(yaml_out, f, sort_keys=False)
     print(f'[out] {out_yaml_path}')
+
+    # Audit PNGs. Written when non-zero (unless --no-audit-png).
+    if not args.no_audit_png:
+        if n_conflict > 0:
+            conflict_path = args.output_pgm.parent / 'conflict.png'
+            save_audit_layer(conflict_path, conflict, COLOR_CONFLICT)
+            print(f'[out] {conflict_path}  ({n_conflict:,} magenta cells)')
+        if n_erased > 0:
+            erased_path = args.output_pgm.parent / 'erased_by_free.png'
+            save_audit_layer(erased_path, erased_by_free, COLOR_ERASED)
+            print(f'[out] {erased_path}  ({n_erased:,} yellow cells)')
 
     print(f'\n== total wall time: {time.time() - t0:.1f} s ==')
     return 0
