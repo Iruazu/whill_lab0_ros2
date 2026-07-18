@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """pcd_to_traversability.py — 2D traversability occupancy grid from static.pcd.
 
+SUPERSEDED by v2 (PR #91: scripts/pcd_to_occupancy_v2.py +
+scripts/compose_occupancy.py). v2 keeps the local plane fit / step
+detection / h-filter / cluster labelling ideas from this script but
+splits the output into layer-separated PNGs + sidecar masks + a
+composer with a keepout > free_mask > machine_occ > machine_free
+priority so the human can erase machine salt. This script is retained
+as the algorithm-provenance record; runtime use has moved to v2.
+
 Task #22 (2026-07-17 initial; 2026-07-18 h-filter + manual free-mask mode).
 Motivation: cleaned OccupancyGrid's "free" means "LiDAR ray passed through",
 not "chair can drive over" (2026-07-16 field, ADR-0009 §Consequences).
