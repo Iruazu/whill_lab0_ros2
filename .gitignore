@@ -136,6 +136,12 @@ docs/maps/**/*.pcd
 # history and is disposable.
 docs/maps/**/*.xcf
 
+# Pipeline v2 (scripts/pcd_to_occupancy_v2.py) per-cell intermediate
+# cache. Regenerable from static.pcd in ~5 s. The layer PNGs under
+# docs/maps/**/v2/ ARE tracked so PR reviewers can inspect coverage;
+# add per-file rules here if bloat becomes an issue.
+docs/maps/**/.v2_cache.npz
+
 # tf2_tools view_frames and RViz write diagnostic / session files to the
 # repo root as a side effect of normal development (each `ros2 run tf2_tools
 # view_frames` adds two more files). Excluding them here, rather than
