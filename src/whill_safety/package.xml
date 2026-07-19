@@ -35,6 +35,9 @@
   <exec_depend>whill_localization</exec_depend>
   <exec_depend>lidar_localization_ros2</exec_depend>
   <exec_depend>launch</exec_depend>
+  <!-- SetRemap (m6r_bringup_launch.py) and Node (safety_launch.py) come from
+       launch_ros, not launch. -->
+  <exec_depend>launch_ros</exec_depend>
   <!-- ament_index_python (get_package_share_directory) and python3-yaml
        (yaml.safe_load/safe_dump for the per-run localizer param file) are
        imported directly in launch/m6r_bringup_launch.py. -->

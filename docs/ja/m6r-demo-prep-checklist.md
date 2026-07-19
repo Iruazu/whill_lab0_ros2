@@ -51,8 +51,15 @@ loop、AC4 中断)。詳細は `src/whill_safety/README.md` §Mutual exclusion�
 - [ ] **ノード重複ゼロ** (必須): `ros2 node list | sort | uniq -c | sort -rn | head`
       で全 count = 1。`2 /velodyne_driver_node` 等が出たら並行起動している
       → 余分な launch を止めてから AC 実施
-- [ ] **/velodyne_points が 10 Hz**: `ros2 topic hz /velodyne_points` で
-      9-11 Hz。20 Hz 前後や 40 Hz 近辺なら duplicate bringup の兆候
+- [ ] **/velodyne_points が 10 Hz**: 本環境では `ros2 topic hz` が受信ゼロに
+      なることがある (2026-07-19 field 確定) ため echo カウントで測る:
+      `timeout 6 ros2 topic echo /velodyne_points --field header.frame_id | grep -c -- ---`
+      → 40-55 (≈10 Hz×4-5 秒分) なら正常。80 超は duplicate bringup の兆候
+- [ ] **localizer の odom 拘束が配線されている** (Issue #108 の再発防止):
+      `ros2 node info /lidar_localization` の Subscribers に
+      `/odometry/filtered: nav_msgs/msg/Odometry` が出ること。加えて
+      `timeout 6 ros2 topic echo /odometry/filtered --field header.frame_id | grep -c -- ---`
+      → 120 以上 (≈30 Hz) であること
 - [ ] `map -> odom -> base_link` の TF chain が 1 本鎖 (`ros2 run
       tf2_tools view_frames`)
 - [ ] `/alignment_status.has_converged: true` かつ `fitness < 1.0`

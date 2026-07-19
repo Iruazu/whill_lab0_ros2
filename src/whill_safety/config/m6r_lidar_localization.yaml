@@ -56,13 +56,13 @@
     enable_map_odom_tf: true
 
     # Consume the M4-R EKF `/odometry/filtered` (30 Hz, body-frame twist) as
-    # a dead-reckoning constraint. odomReceived (component.cpp:1305-1388)
+    # a dead-reckoning constraint. odomReceived (lidar_localization_component.cpp:1305-1388)
     # integrates the Odometry twist into the current pose at 30 Hz, so the
     # pose keeps tracking real motion through a scan-reject gap instead of
     # standing still. Chose use_odom over use_twist_prediction because the
     # latter needs a geometry_msgs/TwistWithCovarianceStamped on `/twist`
-    # (component.cpp:1002) which we do not publish, whereas use_odom takes a
-    # nav_msgs/Odometry on `odom` (component.cpp:998) that the EKF already
+    # (lidar_localization_component.cpp:1002) which we do not publish, whereas use_odom takes a
+    # nav_msgs/Odometry on `odom` (lidar_localization_component.cpp:998) that the EKF already
     # emits — zero extra nodes. m6r_bringup_launch.py remaps
     # `odom -> /odometry/filtered`. (Upstream presets favour twist_prediction
     # only because their datasets ship a `/twist`; ours ships an Odometry.)
@@ -70,11 +70,15 @@
 
     # REQUIRED for use_odom to actually reach the NDT seed. The seed policy
     # (registration_seed_policy.hpp:70-121) is a strict priority ladder:
-    # twist_prediction > previous_delta > current_pose. With previous_delta
+    # imu_preintegration > gtsam_smoother > twist_ekf > twist_prediction
+    # > previous_delta > current_pose. The top three are all disabled in this
+    # config (use_imu_preintegration false via launch, gtsam/twist_ekf default
+    # false) — if you ever enable one of them it will OUTRANK the odom seed
+    # below. With previous_delta
     # left true the seed is `predicted_pose_matrix_` (last delta replayed) and
     # the odom-integrated current pose is ignored — the exact blind-replay
     # that diverged on 2026-07-19. Turning it off drops the seed to
-    # kCurrentPose = the odom-dead-reckoned pose (component.cpp:2086, 2169),
+    # kCurrentPose = the odom-dead-reckoned pose (lidar_localization_component.cpp:2086, 2169),
     # so every scan is seeded with real measured velocity. The ladder is
     # exclusive (no "odom OR previous_delta" fallback), so this must be false.
     predict_pose_from_previous_delta: false

@@ -137,13 +137,13 @@ reject → `map -> odom` TF が ~50 秒凍結 → Nav2 が Extrapolation Error �
 
 7. **odometry 拘束 = `use_odom: true`** + **`predict_pose_from_previous_delta: false`**:
    - `use_odom` は `odom` (`nav_msgs/Odometry`) を購読し
-     (`lidar_localization_component.cpp:998`)、twist を 30 Hz で現在姿勢へ積分する
-     (`odomReceived`, component.cpp:1305-1388)。M4-R EKF の `/odometry/filtered`
+     (`lidar_localization_lidar_localization_component.cpp:998`)、twist を 30 Hz で現在姿勢へ積分する
+     (`odomReceived`, lidar_localization_component.cpp:1305-1388)。M4-R EKF の `/odometry/filtered`
      をそのまま消費できる。`m6r_bringup_launch.py` が `GroupAction` + `SetRemap`
      で `odom -> /odometry/filtered` を remap する (上流 launch は odom remap 引数を
      持たないため。third_party は編集しない方針)
    - `use_twist_prediction` は採らない。これは `/twist`
-     (`TwistWithCovarianceStamped`) を要求するが (component.cpp:1002)、本スタックは
+     (`TwistWithCovarianceStamped`) を要求するが (lidar_localization_component.cpp:1002)、本スタックは
      この topic を publish しない。synthesiser ノードを走行前夜に足す risk を避ける。
      上流 benchmark preset が twist_prediction を好むのは、データセットが `/twist` を
      同梱しているため
@@ -152,7 +152,7 @@ reject → `map -> odom` TF が ~50 秒凍結 → Nav2 が Extrapolation Error �
      twist_prediction > previous_delta > current_pose の排他優先順位で、previous_delta
      を true のままにすると seed は `predicted_pose_matrix_` (delta replay) になり
      odom 積分姿勢が無視される。false にすると seed が `kCurrentPose`
-     (= odom dead-reckoned 姿勢, component.cpp:2086, 2169) に落ち、毎スキャンが実測
+     (= odom dead-reckoned 姿勢, lidar_localization_component.cpp:2086, 2169) に落ち、毎スキャンが実測
      速度で seed される
 8. **`enable_timer_publishing` は有効化しない (本追補の範囲外)**:
    - 有効化すれば `map -> odom` TF を scan 採択から切り離し 10 Hz timer で publish
@@ -163,6 +163,11 @@ reject → `map -> odom` TF が ~50 秒凍結 → Nav2 が Extrapolation Error �
    - 決定 7 の odom seed は根本原因 (seed 発散) を潰すため、通常の reject chain は
      サブ秒の gap に収まる見込み。真の長時間 dropout でなお凍結する場合の follow-up
      として `enable_timer_publishing` + failsafe レビューをセットで検討する
+   - 本決定は localizer を `/odometry/filtered` に新たに依存させるが、その入力自体の
+     staleness (EKF 停止・車輪 odom 途絶) を監視する層はまだ無い
+     (`odomReceived` はイベント駆動で、止まっても積分が静かに止まるだけ)。
+     failsafe への「/odometry/filtered staleness watchdog」追加をバックログとする
+     (2026-07-20 code review SF-3)
 
 ### 検証 (実機なし、2026-07-19 夜)
 
