@@ -29,9 +29,15 @@ function mapToPixel(mx, my) {
 }
 
 async function loadMap() {
-  mapMeta = await fetch('map_meta.json').then((r) => r.json());
+  // Cache-bust both requests: the filenames never change across map
+  // regenerations, so a browser that visited the page before a map update
+  // silently keeps showing the stale png (bitten on 2026-07-19 after the
+  // v1 -> v2 background swap). The png is ~120 KiB on a LAN; refetching
+  // per page load is cheaper than a stale-map incident in the field.
+  const bust = '?v=' + Date.now();
+  mapMeta = await fetch('map_meta.json' + bust).then((r) => r.json());
   const img = $('map-img');
-  img.src = mapMeta.image;
+  img.src = mapMeta.image + bust;
   // Pin the box to the natural png size so absolute marker/vehicle pixel
   // positions line up 1:1 with mapToPixel output.
   const box = $('map-box');
