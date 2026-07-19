@@ -51,8 +51,15 @@ loop、AC4 中断)。詳細は `src/whill_safety/README.md` §Mutual exclusion�
 - [ ] **ノード重複ゼロ** (必須): `ros2 node list | sort | uniq -c | sort -rn | head`
       で全 count = 1。`2 /velodyne_driver_node` 等が出たら並行起動している
       → 余分な launch を止めてから AC 実施
-- [ ] **/velodyne_points が 10 Hz**: `ros2 topic hz /velodyne_points` で
-      9-11 Hz。20 Hz 前後や 40 Hz 近辺なら duplicate bringup の兆候
+- [ ] **/velodyne_points が 10 Hz**: 本環境では `ros2 topic hz` が受信ゼロに
+      なることがある (2026-07-19 field 確定) ため echo カウントで測る:
+      `timeout 6 ros2 topic echo /velodyne_points --field header.frame_id | grep -c -- ---`
+      → 40-55 (≈10 Hz×4-5 秒分) なら正常。80 超は duplicate bringup の兆候
+- [ ] **localizer の odom 拘束が配線されている** (Issue #108 の再発防止):
+      `ros2 node info /lidar_localization` の Subscribers に
+      `/odometry/filtered: nav_msgs/msg/Odometry` が出ること。加えて
+      `timeout 6 ros2 topic echo /odometry/filtered --field header.frame_id | grep -c -- ---`
+      → 120 以上 (≈30 Hz) であること
 - [ ] `map -> odom -> base_link` の TF chain が 1 本鎖 (`ros2 run
       tf2_tools view_frames`)
 - [ ] `/alignment_status.has_converged: true` かつ `fitness < 1.0`
@@ -157,6 +164,29 @@ D435 は M6-R runtime stack が消費していない。USB 2.1 認識問題が�
 false)。camera-specific test を意図的に走らせるときのみ `realsense:=true`
 を bringup コマンドに付与。付与時は改めて USB 点検 (`lsusb` で D435
 検出 + `/dev/bus/usb/` の権限) をチェックリストに追加すること
+
+### 走行 bag の録画 (再現解析のため必須)
+
+2026-07-19 の Issue #108 (reject 連鎖 → `map -> odom` 凍結 → Nav2 abort) は
+bag が無く replay 検証ができなかった。以降、走行は必ず bag を録画する。
+録画端末のみ bag 用 DDS xml に切り替える (`~/.bashrc` は runtime xml のまま):
+
+```bash
+export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-bag-record.xml
+ros2 daemon stop && ros2 daemon start
+ros2 bag record \
+  /velodyne_points /odometry/filtered /imu/data_rep145 \
+  /pcl_pose /alignment_status /tf /tf_static
+```
+
+- **`/velodyne_points` / `/odometry/filtered` / `/imu/data_rep145`**: localizer
+  の入力 (scan) と odometry 拘束の入力 (Issue #108 で配線) を揃える。この 3 本が
+  あれば localizer を off-board で再走行させ、reject 連鎖を再現・解析できる
+- `/pcl_pose` / `/alignment_status`: 当日の fitness / reject 判定の実測ログ
+- `/tf` / `/tf_static`: `map -> odom -> base_link` の凍結有無を後追いする
+- 録画後 `ros2 bag info <dir>` で `/velodyne_points` count ≈ 走行秒 × 10、
+  `/imu/data_rep145` count ≈ 走行秒 × 100 を確認 (半分以下なら破棄して再録、
+  CLAUDE.md §ランタイム環境の前提)
 
 ## 関連
 

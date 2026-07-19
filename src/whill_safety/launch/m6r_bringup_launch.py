@@ -8,7 +8,10 @@ scan-to-map localizer:
      `base_link -> {imu_link, velodyne, camera_link}` static chain.
   2. `lidar_localization_ros2/lidar_localization.launch.py` (upstream
      LifecycleNode with configure -> active transitions built in).
-     Publishes `map -> odom` when a scan matches the loaded PCD.
+     Publishes `map -> odom` when a scan matches the loaded PCD. Its
+     `odom` subscription is remapped to the M4-R EKF `/odometry/filtered`
+     so the localizer runs with an odometry constraint (Issue #108); see
+     `config/m6r_lidar_localization.yaml` for the use_odom rationale.
 
 Resulting TF chain after both settle (REP-105):
 
@@ -85,11 +88,17 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    GroupAction,
     IncludeLaunchDescription,
     OpaqueFunction,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+# SetRemap lives in launch_ros.actions, NOT launch.actions — importing it
+# from the latter raises ImportError only at launch-description evaluation
+# time (colcon build stays green), which is why the CLAUDE.md rule requires
+# `--show-args` after touching this file.
+from launch_ros.actions import SetRemap
 
 
 _MAPS_ROOT_ENV = 'WHILL_MAPS_ROOT'
@@ -170,38 +179,50 @@ def _generate_localizer_launch(context):
         'lidar_localization.launch.py',
     )
 
+    # Odometry constraint wiring (Issue #108). The localizer subscribes to
+    # `odom` (nav_msgs/Odometry, component.cpp:998) when `use_odom: true`, but
+    # the upstream launch only exposes remaps for /cloud, /twist and /imu —
+    # there is no odom_topic argument. Wrap the include in a scoped
+    # GroupAction + SetRemap so the odom subscription resolves to the M4-R EKF
+    # output without editing the third_party launch. `/odom` (the subscription
+    # is created relative in the root namespace, i.e. `/odom`) -> the EKF's
+    # `/odometry/filtered`. best_effort sub (SensorDataQoS) accepts the EKF's
+    # reliable publisher, so no QoS bridge is needed.
     return [
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(localizer_launch),
-            launch_arguments={
-                'localization_param_dir': tmp.name,
-                'cloud_topic': '/velodyne_points',
-                # /imu is remapped to the REP-145 sign-corrected topic
-                # (imu_sign_corrector, Issue #56), not the raw driver
-                # output. Today (2026-07-12) use_imu_preintegration is
-                # false so this value is not consumed, but future flips to
-                # true would silently integrate the wrong-sign gravity if
-                # /imu/data_raw were wired here. Matches M4-R EKF
-                # (ekf_odom.yaml:109) and M6R-1 smoke_test.sh:199.
-                'imu_topic': '/imu/data_rep145',
-                # Upstream default is true. That path syncs each scan
-                # against /imu preintegration; with /imu absent (which is
-                # our operating condition — use_imu:false in the yaml)
-                # the scan callback stalls forever. Verified 2026-07-12
-                # M6R-2 live: a solo run with this flag flipped false is
-                # what unblocked the acceptance PASS (docs/m6r-bench-data/
-                # 2026-07-12-acceptance-campus/manifest.yaml, root cause
-                # #2). M4-R EKF already consumes IMU downstream, so any
-                # preintegration inside the localizer would double-count.
-                'use_imu_preintegration': 'false',
-                # The M4-R static TF chain already publishes base_link ->
-                # velodyne (PR #61 / PR #74 pitch fix). Suppressing the
-                # upstream's own base -> lidar identity avoids two
-                # publishers on the same TF edge.
-                'publish_lidar_tf': 'false',
-                'use_sim_time': use_sim_time,
-            }.items(),
-        ),
+        GroupAction([
+            SetRemap(src='/odom', dst='/odometry/filtered'),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(localizer_launch),
+                launch_arguments={
+                    'localization_param_dir': tmp.name,
+                    'cloud_topic': '/velodyne_points',
+                    # /imu is remapped to the REP-145 sign-corrected topic
+                    # (imu_sign_corrector, Issue #56), not the raw driver
+                    # output. Today (2026-07-12) use_imu_preintegration is
+                    # false so this value is not consumed, but future flips
+                    # to true would silently integrate the wrong-sign gravity
+                    # if /imu/data_raw were wired here. Matches M4-R EKF
+                    # (ekf_odom.yaml:109) and M6R-1 smoke_test.sh:199.
+                    'imu_topic': '/imu/data_rep145',
+                    # Upstream default is true. That path syncs each scan
+                    # against /imu preintegration; with /imu absent (which is
+                    # our operating condition — use_imu:false in the yaml)
+                    # the scan callback stalls forever. Verified 2026-07-12
+                    # M6R-2 live: a solo run with this flag flipped false is
+                    # what unblocked the acceptance PASS (docs/m6r-bench-data/
+                    # 2026-07-12-acceptance-campus/manifest.yaml, root cause
+                    # #2). M4-R EKF already consumes IMU downstream, so any
+                    # preintegration inside the localizer would double-count.
+                    'use_imu_preintegration': 'false',
+                    # The M4-R static TF chain already publishes base_link ->
+                    # velodyne (PR #61 / PR #74 pitch fix). Suppressing the
+                    # upstream's own base -> lidar identity avoids two
+                    # publishers on the same TF edge.
+                    'publish_lidar_tf': 'false',
+                    'use_sim_time': use_sim_time,
+                }.items(),
+            ),
+        ]),
     ]
 
 
