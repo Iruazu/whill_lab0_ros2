@@ -20,6 +20,30 @@ set -u
 echo "=== M6-R preflight gate ==="
 echo
 
+# ---- 0. environment sanity -----------------------------------------
+# CYCLONEDDS_URI が typo / 存在しないファイルを指すと cyclone は participant
+# を作れず、以降の全 ros2 コマンドが即エラー終了する。stderr を捨てる後続
+# check ではこれが「Layer D not publishing」に化ける (2026-07-19 field で
+# whill_labo_ros2 の typo により実際に発生、原因特定に ~40 分を消費)。
+# ここで環境自体を先に検証して、env 壊れは env 壊れとして落とす。
+echo -n "0. environment (CYCLONEDDS_URI / DDS participant) ... "
+if [ -n "${CYCLONEDDS_URI:-}" ]; then
+    _xml="${CYCLONEDDS_URI#file://}"
+    if [ ! -r "$_xml" ]; then
+        echo "FAIL"
+        echo "   CYCLONEDDS_URI points to a missing file: $_xml"
+        echo "   Fix the export (typo?) and re-run. Do NOT drive."
+        exit 1
+    fi
+fi
+if ! timeout 10 ros2 topic list >/dev/null 2>&1; then
+    echo "FAIL"
+    echo "   'ros2 topic list' failed — DDS participant cannot start in this"
+    echo "   terminal (check RMW_IMPLEMENTATION / CYCLONEDDS_URI / sourcing)."
+    exit 1
+fi
+echo "PASS"
+
 # ---- 1. controller_server: use_collision_detection: true -----------
 echo -n "1. use_collision_detection ... "
 val=$(ros2 param get /controller_server FollowPath.use_collision_detection 2>&1)
