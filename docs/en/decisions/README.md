@@ -22,6 +22,24 @@ This directory records the architectural, governance, and operational decisions 
 - After the user reviews, the user edits this file to settle the `accepted` line. (An agent does not write `accepted` by itself.)
 - If a later ADR overturns it, rewrite the status as `Status: superseded by NNNN`.
 
+## Index
+
+Check the highest number here before taking the next ADR number; add one row when filing a new ADR.
+
+| No. | Title | Status |
+|-----|-------|--------|
+| 0001 | Bilingualisation policy for docs (Japanese / English) | accepted |
+| 0002 | (unused) | — |
+| 0003 | M5-R map-building SLAM final choice | accepted |
+| 0004 | M5-R dynamic-object removal tool choice | accepted |
+| 0005 | `docs/maps/<site>/` map artifact convention | proposed |
+| 0006 | Runtime localizer choice (M6-R) | proposed |
+| 0007 | Failsafe node + twist_mux design (M6-R) | proposed |
+| 0008 | (unused; leftover of the m6r4 plan's candidate-number drift) | — |
+| 0009 | pointcloud_to_laserscan height band + QoS bridge (M6-R) | accepted |
+| 0010 | Keep Nav2 planner + controller and set `allow_unknown: false` (M6-R) | proposed |
+| 0011 | Ground removal preprocessing — Patchwork++ core + own ROS 2 wrapper (M6-R) | accepted |
+
 ## Related
 
 - Active policy: [`../plans/2026-06-11-platform-pivot.md`](../plans/2026-06-11-platform-pivot.md) §7 lists ADR candidates.
