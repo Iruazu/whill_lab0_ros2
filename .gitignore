@@ -136,6 +136,22 @@ docs/maps/**/*.pcd
 # history and is disposable.
 docs/maps/**/*.xcf
 
+<<<<<<< HEAD
+# Pipeline v2 (scripts/pcd_to_occupancy_v2.py) per-cell intermediate
+# cache. Regenerable from static.pcd in ~5 s. The layer PNGs under
+# docs/maps/**/v2/ ARE tracked so PR reviewers can inspect coverage.
+docs/maps/**/.v2_cache.npz
+# v2 composer audit / auto-gen sidecars are regenerable side-effects of
+# every scripts/compose_occupancy.py or scripts/gen_auto_free_mask.py
+# run — tracking them creates noisy commits when only the pgm changed.
+# The HUMAN sidecars (keepout_mask.png, free_mask.png, roadway_mask.png)
+# ARE tracked; only these auto-outputs are ignored.
+docs/maps/**/v2/clipped_by_roadway.png
+docs/maps/**/v2/erased_by_free.png
+docs/maps/**/v2/conflict.png
+docs/maps/**/v2/free_mask_auto.png
+docs/maps/**/v2/salt_candidates_2to3.csv
+=======
 # Traversability generator caches (Task #22, scripts/pcd_to_traversability.py).
 # The .npz keeps per-cell (count, ground_z, roughness) so threshold sweeps
 # rerun in ~5 s. ~500 MB per site — regenerable from static.pcd in ~10 s.
@@ -144,6 +160,7 @@ docs/maps/**/.trav_cache.npz
 # baked in the commit message and yaml), the yaml (thresholds + provenance),
 # and the *.png visual assets (diff, occupied-only, overlay, paint guide).
 docs/maps/**/occupancy_trav.pgm
+>>>>>>> origin/main
 
 # tf2_tools view_frames and RViz write diagnostic / session files to the
 # repo root as a side effect of normal development (each `ros2 run tf2_tools
