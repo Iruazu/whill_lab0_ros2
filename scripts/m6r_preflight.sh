@@ -56,32 +56,29 @@ echo "   PASS (no DEAD INPUT reported)"
 
 # ---- 4. Live-fire Layer D test -------------------------------------
 echo "4. Layer D live fire test."
-echo "   >>> NOW: have a person stand ~1-1.5 m directly ahead of the chair"
-echo "   >>> and STAY there until this check prints PASS/FAIL (~13 s)."
-# 立ち位置につく猶予。/cmd_vel_safety は遮断中しか publish されないため、
-# 計測窓が始まる前に人が検出帯 (前方 ±30°, 1.0-2.0 m) に入っている必要が
-# ある。2026-07-19 field でここのタイミング不一致による偽陽性 FAIL を実測。
-sleep 3
-# ros2 topic hz は本環境 (cyclonedds runtime.xml + 常駐 launch 構成) で
-# publisher が健在でも受信ゼロになる (2026-07-19 field で確定。echo は同
-# 条件で受信できる) ため、echo のメッセージ数カウントで判定する。
-# 合格条件は「窓 10 s 内に 20 Hz × 3 s 連続遮断ぶん (45 msg) 以上」。
-# レートの平均値判定だと立ち位置調整に食われた時間で薄まり不安定なため、
-# 絶対数で見る。
-count=$(timeout 10 ros2 topic echo /cmd_vel_safety --field linear.x 2>/dev/null \
+echo "   >>> Have a person walk to ~1.5 m directly ahead of the chair"
+echo "   >>> and stand still. No rush — waiting up to 30 s for detection."
+# /cmd_vel_safety は遮断中しか publish されない。固定窓での計測は check 3
+# の 12 s 無言待ちの間に人が持ち場を離れる/戻り遅れると偽陽性 FAIL する
+# (2026-07-19 field で 3 連発を実測。failsafe ログの ENGAGED は毎回窓の後)。
+# そのため「最初の 1 msg = engagement 成立」を latch として最大 30 s 待ち、
+# 成立後に継続性を別窓で測る 2 段構えにする。
+# なお ros2 topic hz は本環境で publisher 健在でも受信ゼロになるため使わない
+# (echo は同条件で受信できることを実測済)。
+if ! timeout 30 ros2 topic echo /cmd_vel_safety --once >/dev/null 2>&1; then
+    echo "   FAIL — Layer D did not engage within 30 s. Do NOT drive."
+    echo "   (person must be inside the forward ±30°, 1.0-2.0 m band;"
+    echo "    check the failsafe log for 'ENGAGED' to see if detection fired)"
+    exit 1
+fi
+echo "   engaged — hold position ~6 more seconds ..."
+count=$(timeout 6 ros2 topic echo /cmd_vel_safety --field linear.x 2>/dev/null \
         | grep -c -- '---')
-if [ "${count:-0}" -eq 0 ]; then
-    echo "   FAIL — /cmd_vel_safety not publishing at all"
-    echo "   Layer D did not engage. Do NOT drive."
-    echo "   (person must be inside the 1.0-2.0 m forward band during the window;"
-    echo "    check the failsafe log for 'ENGAGED' to confirm detection itself)"
+if [ "${count:-0}" -lt 60 ]; then
+    echo "   FAIL — only ${count} safety msgs in 6 s (need >= 60 = 20 Hz x 3 s)"
+    echo "   Layer D engagement did not hold. Do NOT drive."
     exit 1
 fi
-if [ "${count}" -lt 45 ]; then
-    echo "   FAIL — only ${count} safety msgs in 10 s (need >= 45 = 20 Hz x 3 s)"
-    echo "   Layer D partial engagement. Do NOT drive."
-    exit 1
-fi
-echo "   PASS: ${count} safety msgs in 10 s (Layer D engaged and held)"
+echo "   PASS: Layer D engaged and held (${count} msgs / 6 s)"
 echo
 echo "=== preflight PASS — safe to drive ==="
