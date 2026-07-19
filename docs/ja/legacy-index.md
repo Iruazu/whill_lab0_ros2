@@ -136,11 +136,14 @@ Language: [日本語](legacy-index.md) | [English](../en/legacy-index.md)
 
 ## 既に詳細調査済みの項目
 
-(`legacy-archaeologist` 完了時にここへ追記)
+本移植で必要だった legacy 調査は M1〜M3 期間に完了しており、結果は上の機能マップに
+反映済み。M4-R 以降は platform-pivot の再設計により旧実装の参照自体が不要になった
+(FAST-LIO は地図作成ツール化、navigation は Nav2 標準へ置換)。新規調査が発生した
+場合のみ `docs/legacy-findings/<topic>.md` に詳細を書き、下表へ追記する。
 
 | 機能 | 詳細ファイル | 調査日 |
 |------|------------|--------|
-| — | — | — |
+| (以降の新規調査なし) | — | — |
 
 ---
 
