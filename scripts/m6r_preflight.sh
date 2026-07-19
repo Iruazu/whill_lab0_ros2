@@ -56,15 +56,23 @@ echo "   PASS (no DEAD INPUT reported)"
 
 # ---- 4. Live-fire Layer D test -------------------------------------
 echo "4. Layer D live fire — obstruct the chair front now ..."
-echo "   (hold a hand ~1.5 m ahead of the chair for the next 5 s)"
-sleep 5
-rate=$(timeout 3 ros2 topic hz /cmd_vel_safety 2>&1 \
-        | grep -oP 'average rate: \K[0-9.]+' | tail -1)
-if [ -z "${rate:-}" ]; then
+echo "   (stand ~1-1.5 m ahead of the chair for the next 8 s)"
+sleep 2
+# ros2 topic hz は本環境 (cyclonedds runtime.xml + 常駐 launch 構成) で
+# publisher が健在でも 1 メッセージも受信できないことがある (2026-07-19
+# field で確定。同条件で ros2 topic echo は受信できる)。このゲートを
+# hz に依存させると Layer D 正常時でも常に FAIL する偽陽性になるため、
+# echo のメッセージ数カウントでレートを測る。echo は購読確立までに
+# ~1 s 食うので、窓 6 s・分母 5 s の保守側評価にする (20 Hz 期待 → 実測
+# ~16-20 Hz、閾値 15 Hz は据え置き)。
+count=$(timeout 6 ros2 topic echo /cmd_vel_safety --field linear.x 2>/dev/null \
+        | grep -c -- '---')
+if [ "${count:-0}" -eq 0 ]; then
     echo "   FAIL — /cmd_vel_safety not publishing at all"
     echo "   Layer D did not engage. Do NOT drive."
     exit 1
 fi
+rate=$(awk -v c="$count" 'BEGIN{printf "%.1f", c / 5.0}')
 if [ "$(awk -v r="$rate" 'BEGIN{print (r < 15)}')" = "1" ]; then
     echo "   FAIL — /cmd_vel_safety at ${rate} Hz (expected >= 15 Hz)"
     echo "   Layer D partial engagement. Do NOT drive."
