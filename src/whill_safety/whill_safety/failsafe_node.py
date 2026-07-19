@@ -72,7 +72,12 @@ PERCEPTION_TIMEOUT_S = 2.0
 FORWARD_SECTOR_HALF_ANGLE_RAD = math.radians(30.0)
 FORWARD_SECTOR_MIN_M = 1.0
 FORWARD_SECTOR_MAX_M = 2.0
-FORWARD_POINT_COUNT_MIN = 5
+# 3, not 5: ADR-0009 の 2026-07-15 A/B 実測で「人の脚は常時 ~4 点」。5 だと
+# 脚しか見えない距離帯 (VLP-16 のリング幾何上、近距離は胴体に当たる
+# リングが減る) で単独歩行者が閾値に届かず、engagement がフリッカーする
+# (2026-07-19 field で preflight check 4 が慢性的に不成立)。誤発火側は
+# ヒステリシスと「複数点同時」の条件で引き続き抑制される。
+FORWARD_POINT_COUNT_MIN = 3
 FORWARD_CLEAR_HYSTERESIS_S = 0.5
 # Dead-input watchdog: how long we tolerate a first-message-arm layer
 # staying unarmed before shouting ERROR. 2026-07-16 incident: Layer D's
