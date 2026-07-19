@@ -8,6 +8,6 @@
     -90.35,
     0.0
   ],
-  "source_pgm": "docs/maps/campus/occupancy_cleaned.pgm",
+  "source_pgm": "docs/maps/campus/v2/final.pgm",
   "downscale_factor": 8
 }
