@@ -20,6 +20,30 @@ set -u
 echo "=== M6-R preflight gate ==="
 echo
 
+# ---- 0. environment sanity -----------------------------------------
+# CYCLONEDDS_URI が typo / 存在しないファイルを指すと cyclone は participant
+# を作れず、以降の全 ros2 コマンドが即エラー終了する。stderr を捨てる後続
+# check ではこれが「Layer D not publishing」に化ける (2026-07-19 field で
+# whill_labo_ros2 の typo により実際に発生、原因特定に ~40 分を消費)。
+# ここで環境自体を先に検証して、env 壊れは env 壊れとして落とす。
+echo -n "0. environment (CYCLONEDDS_URI / DDS participant) ... "
+if [ -n "${CYCLONEDDS_URI:-}" ]; then
+    _xml="${CYCLONEDDS_URI#file://}"
+    if [ ! -r "$_xml" ]; then
+        echo "FAIL"
+        echo "   CYCLONEDDS_URI points to a missing file: $_xml"
+        echo "   Fix the export (typo?) and re-run. Do NOT drive."
+        exit 1
+    fi
+fi
+if ! timeout 10 ros2 topic list >/dev/null 2>&1; then
+    echo "FAIL"
+    echo "   'ros2 topic list' failed — DDS participant cannot start in this"
+    echo "   terminal (check RMW_IMPLEMENTATION / CYCLONEDDS_URI / sourcing)."
+    exit 1
+fi
+echo "PASS"
+
 # ---- 1. controller_server: use_collision_detection: true -----------
 echo -n "1. use_collision_detection ... "
 val=$(ros2 param get /controller_server FollowPath.use_collision_detection 2>&1)
@@ -55,21 +79,30 @@ fi
 echo "   PASS (no DEAD INPUT reported)"
 
 # ---- 4. Live-fire Layer D test -------------------------------------
-echo "4. Layer D live fire — obstruct the chair front now ..."
-echo "   (hold a hand ~1.5 m ahead of the chair for the next 5 s)"
-sleep 5
-rate=$(timeout 3 ros2 topic hz /cmd_vel_safety 2>&1 \
-        | grep -oP 'average rate: \K[0-9.]+' | tail -1)
-if [ -z "${rate:-}" ]; then
-    echo "   FAIL — /cmd_vel_safety not publishing at all"
-    echo "   Layer D did not engage. Do NOT drive."
+echo "4. Layer D live fire test."
+echo "   >>> Have a person walk to ~1.5 m directly ahead of the chair"
+echo "   >>> and stand still. No rush — waiting up to 30 s for detection."
+# /cmd_vel_safety は遮断中しか publish されない。固定窓での計測は check 3
+# の 12 s 無言待ちの間に人が持ち場を離れる/戻り遅れると偽陽性 FAIL する
+# (2026-07-19 field で 3 連発を実測。failsafe ログの ENGAGED は毎回窓の後)。
+# そのため「最初の 1 msg = engagement 成立」を latch として最大 30 s 待ち、
+# 成立後に継続性を別窓で測る 2 段構えにする。
+# なお ros2 topic hz は本環境で publisher 健在でも受信ゼロになるため使わない
+# (echo は同条件で受信できることを実測済)。
+if ! timeout 30 ros2 topic echo /cmd_vel_safety --once >/dev/null 2>&1; then
+    echo "   FAIL — Layer D did not engage within 30 s. Do NOT drive."
+    echo "   (person must be inside the forward ±30°, 1.0-2.0 m band;"
+    echo "    check the failsafe log for 'ENGAGED' to see if detection fired)"
     exit 1
 fi
-if [ "$(awk -v r="$rate" 'BEGIN{print (r < 15)}')" = "1" ]; then
-    echo "   FAIL — /cmd_vel_safety at ${rate} Hz (expected >= 15 Hz)"
-    echo "   Layer D partial engagement. Do NOT drive."
+echo "   engaged — hold position ~6 more seconds ..."
+count=$(timeout 6 ros2 topic echo /cmd_vel_safety --field linear.x 2>/dev/null \
+        | grep -c -- '---')
+if [ "${count:-0}" -lt 60 ]; then
+    echo "   FAIL — only ${count} safety msgs in 6 s (need >= 60 = 20 Hz x 3 s)"
+    echo "   Layer D engagement did not hold. Do NOT drive."
     exit 1
 fi
-echo "   PASS: /cmd_vel_safety at ${rate} Hz"
+echo "   PASS: Layer D engaged and held (${count} msgs / 6 s)"
 echo
 echo "=== preflight PASS — safe to drive ==="

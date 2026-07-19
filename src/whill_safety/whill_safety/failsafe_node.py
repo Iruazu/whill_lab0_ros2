@@ -72,7 +72,14 @@ PERCEPTION_TIMEOUT_S = 2.0
 FORWARD_SECTOR_HALF_ANGLE_RAD = math.radians(30.0)
 FORWARD_SECTOR_MIN_M = 1.0
 FORWARD_SECTOR_MAX_M = 2.0
-FORWARD_POINT_COUNT_MIN = 5
+# 1, not 5: 2026-07-19 field の実測 (band_probe, 149 scan) で、帯内に人が
+# 立っていても点数は 0-2 点が支配的 (>=3 は 6/149)。ADR-0009 の「脚 ~4 点」
+# は現行の /scan (129 bin と疎) では成立せず、3 以上のいかなる閾値でも
+# 単独歩行者の検出がフリッカーする。1 点で即遮断し、解除は 0.5 s
+# ヒステリシス (5 連続クリア scan) に委ねる。ghost 1 点での不要停止は
+# 増え得るが、demo は並走運用で「止まりすぎ」は安全側。/scan が疎な根本
+# 原因 (p2ls 角度分解能 / ADR-0009 再検証) は Issue #102 で追う。
+FORWARD_POINT_COUNT_MIN = 1
 FORWARD_CLEAR_HYSTERESIS_S = 0.5
 # Dead-input watchdog: how long we tolerate a first-message-arm layer
 # staying unarmed before shouting ERROR. 2026-07-16 incident: Layer D's
