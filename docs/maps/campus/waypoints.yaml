@@ -2,34 +2,32 @@
 #
 # ADR-0005 (maps 規約) の拡張。占有格子・PCD と同じ docs/maps/<site>/ 配下に
 # 置き、localizer / Nav2 と同じ map frame 座標系を共有する。座標は map frame の
-# メートル値で、occupancy_cleaned.yaml の origin [-128.25, -90.35, 0.0] と同一基準
-# (画素→map の変換は resolution 0.05 m/px)。
+# メートル値で、occupancy_v2.yaml の origin [-128.25, -90.35, 0.0] と同一基準。
 #
-# 重要 (2026-07-19): 下の x/y/yaw は**測量値ではなくプレースホルダ**。mock で
-# UI・キュー・action 発行の配線を固めるために置いた幾何的な仮値で、地図の
-# おおよそのループ内に散らしてあるだけ。2026-07-20 現地で各地点に WHILL を運び
-# /pcl_pose を実測して差し替える (計画 §引き渡し U2)。差し替え後は
-# dispatch_node を再起動すれば反映される (yaml は起動時に一度読む)。
+# 画素 (v2/final.pgm, 6640x6295) → map の変換:
+#   x = -128.25 + (col + 0.5) * 0.05
+#   y = -90.35  + (6295 - row - 0.5) * 0.05
+#
+# 2026-07-19 現地指定: bldg7 / bldg3 はユーザー指定の画素座標から変換し、
+# 変換先が FREE (画素値 254 = 走行可能な道路上) であることを確認済み。
+# kounoken は mapping 発進点 (map 原点) で道路上。yaw は未測量のため 0.0 —
+# 到着向きが問題になる場合のみ現地で /pcl_pose の yaw を実測して更新する。
+# 差し替え後は dispatch_node (T3) を再起動すれば反映される (yaml は起動時に一度読む)。
 frame_id: map
 waypoints:
   # name: submit で参照する内部 ID (英数字)。label: UI 表示名。
   - name: kounoken       # M6R-2 live acceptance の発進地点 (工農研横)
     label: 工農研横
-    x: 0.0               # [m] placeholder — 2026-07-20 実測で差し替え
+    x: 0.0               # [m] map 原点 = mapping 発進点 (道路上)
     y: 0.0
     yaw: 0.0             # [rad]
-  - name: gate
-    label: 正門
-    x: 40.0              # [m] placeholder
-    y: -25.0
-    yaw: 1.5708
-  - name: bldg7
+  - name: bldg7          # 画素 (1940, 4500) 指定 (2026-07-19)
     label: 7号館前
-    x: -30.0             # [m] placeholder
-    y: 55.0
-    yaw: 3.1416
-  - name: library
-    label: 図書館前
-    x: 15.0              # [m] placeholder
-    y: 90.0
-    yaw: -1.5708
+    x: -31.22            # [m]
+    y: -0.62
+    yaw: 0.0
+  - name: bldg3          # 画素 (3920, 4440) 指定 (2026-07-19)
+    label: 3号館前
+    x: 67.78             # [m]
+    y: 2.38
+    yaw: 0.0
