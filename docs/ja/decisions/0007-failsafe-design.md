@@ -246,3 +246,266 @@ Full 復元時の変更対象:
 上記が満たされば **Issue #67 は close せず**、本セクションで指定した
 バックログ項目 (jump 検知 / SAFE_HOLD / G4 3 試験 / BBS_2D 自動停止) を
 「M6R-3 follow-up」として残す。
+
+## Layer D — 前方扇形 perception gate (2026-07-16 追記、proposed)
+
+### 動機
+
+2026-07-16 field で V2 (人が chair 前方 3-4 m 静止 → 停止) が **fail**。
+`use_collision_detection: true` + obstacle_layer の人 lethal 化 + salt-
+cleaned map の 3 条件を満たしていても停止しない事象を確認。
+
+原因の確定:
+
+- RPP `collision_check` の実効射程 = `max_allowed_time_to_collision_up_to_carrot × desired_linear_vel = 1.0 × 0.3 = 0.3 m` に過ぎない
+- 加えて評価対象は **carrot (lookahead 0.8 m) 経路上のみ**
+- planner が人を避ける経路を引き直せば「経路上の障害物」条件自体が
+  成立しない
+
+つまり **「障害物で停止 → 退去で再開」の要件は Nav2 のどの層にも
+実装されていない**。demo 要件を満たすには専用の停止判定を入れる必要が
+ある。
+
+### 却下された代案 (A: RPP 側射程拡大)
+
+- `max_allowed_time_to_collision_up_to_carrot` を数秒に拡大 → 実効
+  射程は伸びるが、依然として carrot 経路 (lookahead 依存) 上のみ
+- 拡大するほど「回避」と「停止」の責務が RPP に混在。planner 側は
+  「経路を作る」責務に純化するのが Nav2 の設計思想
+- lookahead を変えるとチューニング (蛇行) が再発する脆さ
+
+### 採用 (B: failsafe Layer D)
+
+停止を **safety 層の責務**として、RPP は回避に専念させる。Layer A/B/C
+と同居する自然な拡張。cmd_vel ゲートは Nav2 の内部状態と独立に働く
+ため確実。
+
+**購読**: `/scan` (`sensor_msgs/LaserScan`, reliable QoS, ~10 Hz)。
+p2ls_node の出力なので frame は `base_link`、angle は +x 前方の 0
+基準。追加 subscription 1 本のみ (existing PointCloud2 layer C とは
+別 topic)。
+
+**判定**: base_link 前方扇形内の scan 点数が閾値以上 → 遮断。パラメータ:
+
+| パラメータ | 値 | 根拠 |
+|-----------|-----|------|
+| `FORWARD_SECTOR_HALF_ANGLE_RAD` | 30° | WHILL 幅 0.6 m を 1.15 m 距離でカバー。cone 60° は反応の必要な前方視野に十分 |
+| `FORWARD_SECTOR_MIN_M` | 0.5 m | p2ls `range_min` と一致、WHILL 車体上面の自己反射を除外 |
+| `FORWARD_SECTOR_MAX_M` | 2.0 m | `desired_linear_vel = 0.3 m/s` で 6.7 s 反応余裕。velocity_smoother `max_decel = 0.5 m/s²` で停止距離 0.09 m ≪ 2.0 m |
+| `FORWARD_POINT_COUNT_MIN` | 5 点 | /scan `angle_increment = 0.5°` で ±30° = 120 beam、人 0.5 m 幅 @ 2 m ≈ 15° = 30 beam、5 点はその 1/6 で単発 ghost では発火しない |
+| `FORWARD_CLEAR_HYSTERESIS_S` | 0.5 s | 10 Hz scan の 5 連続クリアで解放、Layer A の再ラッチ方式と同構造。瞬断で ON/OFF 振動しない |
+
+**発火 / 解放パターン** (Layer A の再ラッチ方式と同):
+- scan callback で sector 内点数 ≥ 閾値 → `_forward_last_blocked_time = now`
+- `_active_layers` で `now - _forward_last_blocked_time < HYSTERESIS_S` の間 `D:forward_blocked` 出力
+- 継続クリア HYSTERESIS_S 経過で自動解放
+
+**起動時 arming**: Layer C と同じ「first-message-arm」で
+`_forward_last_blocked_time is None` の間は発火しない。起動直後の
+false trip を避ける。
+
+### BT / Nav2 との相互作用
+
+Layer D 発火中の Nav2 側挙動:
+
+1. `/cmd_vel = 0` (twist_mux が Layer D を通す)
+2. `/odometry/filtered` velocity ≈ 0
+3. `nav2_controller::SimpleProgressChecker` (`required_movement_radius: 0.5 m / movement_time_allowance: 10.0 s`) が 10 秒経過で `IsStuck` トリガー
+4. BT が recovery (spin / backup / wait) に遷移。spin の回転 cmd_vel も Layer D で遮断されるので chair は動かない。allow_reversing=false で backup は無効。wait のみ実効。
+5. Recovery タイムアウト後、BT が Goal aborted を返す可能性
+
+**リスク**: 人が > 10-30 s 静止だと Goal fail。デモ経路では人退避は
+数秒想定で問題なしと判断。field で誤 Goal aborted が観測されたら
+`movement_time_allowance` を 30-60 s に拡大する。
+
+### V2/V3 の再定義 (Layer D 基準)
+
+| # | 従来判定 | Layer D 基準 |
+|---|---------|-------------|
+| V2 | 走行中の人横断 → 1 s 以内に `/cmd_vel_nav.linear.x < 0.05` | 前方 1.5-2 m 内に人立位 → **1 s 以内**に `/cmd_vel = 0` (twist_mux 出力)、failsafe log `D:forward_blocked` |
+| V3 | 退避 5 s 以内に `/cmd_vel_nav > 0.1` | sector 外退避 → **1 s 以内** (0.5s hysteresis + scan 遅延) に Layer D 解放、`/cmd_vel_nav` 復活で走行再開 |
+| V6.4 (追加) | — | (a) 静止状態で人を左右 30° 境界と距離 1.5 / 2.0 / 2.5 m に立たせて発火有無を確認 (geometry 実測)、(b) **経路脇 1 m 立位観客の false-trip 有無** (下記の観客導線リスクを field で判定) |
+
+**V6.4 (b) の背景 — 観客導線リスク**: デモはオープンキャンパスで沿道
+に見物客が立つ。±30° @ 2.0 m の扇は先端半幅が `2.0 × tan30° ≈ 1.155 m`
+(先端全幅 ≈ 2.31 m) で、経路脇 1 m 強に立つ観客は sector 内。V6.4 (b)
+の測定 (経路脇 1 m / 1.5 m 立位でそれぞれ発火するか) が判断材料:
+
+| 発火状況 | 対処選択肢 |
+|---------|-----------|
+| 1 m 立位で発火、1.5 m 立位で無し | (a) 運用ルール = 観客導線を経路から **≥ 2 m** 離す (デモ準備チェックリスト §経路整備に追記して踏襲) |
+| 1 m 立位でも 1.5 m でも発火 | (b) sector を **±25° へ絞る** (`FORWARD_SECTOR_HALF_ANGLE_RAD = math.radians(25.0)`)。±25° @ 2 m の先端半幅 = `2.0 × tan25° ≈ 0.933 m` で、1 m 立位はぎりぎり外れる。ただしマージン薄なので運用 (a) も併用推奨 |
+| 1 m 立位でも 1.5 m でも無し | 現行 ±30° で十分。運用ルール不要 |
+
+**注**: ±25° へ絞る場合、正面の人検知範囲も僅かに狭まる (V2/V3 の
+「前方の人」検知は 2 m 距離では変わらない、幅方向で狭くなるだけ)。
+安全側判定は変わらない。field 実測後に決定、決定は本 ADR §Layer D の
+更新で追記。
+
+### 夜間残像所見 (2026-07-16 late)
+
+夜間の人通り増で **local_costmap の残像が planner 経路に迂回を発生**
+させる頻度が上昇。原因は 2D raytracing のジオメトリ限界:
+
+- **別の障害物の陰**: 手前の実在物でビームが残像まで届かない
+- **高さの問題**: raytracing は `/scan` の 2D 平面で行われるため、遠方
+  の床近くにはビームが物理的に存在しない (VLP-16 の下向きビームは
+  近距離で地面に当たる)。人の足元 (z 低め) の残像は距離が離れるほど
+  掃除ビーム不在
+
+これは設定でなくジオメトリの限界。デモ対策の役割分担:
+
+- **安全 (chair を止める)**: Layer D (生 scan 直視) が担う。costmap は
+  見ない → 幽霊で誤停止しない、実在の人だけを止める
+- **経路品質 (幽霊で迂回しない)**: `cost_scaling_factor` を 3.0 → 5.0
+  で inflation 裾を圧縮 (radius=0.5 は robot_radius=0.45 との差 +0.05
+  のギリギリなので radius は下げない)。幽霊 1 セルの経路への影響が
+  減少
+- **完全解決の見送り**: `spatio_temporal_voxel_layer` (時間減衰プラグ
+  イン) 差し替えはデモ前に検証時間を捻出できず却下、post-demo backlog
+
+### V2/V3 追加観察項目 (夜間残像との切り分け)
+
+field で以下を確認 (Layer D が costmap でなく生 scan を見ていることの
+実証):
+
+- 人が sector 外へ退避 → 1 s 以内に Layer D 解放 → chair 走行再開
+- 退避後、costmap には**残像が紫のまま残っていてよい**
+- **残像で Layer D が再発火しないこと** (再発火すれば Layer D が誤って
+  costmap 参照している = 実装バグ)
+
+### post-demo backlog
+
+- `spatio_temporal_voxel_layer` (voxel + temporal decay) への差し替え
+  検討 (ADR 別立て)。3D voxel 表現で近似的に高さ問題も緩和される可能性
+
+### 運用ゲート (デモ手順に必須)
+
+走行前 (bringup ~20 秒後):
+
+```bash
+# collision_detection の effective 値
+ros2 param get /controller_server FollowPath.use_collision_detection
+# 期待: Boolean value is: true
+
+# Layer D armed の startup log 確認
+ros2 topic echo /rosout | grep -E "failsafe_node ready|forward_blocked"
+# 期待: "forward_blocked > 5 pts in ±30° @ 0.5-2.0 m, hysteresis 0.5s"
+
+# 動作テスト (手を前方に翳して 2 秒待つ)
+ros2 topic hz /cmd_vel_safety
+# 期待: 遮断中は 20 Hz publish
+```
+
+デモ準備チェックリストに追記済 (`docs/ja/m6r-demo-prep-checklist.md`)。
+
+### Incident 2026-07-16 late: サイレント QoS 非互換
+
+**事象**: 立ち塞がり試験 (V2 前段) で **Layer D 不動作 → 接触 (実害
+なし、試験内)**。
+
+**原因の解剖**:
+
+1. `failsafe_node.py:132-133` で `/scan` の subscription QoS が
+   `10` (depth のみ、reliability は **default = RELIABLE**) だった
+2. p2ls は `/scan` を **BEST_EFFORT** で publish (2026-07-16 field
+   `ros2 topic info /scan --verbose` および `T2` 起動ログの
+   `No messages will be sent to it` で実証)
+3. RELIABLE 購読 × BEST_EFFORT 配信は QoS 不互換 → **subscribe は
+   成立するが 1 メッセージも届かない** (DDS の silent drop)
+4. `_forward_last_blocked_time` は初回スキャン受信で arm する設計
+   (first-message-arm) → 受信ゼロで **未武装のまま無音**
+5. `_active_layers` は `_forward_last_blocked_time is None` を「発火
+   条件不成立」として扱う → chair 前方に人が立っても Layer D は
+   一切発火しない
+6. 起動ログには `failsafe_node ready: ... forward_blocked > 5 pts in
+   ...` の armed 記述が出るが、それは **subscription を作った** ことの
+   ログであり、**メッセージが届いた** ことのログではない → 運用者は
+   「Layer D 準備できた」と誤解
+
+**手本は 7 行上にあった**: 同じファイルの Layer C 購読
+(`_on_perception`) は `qos_profile_sensor_data` を明示していた
+(BEST_EFFORT + KEEP_LAST 5、best-effort 購読は reliable / best-effort
+どちらの publisher とも互換)。Layer D の同型 pattern を書いていれば
+本 incident は起きなかった。
+
+**教訓 (今後の全 subscription に適用)**:
+
+- センサー系 topic (/scan / /velodyne_points / /camera/*) は
+  **既定で `qos_profile_sensor_data`** を使う。RELIABLE を要求する
+  文書 (ADR-0009 等) が仮にあっても、実配信側が変わる可能性がある
+  ため、購読側 best-effort が安全側デフォルト
+- **first-message-arm を使う layer には必ず dead-input watchdog を
+  付ける** (下記)
+- 起動ログの `ready` は「subscribe した」の意味であって「message が
+  届いた」の保証ではない。運用ゲートは message 到達を積極的に検証
+  する側に立つ
+
+### 修正 (2026-07-16 late incident)
+
+**Fix 1 — QoS**: `failsafe_node.py` の `/scan` subscription を
+`qos_profile_sensor_data` に変更。Layer C と同型。
+
+**Fix 2 — dead-input watchdog**: 全 first-message-arm 系 layer に対し、
+起動から `STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0` 秒経過時点で未武装なら
+`get_logger().error(...)` で叫ぶ:
+
+```
+DEAD INPUT after 10s: ['D:/scan'] — these subscriptions received ZERO
+messages. Likely DDS/QoS mismatch, wrong topic name, or upstream not
+running. The listed failsafe layers CANNOT ARM. Do not drive.
+```
+
+`_dead_input_warned` フラグで single-shot、繰り返し alarm しない。
+チェック対象は `_last_pose_time` (Layer B), `_last_perception_time`
+(Layer C), `_last_scan_time` (Layer D、本 fix で新設)。将来 layer を
+追加する時は同一 pattern で watchdog check を足すこと。
+
+**Fix 3 — blocking preflight**: `scripts/m6r_preflight.sh` を新設。
+以下 4 段階で exit 1 まで走らせる:
+
+1. `use_collision_detection: true` の実効値
+2. `/failsafe_node` が `ros2 node list` に存在
+3. **12 秒待って `/rosout` に `DEAD INPUT` が出ないこと** (watchdog 経路)
+4. Live-fire hand test: 手を chair 前方 1.5 m に翳して 5 秒、
+   `/cmd_vel_safety` が >= 15 Hz publish していること
+
+デモ運用手順は「preflight 実行 → exit 0 を目視 → 初 goal 発行」の順を
+必須化。demo prep checklist §走行前 gate から本スクリプトへリンク。
+
+**Fix 4 — `FORWARD_SECTOR_MIN_M` を 0.5 → 1.0**: Layer D の下限を
+Patchwork++ の `min_range: 1.0` に一致させる。従来 draft は 0.5 だった
+が、Patchwork++ が 1.0 m 以内を self-return として捨てているため /scan
+に 0.5-1.0 m の点は元々来ない (silent no-op)。0.5 と書いてあると
+「0.5 m の障害物を掴む」と読める嘘になる。
+
+**副作用**: 0.5-1.0 m の障害物には Layer D は反応しない (以前も反応
+していなかった)。これは Patchwork++ の設計上の限界であり、
+`FORWARD_SECTOR_MIN_M` の値ではない。0.5-1.0 m でも人検知したい場合は
+**Patchwork++ min_range を 0.5 に下げる** 変更が本筋 (post-demo、下記
+backlog)。
+
+### Post-demo backlog
+
+- **Patchwork++ min_range 0.5 化の検討**: 現行 1.0 m は WHILL body
+  self-return 対策として書かれているが、`whill_navigation/config/
+  pointcloud_to_laserscan.yaml` の `range_min: 0.5` の comment
+  「self-return は LiDAR 原点から 0.5 m 圏内」と矛盾する。実測して
+  0.5 m まで下げられれば Layer D も 0.5 m 化できる。ADR-0011 の
+  fine-tune として別立て
+- **failsafe_node status publisher (`/failsafe_status`)** の実装で
+  preflight を script でなく publisher/subscriber ベースにする
+  (ADR-0007 §Decision に元々書かれている Full 版の仕様)
+
+### Accepted 化条件 (更新)
+
+以下 4 点満了で proposed → accepted:
+
+1. 明朝 field で V2/V3 (Layer D 基準) PASS — 上記 fix 適用後
+2. V6.4 (sector geometry 実測) PASS — `FORWARD_SECTOR_MIN_M = 1.0`
+   反映後の実距離で
+3. 30 min 連続走行 (V4) で false-trip 0 (path 沿いの静止建物 / 木で
+   発火しないこと)
+4. **`scripts/m6r_preflight.sh` が field で exit 0 を返す**。DEAD INPUT
+   watchdog が正常に叫ぶことは意図的な QoS mismatch 注入で verify
+   (post-demo 可)
