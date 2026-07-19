@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+  M7 whill_dispatch minimal tablet UI.
+
+  Static page: no build step. Served verbatim by the http.server started in
+  dispatch_launch.py, and talks to ROS only through rosbridge (ws://<host>:
+  9090) via the vendored roslibjs. It never touches /navigate_to_pose or
+  /cmd_vel* — only the four /dispatch/* interfaces (platform-pivot §5 #4).
+
+  Open http://<host>:8000 on the tablet (same LAN, non-TLS: page and ws are
+  both plain http/ws on the same host to avoid mixed-content blocking).
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WHILL 配車</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Vendored (CDN-free) so the tablet works on a closed LAN. -->
+  <script src="vendor/roslib.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>WHILL 配車</h1>
+    <span id="conn" class="conn conn-down">接続待ち…</span>
+  </header>
+
+  <main>
+    <section class="map-panel">
+      <!-- Markers and the vehicle dot are positioned absolutely over this
+           box in image-pixel coordinates (see app.js mapToPixel). -->
+      <div id="map-box">
+        <img id="map-img" alt="campus map">
+        <div id="markers"></div>
+        <div id="vehicle" class="vehicle hidden" title="現在位置"></div>
+      </div>
+    </section>
+
+    <section class="control-panel">
+      <div class="field">
+        <label for="waypoint-select">目的地</label>
+        <select id="waypoint-select" disabled></select>
+      </div>
+
+      <div class="field type-field">
+        <label><input type="radio" name="jobtype" value="goto" checked> 行く</label>
+        <label><input type="radio" name="jobtype" value="recall"> 呼ぶ</label>
+      </div>
+
+      <div class="buttons">
+        <button id="submit-btn" disabled>配車</button>
+        <button id="cancel-btn" class="cancel" disabled>キャンセル</button>
+      </div>
+
+      <div class="status">
+        <div class="status-row">
+          <span class="status-label">状態</span>
+          <span id="phase" class="phase phase-IDLE">IDLE</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">対象</span>
+          <span id="active-waypoint">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">待ち</span>
+          <span id="queue-len">0</span>
+        </div>
+        <div class="progress-track">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div class="status-row">
+          <span class="status-label">整合</span>
+          <span id="aligned">—</span>
+        </div>
+      </div>
+
+      <p id="log" class="log"></p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

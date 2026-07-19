@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>whill_dispatch</name>
+  <version>0.1.0</version>
+  <description>
+    M7 dispatch (配車) API boundary for the WHILL chair. A single
+    `dispatch_node` sits between the Web/tablet UI and Nav2: it resolves
+    named waypoints, queues dispatch jobs (FIFO), drives Nav2 as a
+    NavigateToPose action client, and folds vehicle pose + queue state
+    into a `/dispatch/state` topic. The Web side never touches
+    `/navigate_to_pose` or `/cmd_vel*` directly (platform-pivot §5 #4);
+    it only speaks the four `/dispatch/*` interfaces over rosbridge.
+
+    Web boundary is JSON-over-std_msgs/String + std_srvs/Trigger (no
+    custom rosidl interface — ADR-0012, demo-scope choice A). The static
+    Web UI (roslibjs, vendored) and the launch that stands up
+    rosbridge_websocket + an http.server + an optional mock action
+    server all live in this package so the whole demo boundary is one
+    `ros2 launch whill_dispatch dispatch_launch.py`.
+
+    Mutually exclusive with nothing at the TF layer — dispatch adds no
+    TF and no cmd_vel. Runs alongside `m6r_bringup_launch.py`
+    (whill_safety) + `nav_launch.py` (whill_navigation) at demo time.
+  </description>
+
+  <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <!-- dispatch_node runtime. -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
+  <!-- action_msgs/GoalStatus is read directly to classify the
+       NavigateToPose result (SUCCEEDED / CANCELED / ABORTED). -->
+  <exec_depend>action_msgs</exec_depend>
+  <!-- ament_index_python (get_package_share_directory) and python3-yaml
+       (waypoints.yaml load) are imported directly by dispatch_node and
+       dispatch_launch. -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+
+  <!-- Launch composition. rosbridge_server supplies the websocket the
+       tablet UI talks to. rosbridge_server
+       2.0.7 is apt-installed on the demo host (ros-humble-rosbridge-suite,
+       confirmed 2026-07-19). dispatch_launch.py includes its
+       rosbridge_websocket_launch.xml; use_rosbridge:=false skips it when
+       rosbridge is already running from another terminal. -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rosbridge_server</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

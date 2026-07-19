@@ -118,6 +118,38 @@ ros2 launch whill_navigation nav_launch.py site:=campus map_variant:=cleaned
 初回起動時に `/map` を RViz OccupancyGrid で表示し、traversed 経路上の
 黒 salt が消えていることを目視確認する (cleaning_diff.png と照合)。
 
+### 配車 UI (whill_dispatch, M7) — 3 段目の terminal
+
+M7 以降のデモは、RViz で initial pose を打った後の goal 発行を CLI では
+なく**タブレットの Web UI** から行う。bringup (terminal A) + Nav2
+(terminal B) に加えて 3 段目を起動する:
+
+```
+# terminal C (bringup / Nav2 とは別。TF も cmd_vel も足さないので非干渉)
+ros2 launch whill_dispatch dispatch_launch.py use_mock:=false
+```
+
+`use_mock:=false` は terminal B の Nav2 `bt_navigator` を実
+`/navigate_to_pose` server として使う (mock は実機なし検証専用)。起動後の
+確認:
+
+- [ ] `ros2 node list | sort | uniq -c` で `dispatch_node` /
+      `rosbridge_websocket` を含め全 count = 1 (bringup 二重化と同様に
+      dispatch も 1 本のみ)
+- [ ] `ss -ltnp | grep -E '9090|8000'` で ws (9090) と http (8000) が LISTEN
+- [ ] タブレットのブラウザで `http://<host>:8000` を開く (同一 LAN・非 TLS)。
+      ヘッダが「接続済み」、map 背景 + 地点マーカ + 目的地ドロップダウンが出る
+- [ ] `scripts/m6r_preflight.sh` exit 0 を確認**してから** UI で地点を選び
+      「配車」を押す (走行前 gate は M7 でも不変)。progress バーが進み、到着で
+      状態 SUCCEEDED
+- [ ] 地点座標は現地実測で差し替え済みか: `docs/maps/campus/waypoints.yaml`
+      の x/y/yaw が placeholder (0.0 等) のままなら、各地点に WHILL を運び
+      `/pcl_pose` を実測して差し替え → dispatch_launch を再起動
+
+Web UI は Nav2 の `/navigate_to_pose` を直接叩かない。goal 発行も車両位置の
+配信も dispatch_node が境界として一元化する (platform-pivot §5 #4)。詳細は
+[`../../src/whill_dispatch/README.md`](../../src/whill_dispatch/README.md)。
+
 ### RealSense (opt-in、通常 off)
 
 D435 は M6-R runtime stack が消費していない。USB 2.1 認識問題があるため

@@ -1,0 +1,13 @@
+{
+  "image": "map.png",
+  "width": 830,
+  "height": 786,
+  "resolution": 0.4,
+  "origin": [
+    -128.25,
+    -90.35,
+    0.0
+  ],
+  "source_pgm": "docs/maps/campus/occupancy_cleaned.pgm",
+  "downscale_factor": 8
+}

@@ -1,0 +1,35 @@
+# 名前付き配車地点 (M7 whill_dispatch)。
+#
+# ADR-0005 (maps 規約) の拡張。占有格子・PCD と同じ docs/maps/<site>/ 配下に
+# 置き、localizer / Nav2 と同じ map frame 座標系を共有する。座標は map frame の
+# メートル値で、occupancy_cleaned.yaml の origin [-128.25, -90.35, 0.0] と同一基準
+# (画素→map の変換は resolution 0.05 m/px)。
+#
+# 重要 (2026-07-19): 下の x/y/yaw は**測量値ではなくプレースホルダ**。mock で
+# UI・キュー・action 発行の配線を固めるために置いた幾何的な仮値で、地図の
+# おおよそのループ内に散らしてあるだけ。2026-07-20 現地で各地点に WHILL を運び
+# /pcl_pose を実測して差し替える (計画 §引き渡し U2)。差し替え後は
+# dispatch_node を再起動すれば反映される (yaml は起動時に一度読む)。
+frame_id: map
+waypoints:
+  # name: submit で参照する内部 ID (英数字)。label: UI 表示名。
+  - name: kounoken       # M6R-2 live acceptance の発進地点 (工農研横)
+    label: 工農研横
+    x: 0.0               # [m] placeholder — 2026-07-20 実測で差し替え
+    y: 0.0
+    yaw: 0.0             # [rad]
+  - name: gate
+    label: 正門
+    x: 40.0              # [m] placeholder
+    y: -25.0
+    yaw: 1.5708
+  - name: bldg7
+    label: 7号館前
+    x: -30.0             # [m] placeholder
+    y: 55.0
+    yaw: 3.1416
+  - name: library
+    label: 図書館前
+    x: 15.0              # [m] placeholder
+    y: 90.0
+    yaw: -1.5708
