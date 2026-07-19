@@ -67,6 +67,34 @@ To change the NDT tuning (score_threshold, resolution, etc.), edit
 `config/m6r_lidar_localization.yaml`; to change which map is loaded,
 pass a different `site`.
 
+## Odometry constraint (Issue #108)
+
+The localizer runs with `use_odom: true` and
+`predict_pose_from_previous_delta: false`. `m6r_bringup_launch.py` wraps
+the upstream localizer include in a `GroupAction` + `SetRemap` that points
+its `odom` subscription at the M4-R EKF `/odometry/filtered`
+(`nav_msgs/Odometry`, 30 Hz). The localizer dead-reckons its pose from the
+Odometry twist between scans, so the NDT seed for each scan tracks real
+motion instead of replaying the last accepted delta — the blind-replay
+that ran away into a ~50 s `map -> odom` freeze on the 2026-07-19 run when
+a pedestrian occluded the scan and the chair turned.
+
+`predict_pose_from_previous_delta` **must** stay false: the upstream seed
+policy is a strict priority ladder (`registration_seed_policy.hpp`), and
+with previous-delta enabled the odom-integrated pose never reaches the
+seed. `use_twist_prediction` stays false because it needs a `/twist`
+(`TwistWithCovarianceStamped`) topic we do not publish; `use_odom`
+consumes the Odometry the EKF already emits, with no extra node. Full
+per-line rationale is in the config yaml; the decision is recorded in the
+ADR-0006 addendum (2026-07-19).
+
+`enable_timer_publishing` is deliberately left off. Turning it on would
+publish `map -> odom` on a fixed timer (surviving even a total scan
+dropout) but would also keep `/pcl_pose` flowing during a genuine
+divergence, which defeats the failsafe's Layer B `pcl_pose_silent`
+detector. If a long dropout still freezes the TF in the field, enabling it
+is the follow-up — paired with a failsafe review, not on its own.
+
 ## Boot sequence (operator)
 
 **One bringup terminal only.** `m6r_bringup_launch.py` transitively

@@ -158,6 +158,29 @@ false)。camera-specific test を意図的に走らせるときのみ `realsense
 を bringup コマンドに付与。付与時は改めて USB 点検 (`lsusb` で D435
 検出 + `/dev/bus/usb/` の権限) をチェックリストに追加すること
 
+### 走行 bag の録画 (再現解析のため必須)
+
+2026-07-19 の Issue #108 (reject 連鎖 → `map -> odom` 凍結 → Nav2 abort) は
+bag が無く replay 検証ができなかった。以降、走行は必ず bag を録画する。
+録画端末のみ bag 用 DDS xml に切り替える (`~/.bashrc` は runtime xml のまま):
+
+```bash
+export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-bag-record.xml
+ros2 daemon stop && ros2 daemon start
+ros2 bag record \
+  /velodyne_points /odometry/filtered /imu/data_rep145 \
+  /pcl_pose /alignment_status /tf /tf_static
+```
+
+- **`/velodyne_points` / `/odometry/filtered` / `/imu/data_rep145`**: localizer
+  の入力 (scan) と odometry 拘束の入力 (Issue #108 で配線) を揃える。この 3 本が
+  あれば localizer を off-board で再走行させ、reject 連鎖を再現・解析できる
+- `/pcl_pose` / `/alignment_status`: 当日の fitness / reject 判定の実測ログ
+- `/tf` / `/tf_static`: `map -> odom -> base_link` の凍結有無を後追いする
+- 録画後 `ros2 bag info <dir>` で `/velodyne_points` count ≈ 走行秒 × 10、
+  `/imu/data_rep145` count ≈ 走行秒 × 100 を確認 (半分以下なら破棄して再録、
+  CLAUDE.md §ランタイム環境の前提)
+
 ## 関連
 
 - [ADR-0009: p2ls 高さ帯 + QoS bridge](decisions/0009-p2ls-height-band.md)

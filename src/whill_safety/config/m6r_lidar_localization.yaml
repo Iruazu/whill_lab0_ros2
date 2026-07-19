@@ -19,6 +19,20 @@
 # the live-operation contract (RViz 2D Pose Estimate publishes the initial
 # pose; the M4-R EKF supplies odom -> base_link separately, no IMU coupling
 # inside the localizer).
+#
+# --- Odometry constraint (Issue #108, 2026-07-19 field) ---
+#
+# The 2026-07-19 run had a reject chain freeze `map -> odom` for ~50 s until
+# Nav2 aborted on an Extrapolation Error. Root cause: the localizer ran with
+# NO velocity prediction wired (`use_odom: 0`, `use_twist_prediction: 0`), so
+# the NDT seed for every scan was the previous-accepted delta replayed
+# forward (`predict_pose_from_previous_delta: 1`). Once a pedestrian occluded
+# the scan and the chair changed heading, that constant-delta seed drifted
+# off the true pose, every subsequent scan was rejected against a bad seed,
+# and the chain ran away. platform-pivot §3.3 and ADR-0006 selected this
+# localizer *on the premise* of an odometry constraint — this is the wiring
+# that was missing. See the ADR-0006 addendum (2026-07-19). The three params
+# at the bottom of the ros__parameters block carry the per-line rationale.
 
 /**:
   ros__parameters:
@@ -40,3 +54,46 @@
     set_initial_pose: false  # RViz 2D Pose Estimate drives /initialpose
     use_imu: false
     enable_map_odom_tf: true
+
+    # Consume the M4-R EKF `/odometry/filtered` (30 Hz, body-frame twist) as
+    # a dead-reckoning constraint. odomReceived (component.cpp:1305-1388)
+    # integrates the Odometry twist into the current pose at 30 Hz, so the
+    # pose keeps tracking real motion through a scan-reject gap instead of
+    # standing still. Chose use_odom over use_twist_prediction because the
+    # latter needs a geometry_msgs/TwistWithCovarianceStamped on `/twist`
+    # (component.cpp:1002) which we do not publish, whereas use_odom takes a
+    # nav_msgs/Odometry on `odom` (component.cpp:998) that the EKF already
+    # emits — zero extra nodes. m6r_bringup_launch.py remaps
+    # `odom -> /odometry/filtered`. (Upstream presets favour twist_prediction
+    # only because their datasets ship a `/twist`; ours ships an Odometry.)
+    use_odom: true
+
+    # REQUIRED for use_odom to actually reach the NDT seed. The seed policy
+    # (registration_seed_policy.hpp:70-121) is a strict priority ladder:
+    # twist_prediction > previous_delta > current_pose. With previous_delta
+    # left true the seed is `predicted_pose_matrix_` (last delta replayed) and
+    # the odom-integrated current pose is ignored — the exact blind-replay
+    # that diverged on 2026-07-19. Turning it off drops the seed to
+    # kCurrentPose = the odom-dead-reckoned pose (component.cpp:2086, 2169),
+    # so every scan is seeded with real measured velocity. The ladder is
+    # exclusive (no "odom OR previous_delta" fallback), so this must be false.
+    predict_pose_from_previous_delta: false
+
+    # Explicit false (matches upstream default) to document the twist path is
+    # deliberately unused: no `/twist` topic exists and use_odom already
+    # supplies the prediction. twist_prediction_use_angular_velocity /
+    # max_twist_prediction_dt are left at upstream defaults (unset) because
+    # they are only read when use_twist_prediction is true.
+    use_twist_prediction: false
+
+    # NOT enabling `enable_timer_publishing`. It would decouple the map->odom
+    # TF from scan acceptance (publishing on a 10 Hz timer from the
+    # odom-integrated pose), killing the freeze outright even during a total
+    # multi-second scan dropout. Rejected for tonight because it also keeps
+    # /pcl_pose flowing during a real divergence, defeating the failsafe's
+    # Layer B `pcl_pose_silent` detector (whill_safety/failsafe_node.py) — a
+    # safety-layer semantics change that must not ship unreviewed the night
+    # before a run. The odom seed above already collapses a normal reject
+    # chain to a sub-second gap by fixing the root cause. If a genuine long
+    # dropout still freezes the TF tomorrow, the follow-up is
+    # enable_timer_publishing PAIRED with a failsafe review (ADR-0006 addendum).
