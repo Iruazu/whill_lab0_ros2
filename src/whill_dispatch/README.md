@@ -107,15 +107,19 @@ per-point `/pcl_pose` measurements on 2026-07-20 (plan §引き渡し U2).
 
 ## Web map background
 
-`web/map.png` + `web/map_meta.json` are generated from
-`docs/maps/campus/occupancy_cleaned.pgm` (6640x6295, ~41 MB — too heavy to
-serve raw) by:
+`web/map.png` + `web/map_meta.json` are generated from the operative
+campus map (6640x6295, ~41 MB — too heavy to serve raw). Current source is
+the v2 map (`map_meta.json` の `source_pgm` が正):
 
 ```bash
-python3 scripts/m7_make_web_map.py          # default: factor 8 -> 830x786
+python3 scripts/m7_make_web_map.py \
+    --pgm docs/maps/campus/v2/final.pgm \
+    --yaml docs/maps/campus/occupancy_v2.yaml \
+    --out-dir src/whill_dispatch/web
 ```
 
-Idempotent; re-run whenever the cleaned map is regenerated. `app.js` reads
+Idempotent; re-run whenever the operative map changes (keep it in sync
+with the `map_variant` used at demo time). `app.js` reads
 `map_meta.json` (origin + effective resolution) and converts map-frame
 metres to png pixels with the occupancy-grid transform (origin at the pgm
 bottom-left, y flipped for image coordinates).
