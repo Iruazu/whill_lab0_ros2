@@ -39,6 +39,7 @@ Check the highest number here before taking the next ADR number; add one row whe
 | 0009 | pointcloud_to_laserscan height band + QoS bridge (M6-R) | accepted |
 | 0010 | Keep Nav2 planner + controller and set `allow_unknown: false` (M6-R) | proposed |
 | 0011 | Ground removal preprocessing — Patchwork++ core + own ROS 2 wrapper (M6-R) | accepted |
+| 0012 | whill_dispatch Web-boundary interface style (M7) | proposed (ja only) |
 
 ## Related
 

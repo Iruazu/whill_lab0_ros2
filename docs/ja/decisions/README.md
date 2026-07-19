@@ -39,6 +39,7 @@ Language: [日本語](README.md) | [English](../../en/decisions/README.md)
 | 0009 | pointcloud_to_laserscan の高さ帯選定と QoS bridge (M6-R) | accepted |
 | 0010 | Nav2 planner + controller の継続採用 + `allow_unknown: false` (M6-R) | proposed |
 | 0011 | 地面除去前処理 — Patchwork++ core + 自前 ROS 2 wrapper (M6-R) | accepted |
+| 0012 | whill_dispatch の Web 境界インターフェース方式 (M7) | proposed |
 
 ## 関連
 
