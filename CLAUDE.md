@@ -7,7 +7,7 @@
 - 宇都宮大学キャンパス内での実機検証を目標とした、WHILL Model CR2 ベース自律移動車椅子スタック
 - **旧実装**: ROS noetic, 別リポジトリ `~/whill_lab0/` (本リポと並列に存在)。学内自律走行・運転アシスト等の機能が実装済みだが、リポジトリとしての整理状態が悪い
 - **本リポ**: 旧実装を「クリーンに」ROS 2 humble に移植する。既存実装を盲目的にコピーするのではなく、現代の ROS 2 パターン (lifecycle node, ament_cmake, Nav2 standard) に合わせて作り直す
-- マイルストーン: M1〜M2 完了。M3〜M5 進行中。M6 が実機統合検証
+- マイルストーン (platform-pivot §4 の M*-R 系): M4-R / M5-R 完了。M6-R は localizer / failsafe / obstacle layer まで実質完了 (残: M6R-5 統合受入の証跡確定)。M7 (whill_dispatch 配車 API) 着手中。マップ品質の v2 パイプライン (PR #91) は完了・受入済
 
 ## アーキテクチャ層
 
@@ -48,6 +48,7 @@
 - **package.xml の exec_depend を必ず正確に**書く。ament_cmake は `buildtool_depend` のみ
 - **launch ファイル**: `IncludeLaunchDescription` で wrap される可能性を考慮、`LaunchConfiguration` をパス resolve に使わず launch description 生成時にハードコードする (既存の `fast_lio_launch.py` と `nav_launch.py` のコメント参照)
 - **launch を編集したら push 前に `ros2 launch <pkg> <launch>.py --show-args` を必ず走らせる**。Python の import エラー (module 名間違い・非公開 API 等) は colcon build を通過するが `--show-args` は launch description を評価するので import 段で落ちる。例: `SetRemap` は `launch_ros.actions` にあり `launch.actions` にはない (2026-07-14 実機で ImportError 発覚済)。build 通過 + syntax OK は不十分
+- **main へ直接 commit / push しない**。revert / hotfix / 事故対応でも必ず branch + PR 経由。マージは常にユーザーが行う
 
 ## ランタイム環境の前提 (本機 = Alienware x15 R2)
 
@@ -63,6 +64,16 @@ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor # performance
 - **RMW**: 既定の FastDDS は `velodyne_msgs/VelodyneScan` 等の大メッセージで
   間欠的に詰まる。`~/.bashrc` に `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` を
   入れて永続化する (Claude は `~/.bashrc` を編集しない。ユーザー手動)
+- **CycloneDDS の xml は 2 本体制**: 運用は `configs/cyclonedds-runtime.xml`、
+  bag 録画時のみそのターミナル限定で `CYCLONEDDS_URI` を
+  `configs/cyclonedds-bag-record.xml` に切り替える (lo-only は録画専用。
+  経緯: tethering hazard、`docs/ja/plans/2026-06-24-m6r-localization.md` §10)
+- **bringup は単一ターミナルのみ**: `m6r_bringup` と sensors / odom 系 launch の
+  並行起動は禁止 (2026-07-16 実機で全ノード二重化 → `/velodyne_points` 39.4 Hz)。
+  RealSense は opt-in
+- **自律走行は failsafe 有効時のみ** (autonomy gate): whill_safety
+  (twist_mux + failsafe) を含まない構成で cmd_vel を発行する検証は禁止。
+  demo は並走者が介入できる速度・体制で行う
 - **CPU governor**: 再起動で `powersave` に戻るため、録画/SLAM 前に毎セッション
   `sudo cpupower frequency-set -g performance` を実行する
 - **NVIDIA suspend/resume**: サスペンド→レジューム後、GPU 使用プロセス
@@ -106,14 +117,17 @@ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor # performance
 
 ## 進行中の既知課題
 
-`docs/ja/plans/2026-06-11-platform-pivot.md` 2 章の診断 (P1〜P5) を要約転記する。詳細根拠と
-解消経路は同文書の 3 章 (アーキテクチャ) と 4 章 (マイルストーン M4-R 以降) を参照:
+`docs/ja/plans/2026-06-11-platform-pivot.md` 2 章の診断 (P1〜P5) は **全件解消済**。
+経緯詳細は同文書と各計画書・ADR を参照 (ここには結論のみ残す):
 
-- **P1: 運用時の自己位置に補正経路がない** (`map -> camera_init` identity 固定で FAST-LIO ドリフトがそのまま map 誤差化、60s で 18%)。M6-R で scan-to-map localizer に置換予定
-- **P2: 初期位置合わせ機構がない** (起動位置 = camera_init 前提)。M6-R の initial pose 運用で解消予定
-- **P3: 発散を検知も回復もしない** (歩行者横断で破綻しても TF は出続け Nav2 は走行継続。run3 実測)。M6-R のフェイルセーフノードで遮断する
-- **P4 (解消済、2026-06-20, M4-R)**: robot_localization EKF (Issue #37) が `odom -> base_link` を 30 Hz publish。`/whill/odom` (Issue #35) と `/imu/data_raw` を fuse、`tf_bridge_launch.py` の `map -> camera_init` identity は M4R-4 / Issue #38 で物理削除済。単一コマンドの統合 bringup は `ros2 launch whill_localization odom_bringup_launch.py`。`map -> odom` の補正は M6-R の scan-to-map localizer 担当に分離した。詳細は `docs/ja/plans/2026-06-11-platform-pivot.md` §3 と `src/whill_localization/README.md`
-- **P5: 地図品質の問題が安全機能を連鎖停止** (ゴースト障害物 → `use_collision_detection: false`、QoS 不一致 → obstacle layer なし)。**地図側 (M5-R 担当部分) は解消済 (2026-06-22)**: bag → GLIM (ADR-0003) → DUFOMap (ADR-0004) → 占有格子 (#50) → `docs/maps/<site>/` 規約 (ADR-0005) の E2E パイプラインが整備済 (`docs/ja/m5r-pipeline.md` 参照)。**残り (M6-R 担当)**: obstacle layer 復活 / collision detection 復帰 / per-scan ray-cast 化等の Nav2 統合側
+- **P1 (解消済、2026-07-12, M6R-2)**: scan-to-map localizer (ADR-0006) が `map -> odom` を補正。屋外 live 受入 PASS (静止 fitness 0.019、12 min 走行 reject 0)。`tf_bridge` の identity 構成は物理削除済
+- **P2 (解消済、2026-07-12, M6R-2)**: `/initialpose` 運用で任意地点からのリローカライズが成立
+- **P3 (解消済、M6R-3)**: whill_safety のフェイルセーフ (ADR-0007) + twist_mux が発散時に cmd_vel を遮断。preflight gate (`m6r_preflight.sh`) が起動前検査を担う
+- **P4 (解消済、2026-06-20, M4-R)**: robot_localization EKF が `odom -> base_link` を 30 Hz publish (`/whill/odom` + `/imu/data_raw` fuse)。統合 bringup は `ros2 launch whill_localization odom_bringup_launch.py`。詳細は `src/whill_localization/README.md`
+- **P5 (解消済)**: 地図側は M5-R パイプライン (ADR-0003/0004/0005) + v2 パイプライン (PR #91、layer 分離 + sidecar mask + verifier) で salt 焼き込みまで根治。Nav2 側は M6R-4 で obstacle layer 復活 + `use_collision_detection: true` 復帰 (ADR-0009/0010/0011)
+
+現在の主課題はフェーズ表の通り M7 (配車 API 層) と、実機検証で残る運転品質
+(直進時の左右振動等。既存パラメータは実測前の一般論由来のため実測ベースで再調整する)。
 
 旧 M5-d (goal-following) / M5-e (tuning) は本方針下で**凍結**。`tf_bridge_launch.py` の identity 構成を前提とした新機能追加と、FAST-LIO のランタイム localizer 強化は禁止 (本文書 5 章)。
 
