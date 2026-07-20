@@ -93,10 +93,25 @@ def _setup(context):
     ws_port = LaunchConfiguration('rosbridge_port').perform(context)
     http_port = LaunchConfiguration('http_port').perform(context)
     action_name = LaunchConfiguration('action_name').perform(context)
+    use_tls = LaunchConfiguration('use_tls').perform(context) == 'true'
+    tls_cert = os.path.expanduser(
+        LaunchConfiguration('tls_cert').perform(context))
+    tls_key = os.path.expanduser(
+        LaunchConfiguration('tls_key').perform(context))
 
     pkg_share = get_package_share_directory('whill_dispatch')
     web_dir = os.path.join(pkg_share, 'web')
     waypoints_yaml = _resolve_waypoints_yaml(site, pkg_share)
+
+    # TLS: iOS Safari HTTPS-First で iPad が http を https に格上げしてしまう
+    # (2026-07-20 field)。use_tls:=true で UI を HTTPS、rosbridge を WSS にする。
+    # cert/key は scripts/m7_make_tls_cert.sh 生成物 (既定 ~/.whill_dispatch_tls)。
+    if use_tls:
+        for p in (tls_cert, tls_key):
+            if not os.path.isfile(p):
+                raise RuntimeError(
+                    f'dispatch_launch: use_tls:=true だが証明書が無い: {p}\n'
+                    f'  先に生成する: scripts/m7_make_tls_cert.sh <AP の IP>')
 
     actions = []
 
@@ -114,9 +129,16 @@ def _setup(context):
         # xml frontend loader (humble has no importable XMLLaunchDescription
         # Source class; this is the supported way to include a frontend
         # launch from a python launch file).
+        rosbridge_args = {'port': ws_port}
+        if use_tls:
+            # rosbridge_websocket_launch.xml は ssl / certfile / keyfile を
+            # 受ける。ssl:=true で ws:// が wss:// になる。UI (app.js) は
+            # ページの protocol から ws/wss を自動選択するので UI 側は不変。
+            rosbridge_args.update(
+                {'ssl': 'true', 'certfile': tls_cert, 'keyfile': tls_key})
         actions.append(IncludeLaunchDescription(
             AnyLaunchDescriptionSource(rosbridge_launch),
-            launch_arguments={'port': ws_port}.items()))
+            launch_arguments=rosbridge_args.items()))
 
     actions.append(Node(
         package='whill_dispatch',
@@ -129,13 +151,25 @@ def _setup(context):
         }],
     ))
 
-    # Static UI server. stdlib http.server so a tablet just opens the URL;
-    # cwd is the installed web/ dir so it serves index.html at the root.
-    actions.append(ExecuteProcess(
-        cmd=['python3', '-m', 'http.server', http_port],
-        cwd=web_dir,
-        output='screen',
-    ))
+    # Static UI server. Plain stdlib http.server by default; with use_tls the
+    # HTTPS wrapper (scripts/m7_https_server.py) serves the same web/ dir over
+    # TLS so iOS Safari's HTTPS-First stops 400-ing the connection.
+    if use_tls:
+        https_script = os.path.join(
+            _repo_root_from_pkg_share(pkg_share),
+            'scripts', 'm7_https_server.py')
+        actions.append(ExecuteProcess(
+            cmd=['python3', https_script,
+                 '--port', http_port, '--dir', web_dir,
+                 '--cert', tls_cert, '--key', tls_key],
+            output='screen',
+        ))
+    else:
+        actions.append(ExecuteProcess(
+            cmd=['python3', '-m', 'http.server', http_port],
+            cwd=web_dir,
+            output='screen',
+        ))
 
     if use_mock:
         # Dev-only fixture — resolve it from the repo scripts/ dir (never
@@ -194,6 +228,21 @@ def generate_launch_description():
             default_value='/navigate_to_pose',
             description='NavigateToPose action dispatch_node drives. '
                         'Default matches Nav2 bt_navigator and the mock.'),
+        DeclareLaunchArgument(
+            'use_tls',
+            default_value='false',
+            description='Serve the UI over HTTPS and rosbridge over WSS. '
+                        'Needed for iPad/iOS Safari (HTTPS-First upgrades '
+                        'http to https). Generate the cert first with '
+                        'scripts/m7_make_tls_cert.sh <AP IP>.'),
+        DeclareLaunchArgument(
+            'tls_cert',
+            default_value='~/.whill_dispatch_tls/dispatch.crt',
+            description='TLS cert path (used when use_tls:=true).'),
+        DeclareLaunchArgument(
+            'tls_key',
+            default_value='~/.whill_dispatch_tls/dispatch.key',
+            description='TLS key path (used when use_tls:=true).'),
 
         OpaqueFunction(function=_setup),
     ])
