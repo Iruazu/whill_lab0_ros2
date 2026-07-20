@@ -112,7 +112,12 @@ let submitTopic = null;
 let cancelService = null;
 
 function connect() {
-  const url = `ws://${location.hostname || 'localhost'}:9090`;
+  // ws/wss をページの配信スキームから選ぶ。iPad は HTTPS-First で https で
+  // 開くため (dispatch_launch use_tls:=true)、その場合ブラウザは平文 ws:// を
+  // mixed content で遮断する → wss:// が必須 (use_tls は rosbridge 側も
+  // wss 化する)。平文 http のときは従来どおり ws://。
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${scheme}://${location.hostname || 'localhost'}:9090`;
   const ros = new ROSLIB.Ros({ url });
 
   ros.on('connection', () => {

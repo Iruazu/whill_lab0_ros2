@@ -73,6 +73,32 @@ ros2 launch whill_dispatch   dispatch_launch.py use_mock:=false
 Then open `http://<host>:8000` on a tablet on the same LAN (page and ws
 are both plain http/ws on the same host to avoid mixed-content blocking).
 
+## HTTPS / iPad (use_tls:=true)
+
+iOS Safari's HTTPS-First upgrades `http://<host>:8000` to `https://`, and
+the plain `http.server` then 400s the TLS handshake — iPad cannot open the
+UI over plain http (confirmed 2026-07-20 field). Serve over HTTPS/WSS:
+
+```bash
+# 1) once: self-signed cert with the AP IP in the SAN (default 10.42.0.1)
+scripts/m7_make_tls_cert.sh 10.42.0.1
+
+# 2) launch with TLS (UI over https:8000, rosbridge over wss:9090)
+ros2 launch whill_dispatch dispatch_launch.py use_mock:=false use_tls:=true
+```
+
+On the iPad, connect to the `whill-demo` AP, then **first** trust the cert,
+**then** open the UI:
+
+1. Safari → `https://10.42.0.1:8000/dispatch.crt` → 設定 → プロファイルが
+   ダウンロードされました → インストール
+2. 設定 → 一般 → 情報 → 証明書信頼設定 → whill-dispatch を全面的に信頼
+3. Safari → `https://10.42.0.1:8000` — 地図と「接続済み」が出れば成立
+
+`app.js` picks `wss://` automatically when the page is https, so no UI edit
+is needed. The `.crt` is staged into the served dir at launch; the private
+key never leaves `~/.whill_dispatch_tls`.
+
 ## Mock operation (no robot)
 
 ```bash
