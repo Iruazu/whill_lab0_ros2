@@ -227,7 +227,16 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 3.0
+        # 3.0 → 6.0 (2026-07-20 field, bag 解析). start/goal はともに道路中央
+        # より右 1m 前後に定義されているのに、NavFn 経路は道路左端 1.2m まで
+        # 膨らんで直進し goal 手前で右へ戻っていた (実走軌跡: 左端まで1.2-1.5m
+        # /右端まで3.5-3.8m)。原因は inflation の緩やかなコスト勾配で、右側
+        # 障害物から逃げて左の低コスト帯へ経路が寄っていた。cost_scaling_factor
+        # を上げるとコスト減衰が急になり、壁からわずかに離れれば低コストになる
+        # ため経路が最短(中央〜右寄り)へ戻る。inflation_radius 0.5 は据え置き
+        # なので footprint(robot_radius 0.45)+lethal の接近マージンは不変。
+        # 効果不足なら 10.0 まで上げる。次回実機 A/B (この変更のみ) で確認。
+        cost_scaling_factor: 6.0
         inflation_radius: 0.5
 
 global_costmap:
@@ -267,7 +276,11 @@ global_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        cost_scaling_factor: 3.0
+        # global と揃える (3.0 → 6.0)。経路を引くのは global_costmap だが、
+        # local も同勾配にして costmap の一貫性を保つ。use_cost_regulated_
+        # linear_velocity_scaling は false なので local inflation は速度制御に
+        # は現状効かず、collision 判定は footprint+lethal で別途行われる。
+        cost_scaling_factor: 6.0
         inflation_radius: 0.5
 
 map_server:
