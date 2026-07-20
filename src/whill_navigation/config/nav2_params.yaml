@@ -131,7 +131,16 @@ controller_server:
       # 0.3 / 0.9 because use_velocity_scaled_lookahead_dist clamps
       # around that range; only the base value shifted.
       lookahead_dist: 0.8
-      min_lookahead_dist: 0.3
+      # 0.3 → 0.6 (2026-07-19 field, bag 解析 #101). desired_linear_vel 0.3 は
+      # 実走では ~0.28 m/s に落ち、use_velocity_scaled_lookahead_dist が
+      # 実効 lookahead を 0.28 * lookahead_time 1.5 = 0.42 m まで縮めていた。
+      # 実測: 直進中 angular.z RMS 0.462, 蛇行周期 2.1s, 空間波長 0.58m,
+      # cross-track RMS 5cm/最大14cm。波長 0.58m ≒ 実効 lookahead 0.42m で
+      # Pure Pursuit の追従振動 (carrot 追い越し) の典型。vx と |angular.z| の
+      # 相関 -0.82 (揺れると減速) も自励振動を裏づける。min を 0.6 に上げて
+      # 低速でも実効 lookahead が波長を上回るようにする (0.6 > 0.58)。
+      # 次回実機で単独 A/B (この 1 変更のみ) で効果確認する。
+      min_lookahead_dist: 0.6
       max_lookahead_dist: 0.9
       lookahead_time: 1.5
       rotate_to_heading_angular_vel: 0.8
