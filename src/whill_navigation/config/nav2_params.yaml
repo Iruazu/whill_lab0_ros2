@@ -233,11 +233,10 @@ local_costmap:
         # /右端まで3.5-3.8m)。原因は inflation の緩やかなコスト勾配で、右側
         # 障害物から逃げて左の低コスト帯へ経路が寄っていた。cost_scaling_factor
         # を上げるとコスト減衰が急になり、壁からわずかに離れれば低コストになる
-        # ため経路が最短(中央〜右寄り)へ戻る。inflation_radius 0.5 は据え置き
-        # なので footprint(robot_radius 0.45)+lethal の接近マージンは不変。
-        # 効果不足なら 10.0 まで上げる。次回実機 A/B (この変更のみ) で確認。
+        # ため経路が最短(中央〜右寄り)へ戻る。効果不足なら 10.0 まで上げる。
         cost_scaling_factor: 6.0
-        inflation_radius: 0.5
+        # 0.5 → 0.4 (2026-07-20). global と揃える。狭路対策。footprint 判定は別。
+        inflation_radius: 0.4
 
 global_costmap:
   global_costmap:
@@ -250,38 +249,28 @@ global_costmap:
       resolution: 0.05
       track_unknown_space: true
       robot_radius: 0.45
-      plugins: [static_layer, obstacle_layer, inflation_layer]
+      # obstacle_layer を除去 (2026-07-20 field). 旧構成は global にも動的
+      # obstacle_layer を入れており、歩行者/自転車が通過して marking した
+      # lethal が「その場所をセンサが raytrace で再貫通するまで」消えず、
+      # マップ全体固定の global に残像として累積した (RViz で確認: 狭い
+      # 7号館前で水色 inflation の残像が道の両側から道幅を塞ぎ、最終的に
+      # GridBased: failed to create plan で goal 失敗)。標準の Nav2 構成に
+      # 合わせ、global は静的地図での経路計画に専念させ、動的回避は local
+      # costmap の obstacle_layer (rolling window。通過後に自動消去) に委ねる。
+      plugins: [static_layer, inflation_layer]
       static_layer:
         plugin: nav2_costmap_2d::StaticLayer
         map_subscribe_transient_local: true
-      # Same observation source as local_costmap. Global obstacle_layer
-      # keeps a persistent memory of observed obstacles across the whole
-      # map (with clearing), so a person who blocked the chair once
-      # stays in the global plan while the local rolling window has
-      # already moved on.
-      obstacle_layer:
-        plugin: nav2_costmap_2d::ObstacleLayer
-        enabled: true
-        observation_sources: scan
-        scan:
-          topic: /scan
-          sensor_frame: base_link
-          max_obstacle_height: 2.0
-          clearing: true
-          marking: true
-          data_type: LaserScan
-          raytrace_max_range: 25.0
-          raytrace_min_range: 0.0
-          obstacle_max_range: 20.0
-          obstacle_min_range: 0.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # global と揃える (3.0 → 6.0)。経路を引くのは global_costmap だが、
-        # local も同勾配にして costmap の一貫性を保つ。use_cost_regulated_
-        # linear_velocity_scaling は false なので local inflation は速度制御に
-        # は現状効かず、collision 判定は footprint+lethal で別途行われる。
+        # global と揃える (3.0 → 6.0, 2026-07-20)。start/goal 右寄りに対し
+        # 経路が道路左端へ膨らむ左偏りを是正。
         cost_scaling_factor: 6.0
-        inflation_radius: 0.5
+        # 0.5 → 0.4 (2026-07-20 field). 狭い 7号館前で inflation の膨らみが
+        # 道幅を塞いでいたため縮める。robot_radius 0.45 の footprint 衝突判定
+        # は別に効くので物理接触はしない。0.4 は robot_radius をわずかに下回る
+        # 程度に留め、障害物脇の擦り寄りリスクを抑えた保守値。
+        inflation_radius: 0.4
 
 map_server:
   ros__parameters:
