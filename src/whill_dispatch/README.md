@@ -12,10 +12,13 @@ owns the four responsibilities the platform-pivot plan §3.5 assigns to
 - fold vehicle pose + queue state into `/dispatch/state`
 
 The Web side never touches `/navigate_to_pose` or `/cmd_vel*`
-(platform-pivot §5 #4). It speaks only the four `/dispatch/*` interfaces
-over rosbridge, all standard-typed (JSON-over-`std_msgs/String` +
+(platform-pivot §5 #4). It speaks the four `/dispatch/*` interfaces over
+rosbridge, all standard-typed (JSON-over-`std_msgs/String` +
 `std_srvs/Trigger`, no custom rosidl interface — ADR-0012 choice A for the
-demo).
+demo). The one exception is a **read-only** subscription to Nav2's `/plan`
+(`nav_msgs/Path`) for route visualization: no command flows back, so it is
+not an operation boundary. ADR-0012 permits this explicitly (see its `/plan`
+addendum).
 
 Governing plan: [`../../docs/ja/plans/2026-07-19-m7-dispatch.md`](../../docs/ja/plans/2026-07-19-m7-dispatch.md).
 Interface decision: [ADR-0012](../../docs/decisions/0012-dispatch-web-interface.md).
@@ -24,12 +27,35 @@ Interface decision: [ADR-0012](../../docs/decisions/0012-dispatch-web-interface.
 
 | dir | name | type | payload |
 |-----|------|------|---------|
-| Web→ROS | `/dispatch/submit` (topic) | `std_msgs/String` | JSON `{"waypoint":"<name>","type":"goto"\|"recall"}` |
+| Web→ROS | `/dispatch/submit` (topic) | `std_msgs/String` | JSON, one of two goal forms (below) |
 | Web→ROS | `/dispatch/cancel` (service) | `std_srvs/Trigger` | cancel the active job |
 | ROS→Web | `/dispatch/state` (topic, 5 Hz) | `std_msgs/String` | JSON `{job_id,phase,waypoint,progress,queue_len,pose,aligned}` |
 | ROS→Web | `/dispatch/waypoints` (topic, 1 Hz) | `std_msgs/String` | JSON `[{name,label,x,y,yaw}]` |
 
+`/dispatch/submit` carries exactly one of two goal forms (`type` is
+`"goto"\|"recall"` for both, and `point` wins if both are somehow present):
+
+- named waypoint: `{"waypoint":"<name>","type":"goto"}` — resolved via
+  `waypoints.yaml`. Unchanged from v1.
+- arbitrary map-frame point: `{"point":{"x":<m>,"y":<m>,"yaw":<rad>},"type":"goto"}`
+  — the tablet's map-tap goal (v2). `yaw` is optional (defaults 0.0; heading
+  control is future work). `x`/`y` are required and validated in
+  `dispatch_node` (`_parse_point`): a non-dict, missing/ non-numeric x or y,
+  or a non-finite value is dropped with a warn, never crashes the node.
+
+For a `point` job, `/dispatch/state` reports `waypoint` as a coordinate
+string (e.g. `"(5.0, 2.0)"`) so the UI has something to display; for a named
+job it is the waypoint name as before.
+
 `phase ∈ IDLE / QUEUED / ACTIVE / SUCCEEDED / ABORTED / CANCELED`.
+
+FREE-ness of a tapped point is gated twice: the UI reads `map.png` and
+refuses to submit a non-drivable cell (first net), and `dispatch_node` does
+NOT re-check the map — it relies on Nav2's global planner
+(`allow_unknown:false`) to fail-to-plan an UNKNOWN/OCC coordinate and return
+`ABORTED` (second, authoritative net). Re-reading the map in dispatch would
+duplicate that check against a downscaled png and risk disagreeing with the
+planner's grid.
 
 Both ROS→Web topics are re-published on a timer (not latched): roslibjs
 subscribes volatile, so periodic resend makes UI attach order irrelevant.
@@ -148,7 +174,16 @@ Idempotent; re-run whenever the operative map changes (keep it in sync
 with the `map_variant` used at demo time). `app.js` reads
 `map_meta.json` (origin + effective resolution) and converts map-frame
 metres to png pixels with the occupancy-grid transform (origin at the pgm
-bottom-left, y flipped for image coordinates).
+bottom-left, y flipped for image coordinates), plus the inverse
+(`pixelToMap`) to turn a map tap into a goal.
+
+For the map-tap FREE gate, `app.js` also decodes `map.png` into an offscreen
+canvas and reads the tapped cell's greyscale value. The threshold
+(`FREE_THRESHOLD = 230`) sits between UNKNOWN (205) and FREE (254): the
+current map.png is ~84% value-205 (unmapped campus) and ~4% value-254
+(roads), so a lower cutoff would pass the whole grey campus as drivable.
+If a future map regeneration changes the greyscale mapping of FREE/UNKNOWN,
+re-check this constant against a histogram of the new `map.png`.
 
 ## Package layout note
 

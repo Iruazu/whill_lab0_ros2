@@ -48,6 +48,33 @@ main {
 
 #markers { position: absolute; inset: 0; }
 
+/* Plan overlay: an SVG pinned to the png pixel space (width/height set by
+   app.js loadMap). pointer-events:none so the polyline never eats a map tap
+   meant for goal selection. */
+.plan-layer { position: absolute; inset: 0; pointer-events: none; }
+
+/* Tapped arbitrary-goal marker. Green to read distinctly from the blue
+   waypoint markers and the red vehicle dot. pointer-events:none so a tap on
+   top of it still reaches map-box (re-picking a nearby cell). */
+.goal-marker {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #06d6a0;
+  border: 3px solid #fff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px #06d6a0;
+  pointer-events: none;
+}
+
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #a9b0ba;
+  max-width: 40rem;
+}
+
 /* Waypoint markers: centred on their pixel via translate(-50%,-50%). */
 .marker {
   position: absolute;
@@ -80,6 +107,8 @@ main {
   border: 2px solid #fff;
   transform: translate(-50%, -50%);
   box-shadow: 0 0 6px #ff2e63;
+  /* Never intercept a map tap — the vehicle dot is status, not a control. */
+  pointer-events: none;
 }
 
 .control-panel {

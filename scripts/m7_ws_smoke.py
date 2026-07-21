@@ -142,6 +142,10 @@ def main():
     ap.add_argument('--timeout', type=float, default=30.0)
     ap.add_argument('--cancel', action='store_true',
                     help='also run a submit+cancel and assert CANCELED')
+    ap.add_argument('--point', action='store_true',
+                    help='also exercise the v2 arbitrary-goal path: a valid '
+                         '{"point"} submit reaches SUCCEEDED, and a batch of '
+                         'malformed points is dropped without killing the node')
     args = ap.parse_args()
 
     sock = socket.create_connection((args.host, args.port), timeout=5.0)
@@ -237,6 +241,52 @@ def main():
         if not got_cancel:
             _fail('cancel over ws did not reach CANCELED')
         print('PASS ws cancel: reached CANCELED')
+
+    # 4) optional v2 arbitrary-goal path (SF-1: exercise the browser's
+    #    {"point"} submit and _parse_point's crash-resistance over the wire)
+    if args.point:
+        # 4a) valid point -> SUCCEEDED, same phase-walk contract as goto
+        _send_text(sock, {'op': 'publish', 'topic': '/dispatch/submit',
+                          'msg': {'data': json.dumps(
+                              {'point': {'x': 1.0, 'y': 0.5, 'yaw': 0.0},
+                               'type': 'goto'})}})
+        phases = []
+        started = False
+        deadline = time.time() + args.timeout
+        while time.time() < deadline:
+            m = reader.next_message()
+            if m.get('op') == 'publish' and m['topic'] == '/dispatch/state':
+                s = json.loads(m['msg']['data'])
+                if not started:
+                    if s['phase'] not in ('QUEUED', 'ACTIVE'):
+                        continue
+                    started = True
+                if not phases or phases[-1] != s['phase']:
+                    phases.append(s['phase'])
+                if s['phase'] == 'SUCCEEDED':
+                    break
+        if 'SUCCEEDED' not in phases:
+            _fail(f'point goto did not reach SUCCEEDED; phases={phases}')
+        print(f'PASS ws point: phases={phases}')
+
+        # 4b) malformed points must be dropped WITHOUT killing the node.
+        # Proof of survival: /dispatch/waypoints keeps arriving afterward.
+        for bad in ('{"point":"bad"}', '{"point":{"x":"nan"}}',
+                    '{"point":{"y":1.0}}', '{}', '42', 'null'):
+            _send_text(sock, {'op': 'publish', 'topic': '/dispatch/submit',
+                              'msg': {'data': bad}})
+        # give the node a moment to process, then confirm it is still alive
+        alive = False
+        deadline = time.time() + args.timeout
+        while time.time() < deadline:
+            m = reader.next_message()
+            if m.get('op') == 'publish' and m['topic'] == '/dispatch/waypoints':
+                alive = True
+                break
+        if not alive:
+            _fail('node appears dead after malformed points '
+                  '(/dispatch/waypoints stopped)')
+        print('PASS ws malformed-point: node survived, waypoints still flowing')
 
     print('ALL WS SMOKE CHECKS PASSED')
 
