@@ -7,16 +7,23 @@
 #
 # Priority scheme (ADR-0007 §twist_mux 優先度):
 #   safety     100   failsafe_node zero-twist (highest wins)
-#   navigation  10   Nav2 controller_server (M6R-4)
-#   # teleop   50    manual /cmd_vel_teleop — RESERVED for M9 (physical
-#                    E-stop / remote-stop / on-chair emergency joystick
-#                    routing). Slot left open here so a future PR only
-#                    has to uncomment.
+#   teleop      50    manual /cmd_vel_teleop — iPad manual-rescue teleop
+#                     (feat/teleop-rescue, dispatch_node converts
+#                     /dispatch/teleop -> /cmd_vel_teleop). Sits BELOW safety
+#                     on purpose: the Layer-D pedestrian stop (and every other
+#                     failsafe layer) still wins over a manual command, so an
+#                     operator cannot override a person-detected halt. Sits
+#                     ABOVE navigation so a rescue command beats an ACTIVE Nav2
+#                     job without cancelling it first.
+#   navigation  10    Nav2 controller_server (M6R-4)
 #
 # Timeout 0.5 s per input: a publisher going silent for longer than this
 # is treated as "no longer commanding". failsafe_node publishes 20 Hz
 # ONLY while a layer is active, so silence on /cmd_vel_safety means
-# "safe, let nav pass through" — precisely the intent.
+# "safe, let nav pass through" — precisely the intent. For teleop the same
+# 0.5 s is the outermost dead-man: when the operator lifts a finger the UI
+# and dispatch_node both stop publishing, and this timeout drops the teleop
+# slot so nav (or a stopped bus) resumes even if those two failed.
 twist_mux:
   ros__parameters:
     topics:
@@ -24,11 +31,11 @@ twist_mux:
         topic: /cmd_vel_safety
         timeout: 0.5
         priority: 100
+      teleop:
+        topic: /cmd_vel_teleop
+        timeout: 0.5
+        priority: 50
       navigation:
         topic: /cmd_vel_nav
         timeout: 0.5
         priority: 10
-      # teleop:  # M9 slot — see priority comment above
-      #   topic: /cmd_vel_teleop
-      #   timeout: 0.5
-      #   priority: 50

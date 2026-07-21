@@ -141,6 +141,53 @@ select, button {
 button.cancel { background: #5a2222; border-color: #7a2f2f; }
 button.cancel:disabled { background: #2b2f36; border-color: #40454d; color: #6b7280; cursor: default; }
 
+/* Manual-rescue teleop panel. Kept visually distinct (amber accent) from the
+   dispatch controls so an operator does not confuse "drive it out by hand"
+   with "send it to a goal". */
+.teleop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  background: #23262b;
+  border: 1px solid #4a4320;
+  border-radius: 0.4rem;
+}
+.teleop-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+.teleop-title { font-size: 0.9rem; color: #ffe08a; }
+
+.teleop-toggle { background: #2b2f36; border-color: #4a4320; color: #ffe08a; }
+.teleop-toggle.on { background: #4a4320; border-color: #ffbe0b; color: #fff3c4; font-weight: 700; }
+.teleop-toggle:disabled { background: #2b2f36; border-color: #40454d; color: #6b7280; cursor: default; }
+
+/* Direction pad: forward on top, left/stop/right in a row, back on bottom. */
+.teleop-pad { display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch; }
+.teleop-row { display: flex; gap: 0.5rem; }
+.teleop-row .teleop-btn { flex: 1; }
+
+.teleop-btn {
+  font-size: 1.1rem;
+  padding: 0.9rem;
+  border-radius: 0.4rem;
+  border: 1px solid #40454d;
+  background: #2b2f36;
+  color: #e8e8e8;
+  cursor: pointer;
+  /* Dead-man reliability: kill touch scrolling / long-press callout / double-
+     tap zoom on the buttons so a held drag fires pointerup instead of being
+     swallowed by a browser gesture. Without this a slow drag can scroll the
+     page and the release event never reaches us. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.teleop-btn:active { background: #3a5a1c; border-color: #6aa62f; }
+.teleop-btn.stop { background: #5a2222; border-color: #7a2f2f; }
+.teleop-btn.stop:active { background: #7a2f2f; }
+
+.teleop-hint { margin: 0; font-size: 0.75rem; color: #a9b0ba; }
+
 .status {
   display: flex;
   flex-direction: column;

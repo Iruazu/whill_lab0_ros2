@@ -76,3 +76,31 @@ platform-pivot §3.5 は Web / タブレット UI と ROS 2 の間に `whill_dis
 - 将来: 方式 B/C (型付き interface / 独立ゲートウェイ API) へ移行する際は、
   `/plan` を含む可視化フィードを dispatch/ゲートウェイ側で束ねて再 publish し、
   Web の接触面を再び境界内に閉じる余地がある。今日はやらない。
+
+## 追補: 手動操縦 (救出用) を `/dispatch/teleop` として境界内に足す (feat/teleop-rescue, 2026-07-21)
+
+- 位置づけ: 本 ADR の方式 A に **新しいコマンド topic を 1 本追加**する追補。
+  `/plan` 追補が read-only の観測例外だったのに対し、これは操作コマンドなので
+  **境界の例外ではなく、境界内 (`/dispatch/*`) に正しく収める**。Status は変更
+  しない。iPad の手動操縦 UI (走行不可領域からの救出) と同時に起草。
+- 背景: 走行中に嵌まって停止した際、オペレータがターミナルを触らず iPad から
+  車椅子を脱出させ、その後目的地を再選択できるようにする。手動操縦は
+  `/cmd_vel` 系を叩くのが最短だが、行動規範 #4 と本 ADR の「Web は `/dispatch/*`
+  のみ」に反する。
+- 決定: Web→ROS に `/dispatch/teleop` (`std_msgs/String`, JSON) を追加する。
+  ペイロードは `{"active":bool}` (ON/OFF トグル) または `{"vx","wz"}` (motion)。
+  `dispatch_node` がこれを検証・クランプして `/cmd_vel_teleop`
+  (`geometry_msgs/Twist`) に変換し、twist_mux の teleop スロット (priority 50,
+  ADR-0007) に流す。**UI は `/cmd_vel*` を一切触らない** — String→Twist 変換を
+  dispatch 側に置くことで操作境界を `/dispatch/*` に保つ。
+- 状態: 手動 ON/OFF は dispatch が保持し `/dispatch/state` の `teleop_active`
+  (bool) で返す。実駆動のゲートは dead-man (指を離す/無通信で停止) であり、
+  `teleop_active` は UI のボタン有効化と見た目のためのフラグ。
+- untrusted 入力: `/dispatch/submit` の `_parse_point` と同じ堅牢性。非 dict /
+  非数値 / 非有限を drop、vx/wz を安全上限 (0.3 / 0.6) にクランプ。方式 A が
+  「型検査を README + ランタイム検証に移す」と決めた通り、dispatch 側で弾く。
+- 制約: この追補は `/dispatch/teleop` の 1 本に限る。Web から Nav2 の
+  action・service・`/cmd_vel*` を直接触る禁止は不変 (`/cmd_vel_teleop` は
+  dispatch が publish する ROS 内部 topic であって Web の接触面ではない)。
+- 将来: 方式 B/C へ移行する際は teleop も型付き interface 化の対象。認証が載る
+  段階では「無人車への遠隔手動操縦」の権限管理をここで再評価する。

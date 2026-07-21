@@ -528,3 +528,70 @@ draft の 5 点は「±30° = 120 beam のうち人 @ 2 m が ≈ 30 beam を返
 4. **`scripts/m6r_preflight.sh` が field で exit 0 を返す**。DEAD INPUT
    watchdog が正常に叫ぶことは意図的な QoS mismatch 注入で verify
    (post-demo 可)
+
+## teleop スロット有効化 (feat/teleop-rescue, 2026-07-21 追記)
+
+### 決定
+
+§Decision §4 が「M9 で teleop を追加する場合 priority: 50 想定」として
+コメントで予約していた twist_mux の teleop スロットを **有効化**する。
+用途は iPad からの手動操縦 (救出用): 走行不可領域で停止した際にオペレータが
+Web UI から車椅子を脱出させる。`config/twist_mux.yaml` は予約コメントを外して
+`topic: /cmd_vel_teleop`, `timeout: 0.5`, `priority: 50` を実スロット化した。
+
+指令元は `whill_dispatch`。Web は ADR-0012 の境界 (`/dispatch/*` のみ) を保つため
+`/cmd_vel_teleop` を直接叩かず、`/dispatch/teleop` (JSON) を publish し、
+`dispatch_node` が String→Twist 変換して `/cmd_vel_teleop` に流す。
+
+### 優先度の含意 (安全上の要)
+
+priority 50 は **safety(100) の下、navigation(10) の上**。この順序自体が安全
+機構であり、追加のロジックは要らない:
+
+- safety > teleop: Layer A-D のいずれかが発火して `/cmd_vel_safety` に zero を
+  出している間は、手動操縦指令があっても twist_mux が safety を通す。つまり
+  **手動操縦中でも Layer D の前方歩行者停止は生きたまま**で、オペレータが人へ
+  向けて操作しても止まる。teleop 側で何も実装しなくても「自動的に成立」する
+- teleop > navigation: 救出時、配車ジョブが ACTIVE でも手動が勝つ。ジョブを
+  先にキャンセルする必要がない。救出後は手動 OFF + 目的地再選択で配車再開
+
+### dead-man の三重化
+
+手動操縦は「ボタンを押している間だけ動く」。指を離す/通信が切れると止まる:
+
+1. UI: `pointerup`/`pointercancel`/ページ非表示で ~10 Hz ストリームを止め zero を
+   1 発。pointer capture で指がボタン外/画面外に出ても release を取りこぼさない
+2. dispatch watchdog: 最後の指令から `0.4 s` 無通信でストリーム中なら zero 1 発 +
+   publish 停止 (UI の停止漏れ = フリーズタブ・通信瞬断の保険)
+3. twist_mux timeout: teleop スロットの `0.5 s` timeout。dispatch が沈黙すれば
+   スロットが失効し navigation (or 停止) に戻る
+
+三段とも独立に「無通信 → 停止」へ倒れるので、どれか一段が失敗しても停止する。
+
+### 検証 (2026-07-21, mock)
+
+- `/dispatch/teleop {"vx":0.2,"wz":0.0}` → `/cmd_vel_teleop` に Twist、送信停止
+  0.4 s 後に watchdog zero + 沈黙を確認
+- クランプ: `{"vx":99,"wz":-99}` → 0.3 / -0.6。`{"vx":"nan"}` / 非 dict / `[1,2]`
+  / `{}` でノード無墜落
+- twist_mux: yaml で teleop スロットが topics に出る (priority 50, timeout 0.5,
+  `/cmd_vel_teleop` を subscribe)
+- Web E2E: headless Chrome + rosbridge + dispatch で手動トグル ON → 前進押下で
+  `/dispatch/teleop` に 10 Hz、離すと zero 1 発、OFF で `{"active":false}`。
+  `/cmd_vel_teleop` に前進 Twist + 三重 dead-man の zero を観測、JS 例外なし
+
+### 実機バックログ (明日, feat/teleop-rescue)
+
+mock では確認できない以下は実機に送る:
+
+- 救出フロー全体 (嵌まり → 手動脱出 → OFF → 目的地再選択 → 配車再開)
+- dead-man の指離し実挙動 (実際の駆動停止レイテンシ)
+- **Layer D 優先の維持**: 手動操縦中に人を前方に立たせ、safety(100) が teleop(50)
+  を上書きして停止することの実測 (V2 相当条件の手動操縦版)
+
+### 復元/後続
+
+- 本追記は §Decision §4 の teleop 行を実装に落としたもの。優先度・timeout は
+  §Decision の想定値どおりで、設計変更ではない
+- M9 の物理 E-stop / 遠隔停止は引き続き A 層の別チャネルとして追加する余地を残す
+  (本 teleop は「救出のための能動操作」であって「緊急停止」ではない)
