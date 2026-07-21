@@ -124,5 +124,21 @@ subscription already used `qos_profile_sensor_data`.
    (the pointcloud_to_laserscan comment already documents 0.5 m as
    the real self-return radius).
 
+## Recalibration 2026-07-19 (field): `FORWARD_POINT_COUNT_MIN` 5 → 3 → 1
+
+The draft value of 5 came from beam-count arithmetic (a person at 2 m
+spans ≈ 30 of the 120 beams in the ±30° sector) that field data
+contradicted twice. First 5 → 3 (`eae455f`): ADR-0009's A/B run showed
+a person's legs return only ~4 points, so 5 never latched on a single
+pedestrian and engagement flickered (0-108 msg over a 10 s window).
+Then 3 → 1 (`4f90858`): a band_probe capture (149 scans) showed >= 3
+in-band points in only 6/149 scans even with a person standing inside
+the band — the current /scan (129 bins) is far sparser than the
+arithmetic assumed. Current behavior: any single in-band point trips
+the gate, released by the existing 0.5 s clear hysteresis. More
+spurious stops are accepted as the safe direction for an accompanied
+demo. The root cause of the sparse /scan is tracked in #102; revisit
+the threshold once resolved.
+
 Full narrative and the Japanese version's post-demo backlog are in
 [`../../ja/decisions/0007-failsafe-design.md`](../../ja/decisions/0007-failsafe-design.md).
