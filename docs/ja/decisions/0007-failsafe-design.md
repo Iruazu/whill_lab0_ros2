@@ -280,7 +280,10 @@ cleaned map の 3 条件を満たしていても停止しない事象を確認�
 と同居する自然な拡張。cmd_vel ゲートは Nav2 の内部状態と独立に働く
 ため確実。
 
-**購読**: `/scan` (`sensor_msgs/LaserScan`, reliable QoS, ~10 Hz)。
+**購読**: `/scan` (`sensor_msgs/LaserScan`, `qos_profile_sensor_data`,
+~10 Hz。当初 draft は reliable だったが p2ls の best-effort publish と
+非互換で 1 msg も届かない事故を起こした — 下記 Incident 2026-07-16 の
+Fix 1 で変更)。
 p2ls_node の出力なので frame は `base_link`、angle は +x 前方の 0
 基準。追加 subscription 1 本のみ (existing PointCloud2 layer C とは
 別 topic)。
@@ -290,9 +293,9 @@ p2ls_node の出力なので frame は `base_link`、angle は +x 前方の 0
 | パラメータ | 値 | 根拠 |
 |-----------|-----|------|
 | `FORWARD_SECTOR_HALF_ANGLE_RAD` | 30° | WHILL 幅 0.6 m を 1.15 m 距離でカバー。cone 60° は反応の必要な前方視野に十分 |
-| `FORWARD_SECTOR_MIN_M` | 0.5 m | p2ls `range_min` と一致、WHILL 車体上面の自己反射を除外 |
+| `FORWARD_SECTOR_MIN_M` | 1.0 m | Patchwork++ `min_range: 1.0` と一致 (当初 draft 0.5 は Incident Fix 4 で変更。0.5-1.0 m の点は上流が self-return として捨てるため /scan に元々来ない) |
 | `FORWARD_SECTOR_MAX_M` | 2.0 m | `desired_linear_vel = 0.3 m/s` で 6.7 s 反応余裕。velocity_smoother `max_decel = 0.5 m/s²` で停止距離 0.09 m ≪ 2.0 m |
-| `FORWARD_POINT_COUNT_MIN` | 5 点 | /scan `angle_increment = 0.5°` で ±30° = 120 beam、人 0.5 m 幅 @ 2 m ≈ 15° = 30 beam、5 点はその 1/6 で単発 ghost では発火しない |
+| `FORWARD_POINT_COUNT_MIN` | 1 点 | 当初 draft 5 点の机上計算 (±30° = 120 beam、人 @ 2 m ≈ 30 beam) は実測と不整合だった。下記「較正 (2026-07-19 field)」参照 |
 | `FORWARD_CLEAR_HYSTERESIS_S` | 0.5 s | 10 Hz scan の 5 連続クリアで解放、Layer A の再ラッチ方式と同構造。瞬断で ON/OFF 振動しない |
 
 **発火 / 解放パターン** (Layer A の再ラッチ方式と同):
@@ -484,6 +487,22 @@ Patchwork++ の `min_range: 1.0` に一致させる。従来 draft は 0.5 だ�
 `FORWARD_SECTOR_MIN_M` の値ではない。0.5-1.0 m でも人検知したい場合は
 **Patchwork++ min_range を 0.5 に下げる** 変更が本筋 (post-demo、下記
 backlog)。
+
+### 較正 (2026-07-19 field): `FORWARD_POINT_COUNT_MIN` 5 → 3 → 1
+
+draft の 5 点は「±30° = 120 beam のうち人 @ 2 m が ≈ 30 beam を返す」
+という机上計算に基づいていたが、field 実測で 2 段階崩れた:
+
+1. **5 → 3** (`eae455f`): ADR-0009 の A/B 実測は「人の脚 ~4 点」。
+   閾値 5 では脚しか見えない距離帯で単独歩行者に届かず、engagement が
+   フリッカーする (2026-07-19 field 実測: 10 s 窓で 0-108 msg と不安定)。
+2. **3 → 1** (`4f90858`): band_probe 実測 (149 scan) で、人が帯内に
+   立っても >= 3 点になるのは 6/149 のみ。現行 /scan (129 bin) では
+   ADR-0009 の「脚 ~4 点」自体が成立せず、閾値 3 でもフリッカーする。
+
+現行値は **1 点即遮断** + 既存 0.5 s ヒステリシス解除。不要停止は増え
+得るが、並走 demo では安全側に倒す判断。/scan が机上計算より疎である
+根本原因は #102 で追跡する (解消したら閾値を引き上げ再評価)。
 
 ### Post-demo backlog
 
