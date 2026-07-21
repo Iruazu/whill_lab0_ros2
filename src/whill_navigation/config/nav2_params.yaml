@@ -106,8 +106,16 @@ controller_server:
 
     general_goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
-      xy_goal_tolerance: 0.25        # ~ half the chair's width — anything tighter risks the goal-checker oscillating.
-      yaw_goal_tolerance: 0.5
+      # 2026-07-21 field: 7号館前で goal 手前 0.30m・yaw ずれ 66° のまま、
+      # その場で右回転左回転を 40s 繰り返した (前進 4%、angular.z 15回反転)。
+      # 位置は 0.25m を僅かに超え、かつ向きも合わず、「位置微修正 → 行き過ぎ →
+      # 逆回転 → また位置合わせ」の終端振動に陥っていた。配車は「その地点に
+      # 十分近づけば到着」で足り、到着時の向きは指定しない (任意地点配車も
+      # yaw=0 固定で送っている)。そこで:
+      #  - xy を 0.25 → 0.5 に緩め、あと数 cm を詰める微修正を止める
+      #  - yaw を実質不問 (π) にし、終端の rotate-to-heading 振動を根絶する
+      xy_goal_tolerance: 0.5
+      yaw_goal_tolerance: 3.15
       stateful: true
 
     FollowPath:
