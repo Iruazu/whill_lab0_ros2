@@ -235,16 +235,20 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # 3.0 → 6.0 (2026-07-20 field, bag 解析). start/goal はともに道路中央
-        # より右 1m 前後に定義されているのに、NavFn 経路は道路左端 1.2m まで
-        # 膨らんで直進し goal 手前で右へ戻っていた (実走軌跡: 左端まで1.2-1.5m
-        # /右端まで3.5-3.8m)。原因は inflation の緩やかなコスト勾配で、右側
-        # 障害物から逃げて左の低コスト帯へ経路が寄っていた。cost_scaling_factor
-        # を上げるとコスト減衰が急になり、壁からわずかに離れれば低コストになる
-        # ため経路が最短(中央〜右寄り)へ戻る。効果不足なら 10.0 まで上げる。
-        cost_scaling_factor: 6.0
-        # 0.5 → 0.4 (2026-07-20). global と揃える。狭路対策。footprint 判定は別。
-        inflation_radius: 0.4
+        # 経緯: 3.0 (初期) → 6.0 (07-20, 左偏り是正) → 4.0 (07-21, 端クリアランス)。
+        # 07-21 field: cost_scaling 6.0 + inflation_radius 0.4 の組合せで NavFn
+        # 経路が走行可能域の端まで最小 0.25m しか離れず (robot_radius 0.45 未満)、
+        # 路面端付近の goal で「余裕なし」と判定され abort した。原因は
+        # (a) inflation_radius 0.4 < robot_radius 0.45 で、障害物 0.4-0.45m の
+        # 帯が「inflation コスト無しだが車体は当たる」死角になっていた、
+        # (b) cost_scaling 6.0 の急勾配で端近傍もすぐ低コスト化し最短経路が端を
+        # 這った。→ cost_scaling を 4.0 に下げてコストの丘を広げ経路を中央寄りに。
+        # 6.0 で直した左偏りが部分再燃しうるが、左偏りは見た目、端這いは abort
+        # という機能障害なので後者を優先。左偏りは実機で再確認。
+        cost_scaling_factor: 4.0
+        # 0.4 → 0.6 (07-21). robot_radius 0.45 を超えるまで拡げ、footprint が
+        # inflation 帯に完全に収まる + マージン。経路が端から離れる主因。
+        inflation_radius: 0.6
 
 global_costmap:
   global_costmap:
@@ -271,14 +275,10 @@ global_costmap:
         map_subscribe_transient_local: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # global と揃える (3.0 → 6.0, 2026-07-20)。start/goal 右寄りに対し
-        # 経路が道路左端へ膨らむ左偏りを是正。
-        cost_scaling_factor: 6.0
-        # 0.5 → 0.4 (2026-07-20 field). 狭い 7号館前で inflation の膨らみが
-        # 道幅を塞いでいたため縮める。robot_radius 0.45 の footprint 衝突判定
-        # は別に効くので物理接触はしない。0.4 は robot_radius をわずかに下回る
-        # 程度に留め、障害物脇の擦り寄りリスクを抑えた保守値。
-        inflation_radius: 0.4
+        # global と同値 (3.0→6.0→4.0)。経路計画は global 側だが local も揃える。
+        cost_scaling_factor: 4.0
+        # global と同値 (0.5→0.4→0.6, 07-21)。端クリアランス確保。詳細は global 側。
+        inflation_radius: 0.6
 
 map_server:
   ros__parameters:
