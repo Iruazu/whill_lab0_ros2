@@ -179,6 +179,25 @@ def _resolve_map_yaml(context):
         params = yaml.safe_load(f)
     params['map_server']['ros__parameters']['yaml_filename'] = map_yaml
 
+    # speed:=slow|normal|fast で前進速度上限を現地選択 (2026-07-20 准教授 FB
+    # 「2-3段階速く」)。上限 (desired_linear_vel と velocity_smoother の vx) のみ
+    # 引き上げ、accel/decel は据え置く。理由: 通常の減速を固くすると搭乗者の
+    # 乗り心地が悪化する (急停止)。人が飛び出した緊急停止は Layer D
+    # (whill_safety) が cmd_vel を即遮断して担保するので、通常走行は滑らかな
+    # まま最高速だけ上げる、という分離。値は段階的 A/B 用 (現地で slow→fast)。
+    # slow=0.3 は従来値なので既定は無改変 (回帰なし)。
+    speed = LaunchConfiguration('speed').perform(context)
+    speed_caps = {'slow': 0.30, 'normal': 0.45, 'fast': 0.60}
+    if speed not in speed_caps:
+        raise RuntimeError(
+            f'nav_launch: speed={speed!r} は無効。slow|normal|fast のいずれか。')
+    vx = speed_caps[speed]
+    fp = params['controller_server']['ros__parameters']['FollowPath']
+    fp['desired_linear_vel'] = vx
+    # velocity_smoother の前進上限 (vx) も揃える。vyaw/vy は不変。
+    vs = params['velocity_smoother']['ros__parameters']
+    vs['max_velocity'] = [vx, vs['max_velocity'][1], vs['max_velocity'][2]]
+
     tmp = tempfile.NamedTemporaryFile(
         prefix='whill_nav2_params_',
         suffix='.yaml',
@@ -319,6 +338,14 @@ def generate_launch_description():
                         'scripts/clean_isolated_occupancy.py. Any other '
                         'value selects occupancy_<value>.yaml if that '
                         'sibling file exists.'),
+
+        DeclareLaunchArgument(
+            'speed',
+            default_value='slow',
+            description='前進速度上限. slow=0.30 (従来値・既定), '
+                        'normal=0.45, fast=0.60 m/s. 上限のみ変更し accel/decel '
+                        'は据え置く (通常減速は滑らか、緊急停止は Layer D 担当)。'
+                        '現地で段階的に上げて各段の停止性能を実測すること。'),
 
         # No localization include. m6r_bringup_launch.py (whill_safety,
         # M6R-2) is expected to be running in parallel and publishes
