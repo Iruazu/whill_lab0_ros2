@@ -28,8 +28,9 @@ Interface decision: [ADR-0012](../../docs/decisions/0012-dispatch-web-interface.
 | dir | name | type | payload |
 |-----|------|------|---------|
 | Web→ROS | `/dispatch/submit` (topic) | `std_msgs/String` | JSON, one of two goal forms (below) |
+| Web→ROS | `/dispatch/teleop` (topic) | `std_msgs/String` | JSON `{"active":bool}` (toggle) or `{"vx":<m/s>,"wz":<rad/s>}` (motion) |
 | Web→ROS | `/dispatch/cancel` (service) | `std_srvs/Trigger` | cancel the active job |
-| ROS→Web | `/dispatch/state` (topic, 5 Hz) | `std_msgs/String` | JSON `{job_id,phase,waypoint,progress,queue_len,pose,aligned}` |
+| ROS→Web | `/dispatch/state` (topic, 5 Hz) | `std_msgs/String` | JSON `{job_id,phase,waypoint,progress,queue_len,pose,aligned,teleop_active}` |
 | ROS→Web | `/dispatch/waypoints` (topic, 1 Hz) | `std_msgs/String` | JSON `[{name,label,x,y,yaw}]` |
 
 `/dispatch/submit` carries exactly one of two goal forms (`type` is
@@ -63,6 +64,58 @@ subscribes volatile, so periodic resend makes UI attach order irrelevant.
 phase changes, so a short-lived QUEUED is never dropped between two 5 Hz
 samples. `type` is carried through but `goto` and `recall` behave
 identically today (the branch is for post-demo work).
+
+## Manual-rescue teleop (feat/teleop-rescue)
+
+> ⚠ **未検証の安全ゲート (2026-07-21)**: 本機能の核心的な安全保証
+> 「手動操縦中に Layer D (前方歩行者検知) が発火したら safety(100) が
+> teleop(50) を上書きして停止する」は **実機未検証**。mock は robot 無しで
+> twist_mux の3スロット同時調停を確認できない。**実機で「手動操縦中に前方へ
+> 人を立たせ停止する」を確認するまで、手動操縦は監督者同伴でのみ使用すること。**
+> 検証 pass 後に本注記と ADR-0007/0012 の Status を更新する。
+
+When the chair stalls in a spot Nav2 cannot plan out of, an operator drives it
+free from the iPad, then re-picks a goal — no terminal. To keep the Web side on
+`/dispatch/*` only (ADR-0012), the UI never publishes `/cmd_vel*`: it publishes
+`/dispatch/teleop` and `dispatch_node` does the String→Twist conversion into
+`/cmd_vel_teleop`, which `twist_mux` arbitrates at **priority 50** (ADR-0007:
+safety 100 > teleop 50 > nav 10).
+
+`/dispatch/teleop` carries one of two JSON shapes:
+
+- `{"active":true|false}` — manual-rescue mode ON/OFF. Explicit toggle, **OFF
+  is default** (誤操作防止). Only literal boolean `true` enables; anything else
+  disables (safe bias). The state is echoed back as `teleop_active` in
+  `/dispatch/state`, which drives the UI's direction-button enable.
+- `{"vx":<m/s>,"wz":<rad/s>}` — a motion command. Honored only while manual
+  mode is active, and **clamped** to `|vx| ≤ 0.3` m/s, `|wz| ≤ 0.6` rad/s
+  (`TELEOP_*_MAX`). The UI sends a fixed low rescue speed (0.2 / 0.4); the
+  clamp bounds untrusted browser input the same way `_parse_point` does — a
+  non-dict / non-numeric / non-finite / out-of-range value is dropped or
+  clamped, never crashes the node or emits a NaN twist.
+
+`teleop_active` is the toggle state, **not** "the chair is moving": with manual
+mode ON but no button held, the dead-man keeps `/cmd_vel_teleop` silent and the
+chair stays put. Motion happens only while commands keep arriving.
+
+**dead-man, three layers** (a command stream that stops must brake the chair):
+
+1. UI finger-up — on `pointerup`/`pointercancel` (and page hide/blur) the UI
+   stops the ~10 Hz stream and sends one zero twist. Pointer capture makes the
+   release fire even if the finger slides off the button or off-screen.
+2. dispatch watchdog — if no teleop command arrives for `TELEOP_WATCHDOG_S =
+   0.4 s` while a stream is live, `dispatch_node` sends one zero and goes
+   silent (covers a UI that failed to send its zero: frozen tab, dropped link).
+3. twist_mux timeout — the teleop slot has `timeout: 0.5 s`; once dispatch goes
+   silent the mux drops teleop and navigation (or a stopped bus) resumes.
+
+**Safety interaction (unchanged by design):** the Layer-D pedestrian stop, and
+every other failsafe layer, publish `/cmd_vel_safety` at priority 100 > teleop
+50, so a manual command can never drive the chair through a detected person or
+a diverged localizer. Nothing in the teleop path enforces this — it falls out
+of the twist_mux priority order. During rescue with an ACTIVE Nav2 job, teleop
+50 > nav 10 means the manual command wins without cancelling the job; after
+rescue, toggle OFF and re-submit a goal (existing flow) to resume dispatch.
 
 ## What dispatch_launch.py launches
 
@@ -139,6 +192,12 @@ ros2 topic pub --once /dispatch/submit std_msgs/String \
   '{data: "{\"waypoint\":\"gate\",\"type\":\"goto\"}"}'
 ros2 topic echo /dispatch/state          # phase walk + progress
 ros2 service call /dispatch/cancel std_srvs/srv/Trigger
+
+# teleop: enable, then a motion command shows up as a Twist on /cmd_vel_teleop;
+# stop sending and ~0.4 s later the watchdog emits one zero and goes silent.
+ros2 topic echo /cmd_vel_teleop &        # watch the converted Twist
+ros2 topic pub --once /dispatch/teleop std_msgs/String '{data: "{\"active\":true}"}'
+ros2 topic pub --once /dispatch/teleop std_msgs/String '{data: "{\"vx\":0.2,\"wz\":0.0}"}'
 ```
 
 Websocket E2E (same protocol the browser uses, headless, dependency-free):

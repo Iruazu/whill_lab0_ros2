@@ -19,9 +19,18 @@ standard-typed (JSON-over-std_msgs/String + std_srvs/Trigger, ADR-0012
 choice A — no custom rosidl interface for the demo):
 
   Web -> ROS  /dispatch/submit  (String)  JSON {"waypoint"|"point","type"}
+  Web -> ROS  /dispatch/teleop  (String)  JSON {"active"} | {"vx","wz"}
   Web -> ROS  /dispatch/cancel  (Trigger)
   ROS -> Web  /dispatch/state   (String, 5 Hz)   JSON snapshot
   ROS -> Web  /dispatch/waypoints (String, 1 Hz) JSON list
+
+The one ROS-internal topic dispatch publishes is /cmd_vel_teleop
+(geometry_msgs/Twist), the String->Twist conversion of /dispatch/teleop into
+twist_mux's teleop slot (priority 50, feat/teleop-rescue). Keeping that
+conversion here — not in the browser — is what lets the Web side stay on
+/dispatch/* only and never touch /cmd_vel* (ADR-0012). See the teleop section
+below for the dead-man design (UI finger-up zero + dispatch watchdog +
+twist_mux 0.5 s timeout).
 
 Both ROS->Web topics are re-published on a timer rather than latched:
 roslibjs subscribes volatile by default and would miss a transient_local
@@ -53,7 +62,7 @@ from rclpy.signals import SignalHandlerOptions
 
 from action_msgs.msg import GoalStatus
 from diagnostic_msgs.msg import DiagnosticArray
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
@@ -67,6 +76,33 @@ PHASE_ACTIVE = 'ACTIVE'
 PHASE_SUCCEEDED = 'SUCCEEDED'
 PHASE_ABORTED = 'ABORTED'
 PHASE_CANCELED = 'CANCELED'
+
+# Manual-rescue teleop (feat/teleop-rescue). The iPad UI drives the chair out
+# of a stuck spot through /dispatch/teleop; dispatch converts that to
+# /cmd_vel_teleop, which twist_mux arbitrates at priority 50 (safety 100 >
+# teleop 50 > nav 10, ADR-0007). The Layer-D pedestrian stop therefore still
+# wins over a manual command — nothing here needs to enforce that, it falls out
+# of the priority order.
+#
+# TELEOP_*_MAX are the clamp ceilings applied to untrusted browser input, NOT
+# the nominal speed: the UI sends a fixed low speed (~0.2 m/s / 0.4 rad/s) for
+# rescue. A payload asking for 99 m/s is clamped here, never forwarded raw.
+TELEOP_VX_MAX = 0.3   # m/s
+TELEOP_WZ_MAX = 0.6   # rad/s
+# dead-man backup #2: if no teleop command arrives for this long while a stream
+# is live, dispatch sends one zero-twist and goes silent. Kept below twist_mux's
+# 0.5 s input timeout so dispatch brakes the chair *before* the mux would drop
+# the slot — the two together mean a browser that stops sending (finger lifted,
+# tab frozen, Wi-Fi glitch) cannot leave a stale non-zero teleop command latched.
+TELEOP_WATCHDOG_S = 0.4
+TELEOP_WATCHDOG_HZ = 20.0
+# Idle auto-OFF: separate from the 0.4 s motion watchdog above (which only
+# stops the *stream* between button presses). After this long with NO teleop
+# command at all, drop `_teleop_active` back to False so a reconnect or a new
+# device opening the page does not inherit an ON pad it never toggled — the
+# "OFF by default, explicit-toggle-only" safety bias must survive a dropout.
+# Long enough not to fight normal rescue (frequent button taps keep it alive).
+TELEOP_IDLE_OFF_S = 20.0
 
 
 def _yaw_to_quat(yaw):
@@ -118,15 +154,34 @@ class DispatchNode(Node):
         self._pose = None          # dict {x, y, yaw} or None until first msg
         self._aligned = None       # bool or None until first /alignment_status
 
+        # Manual-rescue teleop state. `_teleop_active` is the explicit ON/OFF
+        # toggle (OFF is default — 誤操作防止); it only gates whether motion
+        # commands are honored and drives the UI's button-enable, NOT whether
+        # the chair moves. The actual motion gate is the dead-man: motion
+        # happens only while browser commands keep arriving. `_teleop_streaming`
+        # tracks whether we are currently forwarding a command stream, so the
+        # watchdog sends exactly one stop-zero on release rather than spamming.
+        self._teleop_active = False
+        self._teleop_streaming = False
+        self._teleop_last_cmd_time = None   # rclpy Time of last motion command
+
         # QoS note: default (reliable, volatile) on every /dispatch/* pub.
         # roslibjs speaks volatile; the periodic resend below (not latching)
         # is what makes late subscribers catch up.
         self._state_pub = self.create_publisher(String, '/dispatch/state', 10)
         self._waypoints_pub = self.create_publisher(
             String, '/dispatch/waypoints', 10)
+        # /cmd_vel_teleop feeds twist_mux's teleop slot (priority 50). The Web
+        # UI never publishes /cmd_vel* itself (ADR-0012 boundary); dispatch does
+        # the String->Twist conversion here so the mux slot stays fed from
+        # inside the /dispatch/* boundary.
+        self._cmd_vel_teleop_pub = self.create_publisher(
+            Twist, '/cmd_vel_teleop', 10)
 
         self.create_subscription(
             String, '/dispatch/submit', self._on_submit, 10)
+        self.create_subscription(
+            String, '/dispatch/teleop', self._on_teleop, 10)
         self.create_subscription(
             PoseWithCovarianceStamped, '/pcl_pose', self._on_pcl_pose, 10)
         self.create_subscription(
@@ -144,6 +199,7 @@ class DispatchNode(Node):
         # submit and on job completion), so a queued job would stall forever.
         self._server_was_missing = False
         self.create_timer(1.0, self._retry_start)
+        self.create_timer(1.0 / TELEOP_WATCHDOG_HZ, self._teleop_watchdog)
 
         self.get_logger().info(
             f'dispatch_node ready: {len(self._waypoints)} waypoint(s) from '
@@ -414,6 +470,141 @@ class DispatchNode(Node):
         response.message = f'cancel sent for job {job_id}'
         return response
 
+    # --- manual-rescue teleop --------------------------------------------
+
+    def _on_teleop(self, msg):
+        """Turn a /dispatch/teleop command into /cmd_vel_teleop (or a toggle).
+
+        Two payload shapes cross the boundary, both JSON-over-String so the
+        Web side stays inside /dispatch/* (ADR-0012):
+
+          {"active": true|false}       manual-rescue mode ON/OFF. Explicit
+                                       toggle, OFF is default (誤操作防止).
+                                       Only literal boolean true enables;
+                                       anything else disables (safe bias).
+          {"vx": <m/s>, "wz": <rad/s>} a motion command. Honored only while
+                                       manual mode is active, clamped to the
+                                       rescue ceilings. The *absence* of these
+                                       commands is dead-man #1 (see
+                                       _teleop_watchdog).
+
+        Runs on untrusted browser input, so it never raises — same robustness
+        bar as _on_submit / _parse_point.
+        """
+        try:
+            req = json.loads(msg.data)
+        except (json.JSONDecodeError, TypeError) as e:
+            self.get_logger().warn(f'ignoring malformed teleop {msg.data!r}: {e}')
+            return
+        if not isinstance(req, dict):
+            self.get_logger().warn(
+                f'ignoring teleop payload that is not a JSON object: '
+                f'{msg.data!r}')
+            return
+
+        if 'active' in req:
+            # `is True` (not bool()) on purpose: bool("false") is True, and a
+            # hand-typed {"active":"false"} must not silently arm teleop. Only
+            # the browser's real JSON boolean true enables; all else -> OFF.
+            self._set_teleop_active(req['active'] is True)
+
+        if 'vx' not in req and 'wz' not in req:
+            return  # a pure toggle (or empty) payload — nothing to drive
+
+        cmd = self._parse_teleop(req)
+        if cmd is None:
+            self.get_logger().warn(f'ignoring invalid teleop command {msg.data!r}')
+            return
+        if not self._teleop_active:
+            # A motion command while manual mode is OFF is dropped, not driven:
+            # the toggle is the 誤操作防止 gate. The UI only enables the
+            # direction buttons while ON, so this normally never fires — it is
+            # the guard for a stray or hand-crafted payload.
+            self.get_logger().warn(
+                'dropping teleop motion while manual mode is OFF',
+                throttle_duration_sec=2.0)
+            return
+
+        vx, wz = cmd
+        t = Twist()
+        t.linear.x = vx
+        t.angular.z = wz
+        self._cmd_vel_teleop_pub.publish(t)
+        self._teleop_last_cmd_time = self.get_clock().now()
+        self._teleop_streaming = True
+
+    def _parse_teleop(self, raw):
+        """Validate a teleop motion payload into clamped (vx, wz) or None.
+
+        Same untrusted-input contract as _parse_point: a non-dict, missing/
+        non-numeric vx or wz, or a non-finite value returns None so the caller
+        drops the command instead of the node crashing or emitting a NaN twist
+        onto /cmd_vel_teleop. Finite values are clamped to the rescue ceilings.
+        """
+        if not isinstance(raw, dict):
+            return None
+        try:
+            vx = float(raw['vx'])
+            wz = float(raw['wz'])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if not (math.isfinite(vx) and math.isfinite(wz)):
+            return None
+        vx = max(-TELEOP_VX_MAX, min(TELEOP_VX_MAX, vx))
+        wz = max(-TELEOP_WZ_MAX, min(TELEOP_WZ_MAX, wz))
+        return vx, wz
+
+    def _set_teleop_active(self, active):
+        if active == self._teleop_active:
+            return
+        self._teleop_active = active
+        if active:
+            # Start the idle-OFF clock from the ON moment so a pad toggled on
+            # but never driven still auto-OFFs after TELEOP_IDLE_OFF_S (SF-2).
+            self._teleop_last_cmd_time = self.get_clock().now()
+        if not active:
+            # Turning manual mode OFF must brake now and release the slot: one
+            # zero-twist, then go silent so twist_mux's 0.5 s timeout drops
+            # teleop and navigation (priority 10) or a stopped bus resumes.
+            self._stop_teleop()
+        self.get_logger().info(f'teleop {"ENABLED" if active else "DISABLED"}')
+        # Reflect the toggle in /dispatch/state immediately rather than waiting
+        # up to 1/state_rate, so the UI's button-enable tracks the truth.
+        self._publish_state()
+
+    def _stop_teleop(self):
+        """Send one zero-twist and stop the teleop publish stream.
+
+        Called on manual-mode OFF and by the watchdog when browser commands
+        stop arriving. The single zero brakes the chair immediately; going
+        silent afterwards lets twist_mux's 0.5 s timeout release the teleop
+        slot. Idempotent-ish: only ever emits when a stream was live, so it
+        does not spam zeros every watchdog tick.
+        """
+        self._cmd_vel_teleop_pub.publish(Twist())
+        self._teleop_streaming = False
+
+    def _teleop_watchdog(self):
+        # dead-man #2. The UI sends a zero on finger-up (dead-man #1); this
+        # covers the case where that zero never arrives (tab frozen, Wi-Fi
+        # glitch, crash). Fires once per release — _stop_teleop clears
+        # _teleop_streaming so we do not re-enter until the next command stream.
+        if self._teleop_last_cmd_time is None:
+            return
+        dt = (self.get_clock().now()
+              - self._teleop_last_cmd_time).nanoseconds * 1e-9
+        if self._teleop_streaming and dt > TELEOP_WATCHDOG_S:
+            self.get_logger().warn(
+                f'teleop watchdog: no command for {dt:.2f}s '
+                f'(> {TELEOP_WATCHDOG_S}s) — stopping')
+            self._stop_teleop()
+        # Idle auto-OFF (SF-2): after prolonged silence, clear the ON flag so a
+        # reconnect does not inherit a manual-mode pad nobody toggled on.
+        if self._teleop_active and dt > TELEOP_IDLE_OFF_S:
+            self.get_logger().info(
+                f'teleop idle {dt:.0f}s (> {TELEOP_IDLE_OFF_S}s) — auto OFF')
+            self._set_teleop_active(False)
+
     # --- (d) vehicle-state publish ---------------------------------------
 
     def _on_pcl_pose(self, msg):
@@ -454,6 +645,11 @@ class DispatchNode(Node):
             'queue_len': len(self._queue),
             'pose': self._pose,
             'aligned': self._aligned,
+            # Manual-rescue toggle state — drives the UI's direction-button
+            # enable. Note this is NOT "the chair is moving": with teleop
+            # active but no button held, the dead-man keeps /cmd_vel_teleop
+            # silent and the chair stays put.
+            'teleop_active': self._teleop_active,
         }
         self._state_pub.publish(String(data=json.dumps(snapshot)))
 

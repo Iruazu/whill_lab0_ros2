@@ -61,6 +61,30 @@
         <button id="cancel-btn" class="cancel" disabled>キャンセル</button>
       </div>
 
+      <!-- Manual-rescue teleop (feat/teleop-rescue). OFF by default; the
+           toggle asks dispatch to flip /dispatch/state.teleop_active, and the
+           direction pad below is shown only while that reports ON. Each
+           direction button is dead-man: it streams a command at ~10 Hz only
+           while held (app.js pointer handlers) and sends one zero on release.
+           Layer-D pedestrian stop still overrides (twist_mux safety > teleop),
+           so this cannot drive through a detected person. -->
+      <div class="teleop">
+        <div class="teleop-head">
+          <span class="teleop-title">手動操縦（救出用）</span>
+          <button id="teleop-toggle" class="teleop-toggle" disabled>手動操縦 OFF</button>
+        </div>
+        <div id="teleop-pad" class="teleop-pad hidden">
+          <button class="teleop-btn" id="teleop-fwd" data-vx="1" data-wz="0">前進</button>
+          <div class="teleop-row">
+            <button class="teleop-btn" id="teleop-left" data-vx="0" data-wz="1">左旋回</button>
+            <button class="teleop-btn stop" id="teleop-stop">停止</button>
+            <button class="teleop-btn" id="teleop-right" data-vx="0" data-wz="-1">右旋回</button>
+          </div>
+          <button class="teleop-btn" id="teleop-back" data-vx="-1" data-wz="0">後退</button>
+          <p class="teleop-hint">ボタンを押している間だけ動きます。指を離すと停止します。</p>
+        </div>
+      </div>
+
       <div class="status">
         <div class="status-row">
           <span class="status-label">状態</span>

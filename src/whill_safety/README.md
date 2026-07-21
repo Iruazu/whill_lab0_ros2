@@ -24,6 +24,28 @@ failsafe_node layers:
   Only armed after the first message arrives, so startup does not
   trip it.
 
+## twist_mux slots (config/twist_mux.yaml)
+
+`safety_launch.py` starts `twist_mux` and remaps its output to `/cmd_vel`.
+Priority-sorted inputs (ADR-0007 §twist_mux 優先度):
+
+| slot | topic | priority | source |
+|------|-------|----------|--------|
+| safety | `/cmd_vel_safety` | 100 | `failsafe_node` zero-twist (all layers) |
+| teleop | `/cmd_vel_teleop` | 50 | iPad manual-rescue (feat/teleop-rescue) — `whill_dispatch` converts `/dispatch/teleop` → `/cmd_vel_teleop` |
+| navigation | `/cmd_vel_nav` | 10 | Nav2 controller_server |
+
+The teleop slot (enabled feat/teleop-rescue, previously an M9-reserved
+comment) sits **below safety on purpose**: the Layer-D pedestrian stop and
+every other failsafe layer publish `/cmd_vel_safety` at 100, so a manual
+rescue command can never override a person-detected halt or a diverged-
+localizer cutoff. This is automatic — the priority order is the whole
+mechanism, `whill_dispatch` does nothing to enforce it. It sits **above
+navigation** so a rescue command beats an ACTIVE Nav2 job without cancelling
+it first. All three slots use `timeout: 0.5 s`, which for teleop is the
+outermost dead-man (finger-up in the UI and a 0.4 s watchdog in
+`dispatch_node` are the inner two).
+
 ## Runtime dependencies (apt)
 
 ```
