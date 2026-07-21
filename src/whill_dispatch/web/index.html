@@ -27,13 +27,22 @@
 
   <main>
     <section class="map-panel">
-      <!-- Markers and the vehicle dot are positioned absolutely over this
-           box in image-pixel coordinates (see app.js mapToPixel). -->
+      <!-- Markers, the tapped-goal marker and the vehicle dot are positioned
+           absolutely over this box in image-pixel coordinates (app.js
+           mapToPixel); the plan overlay is an SVG in the same pixel space.
+           Tapping the box picks an arbitrary goal (app.js onMapClick). -->
       <div id="map-box">
         <img id="map-img" alt="campus map">
+        <!-- Nav2 /plan drawn under the markers so waypoints stay visible. -->
+        <svg id="plan-layer" class="plan-layer"></svg>
         <div id="markers"></div>
+        <div id="goal-marker" class="goal-marker hidden" title="目的地"></div>
         <div id="vehicle" class="vehicle hidden" title="現在位置"></div>
       </div>
+      <p class="hint">
+        地図をタップして目的地を指定できます（走行可能な道路上のみ）。
+        名前付きの目的地は右のリストからも選べます。
+      </p>
     </section>
 
     <section class="control-panel">

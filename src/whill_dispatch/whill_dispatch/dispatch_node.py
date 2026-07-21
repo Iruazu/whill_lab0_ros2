@@ -18,7 +18,7 @@ The Web side never touches /navigate_to_pose or /cmd_vel* (platform-pivot
 standard-typed (JSON-over-std_msgs/String + std_srvs/Trigger, ADR-0012
 choice A — no custom rosidl interface for the demo):
 
-  Web -> ROS  /dispatch/submit  (String)  JSON {"waypoint","type"}
+  Web -> ROS  /dispatch/submit  (String)  JSON {"waypoint"|"point","type"}
   Web -> ROS  /dispatch/cancel  (Trigger)
   ROS -> Web  /dispatch/state   (String, 5 Hz)   JSON snapshot
   ROS -> Web  /dispatch/waypoints (String, 1 Hz) JSON list
@@ -219,19 +219,52 @@ class DispatchNode(Node):
                 f'ignoring submit payload that is not a JSON object: '
                 f'{msg.data!r}')
             return
-        name = req.get('waypoint')
         job_type = req.get('type', 'goto')
-        if name not in self._waypoints:
-            self.get_logger().warn(
-                f'ignoring submit for unknown waypoint {name!r} '
-                f'(known: {sorted(self._waypoints)})')
-            return
+
+        # Two goal forms cross the boundary (README interface table, v2):
+        #   {"waypoint": "<name>", ...}          named, resolved via yaml
+        #   {"point": {"x","y","yaw?"}, ...}      arbitrary map-frame coord
+        # 'point' wins if both are present — the tablet only ever sends one,
+        # but an explicit precedence keeps a hand-crafted payload deterministic.
+        # target is a {x,y,yaw} dict either way (the shape _pose_stamped wants);
+        # display_name is what /dispatch/state carries in its 'waypoint' field
+        # for the UI (a name the UI resolves to a label, or a coord string).
+        raw_point = req.get('point')
+        if raw_point is not None:
+            target = self._parse_point(raw_point)
+            if target is None:
+                # Reject rather than crash: 'point' arrives from a browser and
+                # may be a string, miss x/y, or carry NaN/Inf. _parse_point
+                # returns None for all of those and we drop the submit here.
+                self.get_logger().warn(
+                    f'ignoring submit with invalid point {raw_point!r}')
+                return
+            display_name = f'({target["x"]:.1f}, {target["y"]:.1f})'
+            # FREE-ness of the tapped cell is NOT checked here on purpose. The
+            # UI already gates on the map png before enabling submit (first
+            # safety net), and Nav2's global planner runs with
+            # allow_unknown:false, so an UNKNOWN/OCC coordinate fails to plan
+            # and the goal comes back ABORTED (second, authoritative net).
+            # Re-reading the map in dispatch would duplicate that check against
+            # a downscaled png and risk disagreeing with the planner's grid.
+        else:
+            name = req.get('waypoint')
+            if name not in self._waypoints:
+                # Covers both an unknown name and a payload with neither
+                # 'point' nor 'waypoint' (name is None -> not in dict).
+                self.get_logger().warn(
+                    f'ignoring submit for unknown waypoint {name!r} '
+                    f'(known: {sorted(self._waypoints)})')
+                return
+            target = self._waypoints[name]
+            display_name = name
 
         self._job_seq += 1
-        job = {'job_id': self._job_seq, 'waypoint': name, 'type': job_type}
+        job = {'job_id': self._job_seq, 'type': job_type,
+               'target': target, 'name': display_name}
         self._queue.append(job)
         self.get_logger().info(
-            f'queued job {job["job_id"]} -> {name} ({job_type}), '
+            f'queued job {job["job_id"]} -> {display_name} ({job_type}), '
             f'queue_len now {len(self._queue)}')
         # Reflect QUEUED immediately if nothing is running so the Web UI (and
         # the AC's phase-transition check) observes IDLE/terminal -> QUEUED
@@ -239,6 +272,28 @@ class DispatchNode(Node):
         if self._active_job is None:
             self._set_phase(PHASE_QUEUED)
         self._try_start_next()
+
+    def _parse_point(self, raw):
+        """Validate a submit 'point' object into {x, y, yaw} or None.
+
+        Runs on untrusted browser input, so it never raises: a non-dict,
+        missing/ non-numeric x or y, or a non-finite value (float('nan') does
+        not raise — it produces NaN, which would then serialize as the
+        non-standard "NaN" token and break the UI's JSON.parse) all return
+        None so the caller drops the submit instead of the node crashing. yaw
+        is optional and defaults to 0.0 (heading control is future work).
+        """
+        if not isinstance(raw, dict):
+            return None
+        try:
+            x = float(raw['x'])
+            y = float(raw['y'])
+            yaw = float(raw.get('yaw', 0.0))
+        except (KeyError, TypeError, ValueError):
+            return None
+        if not all(math.isfinite(v) for v in (x, y, yaw)):
+            return None
+        return {'x': x, 'y': y, 'yaw': yaw}
 
     def _retry_start(self):
         if self._active_job is None and self._queue:
@@ -266,23 +321,23 @@ class DispatchNode(Node):
         self._progress = 0.0
         self._set_phase(PHASE_QUEUED)  # until the goal is accepted -> ACTIVE
 
-        wp = self._waypoints[job['waypoint']]
+        target = job['target']
         goal = NavigateToPose.Goal()
-        goal.pose = self._pose_stamped(wp)
+        goal.pose = self._pose_stamped(target)
         self.get_logger().info(
-            f'sending goal for job {job["job_id"]} -> {job["waypoint"]} '
-            f'({wp["x"]:.2f}, {wp["y"]:.2f}, yaw {wp["yaw"]:.2f})')
+            f'sending goal for job {job["job_id"]} -> {job["name"]} '
+            f'({target["x"]:.2f}, {target["y"]:.2f}, yaw {target["yaw"]:.2f})')
         send_future = self._action_client.send_goal_async(
             goal, feedback_callback=self._on_feedback)
         send_future.add_done_callback(self._on_goal_response)
 
-    def _pose_stamped(self, wp):
+    def _pose_stamped(self, target):
         ps = PoseStamped()
         ps.header.frame_id = self._frame_id
         ps.header.stamp = self.get_clock().now().to_msg()
-        ps.pose.position.x = wp['x']
-        ps.pose.position.y = wp['y']
-        qz, qw = _yaw_to_quat(wp['yaw'])
+        ps.pose.position.x = target['x']
+        ps.pose.position.y = target['y']
+        qz, qw = _yaw_to_quat(target['yaw'])
         ps.pose.orientation.z = qz
         ps.pose.orientation.w = qw
         return ps
@@ -389,7 +444,7 @@ class DispatchNode(Node):
     def _publish_state(self):
         # queue_len counts only jobs still waiting. The active one is
         # reported through job_id/waypoint/phase, not the queue length.
-        active_wp = self._active_job['waypoint'] if self._active_job else None
+        active_wp = self._active_job['name'] if self._active_job else None
         active_id = self._active_job['job_id'] if self._active_job else None
         snapshot = {
             'job_id': active_id,

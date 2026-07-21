@@ -55,3 +55,24 @@ platform-pivot §3.5 は Web / タブレット UI と ROS 2 の間に `whill_dis
   reject する (schema 崩れの検知をランタイムに移す)
 - 後続作業: 認証・複数台管理の要件が具体化した時点で方式 B/C を再評価する
   ADR を起こす。JSON schema が肥大し始めたらそれが移行シグナル
+
+## 追補: `/plan` の可視化目的 read-only 購読を許可する (提案, 2026-07-20)
+
+- 位置づけ: 本 ADR「Web は `/dispatch/*` のみに接触する」の**例外を 1 件明示する**
+  提案。Status は変更しない (本 ADR 全体は依然 proposed)。M7 web app v2
+  (issue #110, 地図タップ配車 + 経路可視化) の実装と同時に起草。
+- 背景: 経路 (plan) を UI に描くには Nav2 global planner の `/plan`
+  (`nav_msgs/Path`) が必要。dispatch_node が中継する案もあったが、rosbridge は
+  既に全 topic に接続でき、中継はノードに状態と遅延を足すだけなので、UI から
+  `/plan` を直接購読する方針をユーザーが承認した。
+- 判断: `/plan` 購読は **read-only の可視化**であり、コマンドは一切逆流しない
+  (submit/cancel は従来どおり `/dispatch/*` のみ)。行動規範 #4 が禁じるのは
+  「配車・Web 層のロジックを Nav2/localization ノードに密結合で書くこと」= 操作
+  境界の越境であって、状態の観測ではない。したがって操作境界としての
+  `/dispatch/*` 一元化は保たれる。
+- 制約: この例外は `/plan` の**購読**に限る。Web から Nav2 の action・service・
+  パラメータ・`/cmd_vel*` を触ることは引き続き禁止。可視化のために別の Nav2
+  topic を増やす場合は、都度この追補に列挙して read-only であることを明記する。
+- 将来: 方式 B/C (型付き interface / 独立ゲートウェイ API) へ移行する際は、
+  `/plan` を含む可視化フィードを dispatch/ゲートウェイ側で束ねて再 publish し、
+  Web の接触面を再び境界内に閉じる余地がある。今日はやらない。
