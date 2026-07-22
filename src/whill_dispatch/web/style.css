@@ -223,4 +223,45 @@ button.cancel:disabled { background: #2b2f36; border-color: #40454d; color: #6b7
 
 .log { font-size: 0.8rem; color: #8b93a0; min-height: 2.4rem; margin: 0; }
 
+/* fitness / battery value colouring. "bad" mirrors the failsafe threshold
+   (fitness > 1.0) and the 20 % battery operational floor — see app.js. */
+.metric-ok  { color: #b6f2c6; }
+.metric-bad { color: #f2b6b6; font-weight: 700; }
+
+/* Collapsible on-screen guide. Legend swatches reuse the exact colours of
+   the live markers (.marker / .goal-marker / .vehicle / plan polyline) so
+   the guide never drifts from the real UI. */
+.guide {
+  padding: 0.8rem;
+  background: #23262b;
+  border: 1px solid #34383f;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+}
+.guide summary { cursor: pointer; color: #a9b0ba; }
+.guide ul { margin: 0.6rem 0 0; padding-left: 1.2rem; }
+.guide li { margin: 0.3rem 0; color: #cfd3da; }
+
+.legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: -1px;
+}
+.legend-wp   { background: #3a86ff; border: 2px solid #cfe3ff; }
+.legend-sel  { background: #ffbe0b; border: 2px solid #fff3c4; }
+.legend-goal { background: #06d6a0; border: 2px solid #fff; }
+.legend-veh  { background: #ff2e63; border: 2px solid #fff; }
+.legend-line {
+  display: inline-block;
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: #3a86ff;
+  margin-right: 0.4rem;
+  vertical-align: 3px;
+}
+
 .hidden { display: none; }

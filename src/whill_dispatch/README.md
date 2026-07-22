@@ -30,7 +30,7 @@ Interface decision: [ADR-0012](../../docs/decisions/0012-dispatch-web-interface.
 | Web→ROS | `/dispatch/submit` (topic) | `std_msgs/String` | JSON, one of two goal forms (below) |
 | Web→ROS | `/dispatch/teleop` (topic) | `std_msgs/String` | JSON `{"active":bool}` (toggle) or `{"vx":<m/s>,"wz":<rad/s>}` (motion) |
 | Web→ROS | `/dispatch/cancel` (service) | `std_srvs/Trigger` | cancel the active job |
-| ROS→Web | `/dispatch/state` (topic, 5 Hz) | `std_msgs/String` | JSON `{job_id,phase,waypoint,progress,queue_len,pose,aligned,teleop_active}` |
+| ROS→Web | `/dispatch/state` (topic, 5 Hz) | `std_msgs/String` | JSON `{job_id,phase,waypoint,progress,queue_len,pose,aligned,fitness,battery,teleop_active}` |
 | ROS→Web | `/dispatch/waypoints` (topic, 1 Hz) | `std_msgs/String` | JSON `[{name,label,x,y,yaw}]` |
 
 `/dispatch/submit` carries exactly one of two goal forms (`type` is
@@ -47,6 +47,13 @@ Interface decision: [ADR-0012](../../docs/decisions/0012-dispatch-web-interface.
 For a `point` job, `/dispatch/state` reports `waypoint` as a coordinate
 string (e.g. `"(5.0, 2.0)"`) so the UI has something to display; for a named
 job it is the waypoint name as before.
+
+`fitness` is the localizer's raw `fitness_score` from `/alignment_status`
+(lower = better; the whill_safety failsafe trips past 1.0 sustained 2 s) and
+`battery` is the CR2 gauge % from `/whill/states/model_cr2` — both are
+`null` until their first source message (battery stays `null` when the
+driver stack / `whill_msgs` is absent; dispatch degrades instead of failing
+to import).
 
 `phase ∈ IDLE / QUEUED / ACTIVE / SUCCEEDED / ABORTED / CANCELED`.
 
