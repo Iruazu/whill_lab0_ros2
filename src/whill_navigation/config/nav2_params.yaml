@@ -102,7 +102,12 @@ controller_server:
     progress_checker:
       plugin: nav2_controller::SimpleProgressChecker
       required_movement_radius: 0.5
-      movement_time_allowance: 10.0
+      # 10 → 15 s (2026-07-22)。rotate_to_heading_angular_vel 0.4 で 180°
+      # 回頭は ~8 s + smoother の立ち上がり。10 s だと正当な U ターン回頭の
+      # 途中で abort し得る (その場回転は並進 0 のため)。停止検知が 5 s 遅く
+      # なる代償は、歩行者停止を担う Layer D (1 s 未満で遮断) があるため
+      # 安全性への影響なし — これは「詰まり検知」であって「衝突回避」ではない。
+      movement_time_allowance: 15.0
 
     general_goal_checker:
       plugin: nav2_controller::SimpleGoalChecker
@@ -184,7 +189,14 @@ controller_server:
       regulated_linear_scaling_min_speed: 0.25
       use_rotate_to_heading: true
       allow_reversing: false         # The chair has no rear obstacle awareness yet.
-      rotate_to_heading_min_angle: 0.785
+      # 0.785 → 1.57 (2026-07-22 seimon-stall bag2)。蛇行由来の方位誤差
+      # 40-50° が 45° 閾値を跨ぐたびに vx=0 の rotate に入り、その間に
+      # progress checker が abort → リカバリ、の停止ループの入口になっていた。
+      # 90° 未満の誤差は前進しながら曲率で戻す (regulated scaling が曲率大で
+      # 自動減速するので急旋回にはならない)。rotate は経路がほぼ真後ろの時
+      # (呼び戻しの U ターン等) だけに温存する。goal 方位合わせは #120 で
+      # yaw_goal_tolerance=π のため元々発動しない。
+      rotate_to_heading_min_angle: 1.57
       max_angular_accel: 1.0
       max_robot_pose_search_dist: 10.0
       cost_scaling_dist: 0.3

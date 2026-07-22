@@ -1,0 +1,47 @@
+<!--
+  navigate_to_pose_w_replanning_and_recovery.xml (nav2_bt_navigator humble 既定)
+  からリカバリの Spin と BackUp を除いた WHILL 用 BT。
+
+  なぜ除くか (2026-07-22 seimon-stall bag 2 本の実測):
+
+  - Spin: 経路と無関係に固定 1.57 rad 回転する。狭めの通行帯で progress abort
+    → Spin が発火すると、方位誤差ゼロ (経路整列) の瞬間を wz 0.8 のまま素通り
+    して逆側へ大誤差を作り直すことを実測 (bag2 t=111.0s: 誤差 -1.2° を通過して
+    -42° まで回転継続)。rotate_to_heading → abort → Spin → 再誤差、の自励
+    ループの主因であり、費用対効果が負。costmap 汚れ由来の詰まりは
+    ClearingActions が既に担う。
+  - BackUp: 後方センサなしで盲目後退する。allow_reversing: false と同じ理由
+    (nav2_params.yaml の FollowPath コメント参照) でデモ運用では許容しない。
+
+  リカバリは ClearingActions (costmap 全消し) と Wait のみ残す。number_of_
+  retries は既定 6 のまま: リトライ自体は無害で、待機→再計画で解消する
+  ケース (歩行者通過など) を打ち切らないため。
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPath"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <Wait wait_duration="5"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

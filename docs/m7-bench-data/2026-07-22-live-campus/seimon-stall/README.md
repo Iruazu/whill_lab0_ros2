@@ -50,10 +50,42 @@
 2. **rotate_to_heading_angular_vel 0.8 → 0.4** (増幅抑制): オーバーシュート半減。
    45° 回頭 ~2 s で progress 10 s 猶予内
 
+## 再走 (bag 2: rosbag2_2026_07_22-18_23_13, 174 s, 雨で中断)
+
+塗り拡幅 + rotate 0.4 適用後の再走。「あまり改善なし」— (-61.4, -0.8) で再停滞。
+120 s 以降は雨退避のジョイスティック手動走行 (1.5 m/s、解析対象外)。
+
+bag 2 で確定した事実:
+
+- 新塗りは反映済み (costmap 北縁 y=+1.23 — 旧塗りなら +0.15)。通行幅 ~4.9 m
+- rotate 0.4 も反映済み (rotate 中 wz median 0.30)
+- Layer D 819 発報はほぼ全て 130 s 以降の手動退避中 (前を歩く人に正常反応)。
+  停滞窓 (85-120 s) は 34 発のみ。雨クラッタも scan 345 本中 7 本で否定
+- **決定打**: t=111.0 s、方位誤差 -1.2° (完全整列) の瞬間を wz 0.8 のまま
+  素通りして -42° まで回転継続 — これは経路を見ない固定 1.57 rad の
+  **Spin リカバリ**。停止ループの支配項は rotate ではなく Spin だった
+
+改訂した因果連鎖: 蛇行で誤差 45° 超 → rotate_to_heading (vx=0) → 並進 0 の
+まま progress checker 10 s が abort → Spin が整列を無視して 90° 回転 →
+大誤差を再生産 → 以降ループ。
+
+## 追加対策 (bag 2 反映)
+
+3. **カスタム BT** (`whill_navigation/config/navigate_to_pose_no_spin_bt.xml`):
+   リカバリから Spin (整列破壊を実測) と BackUp (後方センサなしの盲目後退)
+   を除去し、ClearingActions + Wait のみ残す。nav_launch が per-run yaml に
+   `default_nav_to_pose_bt_xml` を焼き込む
+4. **rotate_to_heading_min_angle 0.785 → 1.57**: 蛇行由来の 40-50° 誤差では
+   vx=0 の rotate に入らず、前進しながら曲率で戻す (ループの入口を塞ぐ)
+5. **movement_time_allowance 10 → 15 s**: 0.4 rad/s の正当な U ターン回頭
+   (~8 s + ramp) を abort しないマージン。停止検知の遅れは Layer D が別途
+   担保するため安全性への影響なし
+
 ## 実機確認手順 (次回)
 
 同じ配車 (bldg7 → seimon) を再実行し:
 
-- (-62〜-66) 区間を停止せず通過すること
-- 通過中の yaw 振れが走行時通常値 (10 s ビンで ≤ 35°) に収まること
-- 万一まだ停滞する場合は同じ topic 構成で bag を再取得 (残る容疑は controller 側)
+- (-59〜-66) 区間を停止せず通過すること (bag1 は -63.2、bag2 は -61.4 で停滞)
+- 停止しても spin (その場一回転) が発生しないこと
+- 万一まだ停滞する場合は同じ topic 構成で bag を再取得。次の容疑は蛇行の
+  根本 (lookahead / 速度 0.45 での再較正) と wet 路面のスリップ
