@@ -203,7 +203,7 @@ m6r_bringup_launch.py
 │   │   ├── rs_launch.py             (opt-in via realsense:=true, default off)
 │   │   ├── imu_launch.py            (rt_usb_9axisimu_driver + imu_sign_corrector)
 │   │   └── static_tf_launch.py      (base_link → imu_link/velodyne/camera_link)
-│   ├── whill_launch.py              (whill_bringup — WHILL driver)
+│   ├── whill_driver Node            (direct, port_name=/dev/whill — 2026-07-22 USB ズレ対策)
 │   └── ekf_odom_launch.py           (whill_localization — M4-R EKF)
 ├── OpaqueFunction → lidar_localization.launch.py (M6-R scan-to-map localizer)
 └── safety_launch.py                 (whill_safety — failsafe_node + twist_mux)
