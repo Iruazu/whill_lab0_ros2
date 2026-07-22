@@ -4,11 +4,13 @@
   <name>whill_localization</name>
   <version>0.1.0</version>
   <description>
-    Localization bringup for the WHILL chair. Provides the M4-R odom-layer
-    EKF (`robot_localization`) that fuses wheel odometry and IMU into the
-    `odom -> base_link` TF and `/odometry/filtered` topic, plus the legacy
-    FAST-LIO config retained for offline map-making (M5-R). Online use of
-    FAST-LIO as a runtime localizer is frozen per the platform-pivot plan.
+    Odom-layer localization bringup for the WHILL chair. Provides the M4-R
+    odom-layer EKF (`robot_localization`) that fuses wheel odometry and IMU
+    into the `odom -> base_link` TF and `/odometry/filtered` topic — the
+    surface Nav2 and the M6-R scan-to-map localizer consume. (The FAST-LIO
+    runtime-localizer launches and config this package once carried were
+    removed 2026-07-22; runtime localization is now `lidar_localization_ros2`
+    and map-making is GLIM — see the package README.)
   </description>
 
   <maintainer email="ygnk0805@outlook.jp">Iruazu</maintainer>
