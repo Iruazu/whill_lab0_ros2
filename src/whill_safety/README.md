@@ -140,13 +140,15 @@ step 1.
    # every count MUST be 1. A "2 /velodyne_driver_node" line means a
    # duplicate bringup is running — kill the extra one before AC runs.
    ```
-3. **Fresh terminal — sensor sanity** (once nodes are singletons):
+3. **Fresh terminal — sensor sanity** (once nodes are singletons).
+   `ros2 topic hz` reads zero on this host even with live publishers
+   (see CLAUDE.md / memory: cross-checked 2026-07-19 field) — count
+   echo messages over a 5 s window instead:
    ```
-   ros2 topic hz /velodyne_points     # ~10 Hz (a doubled bringup shows
-                                      # ~20 Hz or higher — bail out and
-                                      # re-check node list)
-   ros2 topic hz /imu/data_rep145     # ~100 Hz (REP-145 corrected)
-   ros2 topic hz /whill/odom          # ~2.5 Hz
+   # expected counts over 5 s (halve → doubled bringup or DDS trouble)
+   timeout 5 ros2 topic echo /velodyne_points --field header.frame_id | grep -c velodyne   # ~50  (10 Hz)
+   timeout 5 ros2 topic echo /imu/data_rep145 --field header.frame_id | grep -c imu        # ~500 (100 Hz)
+   timeout 5 ros2 topic echo /whill/odom      --field header.frame_id | grep -c odom       # ~12  (2.5 Hz)
    ros2 lifecycle get /lidar_localization    # active [3]
    ```
 4. **RViz** (fresh terminal): click **2D Pose Estimate** on the map.
@@ -254,7 +256,8 @@ launch. Then:
 1. In RViz, click **2D Pose Estimate** and drag on the map to set the
    initial pose. `/initialpose` publishes, the localizer converges,
    `map -> odom` starts publishing continuously.
-2. `ros2 topic hz /pcl_pose` should read ~10 Hz.
+2. `timeout 5 ros2 topic echo /pcl_pose --field header.frame_id | grep -c map`
+   should read ~50 (10 Hz; `ros2 topic hz` is unreliable on this host).
 3. `ros2 topic echo /alignment_status --once` should report
    `message: ok`, `has_converged: true`, `fitness_score < 6.0`.
 
