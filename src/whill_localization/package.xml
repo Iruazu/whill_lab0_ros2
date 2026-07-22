@@ -20,9 +20,11 @@
 
   <exec_depend>robot_localization</exec_depend>
   <exec_depend>whill_sensors_bringup</exec_depend>
-  <!-- whill_bringup is the upstream ros2_whill launch package; -->
-  <!-- odom_bringup_launch.py (M4R-4) includes its whill_launch.py. -->
+  <!-- whill_bringup is used only to resolve its config/params.yaml path; -->
+  <!-- the driver Node itself is launched directly from whill_driver -->
+  <!-- (port_name overridden to /dev/whill — see odom_bringup_launch.py). -->
   <exec_depend>whill_bringup</exec_depend>
+  <exec_depend>whill_driver</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
