@@ -198,6 +198,12 @@ def _resolve_map_yaml(context):
     vs = params['velocity_smoother']['ros__parameters']
     vs['max_velocity'] = [vx, vs['max_velocity'][1], vs['max_velocity'][2]]
 
+    # Spin/BackUp を除いたカスタム BT (2026-07-22 seimon-stall)。理由は
+    # xml 冒頭コメント参照。パスは map yaml と同じくここで絶対解決して
+    # per-run yaml に焼き込む (Substitution だと include 時に空文字化する)。
+    bt_xml = os.path.join(nav_share, 'config', 'navigate_to_pose_no_spin_bt.xml')
+    params['bt_navigator']['ros__parameters']['default_nav_to_pose_bt_xml'] = bt_xml
+
     tmp = tempfile.NamedTemporaryFile(
         prefix='whill_nav2_params_',
         suffix='.yaml',
