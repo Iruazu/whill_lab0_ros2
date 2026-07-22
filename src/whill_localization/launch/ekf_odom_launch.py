@@ -13,12 +13,6 @@ Scope (what this launch does NOT start):
   the whill driver respectively. M4R-4 will provide an
   `odom_bringup_launch.py` that wires drivers + static TFs + this EKF
   into a single command.
-- The FAST-LIO `map -> odom` identity (now legacy; M4R-4 / Issue #38
-  removes `tf_bridge_launch.py`). Do not run this launch and the legacy
-  `localization_launch.py` simultaneously: both end up trying to author
-  the `odom -> base_link` TF edge (FAST-LIO publishes `camera_init ->
-  body` which the tf_bridge re-labels) and the resulting fight produces
-  unbounded TF jitter.
 """
 
 import os
@@ -38,8 +32,8 @@ def generate_launch_description():
     # by a future top-level bringup (M4R-4), LaunchConfiguration substitutions
     # that were never re-declared at the outer level silently expand to an
     # empty string, and ekf_node would then fall back to its built-in
-    # defaults (1 Hz output, no inputs fused). Same quirk as in
-    # `fast_lio_launch.py` — see the comment there.
+    # defaults (1 Hz output, no inputs fused). Same include-path quirk as
+    # `odom_bringup_launch.py`.
     ekf_params = os.path.join(whill_loc_share, 'config', 'ekf_odom.yaml')
 
     use_sim_time = LaunchConfiguration('use_sim_time')

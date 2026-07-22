@@ -340,18 +340,17 @@ install_iridescence() {
 
 install_glim() {
   # GLIM core and the ROS 2 wrapper are colcon packages, so they live under
-  # src/third_party/ rather than ~/.cache. This is the same convention as
-  # FAST_LIO and the rest of whill_lab.repos — it lets `colcon build` see
-  # the packages without any extra plumbing. They are not yet *in*
-  # whill_lab.repos because M5R-3 may decide GLIM is map-build-only and
-  # should not ship to the runtime tree; until that ADR is settled, the
-  # clone is driven from this script.
+  # src/third_party/ rather than ~/.cache — the same convention as the rest
+  # of whill_lab.repos, letting `colcon build` see the packages without extra
+  # plumbing. They are not *in* whill_lab.repos: GLIM is the offline
+  # map-building tool (ADR-0003), kept out of the runtime tree, so the clone
+  # is driven from this script rather than the runtime vcs manifest.
   mkdir -p "${THIRD_PARTY}"
   clone_or_update "${GLIM_REPO}" "${GLIM_REF}" "${THIRD_PARTY}/glim"
   clone_or_update "${GLIM_ROS2_REPO}" "${GLIM_ROS2_REF}" "${THIRD_PARTY}/glim_ros2"
 
   # Build only the GLIM packages — building the whole workspace here would
-  # bring in FAST-LIO / Nav2 / sensor drivers and balloon the time budget.
+  # bring in Nav2 / sensor drivers and balloon the time budget.
   # The user can re-run a full `colcon build` afterwards.
   #
   # CMAKE_CUDA_COMPILER is forwarded for the same reason as install_gtsam_points

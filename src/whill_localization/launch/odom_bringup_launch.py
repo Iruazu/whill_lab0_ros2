@@ -29,14 +29,6 @@ scan-to-map localizer that publishes `map -> odom`.
 
 Mutual exclusion:
 
-  - Do NOT run `localization_launch.py` simultaneously. That launch
-    starts FAST-LIO, which (combined with the now-removed
-    `tf_bridge_launch.py`) used to author the same `odom -> base_link`
-    edge through `camera_init -> body -> base_link` aliases. Two
-    publishers on a single TF edge fight and produce unbounded jitter.
-  - `localization_launch.py` is retained only for offline FAST-LIO
-    map-making (M5-R prerequisite). Use it standalone, never alongside
-    this launch.
   - Do NOT run `whill_sensors_bringup/sensors_launch.py` in parallel.
     This launch INCLUDES it — starting both duplicates the velodyne
     driver, IMU driver, and static TF publisher. Measured
@@ -65,7 +57,7 @@ def generate_launch_description():
     # by a future M6-R/M7 bringup), a `LaunchConfiguration` used inside
     # `PythonLaunchDescriptionSource(...)` silently expands to an empty
     # string and the include fails at runtime. Same quirk as
-    # `fast_lio_launch.py`/`ekf_odom_launch.py` — see those headers.
+    # `ekf_odom_launch.py` — see that header.
     sensors_share = get_package_share_directory('whill_sensors_bringup')
     whill_share = get_package_share_directory('whill_bringup')
     loc_share = get_package_share_directory('whill_localization')
