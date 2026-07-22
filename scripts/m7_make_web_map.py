@@ -22,11 +22,18 @@ small png with res_eff written into the json — no separate scale needed.
 Idempotent: re-running overwrites both outputs. Safe to re-run whenever the
 cleaned map is regenerated (Task #14 v2 map, etc.).
 
+The pgm defaults to the `image:` referenced by --yaml (resolved relative to
+the yaml's directory), so passing --yaml alone is always self-consistent.
+2026-07-22: --yaml occupancy_v2.yaml だけを渡した再生成が、旧既定の
+occupancy_cleaned.pgm を描画してしまい、iPad の背景地図が丸ごと旧マップに
+差し替わる事故が起きた (メタデータだけ v2 という最悪の組み合わせ)。yaml と
+画像を別々に既定させる設計が原因なので、既定を「yaml に従う」に変更した。
+--pgm は意図的に別画像を重ねたい場合の明示 override としてのみ残す。
+
 Usage:
-    python3 scripts/m7_make_web_map.py
+    python3 scripts/m7_make_web_map.py --yaml docs/maps/campus/occupancy_v2.yaml
     python3 scripts/m7_make_web_map.py --factor 8
     python3 scripts/m7_make_web_map.py \\
-        --pgm docs/maps/campus/occupancy_cleaned.pgm \\
         --yaml docs/maps/campus/occupancy_cleaned.yaml \\
         --out-dir src/whill_dispatch/web
 """
@@ -49,8 +56,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         '--pgm',
-        default=os.path.join(
-            _REPO_ROOT, 'docs', 'maps', 'campus', 'occupancy_cleaned.pgm'))
+        default=None,
+        help='explicit pgm override. Default: the image: referenced by '
+             '--yaml, resolved relative to the yaml directory (keeps '
+             'metadata and pixels from the same map — see header).')
     ap.add_argument(
         '--yaml',
         default=os.path.join(
@@ -68,6 +77,11 @@ def main():
         meta = yaml.safe_load(f)
     res = float(meta['resolution'])
     origin = [float(v) for v in meta['origin']]
+
+    if args.pgm is None:
+        # map_server と同じ規約: image は yaml のディレクトリ相対。
+        args.pgm = os.path.join(os.path.dirname(os.path.abspath(args.yaml)),
+                                meta['image'])
 
     img = Image.open(args.pgm)
     w, h = img.size
