@@ -6,7 +6,8 @@
 # into a person during V2 verification. Non-blocking pre-drive checks
 # (rely on operator to eyeball a log line) let this slip through.
 #
-# This script FAILS LOUD (exit 1) if failsafe_node is not up, has DEAD
+# This script FAILS LOUD (exit 1) if failsafe_node is not up, if the
+# whill driver has no live serial (/whill/odom silent), has DEAD
 # INPUT errors within its 10-s watchdog window, or if a live-fire hand
 # test shows /cmd_vel_safety not publishing at the expected 20 Hz.
 #
@@ -62,11 +63,32 @@ if ! ros2 node list 2>/dev/null | grep -qx "/failsafe_node"; then
 fi
 echo "PASS"
 
-# ---- 3. Wait past dead-input watchdog window -----------------------
+# ---- 3. whill driver serial alive ----------------------------------
+# 2026-07-22 field: the WHILL enumerated as ttyUSB1 while the driver's
+# port_name default was /dev/ttyUSB0 — the driver came up with no live
+# serial, /whill/odom stayed silent, and every Nav2 motion primitive
+# died on "Failed to make progress" (the chair never moved). This gate
+# catches a dead driver before the first goal instead. The launch-side
+# fix (port_name -> /dev/whill udev symlink) removes the enumeration
+# dependence, but a gate stays: it also catches unplugged cable / dead
+# WHILL power, which no port override can fix. /whill/odom is ~2.5 Hz,
+# so 5 s is generous. echo, not `topic hz` — see the check-5 rationale.
+echo -n "3. whill driver serial (/whill/odom) ... "
+if ! timeout 5 ros2 topic echo /whill/odom --once >/dev/null 2>&1; then
+    echo "FAIL — no /whill/odom within 5 s"
+    echo "   The whill driver has no live serial (or the WHILL is off)."
+    echo "   Check:  ls -la /dev/whill /dev/ttyUSB*"
+    echo "   then replug the WHILL USB / power-cycle the chair and restart"
+    echo "   the bringup terminal. Do NOT drive."
+    exit 1
+fi
+echo "PASS"
+
+# ---- 4. Wait past dead-input watchdog window -----------------------
 # failsafe_node's STARTUP_DEAD_INPUT_TIMEOUT_S = 10 s. If the
 # subscriptions did not arm within that budget, an ERROR line shows
 # up on /rosout with the substring "DEAD INPUT".
-echo "3. dead-input watchdog: waiting 12 s to catch any ERROR ..."
+echo "4. dead-input watchdog: waiting 12 s to catch any ERROR ..."
 sleep 12
 if ros2 topic echo --once --qos-durability transient_local /rosout 2>/dev/null \
         | grep -q "DEAD INPUT"; then
@@ -78,11 +100,11 @@ if ros2 topic echo --once --qos-durability transient_local /rosout 2>/dev/null \
 fi
 echo "   PASS (no DEAD INPUT reported)"
 
-# ---- 4. Live-fire Layer D test -------------------------------------
-echo "4. Layer D live fire test."
+# ---- 5. Live-fire Layer D test -------------------------------------
+echo "5. Layer D live fire test."
 echo "   >>> Have a person walk to ~1.5 m directly ahead of the chair"
 echo "   >>> and stand still. No rush — waiting up to 30 s for detection."
-# /cmd_vel_safety は遮断中しか publish されない。固定窓での計測は check 3
+# /cmd_vel_safety は遮断中しか publish されない。固定窓での計測は check 4
 # の 12 s 無言待ちの間に人が持ち場を離れる/戻り遅れると偽陽性 FAIL する
 # (2026-07-19 field で 3 連発を実測。failsafe ログの ENGAGED は毎回窓の後)。
 # そのため「最初の 1 msg = engagement 成立」を latch として最大 30 s 待ち、

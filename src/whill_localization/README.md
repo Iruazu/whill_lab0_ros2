@@ -21,7 +21,9 @@ This package provides:
 - Two launch files:
   - `odom_bringup_launch.py` — **M4-R single-command bringup (Issue
     #38)**. Composes `whill_sensors_bringup/sensors_launch.py` +
-    upstream `whill_bringup/whill_launch.py` + this package's
+    upstream `whill_driver` (launched directly with
+    `port_name:=/dev/whill` — see the launch header for the 2026-07-22
+    ttyUSB enumeration incident) + this package's
     `ekf_odom_launch.py`. This is the launch you should use on the
     chair for everything M4-R covers.
   - `ekf_odom_launch.py` — odom-layer EKF only. Use this when you want
@@ -88,7 +90,12 @@ at 39.4 Hz (4×) and a RealSense USB contention loop.
 # Terminal 1: sensor drivers + static TFs
 ros2 launch whill_sensors_bringup sensors_launch.py
 
-# Terminal 2: WHILL driver (assumes M4R-1 wiring; topic /whill/odom)
+# Terminal 2: WHILL driver (assumes M4R-1 wiring; topic /whill/odom).
+# NOTE: whill_launch.py uses the upstream params.yaml port /dev/ttyUSB0,
+# which breaks if the WHILL enumerated as ttyUSB1 (2026-07-22 field).
+# Check `ls -la /dev/whill` first; if it points at ttyUSB1, run the
+# driver node directly with the udev symlink instead:
+#   ros2 run whill_driver whill --ros-args -p port_name:=/dev/whill
 ros2 launch whill_bringup whill_launch.py
 
 # Terminal 3: this EKF

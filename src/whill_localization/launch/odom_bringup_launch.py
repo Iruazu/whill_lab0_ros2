@@ -5,12 +5,17 @@ Single command that wires all the M4-R pieces together:
   1. `whill_sensors_bringup/sensors_launch.py` — VLP-16 + RealSense D435
      + RT 9-axis IMU drivers, plus the M4R-2 measurement-based static TF
      chain `base_link -> {imu_link, velodyne, camera_link}`.
-  2. `whill_bringup/whill_launch.py` (upstream `ros2_whill`, Iruazu fork
-     pinned to `humble-with-odom-2026-06-18`) — `whill_driver` with the
-     M4R-1 `/whill/odom` publisher. Port `/dev/ttyUSB0` resolves to the
-     same physical device as `/dev/whill` via the udev rule in
-     `udev/99-whill-stack.rules`, so we accept the upstream
-     `params.yaml` default rather than carrying a fork-local override.
+  2. `whill_driver` (upstream `ros2_whill`, Iruazu fork pinned to
+     `humble-with-odom-2026-06-18`) — the M4R-1 `/whill/odom` publisher.
+     Launched as a direct Node here (not via `whill_bringup/whill_launch.py`)
+     so we can override `port_name` to the udev symlink `/dev/whill`.
+     The upstream `params.yaml` default is `/dev/ttyUSB0`, which is only
+     correct when the WHILL happens to enumerate first: on 2026-07-22
+     field the chair came up as `ttyUSB1` (`/dev/whill -> ttyUSB1`,
+     no `ttyUSB0` at all), the driver silently had no serial, and Nav2
+     spun on "Failed to make progress" with zero motion. The udev rule in
+     `udev/99-whill-stack.rules` exists precisely to make the port
+     enumeration-order-independent — use it.
   3. `whill_localization/ekf_odom_launch.py` — `robot_localization`
      `ekf_node` fusing `/whill/odom` + `/imu/data_raw` into
      `/odometry/filtered` and the `odom -> base_link` TF edge at 30 Hz.
@@ -49,6 +54,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
@@ -63,7 +69,7 @@ def generate_launch_description():
     loc_share = get_package_share_directory('whill_localization')
 
     sensors_launch = os.path.join(sensors_share, 'launch', 'sensors_launch.py')
-    whill_launch = os.path.join(whill_share, 'launch', 'whill_launch.py')
+    whill_params = os.path.join(whill_share, 'config', 'params.yaml')
     ekf_launch = os.path.join(loc_share, 'launch', 'ekf_odom_launch.py')
 
     # `use_sim_time` is forwarded only to the EKF include. The upstream
@@ -94,8 +100,24 @@ def generate_launch_description():
                 'realsense': LaunchConfiguration('realsense'),
             }.items()),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(whill_launch)),
+        # Direct Node instead of including whill_launch.py: the include has no
+        # way to override parameters, and the fork's params.yaml pins
+        # port_name to /dev/ttyUSB0 (enumeration-order dependent — see header).
+        # The dict AFTER the yaml wins, so only port_name is overridden and
+        # publish_interval_ms etc. still come from upstream params.yaml.
+        # output='screen' on purpose: the 2026-07-22 serial failure was
+        # invisible in the bringup terminal, which cost the field session
+        # ~1 h of misdirected debugging on Nav2/dispatch.
+        Node(
+            package='whill_driver',
+            namespace='',
+            executable='whill',
+            name='whill',
+            output='screen',
+            parameters=[
+                whill_params,
+                {'port_name': '/dev/whill'},
+            ]),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(ekf_launch),
