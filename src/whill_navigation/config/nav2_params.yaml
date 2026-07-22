@@ -151,7 +151,14 @@ controller_server:
       min_lookahead_dist: 0.6
       max_lookahead_dist: 0.9
       lookahead_time: 1.5
-      rotate_to_heading_angular_vel: 0.8
+      # 0.8 → 0.4 (2026-07-22 field, seimon-stall bag 解析)。塗り漏斗で停滞した
+      # 際、rotate-to-heading が wz ±0.6-0.8 で回頭 → WHILL の yaw 応答遅れで
+      # 目標方位を通り過ぎ → 逆回頭、を ~5 s 周期で 78 回反転するハンチングを
+      # 実測 (vx は 105 s 中 41% が 0)。指令 0.65 rad/s × 4 s = 150° 相当に対し
+      # 実 yaw 変化は ~50° で、車体が指令に全く追従できていない。回頭速度を
+      # 半減してオーバーシュートを抑える。45° 誤差の回頭は ~2 s → progress
+      # checker の 10 s 猶予内に収まる。環境側の根本対策 (塗り拡幅) と併用。
+      rotate_to_heading_angular_vel: 0.4
       transform_tolerance: 0.3       # matches bt_navigator, see comment above.
       use_velocity_scaled_lookahead_dist: true
       min_approach_linear_velocity: 0.05
