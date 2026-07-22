@@ -464,6 +464,32 @@ function updateState(s) {
   $('aligned').textContent =
     s.aligned == null ? '—' : (s.aligned ? 'OK' : 'NG');
 
+  // Localization fitness (lower = better). Threshold mirrors the failsafe's
+  // FITNESS_MAX (whill_safety failsafe_node, ADR-0007): past 1.0 the value
+  // turns red as an early visual warning that a sustained excursion will trip
+  // the cmd_vel gate. The number itself stays visible either way — operators
+  // asked for the raw value, not just a verdict.
+  const fitEl = $('fitness');
+  if (s.fitness == null) {
+    fitEl.textContent = '—';
+    fitEl.className = '';
+  } else {
+    fitEl.textContent = s.fitness.toFixed(3);
+    fitEl.className = s.fitness > 1.0 ? 'metric-bad' : 'metric-ok';
+  }
+
+  // Battery % from the CR2 driver folded into state. 20 % is an operational
+  // warning level (no hardware cutoff there) — enough margin to finish a
+  // campus run and return.
+  const batEl = $('battery');
+  if (s.battery == null) {
+    batEl.textContent = '—';
+    batEl.className = '';
+  } else {
+    batEl.textContent = s.battery + ' %';
+    batEl.className = s.battery <= 20 ? 'metric-bad' : 'metric-ok';
+  }
+
   // dispatch owns the manual-rescue toggle; follow its truth for button label
   // and pad visibility (a local flip could disagree if the toggle message was
   // lost). Skip while disconnected — the toggle is greyed and applyTeleopState
@@ -522,11 +548,11 @@ function wireControls() {
     let payload;
     if (goalPoint) {
       payload = { point: goalPoint, type: jobType() };
-      log(`配車を送信: 任意地点 (${goalPoint.x.toFixed(1)}, ` +
+      log(`実行を送信: 任意地点 (${goalPoint.x.toFixed(1)}, ` +
           `${goalPoint.y.toFixed(1)}) (${jobType()})`);
     } else if (selectedName) {
       payload = { waypoint: selectedName, type: jobType() };
-      log(`配車を送信: ${labelFor(selectedName)} (${jobType()})`);
+      log(`実行を送信: ${labelFor(selectedName)} (${jobType()})`);
     } else {
       return;
     }

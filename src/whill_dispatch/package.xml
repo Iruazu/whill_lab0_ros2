@@ -40,6 +40,12 @@
   <!-- action_msgs/GoalStatus is read directly to classify the
        NavigateToPose result (SUCCEEDED / CANCELED / ABORTED). -->
   <exec_depend>action_msgs</exec_depend>
+  <!-- whill_msgs (src/third_party/ros2_whill_interfaces, vcs import) is the
+       battery source (/whill/states/model_cr2.battery_power). dispatch_node
+       imports it in a try/except and degrades to battery:null when the
+       driver stack is not built, so the dependency is soft at runtime but
+       declared here because the full demo bringup needs it. -->
+  <exec_depend>whill_msgs</exec_depend>
   <!-- ament_index_python (get_package_share_directory) and python3-yaml
        (waypoints.yaml load) are imported directly by dispatch_node and
        dispatch_launch. -->

@@ -10,8 +10,9 @@ state-publisher is left for the M7 full build):
   (c) NavigateToPose action client: turn the head job into a goal, fold
       feedback (distance_remaining) into a 0..1 progress, reflect result
       into a phase
-  (d) vehicle-state publish: fold /pcl_pose + /alignment_status + queue
-      state into /dispatch/state at ~5 Hz
+  (d) vehicle-state publish: fold /pcl_pose + /alignment_status +
+      /whill/states/model_cr2 (battery) + queue state into
+      /dispatch/state at ~5 Hz
 
 The Web side never touches /navigate_to_pose or /cmd_vel* (platform-pivot
 §5 #4). It speaks only the four /dispatch/* interfaces over rosbridge, all
@@ -66,6 +67,17 @@ from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
+
+# whill_msgs lives in src/third_party (ros2_whill_interfaces, vcs import).
+# Optional on purpose: the bare smoke test (m7_ws_smoke.py) and a maps-less
+# dev machine run dispatch without the WHILL driver stack built, and battery
+# display is a nice-to-have that must not take the whole dispatch boundary
+# down with an ImportError. When absent, /dispatch/state carries battery:null
+# and the UI shows "—".
+try:
+    from whill_msgs.msg import ModelCr2State
+except ImportError:
+    ModelCr2State = None
 
 
 # Phase vocabulary shared with the Web UI. Kept as plain strings (not an
@@ -153,6 +165,8 @@ class DispatchNode(Node):
         # Vehicle state folded in from the localizer / alignment gate.
         self._pose = None          # dict {x, y, yaw} or None until first msg
         self._aligned = None       # bool or None until first /alignment_status
+        self._fitness = None       # float fitness_score or None (lower=better)
+        self._battery = None       # int battery % or None until first driver msg
 
         # Manual-rescue teleop state. `_teleop_active` is the explicit ON/OFF
         # toggle (OFF is default — 誤操作防止); it only gates whether motion
@@ -186,6 +200,14 @@ class DispatchNode(Node):
             PoseWithCovarianceStamped, '/pcl_pose', self._on_pcl_pose, 10)
         self.create_subscription(
             DiagnosticArray, '/alignment_status', self._on_alignment, 10)
+        if ModelCr2State is not None:
+            self.create_subscription(
+                ModelCr2State, '/whill/states/model_cr2', self._on_whill_state,
+                10)
+        else:
+            self.get_logger().warn(
+                'whill_msgs not available — /dispatch/state will carry '
+                'battery:null (build ros2_whill_interfaces to enable)')
 
         self.create_service(
             Trigger, '/dispatch/cancel', self._on_cancel)
@@ -625,12 +647,34 @@ class DispatchNode(Node):
         self._pose = pose
 
     def _on_alignment(self, msg):
+        # Both keys ride the same DiagnosticArray (whill_safety failsafe input,
+        # ADR-0007): has_converged drives the aligned flag, fitness_score is
+        # surfaced raw so the UI can show localization quality (lower=better;
+        # failsafe trips above 1.0 sustained 2 s).
         for status in msg.status:
             for kv in status.values:
                 if kv.key == 'has_converged':
                     self._aligned = str(kv.value).strip().lower() in (
                         'true', '1', 'ok')
-                    return
+                elif kv.key == 'fitness_score':
+                    try:
+                        v = float(kv.value)
+                    except (TypeError, ValueError):
+                        continue
+                    # NaN would break the UI's JSON.parse (same reason as
+                    # _on_pcl_pose) — keep the last finite value instead.
+                    if math.isfinite(v):
+                        self._fitness = v
+
+    def _on_whill_state(self, msg):
+        # battery_power is the CR2's own 0-100 % gauge (whill_msgs
+        # ModelCr2State). Voltage/current are also in the message but % is
+        # what a rider acts on, so only that crosses the boundary. No
+        # finite/range validation on purpose: unlike _on_submit/_on_teleop
+        # this is driver-internal int32, not untrusted browser input, and
+        # int() of an int32 cannot produce the NaN that would break the UI's
+        # JSON.parse.
+        self._battery = int(msg.battery_power)
 
     def _publish_state(self):
         # queue_len counts only jobs still waiting. The active one is
@@ -645,6 +689,9 @@ class DispatchNode(Node):
             'queue_len': len(self._queue),
             'pose': self._pose,
             'aligned': self._aligned,
+            'fitness': (None if self._fitness is None
+                        else round(self._fitness, 3)),
+            'battery': self._battery,
             # Manual-rescue toggle state — drives the UI's direction-button
             # enable. Note this is NOT "the chair is moving": with teleop
             # active but no button held, the dead-man keeps /cmd_vel_teleop

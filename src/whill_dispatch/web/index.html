@@ -57,7 +57,7 @@
       </div>
 
       <div class="buttons">
-        <button id="submit-btn" disabled>配車</button>
+        <button id="submit-btn" disabled>実行</button>
         <button id="cancel-btn" class="cancel" disabled>キャンセル</button>
       </div>
 
@@ -105,7 +105,43 @@
           <span class="status-label">整合</span>
           <span id="aligned">—</span>
         </div>
+        <div class="status-row">
+          <span class="status-label">自己位置 fitness</span>
+          <span id="fitness">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">バッテリ</span>
+          <span id="battery">—</span>
+        </div>
       </div>
+
+      <!-- 利用者向け簡易ガイド。折りたたみ (details) にして操作パネルを
+           圧迫しない。色サンプルはマーカー実物と同じ CSS 色を使う。 -->
+      <details class="guide">
+        <summary>画面の見かた（簡易ガイド）</summary>
+        <ul>
+          <li><span class="legend-dot legend-wp"></span>
+            名前付きの目的地。タップか上のリストで選択できます</li>
+          <li><span class="legend-dot legend-sel"></span>
+            選択中の目的地（黄色に変わります）</li>
+          <li><span class="legend-dot legend-goal"></span>
+            地図をタップして指定した目的地（道路の白い部分のみ指定可）</li>
+          <li><span class="legend-dot legend-veh"></span>
+            車両の現在位置</li>
+          <li><span class="legend-line"></span>
+            走行予定の経路（走行中のみ表示）</li>
+        </ul>
+        <ul>
+          <li>「行く」「呼ぶ」はジョブの種別ラベルです（現時点ではどちらも
+            「選んだ目的地へ移動する」同一動作）</li>
+          <li>「実行」でジョブを発行し、「キャンセル」で走行中のジョブを中止します</li>
+          <li>状態: IDLE=待機 / QUEUED=受付済 / ACTIVE=走行中 /
+            SUCCEEDED=到着 / ABORTED=中断 / CANCELED=取消</li>
+          <li>自己位置 fitness: 自己位置推定の残差（小さいほど良好。
+            1.0 超が約 2 秒続くと安全装置が停止させます）</li>
+          <li>バッテリ: 車両の残量 (%)</li>
+        </ul>
+      </details>
 
       <p id="log" class="log"></p>
     </section>
