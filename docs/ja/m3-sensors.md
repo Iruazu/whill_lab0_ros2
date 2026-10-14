@@ -1,6 +1,8 @@
 # M3 — ROS 2 humble でのセンサスタック
 
-Language: [日本語](m3-sensors.md) | [English](../en/m3-sensors.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## ゴール
 

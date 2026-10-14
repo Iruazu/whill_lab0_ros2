@@ -1,6 +1,8 @@
 # M6R-4 実行計画: Nav2 obstacle layer 復活 + collision detection 復帰
 
-Language: 日本語
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 - 日付: 2026-07-14 起草
 - 状態: **accepted** (2026-07-14 ユーザー承認済。3 点確認完了 = デモ日未確定 / M6R4-4 は M6R4-3 完了時判断 / `allow_unknown: false` 反転)

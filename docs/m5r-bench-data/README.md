@@ -1,5 +1,8 @@
 # M5-R bench data
 
+> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../ja/runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
+
+
 Interim artifacts from the M5-R map-building pipeline (bag recording →
 GLIM SLAM → DUFOMap dynamic removal). The pipeline itself is documented
 in [`../ja/m5r-pipeline.md`](../ja/m5r-pipeline.md) (English mirror at

@@ -1,6 +1,8 @@
 # M5R-3: GLIM vs FAST-LIO SAM 実 bag 比較プロトコル
 
-Language: [日本語](m5r3-comparison-protocol.md) | [English](../en/m5r3-comparison-protocol.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## 目的
 
@@ -271,6 +273,6 @@ bag が複数本ある場合は各 bag を独立の row として記録し、最
 - 開発方針: [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) §3.3 (SLAM 候補)、§3.4 (ライセンス)、§7 (ADR-0003 起案要請)
 - M5-R 実行計画: [`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §M5R-3、§6 (受け入れ基準 B1〜B5)
 - 前置文書: [`m5r-glim-setup.md`](m5r-glim-setup.md) (GLIM source build)、[`m5r-fastlio-sam-eval.md`](m5r-fastlio-sam-eval.md) (FAST-LIO SAM clone-on-demand)
-- スクリプト: [`scripts/m5r3_run_glim.sh`](../../scripts/m5r3_run_glim.sh)、[`scripts/m5r3_run_fastlio_sam.sh`](../../scripts/m5r3_run_fastlio_sam.sh)、[`scripts/m5r3_loop_error.py`](../../scripts/m5r3_loop_error.py)
+- スクリプト: [`scripts/m5r3_run_glim.sh`](../../scripts/m5r3_run_glim.sh)、`scripts/m5r3_run_fastlio_sam.sh`（当時の参照先 `../../scripts/m5r3_run_fastlio_sam.sh` は現在のcheckoutに存在しない）、[`scripts/m5r3_loop_error.py`](../../scripts/m5r3_loop_error.py)
 - ADR: [`decisions/0003-mapping-slam-choice.md`](decisions/0003-mapping-slam-choice.md) — Phase B 完了後にデータを反映
 - 関連 Issue: #48 (本 Issue、M5R-3)、#45 (M5R-1)、#46 (M5R-2)、#47 (M5R-5)、#49 (M5R-4 = 採用 SLAM の出力を ERASOR に流す後続)

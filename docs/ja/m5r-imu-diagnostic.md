@@ -1,6 +1,8 @@
 # M5-R: GLIM IMU integration 警告の原因切り分けと対処方針
 
-Language: [日本語](m5r-imu-diagnostic.md) | [English](../en/m5r-imu-diagnostic.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 Issue #64 の受け入れ基準「原因切り分けレポート + 対処方針確定」を満たす
 診断ドキュメント。

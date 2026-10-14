@@ -1,6 +1,8 @@
 # M5-R 前置: CUDA Toolkit 12.4 と cuDNN 8 のセットアップ
 
-Language: [日本語](m5r-cuda-setup.md) | [English](../en/m5r-cuda-setup.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## 目的
 

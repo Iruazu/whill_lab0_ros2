@@ -1,10 +1,12 @@
 # M5-R 前置: FAST-LIO SAM 評価候補化 (clone-on-demand 運用)
 
-Language: [日本語](m5r-fastlio-sam-eval.md) | [English](../en/m5r-fastlio-sam-eval.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## 目的
 
-M5-R (オフラインのマップ作成パイプライン) の SLAM 候補のうち、第二候補に位置づけている [FAST-LIO SAM (RightTr fork)](https://github.com/RightTr/FAST-LIO-SAM) を、後続の M5R-3 (Issue #48「GLIM vs FAST-LIO SAM 実 bag 比較」) で評価できる状態まで整える。具体的には:
+M5-R (オフラインのマップ作成パイプライン) の SLAM 候補のうち、第二候補に位置づけている FAST-LIO SAM (RightTr fork)（当時の参照先 `https://github.com/RightTr/FAST-LIO-SAM` は現在のcheckoutに存在しない） を、後続の M5R-3 (Issue #48「GLIM vs FAST-LIO SAM 実 bag 比較」) で評価できる状態まで整える。具体的には:
 
 - 上流ライセンス状況を確定し、本リポへの取り込み方針を決める
 - ローカル評価用の clone 手順 + Ubuntu 22.04 用 GTSAM (PPA) インストール手順を文書化する
@@ -22,7 +24,7 @@ M5-R (オフラインのマップ作成パイプライン) の SLAM 候補のう
 | LICENSE ファイル | **存在しない** (`find -iname LICENSE*` で 0 件、WebFetch で本文確認) |
 | README の license 宣言 | なし、license バッジもなし |
 | `package.xml` の `<license>` | `BSD` と書かれているが、対応する LICENSE 本文が同梱されていない (= 法的拘束力のある合意は不在) |
-| 派生元 | HKU-MaRS の [FAST-LIO](https://github.com/hku-mars/FAST_LIO) (**GPL-2.0**)。FAST-LIO SAM はそのコードを取り込んで GTSAM の loop closure / smoothing を追加した派生物。GPL の copyleft 規定により派生物にも GPL-2.0 が伝播し得る |
+| 派生元 | HKU-MaRS の FAST-LIO（当時の参照先 `https://github.com/hku-mars/FAST_LIO` は現在のcheckoutに存在しない） (**GPL-2.0**)。FAST-LIO SAM はそのコードを取り込んで GTSAM の loop closure / smoothing を追加した派生物。GPL の copyleft 規定により派生物にも GPL-2.0 が伝播し得る |
 
 ### 著作権法上の解釈
 
@@ -134,5 +136,5 @@ ADR-0003 で「FAST-LIO SAM 採用」とならない場合、本文書と `scrip
 - M5-R 実行計画: [`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §3.1 (`src/third_party/FAST_LIO_SAM/` の扱い)、§6 (Issue M5R-2 受け入れ基準の原文)
 - 対の文書: [`m5r-glim-setup.md`](m5r-glim-setup.md) — 第一候補 GLIM のソースビルド手順
 - ADR 0001: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md) — 新規 docs は ja/en 並列で生やす
-- スクリプト: [`scripts/clone_fastlio_sam_for_eval.sh`](../../scripts/clone_fastlio_sam_for_eval.sh) — 本文書と対の冪等 clone スクリプト
+- スクリプト: `scripts/clone_fastlio_sam_for_eval.sh`（当時の参照先 `../../scripts/clone_fastlio_sam_for_eval.sh` は現在のcheckoutに存在しない） — 本文書と対の冪等 clone スクリプト
 - 関連 Issue: #46 (本文書とスクリプト)、後続の #48 M5R-3 (実 bag 比較) と ADR-0003

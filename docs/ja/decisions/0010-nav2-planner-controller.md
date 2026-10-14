@@ -1,6 +1,5 @@
 # ADR 0010: Nav2 planner + controller の継続採用 + `allow_unknown: false` (M6-R)
 
-Language: [日本語](0010-nav2-planner-controller.md) | [English](../../en/decisions/0010-nav2-planner-controller.md)
 
 - Status: **proposed** (M6R4-1+2 起草、M6R4-3 V4 走行データで accepted 化)
 - Date: 2026-07-14

@@ -1,64 +1,33 @@
-# whill_lab0_ros2 docs
+# 文書一覧
 
-Language: [日本語](README.md) | [English](../en/README.md)
+2026-10-14 以降は日本語を正本とする。現在使う手順と過去の実装経緯を分けて読む。
 
-noetic → humble 移植のプロジェクトレベル文書を集約する。本インデックスから辿るか、目的のマイルストーン文書に直接飛ぶこと。
+## 現用文書
 
-## 開発方針
+| 文書 | 用途 |
+| --- | --- |
+| [リポジトリ概要](../../README.md) | 実装範囲・入口 |
+| [実機 runbook](runbook-live-demo.md) | 準備、起動、初期位置、検査、停止、録画 |
+| [構成](architecture-overview.md) | ノード、トピック、TF、速度指令 |
+| [スクリプト一覧](scripts.md) | 実行ファイルの用途と使い分け |
+| [開発環境](development.md) | 上流取得、ビルド、文書検証 |
+| [整備課題](repository-maintenance.md) | 未解決事項・検証範囲 |
+| [地図一覧](../maps/README.md) | 地図成果物の規約 |
+| [校正台帳](calibration-ledger.md) | 校正履歴。現用値はコードと照合する |
+| [設計判断](decisions/README.md) | 採択時点の判断と追加記録 |
 
-現行の前向き計画の正本は方針文書 [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) (platform-pivot) である。転換後のフェーズ M4-R 〜 M9、禁止事項 (凍結された M5-d / M5-e、identity な `tf_bridge` の継続利用、FAST-LIO のランタイム強化)、フェーズごとの受け入れ基準をここに定義している。
+## パッケージの説明
 
-旧 [移行計画](migration-plan.md) は初期 M1〜M3 の noetic → humble 移植の実行記録として残るが、次に作るべきものの判断根拠ではなくなった。
+[センサ](../../src/whill_sensors_bringup/README.md)、[オドメトリ](../../src/whill_localization/README.md)、[障害物前処理](../../src/whill_perception/README.md)、[Nav2](../../src/whill_navigation/README.md)、[安全層](../../src/whill_safety/README.md)、[配車・Web](../../src/whill_dispatch/README.md)。
 
-## 計画 / 研究 / 意思決定
+## 過去の記録
 
-`docs/` 配下のサブディレクトリは性質の異なる 3 種の文書を分離している:
+`plans/` は当時の実行計画、`research/` は調査、`reports/` は解析結果、`session-*.md` はセッション記録。`m1`〜`m6r` 文書と `migration-plan.md` は移植・検証の経緯として保存する。未着手などの表記は執筆当時の状態を示す。
 
-- [`plans/`](plans/) — `pm-orchestrator` が起草する複数フェーズ計画。各計画には受け入れ基準と禁止事項が明示される。新フェーズはここから始まる。
-  - [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md)
-- [`research/`](research/) — `research-analyst` が執筆する技術調査。ADR と計画の入力として参照される。
-  - [`research/2026-06-11-localization-survey.md`](research/2026-06-11-localization-survey.md)
-- [`decisions/`](decisions/) — Architecture Decision Record (`NNNN-*.md`)。下書きは agent が作ることもあるが、`accepted` 行を確定するのは人間。検討中の ADR 候補は [方針文書 §7](plans/2026-06-11-platform-pivot.md) に列挙されている。
-  - 採択済み:
-    - [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md) — docs 両言語化方針
+- [2026-06-11 の構成転換](plans/2026-06-11-platform-pivot.md)
+- [M6-R 自己位置推定計画](plans/2026-06-24-m6r-localization.md)
+- [Nav2 障害物層の復帰計画](plans/2026-07-14-m6r4-nav2-obstacle-layer.md)
+- [配車の実装計画](plans/2026-07-19-m7-dispatch.md)
+- [旧 noetic 実装の索引](legacy-index.md)
 
-## noetic スタックからの引き継ぎ
-
-- [LiDAR ↔ IMU 外部パラメータ (noetic 由来)](m3-extrinsics-from-noetic.md) — `whill_lab0/FAST_LIO/config/velodyne.yaml` の校正値。M4 の出発点として使用した。
-- [旧リポインデックス](legacy-index.md) — `~/whill_lab0/` のエントリポイント・マップ。`legacy-archaeologist` エージェントの起点。
-
-## M4-R 前置作業
-
-- [ModelCr2State の単位曖昧性確定](m4r-whill-units.md) — M4R-1 (案 1: ros2_whill fork に `/whill/odom` publisher 追加) の前提として、motor_angle/motor_speed の単位を実機検証で確定
-
-## M5-R 前置作業
-
-- [CUDA Toolkit 12.4 と cuDNN 8 のセットアップ](m5r-cuda-setup.md) — GLIM (M5-R で第一候補) のビルド前提
-
-## マイルストーン
-
-初期ロードマップ (M1〜M5) は完了済。転換後のロードマップ (M4-R 〜 M9) は方針文書 §4 とリポ直下 README で追跡する。下表のフェーズ別文書は歴史的な実行記録という位置付け。
-
-| | 文書 | ステータス |
-|--|------|-----------|
-| M1 | [環境構築](m1-environment-setup.md) | 完了 |
-| M2 | [実機での WHILL コアドライバ](m2-whill-core.md) | 完了 |
-| M3 | [センサスタック](m3-sensors.md) | 完了 (PR #4 が 2026-05-07 に、PR #5 wrap-up が 2026-05-08 にマージ) |
-| M4 | [自己位置推定 — FAST-LIO](m4-localization.md) | 完了 (PR #6 が 2026-05-08 にマージ) |
-| M5 | [ナビゲーション — Nav2](m5-navigation.md) | M5-a/b/c/d 完了 (PR #7 が 2026-05-20 にマージ)。M5-d の継続と M5-e は 2026-06-11 のプラットフォーム転換により凍結 |
-| M4-R 〜 M9 | — (フェーズ別文書は未起草) | [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) §4 を参照 |
-
-## セッションログ
-
-調査作業を日付つきで残す物語形式の記録。同じ袋小路を後続のコントリビュータが繰り返さないために置く。
-
-- [2026-05-06](session-2026-05-06.md) — M2 wrap-up: Model CR2 のコールドブート問題、fork パッチ、E2E 検証
-- [2026-05-07](session-2026-05-07.md) — M3 wrap-up: 3 センサ車載 bringup、IMU lifecycle 競合の修正、RealSense 型番の訂正 (D455 → D435)、Velodyne netplan、M4 入力用の静止 / 走行 bag 収録
-- [2026-05-08](session-2026-05-08.md) — M4 ベースライン: FAST-LIO bringup、identity extrinsic の遠回りと回復、収録品質が支配的という 3-run 再現性試験
-
-## 規約
-
-- マイルストーン 1 件につき文書 1 つ。命名は `mN-<slug>.md`。各文書は PR レビューで消化できる `Status` 表で終わる
-- セッションログは `session-YYYY-MM-DD.md` 形式。結論だけでなく辿った *経路* (誤診断を含む) を残す
-- 外部の権威ある参照 (ベンダ PDF、上流 README) はリンクするだけでコピーしない。ただしその *解釈* は本リポに置き、理解の責任は自分たちで持つ
-- 言語別の文書は `docs/ja/` と `docs/en/` に並列で配置する (方針: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md))。Issue #15 完了をもって全 docs が両言語化済み
+旧計画にある FAST-LIO runtime、identity TF、旧DDS設定を現用手順として復活させない。最新の起動手順は runbook、挙動と数値はコード・設定を優先する。

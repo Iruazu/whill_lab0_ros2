@@ -1,5 +1,8 @@
 # M4-R bench data
 
+> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../ja/runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
+
+
 Captured artifacts from the M4-R odom-layer verification runs (the
 `odom -> base_link` EKF wired up by Issues #35 / #36 / #37 / #38).
 Same gitignore policy as `docs/m3-bench-data/`: bag directories

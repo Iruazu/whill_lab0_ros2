@@ -1,6 +1,8 @@
 # M6-R デモ準備チェックリスト
 
-Language: [日本語](m6r-demo-prep-checklist.md) | [English](../en/m6r-demo-prep-checklist.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 デモ本番前に**現地で**実施する運用手順。コード側で扱えない
 経路依存の問題を、事前踏査と物理的な経路整備で吸収するためのリスト。

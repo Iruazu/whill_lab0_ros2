@@ -1,5 +1,8 @@
 # M3 bench data
 
+> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../ja/runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
+
+
 Captured artifacts from on-bench / on-chair smoke tests of the M3 sensor
 stack. Bag directories themselves are gitignored (they are large), only the
 small descriptive files (READMEs, `frames.pdf` snapshots, etc.) live in

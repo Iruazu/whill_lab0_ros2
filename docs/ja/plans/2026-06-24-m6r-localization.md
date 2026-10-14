@@ -1,6 +1,8 @@
 # M6-R 実行計画: 運用 localization + Nav2 安全機能復帰 (2026-08-01 屋外デモに向けて)
 
-Language: [日本語](2026-06-24-m6r-localization.md) | [English](../../en/plans/2026-06-24-m6r-localization.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 - 日付: 2026-06-24 起草 / 2026-07-07 実データ収録・戦略確定・全面改訂 (accepted)
 - 状態: **accepted (2026-07-07)**

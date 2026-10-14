@@ -1,5 +1,8 @@
 # Indoor calibration bag 収録プロトコル (M6-R / Issue #64 解消用)
 
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 - 日付: 2026-07-08
 - 目的: **T_lidar_imu の GRIL-Calib 再校正**を成立させる motion excitation を含む
   bag を取得する
@@ -202,5 +205,5 @@ EOF
 
 - 親: [`docs/ja/plans/2026-06-24-m6r-localization.md`](plans/2026-06-24-m6r-localization.md) §9.1 R5
 - Issue #64 診断: [`docs/ja/m5r-imu-diagnostic.md`](m5r-imu-diagnostic.md)
-- 前回 GRIL-Calib dry-run: [`docs/m5r-bench-data/2026-06-24-loop-outdoor-ext/gril-calib-out/SUMMARY.md`](../../m5r-bench-data/2026-06-24-loop-outdoor-ext/gril-calib-out/SUMMARY.md)
+- 前回 GRIL-Calib dry-run: `docs/m5r-bench-data/2026-06-24-loop-outdoor-ext/gril-calib-out/SUMMARY.md`（当時の参照先 `../m5r-bench-data/2026-06-24-loop-outdoor-ext/gril-calib-out/SUMMARY.md` は現在のcheckoutに存在しない）
 - CycloneDDS 環境: [`docs/ja/m5r-rmw-cyclonedds.md`](m5r-rmw-cyclonedds.md)

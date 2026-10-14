@@ -1,6 +1,5 @@
 # ADR 0005: `docs/maps/<site>/` マップ成果物規約
 
-Language: [日本語](0005-maps-spec.md) | [English](../../en/decisions/0005-maps-spec.md)
 
 - Status: proposed
 - Date: 2026-06-21

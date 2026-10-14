@@ -1,6 +1,5 @@
 # Architecture Decision Records (ADR)
 
-Language: [日本語](README.md) | [English](../../en/decisions/README.md)
 
 このディレクトリは本リポジトリのアーキテクチャ・統治・運用に関わる意思決定を ADR 形式で記録する。
 
@@ -28,7 +27,7 @@ Language: [日本語](README.md) | [English](../../en/decisions/README.md)
 
 | 番号 | タイトル | Status |
 |------|---------|--------|
-| 0001 | docs の日英二言語化方針 | accepted |
+| 0001 | 旧日英二言語化方針（現在は日本語のみ） | superseded |
 | 0002 | (欠番・未使用) | — |
 | 0003 | M5-R マップ作成 SLAM の最終選定 | accepted |
 | 0004 | M5-R 動的物体除去ツールの選定 | accepted |

@@ -1,6 +1,8 @@
 # Research: キャンパス自己位置推定 / SLAM 手法調査 (要約版)
 
-Language: [日本語](2026-06-11-localization-survey.md) | [English](../../en/research/2026-06-11-localization-survey.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## 調査日
 2026-06-11

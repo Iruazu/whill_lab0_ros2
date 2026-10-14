@@ -1,6 +1,8 @@
 # M5-R: `/velodyne_points` 1 Hz 病の原因切り分けと RMW 選定
 
-Language: [日本語](m5r-rmw-cyclonedds.md) | [English](../en/m5r-rmw-cyclonedds.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 2026-06-24 の録画セッション中に発生した「`/velodyne_points` が公称
 10 Hz から 1 Hz 前後に落ちる」事象の診断レポート。実測値の根拠と恒久対策
