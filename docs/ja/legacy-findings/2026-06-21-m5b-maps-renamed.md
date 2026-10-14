@@ -1,6 +1,8 @@
 # 旧 M5-b マップディレクトリ リネーム記録 (2026-06-21)
 
-Language: [日本語](2026-06-21-m5b-maps-renamed.md) | [English](../../en/legacy-findings/2026-06-21-m5b-maps-renamed.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## 何を / なぜ / いつ
 

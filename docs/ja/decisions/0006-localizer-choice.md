@@ -1,6 +1,5 @@
 # ADR 0006: 運用 localizer の選定 (M6-R)
 
-Language: [日本語](0006-localizer-choice.md) | [English](../../en/decisions/0006-localizer-choice.md)
 
 - Status: **proposed** (M6R-1 着手時起案、M6R-5 完了時 accepted 化予定)
 - Date: 2026-07-08

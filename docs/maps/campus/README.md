@@ -1,5 +1,12 @@
 # `campus` (M5-R 本番マップ)
 
+## 現用ファイル（2026-10-14照合）
+
+実機デモは `occupancy_v2.yaml` の `image: v2/final.pgm` を使用する。localizerは `static.pcd`、dispatchは `waypoints.yaml`。Web背景は別途生成される。現在の手順は [runbook](../../ja/runbook-live-demo.md)。
+
+以下の品質表と生成経緯は過去の記録として保持する。旧occupancyの値をv2の品質値として流用しない。冒頭の「47分」と取得概要の「2162秒 / 36分2秒」は一致しないため、録画時間はbag / manifestで再確認する。今回どちらかに断定して書き換えていない。
+
+
 M5-R (`docs/ja/plans/2026-06-11-platform-pivot.md` §M5-R) の最終成果物。
 2026-07-10 の 47 分 / 1310 m キャンパス外周走行 bag から GLIM +
 DUFOMap 経由で生成した静的マップ。

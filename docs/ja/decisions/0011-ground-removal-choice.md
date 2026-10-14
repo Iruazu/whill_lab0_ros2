@@ -1,6 +1,5 @@
 # ADR 0011: 地面除去前処理 — Patchwork++ core + 自前 ROS 2 wrapper (M6-R)
 
-Language: [日本語](0011-ground-removal-choice.md) | [English](../../en/decisions/0011-ground-removal-choice.md)
 
 - Status: **accepted** (2026-07-14 bag replay 検証で AC1-AC3 PASS、AC4 は M6R4-3 走行で確定)
 - Date: 2026-07-14 起草 / 2026-07-14 accepted

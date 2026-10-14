@@ -1,6 +1,8 @@
 # M4-R 実行計画: odom 基盤の再構築
 
-Language: [日本語](2026-06-13-m4r-execution.md) | [English](../../en/plans/2026-06-13-m4r-execution.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 - 日付: 2026-06-13
 - 状態: accepted (Iruazu、2026-06-14)

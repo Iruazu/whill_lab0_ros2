@@ -1,6 +1,8 @@
 # M5-R マップ作成パイプライン
 
-Language: [日本語](m5r-pipeline.md) | [English](../en/m5r-pipeline.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 本書は M5-R (マップ作成) パイプライン全体の参照ドキュメント。Issue #49 で
 動的除去 (DUFOMap) section、Issue #50 で占有格子変換 section、Issue #51
@@ -107,7 +109,7 @@ zstd 圧縮された `bag_0.db3.zstd` を sqlite3 として直接開こうとし
 `ros2 bag convert` で別ディレクトリに書き出すか、外部圧縮で archive する。
 
 `docs/m5r-bench-data/` 配下の `<run-id>` ディレクトリ命名規約と gitignore
-規約は [`../../m5r-bench-data/README.md`](../../m5r-bench-data/README.md)
+規約は [`../m5r-bench-data/README.md`](../m5r-bench-data/README.md)
 を正本とする。
 
 ### 録画後の bag 検証
@@ -423,7 +425,7 @@ ${EDITOR:-vi} docs/maps/<site>/metadata.yaml
 
 ### `metadata.yaml` 記入要領
 
-スキーマは [`../../maps/README.md`](../../maps/README.md) §「`metadata.yaml`
+スキーマは [`../maps/README.md`](../maps/README.md) §「`metadata.yaml`
 スキーマ」が正本 (ADR-0005 [`decisions/0005-maps-spec.md`](decisions/0005-maps-spec.md))。
 M5-R パイプライン由来の値は次の手順で埋める:
 

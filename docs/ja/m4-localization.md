@@ -1,6 +1,8 @@
 # M4 — ROS 2 humble での自己位置推定
 
-Language: [日本語](m4-localization.md) | [English](../en/m4-localization.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 ## ゴール
 
@@ -68,7 +70,7 @@ LiDAR↔IMU **外部パラメータ**は noetic スタック由来で変更な�
 
 ## 設定上の判断と理由
 
-[`src/whill_localization/config/velodyne_whill.yaml`](../../src/whill_localization/config/velodyne_whill.yaml) は上流デフォルトをいくつか上書きしている:
+`src/whill_localization/config/velodyne_whill.yaml`（当時の参照先 `../../src/whill_localization/config/velodyne_whill.yaml` は現在のcheckoutに存在しない） は上流デフォルトをいくつか上書きしている:
 
 | フィールド | 上流デフォルト | M4 の値 | 理由 |
 |-----------|--------------|--------|------|

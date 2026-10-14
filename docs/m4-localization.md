@@ -1,7 +1,3 @@
-# M4 — Localization on ROS 2 humble
+# 日本語文書への入口
 
-Language: [日本語](ja/m4-localization.md) | [English](en/m4-localization.md)
-
-このファイルは言語選択スタブ。本体は `ja/` または `en/` 配下を参照。
-
-Bilingualisation policy: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md).
+[本文](ja/m4-localization.md) を参照してください。このファイルは旧 URL の互換入口です。

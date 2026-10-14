@@ -1,5 +1,8 @@
 # v2 map 品質改善パイプライン 実装レポート
 
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 - 日付: 2026-07-18 (作業完了) — 2026-07-19 (レポート確定)
 - 状態: PR #91 close-out 資料
 - 対応 PR: [#91 feat(maps): PCD → Occupancy v2](https://github.com/Iruazu/whill_lab0_ros2/pull/91)

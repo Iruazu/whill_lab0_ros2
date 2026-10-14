@@ -1,6 +1,5 @@
 # ADR 0012: whill_dispatch の Web 境界インターフェース方式 (M7)
 
-Language: [日本語](0012-dispatch-web-interface.md) | (English 版は demo 後に必要になれば起こす)
 
 - Status: **proposed** (2026-07-19 M7 最小実装と同時起草。実機での実配線確認後に accepted 化)
 - Date: 2026-07-19

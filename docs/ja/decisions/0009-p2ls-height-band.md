@@ -1,6 +1,5 @@
 # ADR 0009: pointcloud_to_laserscan の高さ帯選定と QoS bridge (M6-R)
 
-Language: [日本語](0009-p2ls-height-band.md) | [English](../../en/decisions/0009-p2ls-height-band.md)
 
 - Status: **accepted** (2026-07-15 A/B 実測で min_height 0.05 確定、AC1-AC5 全て PASS)
 - Date: 2026-07-14 (起草) / 2026-07-15 (accepted)

@@ -1,6 +1,8 @@
 # M5 — ROS 2 humble での自律航法
 
-Language: [日本語](m5-navigation.md) | [English](../en/m5-navigation.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 > **ステータス**: M5-d **完了** (2026-05-20)。WHILL CR2 上での初の自律 goal-to-pose 成功: 1.6 m 前方ゴールに ~6 秒でクリーンに到達、0 → 0.3 m/s への 0.3 m/s² 滑らかなランプ (velocity_smoother)、`bt_navigator: Goal succeeded`。M5 のクロージング条件は満たした。M5-e (追加チューニング + 長距離ゴール + 動的障害物) は任意で残る。
 
@@ -61,7 +63,7 @@ M5 の終了条件: `ros2 launch whill_navigation nav_launch.py` で起動し、
 | **M5-a — TF ブリッジ** `map → camera_init → body → base_link → sensors` | **完了 (2026-05-08)** — `whill_navigation/launch/tf_bridge_launch.py` が 2 つの static identity (`map → camera_init`、`body → base_link`) を追加。run2 replay に対する `tf2_tools view_frames` で全チェーンを確認 (スナップショットは [`m3-bench-data/frames-m5a-2026-05-08.pdf`](../m3-bench-data/frames-m5a-2026-05-08.pdf)) |
 | `whill_navigation` パッケージ骨格 + `nav_launch.py` コンポーザ | 完了 (2026-05-08) |
 | **M5-b — 保存地図 (PCD)** | **完了 (2026-05-08)** — `docs/m5-maps/lab.pcd`、256,478 点、8.2 MB。`pcd_save.pcd_save_en: true` + `publish.map_en: true` で `m4_chair_live_2026-05-08_run2` を replay し、`/map_save` サービスを叩いて取得。**注意: FAST-LIO ドリフト区間からの散在点を含む** (有界軌道は原点から ~15 m に収まったが、XY 範囲は ±350 m に達する)。M5-c の PCD → 占有格子変換は、`nav2_map_server` に渡す前に積極的にクリップ・外れ値除去する必要がある |
-| **`nav2_map_server` 用 2D 占有格子 (.pgm + .yaml)** | **完了 (2026-05-20)** — [`scripts/pcd_to_occupancy_grid.py`](../../scripts/pcd_to_occupancy_grid.py) が `lab.pcd` → [`docs/m5-maps/lab.pgm`](../m5-maps/lab.pgm) + [`docs/m5-maps/lab.yaml`](../m5-maps/lab.yaml) に変換。デフォルト: XY クロップ ±20 m、Z スライス [0.1, 1.5] m、0.05 m / セル → 800×800。密度外れ値フィルタ (5×5 ウィンドウ、最小クラスタ 5) + 原点周辺 1.5 m の clear-disk で歩行者通過スパイクと椅子自己反射を除去。原点からの Bresenham レイキャストで free space をマークし、未到達セルは unknown のまま。コミット `3270336`、`53d691f` |
+| **`nav2_map_server` 用 2D 占有格子 (.pgm + .yaml)** | **完了 (2026-05-20)** — [`scripts/pcd_to_occupancy_grid.py`](../../scripts/pcd_to_occupancy_grid.py) が `lab.pcd` → [`docs/m5-maps/lab.pgm`](../maps/lab-legacy-m5b/lab.pgm) + [`docs/m5-maps/lab.yaml`](../maps/lab-legacy-m5b/lab.yaml) に変換。デフォルト: XY クロップ ±20 m、Z スライス [0.1, 1.5] m、0.05 m / セル → 800×800。密度外れ値フィルタ (5×5 ウィンドウ、最小クラスタ 5) + 原点周辺 1.5 m の clear-disk で歩行者通過スパイクと椅子自己反射を除去。原点からの Bresenham レイキャストで free space をマークし、未到達セルは unknown のまま。コミット `3270336`、`53d691f` |
 | **`nav2_params.yaml` を椅子向けにチューン** | **完了 (2026-05-20)** — RPP、`desired_linear_vel: 0.3 m/s`、`use_collision_detection: false` (static map にまだ phantom が残るため)、`robot_radius: 0.45`、`inflation_radius: 0.5`。正準 47 プラグインの bt_navigator リスト。コミット `262772f`、`98e0c65`、`53d691f`、`8cd7fe5` |
 | **`nav_launch.py` での Nav2 lifecycle bringup** | **完了 (2026-05-20)** — `map_server` + `planner_server` + `controller_server` + `behavior_server` + `bt_navigator` + **`velocity_smoother`** + `lifecycle_manager_navigation`。velocity_smoother で RPP 自身がランプしない実加速度上限 (前進 0.3 m/s²、回転 1.0 rad/s²) を強制。`/cmd_vel_smoothed → /whill/controller/cmd_vel` に remap。コミット `262772f`、`8cd7fe5` |
 | RViz2 ドライラン: 椅子なしで map と costmap が描画される | 廃止 — 椅子上の live M5-d に直行 |

@@ -1,110 +1,25 @@
 # whill_localization
 
-Odom-layer localization bringup for the WHILL chair stack. This package
-provides the **M4-R odom-layer EKF** (`robot_localization`), authoritative
-for `odom -> base_link` and `/odometry/filtered`. New surface added by
-Issue #37; this is what Nav2 and the M6-R scan-to-map localizer consume.
+車輪速度とIMUを融合するオドメトリ層。2026-10-14 にlaunchと `config/ekf_odom.yaml` を照合。
 
-> FAST-LIO note (2026-07-22): this package previously also shipped a
-> FAST-LIO runtime-localizer bringup (`fast_lio_launch.py` /
-> `localization_launch.py` / `config/velodyne_whill.yaml`). FAST-LIO's
-> runtime use was frozen by platform-pivot §5, the runtime localizer is
-> now `lidar_localization_ros2` (BSD-2, ADR-0006), and map-making uses
-> GLIM (MIT, ADR-0003). The FAST-LIO launches/config and the GPL sources
-> were removed to keep the tree permissive.
+## 入出力
 
-This package provides:
+| 種類 | 内容 |
+| --- | --- |
+| 車輪入力 | `/whill/odom`。poseではなくvx / vy / vyawを融合 |
+| IMU入力 | `/imu/data_rep145`。角速度・加速度を使用しorientationは融合しない |
+| 出力 | `/odometry/filtered`、TF `odom → base_link`。設定30Hz |
+| モード | `two_d_mode: true`、`world_frame: odom` |
 
-- An M4-R EKF config (`config/ekf_odom.yaml`) — `robot_localization`'s
-  `ekf_node` configured to fuse `/whill/odom` (wheel) +
-  `/imu/data_raw` (RT 9-axis IMU) into `/odometry/filtered`.
-- Two launch files:
-  - `odom_bringup_launch.py` — **M4-R single-command bringup (Issue
-    #38)**. Composes `whill_sensors_bringup/sensors_launch.py` +
-    upstream `whill_driver` (launched directly with
-    `port_name:=/dev/whill` — see the launch header for the 2026-07-22
-    ttyUSB enumeration incident) + this package's
-    `ekf_odom_launch.py`. This is the launch you should use on the
-    chair for everything M4-R covers.
-  - `ekf_odom_launch.py` — odom-layer EKF only. Use this when you want
-    to bring sensors and the WHILL driver up by hand (debugging) or
-    swap one of the inputs (replay a `/whill/odom` bag while live
-    sensors run, etc.).
+生の `/imu/data_raw` をEKF入力とする旧説明は現用設定と異なる。IMUの符号補正と静的TFは `whill_sensors_bringup` が担当する。
 
-## M4-R odom-layer EKF (Issue #37)
+## launch
 
-`ekf_odom_launch.py` starts a single `robot_localization` `ekf_node` and
-nothing else. It is the **only** publisher of the `odom -> base_link`
-TF edge in the new architecture; the WHILL driver was switched to
-TF-off in M4R-1, and `tf_bridge_launch.py` (FAST-LIO `map -> camera_init`
-identity) was removed by M4R-4 / Issue #38.
+- `odom_bringup_launch.py`：センサ + WHILL driver + EKF。driverの `port_name` は `/dev/whill`。
+- `ekf_odom_launch.py`：EKFのみ。
 
-Inputs (sourced from elsewhere; this launch does NOT start them):
+実機統合時は `whill_safety/m6r_bringup_launch.py` がodom bringupを含む。別途起動しない。`map → odom` はNDT localizerが担当する。
 
-- `/whill/odom` (`nav_msgs/Odometry`, ~2.5 Hz, frame `odom`, child
-  `base_link`) — M4R-1 `whill_driver` output. Only `vx`, `vy`, `vyaw`
-  are fused; the driver's pose is intentionally discarded so the EKF
-  is the single integrator (see header comment in `ekf_odom.yaml`).
-- `/imu/data_raw` (`sensor_msgs/Imu`, 100 Hz, frame `imu_link`) — RT
-  9-axis IMU. `angular_velocity` (vyaw effective under `two_d_mode`)
-  and `linear_acceleration` (ax, ay effective) are fused; orientation
-  is skipped because `orientation_covariance[0] == -1` (REP-145
-  "unknown").
-- Static TF `base_link -> imu_link` from
-  `whill_sensors_bringup/launch/static_tf_launch.py` (M4R-2).
-  `robot_localization` uses this to rotate IMU measurements into
-  `base_link` before fusing.
+旧FAST-LIO runtime launch / configは削除済み。地図作成はGLIMのオフライン処理。旧 `localization_launch.py` を実行入口にしない。
 
-Outputs:
-
-- `/odometry/filtered` (`nav_msgs/Odometry`) at 30 Hz.
-- TF `odom -> base_link` at 30 Hz.
-
-How the four Issue #37 acceptance criteria map to runtime checks:
-
-| AC | Command (live) | Expected |
-|----|---------------|----------|
-| (1) 30 Hz output | `ros2 topic hz /odometry/filtered` | 30 Hz ± 5 Hz |
-| (2) EKF is the only TF publisher | `ros2 run tf2_tools view_frames` then check `frames.pdf`; also `ros2 run tf2_ros tf2_echo odom base_link` | edge `odom -> base_link` shows publisher `ekf_filter_node`; `whill_driver` does not appear as a TF source |
-| (3) 10 m straight push, ≤ 0.5 m end error | record a bag of `/odometry/filtered`, then `scripts/m4r3_ekf_bench.py <bag>` | `End distance from start: ≤ 0.5 m` |
-| (4) 30 s static, ≤ 0.1 rad yaw drift | record a bag with the chair static, then `scripts/m4r3_ekf_bench.py <bag>` | `Yaw drift: ≤ 0.1 rad` |
-
-Quick start (live, unified M4-R bringup — single terminal):
-
-```bash
-ros2 launch whill_localization odom_bringup_launch.py
-```
-
-This is the M4R-4 / Issue #38 path: sensors + `whill_driver` + EKF
-launch together.
-
-For debugging individual pieces the three-terminal variant from M4R-3
-is still available. **This variant is mutually exclusive with
-`odom_bringup_launch.py` and with `whill_safety/m6r_bringup_launch.py`**
-— starting any of those three-terminal pieces alongside a full
-bringup duplicates that node. 2026-07-16 field: `sensors_launch.py`
-started alongside `m6r_bringup_launch.py` produced `/velodyne_points`
-at 39.4 Hz (4×) and a RealSense USB contention loop.
-
-```bash
-# Terminal 1: sensor drivers + static TFs
-ros2 launch whill_sensors_bringup sensors_launch.py
-
-# Terminal 2: WHILL driver (assumes M4R-1 wiring; topic /whill/odom).
-# NOTE: whill_launch.py uses the upstream params.yaml port /dev/ttyUSB0,
-# which breaks if the WHILL enumerated as ttyUSB1 (2026-07-22 field).
-# Check `ls -la /dev/whill` first; if it points at ttyUSB1, run the
-# driver node directly with the udev symlink instead:
-#   ros2 run whill_driver whill --ros-args -p port_name:=/dev/whill
-ros2 launch whill_bringup whill_launch.py
-
-# Terminal 3: this EKF
-ros2 launch whill_localization ekf_odom_launch.py
-```
-
-Covariance tuning is intentionally left at upstream defaults for M4-R.
-If the four acceptance criteria pass with defaults the run-tuning issue
-stays in M5-R / later; if not, a follow-up Issue will own the
-`process_noise_covariance` and `initial_estimate_covariance` rework
-based on captured run data.
-
+運用は [runbook](../../docs/ja/runbook-live-demo.md)、校正履歴は [校正台帳](../../docs/ja/calibration-ledger.md)。センサの物理配置を変更したら既存の数値をそのまま再利用しない。

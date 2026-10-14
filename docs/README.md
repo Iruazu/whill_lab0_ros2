@@ -1,7 +1,3 @@
-# whill_lab0_ros2 docs
+# ドキュメント
 
-Language: [日本語](ja/README.md) | [English](en/README.md)
-
-このファイルは言語選択スタブ。本体は `ja/` または `en/` 配下を参照。
-
-Bilingualisation policy: [`decisions/0001-docs-i18n.md`](decisions/0001-docs-i18n.md).
+日本語の [文書一覧](ja/README.md) を参照してください。実機の起動・停止は [runbook](ja/runbook-live-demo.md) に集約しています。

@@ -1,6 +1,5 @@
 # ADR 0004: M5-R 動的物体除去ツールの選定
 
-Language: [日本語](0004-dynamic-removal-choice.md) | [English](../../en/decisions/0004-dynamic-removal-choice.md)
 
 - Status: accepted
 - Date: 2026-06-21

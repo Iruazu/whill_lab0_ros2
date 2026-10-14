@@ -1,6 +1,5 @@
 # ADR 0007: フェイルセーフノード + twist_mux 設計 (M6-R)
 
-Language: [日本語](0007-failsafe-design.md) | [English](../../en/decisions/0007-failsafe-design.md)
 
 - Status: **proposed** (M6R-3 着手時起案、M6R-5 完了時 accepted 化予定)
 - Date: 2026-07-14 起案 / 2026-07-14 dessin-scope 縮小反映

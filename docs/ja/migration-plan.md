@@ -1,6 +1,8 @@
 # 移行計画: noetic → humble
 
-Language: [日本語](migration-plan.md) | [English](../en/migration-plan.md)
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+
+
 
 移行元: `Iruazu/whill_lab0` (24 パッケージ、ROS noetic)。移行先: `Iruazu/whill_lab0_ros2`
 (本リポ、ROS 2 humble)。
