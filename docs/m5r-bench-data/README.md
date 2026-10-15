@@ -6,7 +6,7 @@
 Interim artifacts from the M5-R map-building pipeline (bag recording →
 GLIM SLAM → DUFOMap dynamic removal). The pipeline itself is documented
 in [`../ja/m5r-pipeline.md`](../ja/m5r-pipeline.md) (English mirror at
-[`../en/m5r-pipeline.md`](../en/m5r-pipeline.md)). This README owns the
+[`../en/m5r-pipeline.md`](../ja/m5r-pipeline.md)). This README owns the
 **storage convention** for this directory: what lives here, what is
 tracked in git, what is not.
 

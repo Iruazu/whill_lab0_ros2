@@ -2,7 +2,7 @@
 
 WHILL Model CR2 の実機スタックを ROS 2 Humble で動かすためのリポジトリ。車体・センサ、自己位置推定、Nav2、フェイルセーフ、タブレットからの配車を含む。地図作成はオフラインで行い、実機運用では保存済みの地図を読み込む。
 
-本 README は 2026-10-14 にローカルのソース・設定を照合して更新した。実装の存在と実機での検証完了は区別する。現在の checkout の最新コミットは `022987e`（2026-07-24）。8月デモ全体の受入結果を今回再確認したものではない。
+2026-10-15更新。実装の存在と実機での検証完了は区別する。統合起動と実機配車は2026-10-14に成功を確認した。[検証記録](docs/ja/reports/2026-10-14-dispatch-demo.md)に確認範囲と未解決事項を記載している。
 
 ## 最初に読む文書
 
@@ -11,9 +11,9 @@ WHILL Model CR2 の実機スタックを ROS 2 Humble で動かすためのリ�
 - [スクリプト一覧](docs/ja/scripts.md)
 - [開発環境とビルド](docs/ja/development.md)
 - [現在の制約と整備課題](docs/ja/repository-maintenance.md)
-- [文書一覧](docs/ja/README.md)
+- [文書一覧](docs/README.md)
 
-文書は日本語を正本とする。旧言語別入口は互換リンクとして残す。過去の計画・検証記録は当時の記録であり、現在の起動手順には使わない。
+文書は日本語を正本とする。旧言語別入口と転送専用ファイルは削除し、正本に直接リンクする。過去の計画・検証記録は当時の記録であり、現在の起動手順には使わない。
 
 ## 現在の実装
 
@@ -28,6 +28,16 @@ WHILL Model CR2 の実機スタックを ROS 2 Humble で動かすためのリ�
 | 地図作成 | GLIM、DUFOMap、占有格子 v2、手動マスク合成 | 車載 runtime と別の処理 |
 
 実機運用は bringup / Nav2 / dispatch の3つの launch を併用する。詳細は runbook に集約する。`whill_platform` / `whill_console` の gateway 8765 とは別構成で、このリポジトリの Web は HTTPS 8000、rosbridge は WSS 9090。
+
+## 実機デモの統合起動
+
+準備済みのPCでは次の1コマンドでbringup・Nav2・配車Web・RVizを起動できる。
+
+```bash
+scripts/start_dispatch_demo.sh
+```
+
+初期位置とpreflightは手動で確認する。終了はCtrl-C。準備・引数・ログの詳細は [runbook](docs/ja/runbook-live-demo.md) を参照。
 
 ## ディレクトリ
 

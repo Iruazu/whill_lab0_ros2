@@ -1,8 +1,39 @@
 # 実機配車デモの起動・停止手順
 
-2026-10-14 改訂。ローカルの現用コードを根拠に整理した手順。7〜8月の実測記録は履歴として参照するが、今回この手順で実機走行を再検証したわけではない。
+2026-10-14 改訂。ローカルの現用コードを根拠に整理した手順。7〜8月の実測記録は履歴として参照するが、統合起動と実機配車の成功は2026-10-14にユーザー報告とログで確認した。確認範囲と地点名の不一致は [検証記録](reports/2026-10-14-dispatch-demo.md) を参照。
 
 対象は `whill_lab0_ros2` の campus 地図 v2、実機 WHILL、Nav2、dispatch Web UI。`whill_console` の gateway 8765 は使用しない。この構成の画面は HTTPS 8000、rosbridge は WSS 9090。
+
+## 統合起動（通常はこちら）
+
+初回のビルド・ネットワーク・証明書準備を済ませたら、1ターミナルで以下を実行する。
+
+```bash
+cd ~/whill_lab0_ros2
+scripts/start_dispatch_demo.sh
+```
+
+bringup・Nav2・TLS配車Web・RVizを起動し、共通のRMW・DDS・domainを設定する。既定はcampus / 地図v2 / speed normal / domain 0。地図や接続先を変更する場合は準備手順も照合する。
+
+- 実行内容だけを見る: `scripts/start_dispatch_demo.sh --dry-run`
+- RVizを別に起動する: `scripts/start_dispatch_demo.sh --no-rviz`
+- 低速で起動する: `scripts/start_dispatch_demo.sh --speed slow`
+- 別domain: `scripts/start_dispatch_demo.sh --domain 21`（診断側も同じ値にする）
+
+スクリプトは機器・地図・証明書・DDSのNIC名・ポート・既存ノードを確認する。RVizを先に起動し、localizerとmap_serverのactive後に初期位置設定を促す。RVizで設定して起動ターミナルのEnterを押すと、Nav2のactiveを待って配車Webを起動する。起動成功は入力受信・自己位置収束・Web接続の保証ではない。ログは `log/dispatch-demo-<日時>-<識別子>/` の各 `.log` に保存する。
+
+RVizのFixed Frameをmapに設定し、2D Pose Estimateで初期位置を指定して、起動ターミナルのEnterを押す。`--no-rviz` の場合も別途同じ環境で初期位置を指定する。Nav2がactiveになるにはmap TFが必要なため、初期位置設定前にcontrollerのactiveを待たない。配車Web起動後、別ターミナルから同じ環境でpreflightを実行できる。
+
+```bash
+cd ~/whill_lab0_ros2
+scripts/start_dispatch_demo.sh --preflight
+```
+
+受信・収束の確認とpreflightの制約は以下のT5を参照。preflight失敗でも統合起動中のスタックは自動終了しない。結果を確認して配車せずに原因を調べる。Web画面に検査結果を連動するゲートは未実装。
+
+統合起動ターミナルのCtrl-Cで、このshが起動したプロセスを停止する。dispatch停止後にNav2へgoal取消を要求し、Nav2・bringupを終了する。返信やプロセス終了だけで車体停止と判断せず現物も確認する。スクリプトはAP切替・sudo設定・証明書生成・初期位置送信・走行goal投入を自動実行しない。
+
+以下は準備と個別起動・診断の詳細。統合起動中にT1〜T4のlaunchを重ねて実行しない。
 
 ## 1. 開始前の確認
 

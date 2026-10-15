@@ -210,7 +210,7 @@ base_link -> sensors: 実測 extrinsic の static TF (現状の identity placeho
 2. 「進行中の既知課題」を P1〜P5 ベースに更新する
    (「FAST-LIO のループクロージャ不在」「車輪オドメトリ未統合」は本方針で解消経路が決まった旨を明記)
 3. 「チーム体制」の表の先頭に「方針判断はまず本文書を参照」の 1 行を足す
-4. Import 節に `@docs/plans/2026-06-11-platform-pivot.md` を追加する
+4. Import 節に `@docs/ja/plans/2026-06-11-platform-pivot.md` を追加する
 
 ## 9. 開発機材 (2026-06-11 確認)
 

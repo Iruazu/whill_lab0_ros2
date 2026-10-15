@@ -436,7 +436,7 @@ run_glim() {
 
   # Write the manifest BEFORE the run so a crash mid-run still leaves a
   # discoverable record of what was attempted. The fields here are the
-  # ones ADR-0003 will quote verbatim (see docs/decisions/0003-...md
+  # ones ADR-0003 will quote verbatim (see docs/ja/decisions/0003-mapping-slam-choice.md
   # Context node).
   local git_commit
   git_commit="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"

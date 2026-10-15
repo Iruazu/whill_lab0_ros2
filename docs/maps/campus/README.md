@@ -224,7 +224,7 @@ cp docs/m5r-bench-data/2026-XX-XX-campus/glim-out-audit-tli/traj_lidar.txt docs/
 
 ## 関連
 
-- 規約: [`../README.md`](../README.md)、[`../../decisions/0005-maps-spec.md`](../../decisions/0005-maps-spec.md)
+- 規約: [`../README.md`](../README.md)、[`../../decisions/0005-maps-spec.md`](../../ja/decisions/0005-maps-spec.md)
 - SLAM 選定: [`../../ja/decisions/0003-mapping-slam-choice.md`](../../ja/decisions/0003-mapping-slam-choice.md)
 - 動的除去: [`../../ja/decisions/0004-dynamic-removal-choice.md`](../../ja/decisions/0004-dynamic-removal-choice.md)
 - 校正記録: [`../../ja/calibration-ledger.md`](../../ja/calibration-ledger.md)

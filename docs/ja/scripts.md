@@ -26,6 +26,7 @@ OS、権限、ネットワークを変更するものを含む。実行前に内
 
 | ファイル | 用途・注意 |
 | --- | --- |
+| `start_dispatch_demo.sh` | 実機bringup・Nav2・TLS配車Web・RVizの統合起動。--dry-run / --preflight対応 |
 | `m6r_preflight.sh` | check 0〜5の走行前検査。check 4のrosout判定に制約あり |
 | `m6r_smoke_test.sh` | bag再生でlocalizer等を検証する入口 |
 | `m6r_record_calib_bag.sh` | 校正用bagの記録 |

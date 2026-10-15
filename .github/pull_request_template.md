@@ -8,7 +8,7 @@ Closes #
 |---------|---------|
 |         |         |
 
-## 方針適合チェック (docs/plans/2026-06-11-platform-pivot.md 5 章)
+## 方針適合チェック (docs/ja/plans/2026-06-11-platform-pivot.md 5 章)
 
 - [ ] `tf_bridge_launch.py` の identity 構成を前提とした機能追加ではない
 - [ ] FAST-LIO のランタイム localizer 強化ではない (マップ作成品質目的の調整は可)
