@@ -125,7 +125,7 @@ M5R-3 着手時に、まずは何も明示せずビルドを試し、落ちた�
 1. 本リポの M4-R-bringup ループ走行 bag を入力に、GLIM と FAST-LIO SAM を**同条件**で回す
 2. 生成 PCD のループクロージャ誤差 (始終点同一壁面の 3 点平均、目標 ≤ 0.5 m)、所要時間、VRAM 使用量、CPU/GPU 負荷を計測
 3. 動的物体 bag (歩行者横断) でも同様に走らせ、後段 ERASOR への入力としての適性を確認
-4. ADR-0003 (`docs/decisions/0003-mapping-slam-choice.md`) の Context 節に、license 状況、build 可否、loop closure 精度、所要 VRAM / 時間を記載
+4. ADR-0003 (`docs/ja/decisions/0003-mapping-slam-choice.md`) の Context 節に、license 状況、build 可否、loop closure 精度、所要 VRAM / 時間を記載
 5. Decision 節で第一候補を確定 (GLIM 維持 or FAST-LIO SAM への変更)
 
 ADR-0003 で「FAST-LIO SAM 採用」とならない場合、本文書と `scripts/clone_fastlio_sam_for_eval.sh` は履歴として残し、いずれ別 Issue で deprecation を判断する。

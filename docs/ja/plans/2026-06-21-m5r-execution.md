@@ -204,14 +204,14 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   - 期待: 上記 4 ファイルが揃い、`metadata.yaml` が必須項目を全て持つ。
     Issue M5R-5 で雛形を確定
 - [ ] **B4: ADR-0003 (SLAM 採用) が `accepted`**
-  - 本計画で起案する `docs/decisions/0003-mapping-slam-choice.md` が
+  - 本計画で起案する `docs/ja/decisions/0003-mapping-slam-choice.md` が
     実 bag 比較結果 (Issue M5R-3) を根拠に accepted で merged
 
 補強基準 (本計画で追加。code-reviewer が確認):
 
 - [ ] **B5: ライセンス棚卸し記載**
   - 採用した SLAM / ERASOR それぞれについて、ライセンス・運用スタックへの
-    link 有無を `docs/decisions/0003-mapping-slam-choice.md` の Consequences 節で
+    link 有無を `docs/ja/decisions/0003-mapping-slam-choice.md` の Consequences 節で
     明示。親方針 §3.4 の「GPL 系は分離プロセス利用に限定」が遵守されている
     ことを文章で確認
 - [ ] **B6: M6-R 引き渡し条件の明文化**
@@ -270,7 +270,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
 - **目的**: 同一の bag (ユーザーが M4-R-bringup 状態で取得した室内ループ
   走行 bag) を入力に、GLIM (GPU) と FAST-LIO SAM の両方を回して、生成 PCD・
   ループクロージャ誤差・操作性 (manual relocalization / keyframe export 等の
-  有無) を比較する。結果を `docs/decisions/0003-mapping-slam-choice.md` (新規) で
+  有無) を比較する。結果を `docs/ja/decisions/0003-mapping-slam-choice.md` (新規) で
   確定する
 - **受け入れ基準**:
   - [ ] ユーザーがループ走行 bag を 1 本以上取得し
@@ -279,7 +279,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   - [ ] GLIM での処理結果: 生成 PCD、ループクロージャ誤差 (B1 基準で評価)、
     所要時間、所要 VRAM が記録
   - [ ] FAST-LIO SAM での処理結果: 同上
-  - [ ] `docs/decisions/0003-mapping-slam-choice.md` (proposed) が、上記比較を
+  - [ ] `docs/ja/decisions/0003-mapping-slam-choice.md` (proposed) が、上記比較を
     Context 節、選定理由を Decision 節、もう一方を Alternatives 節に整理した
     内容で起案される
   - [ ] ADR の Status は本 Issue では `proposed`。ユーザー承認後に `accepted`
@@ -361,7 +361,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   `docs/maps/<site>/` 格納」の一連パイプライン文書としてまとめる。M6-R への
   引き渡し条件を明文化
 - **受け入れ基準**:
-  - [ ] `docs/ja/m5r-pipeline.md` / `docs/en/m5r-pipeline.md` (新規、二言語化
+  - [ ] `docs/ja/m5r-pipeline.md` / `docs/ja/m5r-pipeline.md` (新規、二言語化
     ADR-0001 準拠) に次を記載:
     - bag 取得手順 (M4-R bringup launch を立ててから何を録るか)
     - SLAM 実行コマンド (採用 SLAM ごと)
@@ -509,7 +509,7 @@ M5-R 完了時点で次が確定する:
 このフェーズで生まれる技術判断:
 
 - [ ] **ADR-0003: マップ作成 SLAM の選定 (GLIM vs FAST-LIO SAM)**。Issue M5R-3
-  で実 bag 比較後に `docs/decisions/0003-mapping-slam-choice.md` (proposed) を
+  で実 bag 比較後に `docs/ja/decisions/0003-mapping-slam-choice.md` (proposed) を
   起案、ユーザー承認後に accepted。親方針 §7 で「GLIM 採用の前提条件は
   満たされた。実 bag での GLIM vs FAST-LIO SAM 比較後に確定する」と明示済
 - [ ] **ADR-0004 候補: 動的物体除去手法の選定 (ERASOR vs Removert vs GLIM 内蔵)**。

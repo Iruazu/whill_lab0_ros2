@@ -260,7 +260,7 @@ bag が複数本ある場合は各 bag を独立の row として記録し、最
 
 ### 6. Decision と PR ready 化
 
-数値が揃ったら、別 commit で `docs/ja/decisions/0003-mapping-slam-choice.md` と `docs/en/decisions/0003-mapping-slam-choice.md` の Decision 節 placeholder を埋める。記載すべき内容:
+数値が揃ったら、別 commit で `docs/ja/decisions/0003-mapping-slam-choice.md` と `docs/ja/decisions/0003-mapping-slam-choice.md` の Decision 節 placeholder を埋める。記載すべき内容:
 
 - 採用 SLAM (GLIM / FAST_LIO_SAM)
 - Commit SHA / Tag pin (採用した時点の `git_commit` を `manifest.yaml` から転記)

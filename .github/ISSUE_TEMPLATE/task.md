@@ -10,7 +10,7 @@ labels: ''
 
 ## 方針文書との対応 (必須)
 
-`docs/plans/2026-06-11-platform-pivot.md` を参照:
+`docs/ja/plans/2026-06-11-platform-pivot.md` を参照:
 
 - フェーズ: M4-R / M5-R / M6-R / M7 / M8 / M9
 - 満たす要件 / 解消する問題: R* / P*
