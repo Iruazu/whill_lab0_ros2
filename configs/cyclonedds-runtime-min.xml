@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal CycloneDDS runtime xml (2026-07-24 emergency).
+
+  Why:
+    unset CYCLONEDDS_URI で Cyclone default にすると全 interface (wlo1
+    含む) を使い、外部 AP に接続中の wlo1 で SPDP multicast の送信が
+    失敗し discovery race を起こす (実測: velodyne 3.3 Hz に低下、
+    Nav2 abort、cmd_vel_safety 9.5 Hz)。
+
+    元 configs/cyclonedds-runtime.xml との差分:
+      - AllowMulticast=spdp を削除 (default = spdp、endpoint も unicast)
+      - DontRoute=true を削除 (これが unicast data path を塞いでいた)
+    残すもの: Interfaces=lo + enx で wlo1 除外、これが唯一必要な制限
+-->
+<CycloneDDS xmlns="https://cdds.io/config"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
+  <Domain id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface name="lo"/>
+        <!-- LiDAR USB-Ethernet アダプタ。名前 enx<MAC> はドック (USB-Eth) 依存。
+             ドックを替えたら `ip -brief link show` で現行名を確認して差し替える。
+             2026-07-31 ドック交換: 00:e0:4c:68:08:dc → 00:e0:4c:68:0e:c9 -->
+        <NetworkInterface name="enx00e04c680ec9" presence_required="false"/>
+      </Interfaces>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
