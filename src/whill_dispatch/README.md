@@ -1,6 +1,6 @@
 # whill_dispatch
 
-タブレットWebとNav2を接続する配車ノード・静的Web UI。2026-10-14 に `dispatch_node.py`、launch、Web実装を照合。起動手順は [runbook](../../docs/ja/runbook-live-demo.md)。
+タブレットWebとNav2を接続する配車ノード・静的Web UI。起動手順は [runbook](../../docs/ja/runbook-live-demo.md)。
 
 ## 起動するもの
 
@@ -8,7 +8,7 @@
 
 `site:=campus` は `docs/maps/campus/waypoints.yaml` を読む。`WHILL_MAPS_ROOT` で親ディレクトリを変更できる。`use_mock:=true` の場合は模擬NavigateToPose actionを追加する。mockは車体や安全層を再現しない。実機構成ではfalse。
 
-dispatchは独自のTFを出さないが、手動救出では `/cmd_vel_teleop` に速度指令を出す。「速度指令を一切出さない」という旧説明は現状と異なる。
+dispatchはTFを出さない。手動救出では `/cmd_vel_teleop` に速度指令を出す。
 
 ## Webとのインターフェース
 
@@ -27,7 +27,7 @@ Webは `/navigate_to_pose` や `/cmd_vel` に直接指令を送らない。地�
 
 ## 地点と背景地図
 
-campusの地点名は `kounoken`、`bldg7`、`seimon`、`bldg3`。座標の正本は `docs/maps/campus/waypoints.yaml`。現用値を一律にplaceholderとする旧説明は撤回するが、今回の実機再測量はしていない。
+campusの地点名は `kounoken`、`bldg7`、`seimon`、`bldg3`。座標の正本は `docs/maps/campus/waypoints.yaml`。
 
 Web背景は `web/map.png` / `web/map_meta.json`。現用metaは `docs/maps/campus/v2/final.pgm` を出典として記録し、縮小率8、解像度0.4m/pixel。再生成は `scripts/m7_make_web_map.py --yaml docs/maps/campus/occupancy_v2.yaml --out-dir src/whill_dispatch/web`。
 
@@ -39,7 +39,7 @@ WebのFREE判定は縮小画像上の補助判定。dispatchは地図の占有�
 
 dispatchのwatchdogは指令途絶0.4秒でゼロを送り、無操作20秒でモード解除。twist_muxのteleopタイムアウトは0.5秒、優先度はsafety100 > teleop50 > nav10。
 
-teleop入力が切れるとNav2入力に戻り得る。進行中の配車を取消してから救出する。過去文書の「手動中のLayer D停止は実機未検証」という注記を解消する証跡は今回確認していない。
+teleop入力が切れるとNav2入力に戻り得る。進行中の配車を取消してから救出する。手動中のLayer D停止は実機で未検証。
 
 ## 制約と検証
 

@@ -1,8 +1,6 @@
 # 過去の計画・調査・検証
 
-当時の意思決定や実測結果を保持するための索引。現在の起動は [runbook](runbook-live-demo.md)、全体の入口は [文書一覧](../README.md) を参照する。
-
-本文の予定・未着手・旧設定は執筆当時の状態。日常の操作手順として使用しない。設計判断は [ADR一覧](decisions/README.md) に分離している。
+当時の判断と実測を残す索引。本文の予定・未着手・旧設定は執筆時点のもので、現在の手順には使わない。現在の起動は [runbook](runbook-live-demo.md)、設計判断は [ADR 一覧](decisions/README.md)。
 
 - [M5-e/Phase A〜C 凍結記録 (2026-06-13)](legacy-findings/2026-06-13-m5e-frozen.md)
 - [旧 M5-b マップディレクトリ リネーム記録 (2026-06-21)](legacy-findings/2026-06-21-m5b-maps-renamed.md)
