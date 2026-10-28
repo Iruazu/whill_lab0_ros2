@@ -24,14 +24,15 @@ repositories:
     type: git
     url: https://github.com/ros-drivers/velodyne.git
     version: 2.5.1
-  # Intel RealSense D435 (USB 3, VID:PID 8086:0b07). Requires librealsense2
-  # system package before colcon build will succeed; ros-humble-librealsense2
-  # from the standard ROS apt repo is sufficient.
-  # See docs/ja/m3-sensors.md for the install snippet.
-  third_party/realsense-ros:
-    type: git
-    url: https://github.com/IntelRealSense/realsense-ros.git
-    version: 4.55.1
+  # Intel RealSense D435: no longer built from source (2026-10-28,
+  # avoidance-baseline C1). The 4.55.1 source build ran against apt
+  # librealsense2 2.57.7, a version pair Intel does not ship together. The
+  # ROS build farm releases ros-humble-realsense2-camera and
+  # ros-humble-librealsense2 as a matched pair (4.58.4 / 2.58.4 at the time),
+  # which is the install path realsense-ros recommends. Install with:
+  #   sudo apt install ros-humble-realsense2-camera ros-humble-realsense2-description
+  # An existing clone under src/third_party/realsense-ros must get a
+  # COLCON_IGNORE (or be removed) so it does not shadow the apt package.
   # RT 9-axis USB IMU. Lab uses /imu/data_raw as FAST-LIO input topic.
   third_party/rt_usb_9axisimu_driver:
     type: git
