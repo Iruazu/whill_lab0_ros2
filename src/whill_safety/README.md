@@ -27,6 +27,15 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 
 作動中は `/cmd_vel_safety` にゼロ指令を20Hzで出す。無発報は正常の証明ではなく、未受信や未起動も切り分ける。
 
+閾値はすべてROSパラメータで、既定値は上表と同じ（`fitness_max`、`forward_min_m`、`forward_sector_half_angle_deg` など。一覧は `failsafe_node.py` の `__init__`）。パラメータを渡さない現行の起動は従来と同じ動作になる（2026-10-28、bag 2本で作動・解除の順序と時刻の一致を確認）。
+
+| 追加パラメータ | 既定 | 用途 |
+| --- | --- | --- |
+| `layer_d_shape` | `sector` | `rectangle` で前方1〜2m・左右±`layer_d_rect_half_width_m`（既定0.5m）の長方形に切替。回避モード用で、Collision Monitorと併用する前提 |
+| `extra_perception_topics` | 空 | Layer Cと同じ途絶監視をPointCloud2トピックに追加する |
+
+状態は `/failsafe/state`（`std_msgs/String`）に、作動中の層をカンマ区切り、解除中は `OK` として、変化時と1秒ごとに出す。
+
 ## 調停と制約
 
 | 入力 | 優先度 | タイムアウト |

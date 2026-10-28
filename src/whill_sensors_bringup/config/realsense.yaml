@@ -1,0 +1,24 @@
+# D435 settings for the avoidance baseline (2026-10-28, C1).
+#
+# Flat keys on purpose: rs_launch.py (realsense-ros 4.58) loads this file
+# with yaml_to_dict() and passes it AFTER its own defaults, so every key
+# here overrides the launch default.
+#
+# 848x480 is Intel's recommended D435 depth resolution for accuracy; 15 Hz
+# halves bandwidth/CPU and is still ~67 ms per frame for Collision Monitor.
+depth_module.depth_profile: 848x480x15
+rgb_camera.color_profile: 640x480x15
+enable_infra1: false
+enable_infra2: false
+# Depth point cloud for STVL / Collision Monitor. Untextured: colouring
+# costs CPU and drops points outside the narrower RGB FOV.
+pointcloud.enable: true
+pointcloud.stream_filter: 0
+pointcloud.allow_no_texture_points: true
+# 2x2 decimation (424x240) bounds the cloud to ~100k points/s. It also
+# applies to the published depth image, which is what gets recorded.
+decimation_filter.enable: true
+decimation_filter.filter_magnitude: 2
+# No clip_distance: the driver clip would also cut the recorded depth
+# image; obstacle range limits live in STVL / Collision Monitor instead
+# (usable range is set from the C1 outdoor static check).

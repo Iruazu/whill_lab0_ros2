@@ -96,6 +96,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
+    LogInfo,
     OpaqueFunction,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -186,6 +187,21 @@ def _resolve_map_yaml(context):
     # (whill_safety) が cmd_vel を即遮断して担保するので、通常走行は滑らかな
     # まま最高速だけ上げる、という分離。値は段階的 A/B 用 (現地で slow→fast)。
     # slow=0.3 は従来値なので既定は無改変 (回帰なし)。
+    # avoidance / controller: classical avoidance baseline (docs/ja/plans/
+    # 2026-10-28-avoidance-baseline.md). Validated here so a typo fails
+    # before any node starts. STVL / Collision Monitor / MPPI are wired in
+    # later stages; until then avoidance:=true only logs that fact.
+    avoidance = LaunchConfiguration('avoidance').perform(context).lower()
+    controller = LaunchConfiguration('controller').perform(context).lower()
+    if avoidance not in ('true', 'false'):
+        raise RuntimeError(f'nav_launch: avoidance={avoidance!r} は true|false。')
+    if controller not in ('rpp', 'mppi'):
+        raise RuntimeError(f'nav_launch: controller={controller!r} は rpp|mppi。')
+    if controller != 'rpp' and avoidance != 'true':
+        raise RuntimeError(
+            'nav_launch: controller:=mppi は avoidance:=true と併用する '
+            '(無効時は現行 RPP 構成を変えないため)。')
+
     speed = LaunchConfiguration('speed').perform(context)
     speed_caps = {'slow': 0.30, 'normal': 0.45, 'fast': 0.60}
     if speed not in speed_caps:
@@ -227,7 +243,14 @@ def _resolve_map_yaml(context):
         get_package_share_directory('whill_perception'),
         'launch', 'ground_removal_launch.py')
 
-    return [
+    pending = []
+    if avoidance == 'true':
+        pending.append(LogInfo(msg=(
+            f'nav_launch: avoidance:=true (controller={controller}) — '
+            'STVL / Collision Monitor / MPPI are not wired yet; running the '
+            'current Nav2 configuration.')))
+
+    return pending + [
         # Patchwork++ ground removal (ADR-0011). Sits between the LiDAR
         # driver and p2ls so the slice below sees terrain-relative
         # obstacles instead of a raw base_link-flat cut. Publishes
@@ -352,6 +375,16 @@ def generate_launch_description():
                         'normal=0.45, fast=0.60 m/s. 上限のみ変更し accel/decel '
                         'は据え置く (通常減速は滑らか、緊急停止は Layer D 担当)。'
                         '現地で段階的に上げて各段の停止性能を実測すること。'),
+
+        DeclareLaunchArgument(
+            'avoidance',
+            default_value='false',
+            description='古典的回避の比較基準 (docs/ja/plans/2026-10-28-'
+                        'avoidance-baseline.md)。false は現行構成のまま。'),
+        DeclareLaunchArgument(
+            'controller',
+            default_value='rpp',
+            description='rpp|mppi。avoidance:=true の時だけ mppi を選べる。'),
 
         # No localization include. m6r_bringup_launch.py (whill_safety,
         # M6R-2) is expected to be running in parallel and publishes

@@ -138,9 +138,20 @@ def generate_launch_description():
         # 相対位置を維持するためスライド: (0.36, 0.412, 0.82) ->
         # (0.54, 0.382, 0.79)。姿勢は LiDAR と同方位 (RPY=0) で簡易化。
         #
-        # TODO(M6-R): カメラ extrinsic を target-based キャリブ
-        # (chessboard / AprilTag) で再校正し、回転成分も入れる。
+        # 2026-10-28 実測で更新 (avoidance-baseline T1、承認済み):
+        #   - 取付: VLP-16 の真下に 3D プリントホルダで共締め、水平・前向き。
+        #   - x: 後輪車軸→LiDAR 回転軸 0.42 m (巻尺) + カメラ前面までベース
+        #     プレート奥行きの半分 ~0.05 m - 前面→camera_link ~0.004 m
+        #     (realsense2_description _d435.urdf.xacro) = 0.466 → 0.47。
+        #   - y: 車体中心→LiDAR 軸 0.36 m (巻尺) + camera_link (左 IR 原点)
+        #     は筐体中心より +0.0175 m (同 URDF の d435_cam_depth_py) = 0.378。
+        #   - z: レンズ中心 0.73 m (巻尺)。静止物 bag の深度点群で物体最大高の
+        #     誤差 +0.3〜+0.8 cm を確認 (旧値 0.79 は常に +6 cm 高く出た)。
+        # 回転は水平の申告どおり 0。床面フィットで ~1° 上向きの疑いがあり、
+        # C1 の屋外静止確認で再評価する。
+        # 既存 velodyne の TF (上) は誤差が判明しているが、地図・localizer に
+        # 波及するため別課題で直す (docs/ja/plans/2026-10-28-avoidance-baseline.md)。
         _static_tf('static_tf_camera',
-                   0.54, 0.382, 0.79, 0.0, 0.0, 0.0,
+                   0.47, 0.378, 0.73, 0.0, 0.0, 0.0,
                    'base_link', 'camera_link'),
     ])

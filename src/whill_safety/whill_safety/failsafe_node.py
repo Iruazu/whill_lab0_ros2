@@ -28,6 +28,25 @@ Layers (per ADR-0007 §Demo-scope reduction):
      the stop-for-obstacle behaviour independently of Nav2 planning.
      See ADR-0007 §Layer D for the geometry rationale.
 
+Parameters (2026-10-28, avoidance-baseline F1-F4): every threshold below
+is a ROS parameter whose default equals the module constant, so a launch
+that passes no parameters behaves exactly as before. The additions are
+opt-in and inert at their defaults:
+
+  layer_d_shape            'sector' (default, the geometry above) or
+                           'rectangle': x in [forward_min_m, forward_max_m]
+                           and |y| <= layer_d_rect_half_width_m in
+                           base_link. Used only with avoidance:=true so
+                           obstacles beside the path no longer stop the
+                           chair while Collision Monitor handles slowdown.
+  extra_perception_topics  extra PointCloud2 inputs watched like Layer C
+                           (e.g. the Hi-Res detection cloud and depth
+                           points). Empty by default.
+  /failsafe/state          std_msgs/String with the active layers ("OK"
+                           when clear), on change and at 1 Hz, so bags can
+                           record the failsafe state instead of grepping
+                           /rosout.
+
 Deliberately omitted (post-demo backlog): jump detection (3-frame /pcl_pose
 delta), SAFE_HOLD release hysteresis, G4 hardware 3-test acceptance. The
 demo is operated with a walker beside the chair whose WHILL joystick
@@ -42,7 +61,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.signals import SignalHandlerOptions
-from std_msgs.msg import Bool
+from rclpy.parameter import Parameter
+from std_msgs.msg import Bool, String
 from diagnostic_msgs.msg import DiagnosticArray
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
 from sensor_msgs.msg import LaserScan, PointCloud2
@@ -91,6 +111,38 @@ FORWARD_CLEAR_HYSTERESIS_S = 0.5
 STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
+LAYER_D_SHAPES = ('sector', 'rectangle')
+# Rectangle half-width for avoidance mode: chair half-width (~0.3 m) plus
+# 0.2 m margin. Narrow enough that a planned pass beside an obstacle is not
+# vetoed, wide enough to cover the chair's own swept path.
+LAYER_D_RECT_HALF_WIDTH_M = 0.5
+STATE_HEARTBEAT_S = 1.0
+
+
+def forward_zone_blocked(ranges, angle_min, angle_increment, shape,
+                         min_m, max_m, half_angle_rad, half_width_m,
+                         count_min):
+    """True when >= count_min /scan returns fall inside the Layer D zone.
+
+    The sector branch keeps the original loop (accumulated angle, polar
+    range test) so the default behaviour is bit-for-bit unchanged.
+    """
+    count = 0
+    angle = angle_min
+    for r in ranges:
+        if math.isfinite(r):
+            if shape == 'sector':
+                inside = min_m <= r <= max_m and abs(angle) <= half_angle_rad
+            else:
+                x = r * math.cos(angle)
+                inside = min_m <= x <= max_m \
+                    and abs(r * math.sin(angle)) <= half_width_m
+            if inside:
+                count += 1
+                if count >= count_min:
+                    return True
+        angle += angle_increment
+    return False
 
 
 def _to_float(s):
@@ -116,6 +168,38 @@ class FailsafeNode(Node):
     def __init__(self):
         super().__init__('failsafe_node')
 
+        p = self.declare_parameter
+        self._fitness_max = p('fitness_max', FITNESS_MAX).value
+        self._fitness_window_s = p('fitness_window_s', FITNESS_WINDOW_S).value
+        self._pcl_pose_timeout_s = p('pcl_pose_timeout_s', PCL_POSE_TIMEOUT_S).value
+        self._perception_timeout_s = p('perception_timeout_s', PERCEPTION_TIMEOUT_S).value
+        # Degrees for humans; the 30.0 literal mirrors the constant above so
+        # math.radians() reproduces FORWARD_SECTOR_HALF_ANGLE_RAD exactly.
+        self._fwd_half_angle_rad = math.radians(p(
+            'forward_sector_half_angle_deg', 30.0).value)
+        self._fwd_min_m = p('forward_min_m', FORWARD_SECTOR_MIN_M).value
+        self._fwd_max_m = p('forward_max_m', FORWARD_SECTOR_MAX_M).value
+        self._fwd_count_min = p('forward_point_count_min', FORWARD_POINT_COUNT_MIN).value
+        self._fwd_hysteresis_s = p(
+            'forward_clear_hysteresis_s', FORWARD_CLEAR_HYSTERESIS_S).value
+        self._dead_input_timeout_s = p(
+            'startup_dead_input_timeout_s', STARTUP_DEAD_INPUT_TIMEOUT_S).value
+        self._layer_a_hold_s = p('layer_a_hold_s', LAYER_A_HOLD_S).value
+        self._publish_hz = p('publish_hz', PUBLISH_HZ).value
+        self._layer_d_shape = p('layer_d_shape', 'sector').value
+        self._rect_half_width_m = p(
+            'layer_d_rect_half_width_m', LAYER_D_RECT_HALF_WIDTH_M).value
+        # Declared by type, not by an empty-list default: rclpy types []
+        # as BYTE_ARRAY, which would then reject a string-array override.
+        extra = p('extra_perception_topics', Parameter.Type.STRING_ARRAY).value
+        self._extra_topics = [t for t in (extra or []) if t]
+        # A typo here would silently fall through to the rectangle branch
+        # of forward_zone_blocked; refuse to start instead.
+        if self._layer_d_shape not in LAYER_D_SHAPES:
+            raise ValueError(
+                f'layer_d_shape={self._layer_d_shape!r} must be one of '
+                f'{LAYER_D_SHAPES}')
+
         self._last_reinit_time = None
         self._fitness_bad_since = None
         self._converged_bad_since = None
@@ -126,6 +210,8 @@ class FailsafeNode(Node):
         self._active_prev = ()
         self._start_time = self._now_s()
         self._dead_input_warned = False
+        self._extra_last = {t: None for t in self._extra_topics}
+        self._last_state_pub = None
 
         self.create_subscription(
             Bool, '/reinitialization_requested', self._on_reinit, 10)
@@ -161,18 +247,33 @@ class FailsafeNode(Node):
         self.create_subscription(
             LaserScan, '/scan', self._on_scan, qos_profile_sensor_data)
 
-        self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
-        self.create_timer(1.0 / PUBLISH_HZ, self._tick)
+        # Extra perception heartbeats (F3): same sensor-data QoS and
+        # arm-on-first-message rule as Layer C. The default argument binds
+        # the topic per lambda; a bare closure would capture only the last.
+        for topic in self._extra_topics:
+            self.create_subscription(
+                PointCloud2, topic,
+                lambda _msg, t=topic: self._extra_last.__setitem__(t, self._now_s()),
+                qos_profile_sensor_data)
 
+        self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
+        self._state_pub = self.create_publisher(String, '/failsafe/state', 10)
+        self.create_timer(1.0 / self._publish_hz, self._tick)
+
+        if self._layer_d_shape == 'sector':
+            zone = (f'±{math.degrees(self._fwd_half_angle_rad):.0f}° @ '
+                    f'{self._fwd_min_m}-{self._fwd_max_m} m')
+        else:
+            zone = (f'rectangle x {self._fwd_min_m}-{self._fwd_max_m} m, '
+                    f'|y| <= {self._rect_half_width_m} m')
         self.get_logger().info(
-            f'failsafe_node ready: fitness > {FITNESS_MAX} for '
-            f'{FITNESS_WINDOW_S}s | pcl_pose silent > {PCL_POSE_TIMEOUT_S}s | '
-            f'perception silent > {PERCEPTION_TIMEOUT_S}s | '
-            f'forward_blocked > {FORWARD_POINT_COUNT_MIN} pts in '
-            f'±{math.degrees(FORWARD_SECTOR_HALF_ANGLE_RAD):.0f}° @ '
-            f'{FORWARD_SECTOR_MIN_M}-{FORWARD_SECTOR_MAX_M} m, '
-            f'hysteresis {FORWARD_CLEAR_HYSTERESIS_S}s | '
-            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz')
+            f'failsafe_node ready: fitness > {self._fitness_max} for '
+            f'{self._fitness_window_s}s | pcl_pose silent > {self._pcl_pose_timeout_s}s | '
+            f'perception silent > {self._perception_timeout_s}s '
+            f'(+{len(self._extra_topics)} extra) | '
+            f'forward_blocked >= {self._fwd_count_min} pts in {zone}, '
+            f'hysteresis {self._fwd_hysteresis_s}s | '
+            f'A hold {self._layer_a_hold_s}s | publish {self._publish_hz:.0f} Hz')
 
     def _now_s(self):
         return self.get_clock().now().nanoseconds * 1e-9
@@ -201,7 +302,7 @@ class FailsafeNode(Node):
 
         now = self._now_s()
         if fitness is not None:
-            if fitness > FITNESS_MAX:
+            if fitness > self._fitness_max:
                 if self._fitness_bad_since is None:
                     self._fitness_bad_since = now
             else:
@@ -226,52 +327,48 @@ class FailsafeNode(Node):
         # and the watchdog would not know whether Layer D armed via
         # "first sector block" or "first scan arrived". Track both.
         self._last_scan_time = self._now_s()
-        # Count /scan returns inside the forward safety sector. Short-
-        # circuit as soon as the threshold is met — no reason to keep
-        # counting once Layer D is going to fire; the callback runs at
-        # the scan rate and the gate stays engaged for HYSTERESIS_S
-        # regardless of the exact count.
-        count = 0
-        angle = msg.angle_min
-        for r in msg.ranges:
-            if math.isfinite(r) \
-                    and FORWARD_SECTOR_MIN_M <= r <= FORWARD_SECTOR_MAX_M \
-                    and abs(angle) <= FORWARD_SECTOR_HALF_ANGLE_RAD:
-                count += 1
-                if count >= FORWARD_POINT_COUNT_MIN:
-                    self._forward_last_blocked_time = self._now_s()
-                    return
-            angle += msg.angle_increment
+        # Count /scan returns inside the forward safety zone. The helper
+        # short-circuits once the threshold is met; the gate then stays
+        # engaged for the hysteresis regardless of the exact count.
+        if forward_zone_blocked(
+                msg.ranges, msg.angle_min, msg.angle_increment,
+                self._layer_d_shape, self._fwd_min_m, self._fwd_max_m,
+                self._fwd_half_angle_rad, self._rect_half_width_m,
+                self._fwd_count_min):
+            self._forward_last_blocked_time = self._now_s()
 
     def _active_layers(self):
         now = self._now_s()
         out = []
         if self._last_reinit_time is not None \
-                and now - self._last_reinit_time < LAYER_A_HOLD_S:
+                and now - self._last_reinit_time < self._layer_a_hold_s:
             out.append('A:reinit')
         if self._fitness_bad_since is not None \
-                and now - self._fitness_bad_since >= FITNESS_WINDOW_S:
+                and now - self._fitness_bad_since >= self._fitness_window_s:
             out.append('B:fitness')
         if self._converged_bad_since is not None \
-                and now - self._converged_bad_since >= FITNESS_WINDOW_S:
+                and now - self._converged_bad_since >= self._fitness_window_s:
             out.append('B:converged')
         # pcl_pose watchdog: only after first reception, otherwise startup
         # would trip immediately before the localizer produced anything.
         if self._last_pose_time is not None \
-                and now - self._last_pose_time > PCL_POSE_TIMEOUT_S:
+                and now - self._last_pose_time > self._pcl_pose_timeout_s:
             out.append('B:pcl_pose_silent')
         # Layer C perception watchdog: same "arm on first reception"
         # pattern so bringup does not trip during the ~1 s window
         # patchworkpp needs to load its config and receive its first
         # scan.
         if self._last_perception_time is not None \
-                and now - self._last_perception_time > PERCEPTION_TIMEOUT_S:
+                and now - self._last_perception_time > self._perception_timeout_s:
             out.append('C:perception_silent')
+        for topic, last in self._extra_last.items():
+            if last is not None and now - last > self._perception_timeout_s:
+                out.append(f'C:{topic}_silent')
         # Layer D forward-sector gate: fires while the sector is blocked
         # and stays engaged for HYSTERESIS_S after the last blocked
         # scan. Same first-message-arm pattern as Layer A/C.
         if self._forward_last_blocked_time is not None \
-                and now - self._forward_last_blocked_time < FORWARD_CLEAR_HYSTERESIS_S:
+                and now - self._forward_last_blocked_time < self._fwd_hysteresis_s:
             out.append('D:forward_blocked')
         return tuple(out)
 
@@ -285,7 +382,7 @@ class FailsafeNode(Node):
         # closed against a person. The gate must not be silent when it
         # cannot arm.
         if (not self._dead_input_warned
-                and now - self._start_time > STARTUP_DEAD_INPUT_TIMEOUT_S):
+                and now - self._start_time > self._dead_input_timeout_s):
             missing = []
             if self._last_pose_time is None:
                 missing.append('B:/pcl_pose')
@@ -293,10 +390,12 @@ class FailsafeNode(Node):
                 missing.append('C:/velodyne_points_no_ground')
             if self._last_scan_time is None:
                 missing.append('D:/scan')
+            missing += [f'C:{t}' for t, last in self._extra_last.items()
+                        if last is None]
             if missing:
                 self.get_logger().error(
                     f'DEAD INPUT after '
-                    f'{STARTUP_DEAD_INPUT_TIMEOUT_S:.0f}s: {missing} — '
+                    f'{self._dead_input_timeout_s:.0f}s: {missing} — '
                     f'these subscriptions received ZERO messages. Likely '
                     f'DDS/QoS mismatch, wrong topic name, or upstream '
                     f'not running. The listed failsafe layers CANNOT '
@@ -311,8 +410,18 @@ class FailsafeNode(Node):
             else:
                 self.get_logger().info('failsafe RELEASED')
             self._active_prev = active
+            self._publish_state(now, active)
+        elif self._last_state_pub is None \
+                or now - self._last_state_pub >= STATE_HEARTBEAT_S:
+            self._publish_state(now, active)
         if active:
             self._pub.publish(Twist())
+
+    def _publish_state(self, now, active):
+        # "OK" rather than an empty string so `ros2 topic echo` and bag
+        # readers can tell "clear" apart from "no data".
+        self._state_pub.publish(String(data=','.join(active) if active else 'OK'))
+        self._last_state_pub = now
 
 
 def _raise_keyboard_interrupt(*_):

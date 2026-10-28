@@ -22,10 +22,11 @@ After the launch settles the topics are:
   /imu/data_raw                               sensor_msgs/Imu          ~100 Hz
   /imu/mag                                    sensor_msgs/MagneticField~100 Hz
 
-RealSense (opt-in) additionally publishes:
+RealSense (opt-in) additionally publishes (config/realsense.yaml):
 
-  /camera/camera/color/image_raw              sensor_msgs/Image        30 Hz
-  /camera/camera/depth/image_rect_raw         sensor_msgs/Image        30 Hz
+  /camera/camera/color/image_raw              sensor_msgs/Image        15 Hz, 640x480
+  /camera/camera/depth/image_rect_raw         sensor_msgs/Image        15 Hz, 424x240 (decimated)
+  /camera/camera/depth/color/points           sensor_msgs/PointCloud2  15 Hz, untextured
 
 TF is rooted at `base_link`. See README.md for the diagram.
 
@@ -92,9 +93,15 @@ def generate_launch_description():
             SetRemap(src='/scan', dst='/scan_raw'),
             _include(velodyne_share, 'launch', 'velodyne-all-nodes-VLP16-launch.py'),
         ]),
+        # config/realsense.yaml (depth 848x480@15, untextured point cloud,
+        # 2x2 decimation) applies whenever the camera runs, so camera smoke
+        # tests and the avoidance stack see the same streams.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(realsense_share, 'launch', 'rs_launch.py')),
+            launch_arguments={
+                'config_file': os.path.join(bringup_share, 'config', 'realsense.yaml'),
+            }.items(),
             condition=IfCondition(LaunchConfiguration('realsense')),
         ),
         _include(bringup_share, 'launch', 'imu_launch.py'),

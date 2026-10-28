@@ -93,7 +93,7 @@ from launch.actions import (
     OpaqueFunction,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 # SetRemap lives in launch_ros.actions, NOT launch.actions — importing it
 # from the latter raises ImportError only at launch-description evaluation
 # time (colcon build stays green), which is why the CLAUDE.md rule requires
@@ -239,6 +239,12 @@ def generate_launch_description():
     )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
+    # avoidance:=true needs the D435 (depth is the only near-field source for
+    # low obstacles), so it implies realsense:=true. With both false this
+    # evaluates to 'false' and the include tree is unchanged.
+    realsense_on = PythonExpression([
+        "'true' if '", LaunchConfiguration('avoidance'), "'.lower() == 'true' "
+        "or '", LaunchConfiguration('realsense'), "'.lower() == 'true' else 'false'"])
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -267,13 +273,21 @@ def generate_launch_description():
                         'runtime stack, and past USB 2.1 enumeration issues '
                         'make an accidental start expensive. Flip true for '
                         'camera-specific tests.'),
+        DeclareLaunchArgument(
+            'avoidance',
+            default_value='false',
+            description='Classical avoidance baseline (docs/ja/plans/'
+                        '2026-10-28-avoidance-baseline.md). true starts the '
+                        'D435; later stages add the Hi-Res detection cloud '
+                        'and failsafe avoidance-mode parameters. false keeps '
+                        'the demo configuration unchanged.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(odom_bringup_launch),
             launch_arguments={
                 'use_sim_time': use_sim_time,
-                'realsense': LaunchConfiguration('realsense'),
+                'realsense': realsense_on,
             }.items()),
 
         # M6-R scan-to-map localizer. Wrapped in an OpaqueFunction so the

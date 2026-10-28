@@ -23,4 +23,10 @@ install(
   RENAME failsafe_node
 )
 
+if(BUILD_TESTING)
+  # Pure-Python geometry test for the Layer D zone; no ROS graph needed.
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(test_forward_zone test/test_forward_zone.py)
+endif()
+
 ament_package()
