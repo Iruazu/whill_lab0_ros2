@@ -118,6 +118,17 @@ twist_mux の優先度とタイムアウト、smoother の加減速、localizer 
   3. 補正したLiDARと深度の両方で同じだけずれていれば、テープの基準か base_link の定義の問題。片方だけずれていれば、そのセンサの TF の x の問題。
 - **決めること**：深度で使える距離（物の位置の誤差が ±5 cm 以内に収まる最大距離）、障害物とみなす最低の高さ（床の高さのばらつきの3σと、TF の誤差の合計を目安にする）、横断勾配（床面の roll）。
 
+### 4.3 依頼者に実行してもらう apt
+
+```bash
+sudo apt update
+sudo apt install ros-humble-spatio-temporal-voxel-layer ros-humble-compressed-image-transport \
+    ros-humble-realsense2-camera ros-humble-realsense2-description ros-humble-librealsense2 \
+    python3-pytest
+```
+
+`python3-pytest` は、whill_safety のユニットテスト（`colcon test`）を実行するために必要。
+
 ### 4.4 深度の校正（On-Chip と Tare、C1）
 
 背景：段階Aの bag では、深度の床の高さが2 mで−0.1 cm、3 mで−2.7 cm、4 mで−7.9 cmと、距離が延びるほど加速度的に下がった。4 mの物は+0.26 m奥に出た。カメラの傾きより、深度の距離が長めに出る誤差の形に近い（推測）。
@@ -151,17 +162,6 @@ twist_mux の優先度とタイムアウト、smoother の加減速、localizer 
 ### 4.6 過去の走行中の停止との関係（原因候補として記録）
 
 2026-07-24 の走行 bag（`docs/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26`、843 s）を failsafe に流すと、今の扇形の Layer D は43回作動した。長方形（前方1.0〜2.0 m、左右±0.5 m）にすると3回だった。つまり、この走行の停止の大半は「経路の脇にある物」で起きていた可能性がある。過去の「走行中に止まる・進まない」事案（2026-07-22 の正門付近での停止など）の原因候補として記録する。どの物で作動したかの特定（点の位置と地図の照合）はまだしていない。C3 で長方形モードを接続するときに、同じ bag で作動箇所を地図上に描いて確かめる。
-
-### 4.3 依頼者に実行してもらう apt
-
-```bash
-sudo apt update
-sudo apt install ros-humble-spatio-temporal-voxel-layer ros-humble-compressed-image-transport \
-    ros-humble-realsense2-camera ros-humble-realsense2-description ros-humble-librealsense2 \
-    python3-pytest
-```
-
-`python3-pytest` は、whill_safety のユニットテスト（`colcon test`）を実行するために必要。
 
 ## 5. 記録の仕様
 
