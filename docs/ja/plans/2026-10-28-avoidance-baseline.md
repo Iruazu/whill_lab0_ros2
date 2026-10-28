@@ -100,10 +100,10 @@ twist_mux の優先度とタイムアウト、smoother の加減速、localizer 
 
 方針：realsense-ros の README が推奨する、ROS の apt バイナリの組み合わせ（`ros-humble-realsense2-camera` 4.58.4 と `ros-humble-librealsense2` 2.58.4）に揃える。今の構成（ソースビルドの 4.55.1 と apt の 2.57.7）は、Intel が組み合わせて出していない版の組み合わせ。
 
-1. 依頼者が apt を実行する（§4.3）。librealsense2 は 2.58.4 に上がる。
-2. ワークスペースにあるソースビルドを無効にする：`src/third_party/realsense-ros/COLCON_IGNORE` を置き、`build/` と `install/` の `realsense2_camera*` を削除する。削除するのはビルド成果物だけなので、再ビルドすれば元に戻せる。apt 版より優先されてしまうのを防ぐため。`whill_lab.repos` からも外す（C1で実施済み）。
-3. `rs-enumerate-devices` で `Recommended Firmware Version` を確認する（2.57.7 では 5.17.0.10）。
-4. Intel の配布ページから、その版の `Signed_Image_UVC_*.bin` を入手し、`rs-fw-update -f <bin>` で書き込む。カメラを使うプロセスがないことを先に確かめる。書き込み中はUSBを抜かない。
+1. 依頼者が apt を実行する（§4.3）。**2026-10-28 実施済み**：今回のパッケージだけが入り、librealsense2 は 2.57.7 → 2.58.4 に上がった（ほかのパッケージの更新なし）。
+2. **2026-10-28 実施済み**：`~/whill_lab0_ros2`（main 側のワークスペース）のソースビルドを無効にした。`src/third_party/realsense-ros/COLCON_IGNORE` を置き、`build/` と `install/` の `realsense2_camera`・`realsense2_camera_msgs`・`realsense2_description` を削除した（ビルド成果物だけ。worktree 側には元々ない）。確認したこと：`ros2 pkg prefix realsense2_camera` が `/opt/ros/humble` を指す、`start_dispatch_demo.sh --dry-run` の出力、`m6r_bringup` と `nav_launch` の `--show-args`（main 側・worktree 側とも）、sensors_launch の組み立て（realsense:=false）。
+3. 推奨のファームウェア：librealsense 2.58.4 のリリースノートでは、D435 は **5.17.3.10 以降**（配布ページでは Version-5.17.3.10、2026年6月）。
+4. 配布ページ（https://dev.realsenseai.com/docs/firmware-releases-d400 ）はダウンロードのリンクを JavaScript で表示するので、ファイルは依頼者に入手してもらう。書き込みは次のとおり：`rs-fw-update -l`（カメラを使うプロセスがないこと）→ `rs-fw-update -b ~/rs_fw_backup_938422070073.bin`（今のフラッシュを保存）→ `rs-fw-update -s 938422070073 -f <Signed_Image_UVC_5_17_3_10.bin>`。書き込み中はUSBを抜かない。
 5. `rs-enumerate-devices` で版を確認し、`ros2 launch whill_safety m6r_bringup_launch.py avoidance:=true` で、深度・カラー・点群のトピックと TF を確認する。
 
 ### 4.2 屋外での静止確認（C1）
@@ -112,7 +112,45 @@ twist_mux の優先度とタイムアウト、smoother の加減速、localizer 
 - **置く物**：コーン（高さを記録する）を中心線上の 1.5／2／2.5／3／3.5／4／5 m に順に置く。低い物（高さ約20 cm）を 1.5／2／3 m に置く。何も置かない基準を最初と最後に1本ずつ撮る。
 - **記録**：`scripts/record_avoidance_bag.sh --profile static --duration 12 <タグ>` を各位置で実行する。テープは `base_link` の原点（後輪車軸の中点）から前方へ伸ばす。
 - **解析**：`scripts/check_object_placement.py` を使う。notes.csv の列は `bag,object,x_m,height_m`。
+- **x の誤差（+2〜+8 cm）の切り分け**：
+  1. 後輪のハブ中心から床へ下ろした点に印を付け、左右の印の中点をテープの0にする（base_link の原点の定義どおり）。
+  2. 各位置で、テープの値に加えて、車体の前端から物までの距離も測る。後輪車軸から車体前端までの距離は1回だけ測る。2通りの基準の差から、テープの0の取り方の誤差が分かる。
+  3. 補正したLiDARと深度の両方で同じだけずれていれば、テープの基準か base_link の定義の問題。片方だけずれていれば、そのセンサの TF の x の問題。
 - **決めること**：深度で使える距離（物の位置の誤差が ±5 cm 以内に収まる最大距離）、障害物とみなす最低の高さ（床の高さのばらつきの3σと、TF の誤差の合計を目安にする）、横断勾配（床面の roll）。
+
+### 4.4 深度の校正（On-Chip と Tare、C1）
+
+背景：段階Aの bag では、深度の床の高さが2 mで−0.1 cm、3 mで−2.7 cm、4 mで−7.9 cmと、距離が延びるほど加速度的に下がった。4 mの物は+0.26 m奥に出た。カメラの傾きより、深度の距離が長めに出る誤差の形に近い（推測）。
+
+手順（`scripts/tools/rs_calib_tool.cpp`。librealsense の公式APIを呼ぶだけ。`rs-on-chip-calib` は対話式で、今の校正値を保存・復元できないため）：
+
+1. `rs_calib_tool backup ~/rs_calib_backup_<日付>.bin`：今の校正値を保存する。
+2. 屋外の静止確認（§4.2）の bag を、校正前の基準として撮る。
+3. `rs_calib_tool occ occ.bin --write`：On-Chip Calibration（模様のある面を0.5〜2 m先に置き、カメラを止めておく）。health の値は 0.25 未満で Good。
+4. `rs_calib_tool tare <真の距離mm> tare.bin --write`：Tare Calibration（平らな面にカメラを正対させ、真の距離は深度の原点（前面ガラスの約4.2 mm奥）から測る）。
+5. 静止確認の bag を撮り直し、`check_object_placement.py` で物の位置の誤差と床の高さを、校正の前後で比べる。
+6. 改善しなければ `rs_calib_tool restore ~/rs_calib_backup_<日付>.bin` で元に戻す。
+
+### 4.5 DDS の NIC 名（調査結果と変更案。変更は承認後）
+
+| 場所 | 内容 | 状態 |
+| --- | --- | --- |
+| `~/.bashrc` 140行 | `CYCLONEDDS_URI=.../configs/cyclonedds-runtime.xml`（**旧XML**） | runbook とデモスクリプトは `cyclonedds-runtime-min.xml` を使うので、スクリプトを通さない端末（RViz、手動の `ros2` コマンド、記録）だけが旧XMLになり、CLAUDE.md が禁じる混在が起きる。2026-10-28 の「optional interface was not found」警告はこれが原因 |
+| `configs/cyclonedds-runtime.xml` 57・74行 | 旧NIC `enx00e04c6808dc`（2026-07-31 のドック交換前の名前） | 現用ではない |
+| `configs/cyclonedds-runtime-min.xml` 26行 | `enx00e04c680ec9` | 現用、今のNICと一致 |
+| `docs/ja/m3-sensors.md` 120行 | 例示コマンドに旧NIC名 | 文書 |
+| bench-data の manifest・README | 当時の記録 | 履歴なので変更しない |
+
+変更案：
+1. `~/.bashrc` 140行を `cyclonedds-runtime-min.xml` に変える（bashrc は自動で編集しない方針なので、依頼者が行う）。
+2. `configs/cyclonedds-runtime.xml` と `.bak` を `configs/legacy/` に移し、冒頭に「非推奨。現用は runtime-min」と書く。NIC名は当時のまま残す（旧名で上書きしないという方針の逆の誤りを避けるため）。
+3. `docs/ja/m3-sensors.md` の例示を `<LiDARのNIC名>` に置き換え、`ip -brief link` で確かめるよう書く。
+
+再発防止の候補：起動時に「XMLに書かれたNICが実在し、LiDARのサブネット（192.168.1.100/24）を持つNICと一致するか」を確かめるチェックを、`start_dispatch_demo.sh --preflight` と `record_avoidance_bag.sh` に入れる。今の XML は `presence_required="false"` なので、名前が違っても黙って起動してしまう（runbook 57行にも注意書きがある）。デモスクリプトの変更になるので、承認事項とする。
+
+### 4.6 過去の走行中の停止との関係（原因候補として記録）
+
+2026-07-24 の走行 bag（`docs/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26`、843 s）を failsafe に流すと、今の扇形の Layer D は43回作動した。長方形（前方1.0〜2.0 m、左右±0.5 m）にすると3回だった。つまり、この走行の停止の大半は「経路の脇にある物」で起きていた可能性がある。過去の「走行中に止まる・進まない」事案（2026-07-22 の正門付近での停止など）の原因候補として記録する。どの物で作動したかの特定（点の位置と地図の照合）はまだしていない。C3 で長方形モードを接続するときに、同じ bag で作動箇所を地図上に描いて確かめる。
 
 ### 4.3 依頼者に実行してもらう apt
 
