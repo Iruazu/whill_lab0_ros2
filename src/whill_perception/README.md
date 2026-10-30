@@ -1,6 +1,6 @@
 # whill_perception
 
-Patchwork++のC++ coreを使って点群から地面を除去する自作ROS 2 wrapper。2026-10-14 に構成を照合。
+Patchwork++のC++ coreを使って点群から地面を除去する自作ROS 2 wrapper。
 
 ## パイプライン
 
@@ -12,6 +12,6 @@ Patchwork++のC++ coreを使って点群から地面を除去する自作ROS 2 w
 
 ## ビルド
 
-上流C++ coreは `src/third_party/patchwork_plusplus/cpp/`。`whill_lab.repos` から取得する。現用の `scripts/import_upstream.sh` は上流の `ros/` / `cpp/` / `python/` をcolconの個別パッケージとして拾わないよう `COLCON_IGNORE` を置く。自作wrapperがcoreを直接組み込む。
+上流C++ coreは `src/third_party/patchwork_plusplus/cpp/`（`whill_lab.repos` から取得）。自作wrapperがcoreを直接組み込むため、上流の `ros/` / `cpp/` / `python/` はcolconで個別にビルドしない（`COLCON_IGNORE`）。
 
 上流wrapperのライセンス表記の不整合を避ける設計判断は [ADR-0011](../../docs/ja/decisions/0011-ground-removal-choice.md) に保存している。車載ビルド手順は [開発環境](../../docs/ja/development.md)。

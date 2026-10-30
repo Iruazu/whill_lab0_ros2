@@ -1,6 +1,6 @@
 # 現在の実機構成
 
-2026-10-14 にローカルの launch・設定・ノードを照合。周波数は設定値または目安であり、今回の実測値ではない。
+周波数は設定値または目安で、実測値ではない。
 
 ## 起動単位
 
@@ -39,7 +39,7 @@ flowchart TD
   Q -->|/whill/controller/cmd_vel| H["WHILL driver /dev/whill"]
 ```
 
-Web の背景画像は `src/whill_dispatch/web/map.png` と `map_meta.json`。Nav2 の地図を変更しても自動再生成されない。global costmap は static / inflation のみ、local costmap は static / obstacle / inflation。両方に動的障害物層があるという旧説明は現状と一致しない。
+Web の背景画像は `src/whill_dispatch/web/map.png` と `map_meta.json`。Nav2 の地図を変更しても自動再生成されない。global costmap は static / inflation、local costmap は static / obstacle / inflation。
 
 ## TF とオドメトリ
 
@@ -49,7 +49,7 @@ Web の背景画像は `src/whill_dispatch/web/map.png` と `map_meta.json`。Na
 | `odom → base_link` | `robot_localization` EKF | `ekf_odom.yaml`、30 Hz |
 | `base_link → imu_link / velodyne / camera_link` | 静的 TF | `static_tf_launch.py` |
 
-EKF は `/whill/odom` の速度と `/imu/data_rep145` を融合する。生の `/imu/data_raw` は診断用に保持される。静的 TF の数値はセンサ README を参照。すべての外部パラメータが再校正済という意味ではない。
+EKF は `/whill/odom` の速度と `/imu/data_rep145` を融合する。生の `/imu/data_raw` は診断用に保持される。静的 TF の数値はセンサ README。
 
 localizer は `NDT_OMP`、`use_odom: true`、`predict_pose_from_previous_delta: false`、`use_imu: false`。launch が odom 入力を `/odometry/filtered` に接続し、地図パスを一時 YAML に書き込む。初期位置は `/initialpose` から指定する。
 

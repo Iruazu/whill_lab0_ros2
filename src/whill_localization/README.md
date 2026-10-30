@@ -1,6 +1,6 @@
 # whill_localization
 
-車輪速度とIMUを融合するオドメトリ層。2026-10-14 にlaunchと `config/ekf_odom.yaml` を照合。
+車輪速度とIMUを融合するオドメトリ層。
 
 ## 入出力
 
@@ -11,7 +11,7 @@
 | 出力 | `/odometry/filtered`、TF `odom → base_link`。設定30Hz |
 | モード | `two_d_mode: true`、`world_frame: odom` |
 
-生の `/imu/data_raw` をEKF入力とする旧説明は現用設定と異なる。IMUの符号補正と静的TFは `whill_sensors_bringup` が担当する。
+IMUの符号補正と静的TFは `whill_sensors_bringup` が担当する。
 
 ## launch
 
@@ -20,6 +20,6 @@
 
 実機統合時は `whill_safety/m6r_bringup_launch.py` がodom bringupを含む。別途起動しない。`map → odom` はNDT localizerが担当する。
 
-旧FAST-LIO runtime launch / configは削除済み。地図作成はGLIMのオフライン処理。旧 `localization_launch.py` を実行入口にしない。
+地図作成はGLIMのオフライン処理。FAST-LIOのruntime launchは削除済み。
 
 運用は [runbook](../../docs/ja/runbook-live-demo.md)、校正履歴は [校正台帳](../../docs/ja/calibration-ledger.md)。センサの物理配置を変更したら既存の数値をそのまま再利用しない。

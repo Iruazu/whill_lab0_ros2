@@ -1,6 +1,6 @@
 # whill_navigation
 
-Nav2 と障害物前処理を起動する。2026-10-14 に現用の `nav_launch.py` と設定を照合。実機手順は [runbook](../../docs/ja/runbook-live-demo.md)。
+Nav2 と障害物前処理を起動する。実機手順は [runbook](../../docs/ja/runbook-live-demo.md)。
 
 ## 起動と責務
 
@@ -31,4 +31,4 @@ failsafeもteleopも平滑化の前に調停する。安全停止指令も平滑
 
 ## 検証
 
-launch変更時は `ros2 launch whill_navigation nav_launch.py --show-args`。実機ではlifecycle、地図、初期位置、入力受信を確認する。旧READMEの「collision detectionはfalse」「両costmapに動的層」「まだ走行しない段階」は過去の開発計画で、現用コードの説明ではない。
+launch変更時は `ros2 launch whill_navigation nav_launch.py --show-args`。実機ではlifecycle、地図、初期位置、入力受信を確認する。

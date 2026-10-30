@@ -1,6 +1,6 @@
 # whill_sensors_bringup
 
-VLP-16、RT USB 9軸IMU、任意のRealSense D435と静的TFを起動する。2026-10-14 にlaunchを照合。
+VLP-16、RT USB 9軸IMU、任意のRealSense D435と静的TFを起動する。
 
 ## 起動構成
 
@@ -26,4 +26,4 @@ VLP-16は有線UDP接続。DDS用XMLのNIC名と実際の有線設定を別々�
 | velodyne | 0.484136, 0.381548, 0.793704 | -0.035342, 0.156983, -0.005527 |
 | camera_link | 0.54, 0.382, 0.79 | 0, 0, 0 |
 
-親はすべて `base_link`。カメラは概算を含み、LiDARには旧校正由来の値がある。表は現在コードに入っている値であり、最新の実機配置で再校正済という主張ではない。根拠と履歴は [外部パラメータ記録](../../docs/ja/m3-extrinsics-from-noetic.md) と [校正台帳](../../docs/ja/calibration-ledger.md) を参照。
+親はすべて `base_link`。カメラは概算、LiDARは旧校正由来の値を含む。根拠と履歴は [外部パラメータ記録](../../docs/ja/m3-extrinsics-from-noetic.md) と [校正台帳](../../docs/ja/calibration-ledger.md) を参照。
