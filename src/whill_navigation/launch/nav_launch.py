@@ -121,7 +121,7 @@ def _repo_root_from_pkg_share(pkg_share):
     return os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
 
 
-def apply_avoidance_costmaps(params, fragment_path):
+def apply_avoidance_costmaps(params, fragment_path, lidar_frame=None):
     """Merge the STVL layers (avoidance:=true only) into a nav2 params dict.
 
     nav2_params.yaml stays the single source for the demo configuration;
@@ -129,6 +129,11 @@ def apply_avoidance_costmaps(params, fragment_path):
     merged into the per-run copy here. Each layer (a dict with `plugin`) in
     the fragment is added to that costmap and inserted into its `plugins`
     list just before inflation_layer, so inflation still runs last.
+
+    lidar_frame, when given, replaces sensor_frame of every STVL source
+    whose name starts with `lidar_` (the LiDAR frustum pose). It is the
+    perception_lidar_frame arg, so the post-root-fix switch to `velodyne`
+    (plan §8) needs no yaml edit.
 
     Module-level (not nested in the OpaqueFunction) so bag-replay harnesses
     can build the exact same costmap parameters.
@@ -145,6 +150,10 @@ def apply_avoidance_costmaps(params, fragment_path):
                     f'nav_launch: {costmap}.{name} already exists in '
                     'nav2_params.yaml; the avoidance fragment only adds layers.')
             dst[name] = layer
+            if lidar_frame and isinstance(layer, dict):
+                for src_name, obs in layer.items():
+                    if src_name.startswith('lidar_') and isinstance(obs, dict):
+                        obs['sensor_frame'] = lidar_frame
             if isinstance(layer, dict) and 'plugin' in layer:
                 idx = (plugins.index('inflation_layer')
                        if 'inflation_layer' in plugins else len(plugins))
@@ -256,7 +265,8 @@ def _resolve_map_yaml(context):
     # perception_3d_launch.py below. Nothing is merged when false.
     if avoidance == 'true':
         apply_avoidance_costmaps(
-            params, os.path.join(nav_share, 'config', 'nav2_avoidance_stvl.yaml'))
+            params, os.path.join(nav_share, 'config', 'nav2_avoidance_stvl.yaml'),
+            lidar_frame=LaunchConfiguration('perception_lidar_frame').perform(context))
 
     tmp = tempfile.NamedTemporaryFile(
         prefix='whill_nav2_params_',
@@ -291,6 +301,12 @@ def _resolve_map_yaml(context):
             PythonLaunchDescriptionSource(os.path.join(
                 get_package_share_directory('whill_perception'),
                 'launch', 'perception_3d_launch.py')),
+            launch_arguments={
+                'lidar_hires': LaunchConfiguration('perception_lidar_hires'),
+                'lidar_points': LaunchConfiguration('perception_lidar_points'),
+                'lidar_frame': LaunchConfiguration('perception_lidar_frame'),
+                'lidar_no_ground': LaunchConfiguration('perception_lidar_no_ground'),
+            }.items(),
         ))
         pending.append(LogInfo(msg=(
             f'nav_launch: avoidance:=true (controller={controller}) — '
@@ -432,6 +448,28 @@ def generate_launch_description():
             'controller',
             default_value='rpp',
             description='rpp|mppi。avoidance:=true の時だけ mppi を選べる。'),
+        # avoidance:=true の LiDAR 検知経路 (whill_perception/perception_3d_launch.py)。
+        # 既定は暫定の Hi-Res 経路。LiDAR の根本対応 (計画 §8) 後は
+        # perception_lidar_hires:=false perception_lidar_points:=/velodyne_points
+        # perception_lidar_frame:=velodyne に切り替える (yaml の編集は不要)。
+        DeclareLaunchArgument(
+            'perception_lidar_hires',
+            default_value='true',
+            description='暫定: VLP16_hires_db.yaml の transform#2 と velodyne_hires TF を起動する。'
+                        '根本対応後は false。'),
+        DeclareLaunchArgument(
+            'perception_lidar_points',
+            default_value='/velodyne_points_hires',
+            description='Patchwork++#2 の入力。根本対応後は /velodyne_points。'),
+        DeclareLaunchArgument(
+            'perception_lidar_frame',
+            default_value='velodyne_hires',
+            description='LiDAR 検知点群の frame と STVL の LiDAR sensor_frame。根本対応後は velodyne。'),
+        DeclareLaunchArgument(
+            'perception_lidar_no_ground',
+            default_value='/velodyne_points_hires_no_ground',
+            description='Patchwork++#2 の出力。Collision Monitor (cm_lidar_topic) と '
+                        'failsafe extra_perception_topics (C3) と同じ名前にする。'),
 
         # No localization include. m6r_bringup_launch.py (whill_safety,
         # M6R-2) is expected to be running in parallel and publishes

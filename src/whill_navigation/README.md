@@ -31,6 +31,7 @@ Nav2 と障害物前処理を起動する。2026-10-14 に現用の `nav_launch.
 - `config/nav2_avoidance_stvl.yaml` の STVL 層を、実行時の params のコピーにだけ足す（local・global とも inflation の直前）。入力は `/perception/lidar_obstacles_filtered` と `/perception/depth_obstacles`。
 - 高さの帯は STVL ではなく base_link で切る。map 座標系の z が路面に沿っていないため（2026-07-24 の bag で車体の z が −1.2〜+3.8 m、pitch 約 −8°）。
 - 深度の範囲 3.0 m と最低の高さ 0.10 m は暫定。屋外の静止確認（計画 §4.2）で決める。
+- LiDAR の入力・frame は引数（`perception_lidar_hires` / `perception_lidar_points` / `perception_lidar_frame` / `perception_lidar_no_ground`）。根本対応（計画 §8）の後は `perception_lidar_hires:=false perception_lidar_points:=/velodyne_points perception_lidar_frame:=velodyne` にする。
 - Collision Monitor と MPPI は未接続（C3・C4）。
 
 ## 速度指令

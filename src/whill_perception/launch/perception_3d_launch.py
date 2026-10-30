@@ -8,7 +8,7 @@ avoidance:=false nothing here runs, so the demo stack is unchanged.
     /velodyne_packets ─▶ velodyne_transform_node_hires (VLP16_hires_db.yaml)
                            └─▶ /velodyne_points_hires            [velodyne]
                                  └─▶ patchworkpp_node_hires (frame_id_override)
-                                       └─▶ /perception/lidar_obstacles   [velodyne_hires]
+                                       └─▶ /velodyne_points_hires_no_ground   [velodyne_hires]
                                              └─▶ lidar_obstacle_filter
                                                    └─▶ /perception/lidar_obstacles_filtered [base_link]
     /camera/camera/depth/color/points ─▶ depth_obstacle_filter
@@ -28,7 +28,16 @@ The two `*_filter` nodes apply the obstacle height band in base_link (see
 config/perception_3d.yaml for why not in STVL's map frame). STVL consumes the
 filtered clouds; Collision Monitor (C3) can consume either.
 
-Remove this chain once the root fix (plan §8) lands.
+After the LiDAR root fix (driver on VLP16_hires_db.yaml, measured
+base_link->velodyne TF; plan §8) nothing here needs editing, only args:
+
+    lidar_hires:=false                 # drop transform #2 and the velodyne_hires TF
+    lidar_points:=/velodyne_points     # Patchwork++ #2 input
+    lidar_frame:=velodyne              # frame_id_override (then a no-op relabel)
+    lidar_no_ground:=<name>            # optional rename of the no-ground topic
+
+nav_launch.py exposes the same four as perception_lidar_* and also points the
+STVL sensor_frame at lidar_frame.
 """
 
 import math
@@ -70,6 +79,8 @@ def _nodes(context):
     tparams['use_sim_time'] = use_sim_time
 
     t = _HIRES_TF
+    lc = LaunchConfiguration
+    hires = IfCondition(lc('lidar_hires'))
     return [
         Node(
             package='tf2_ros',
@@ -83,6 +94,7 @@ def _nodes(context):
                 '--frame-id', 'base_link', '--child-frame-id', 'velodyne_hires',
             ],
             parameters=[{'use_sim_time': use_sim_time}],
+            condition=hires,
         ),
         Node(
             package='velodyne_pointcloud',
@@ -92,16 +104,19 @@ def _nodes(context):
             output='screen',
             parameters=[tparams],
             remappings=[('velodyne_points', '/velodyne_points_hires')],
+            condition=hires,
         ),
         Node(
             package='whill_perception',
             executable='patchworkpp_node',
             name='patchworkpp_node_hires',
             output='screen',
+            # lidar_frame after the yaml so the arg wins over the file.
             parameters=[os.path.join(share, 'config', 'patchworkpp_hires.yaml'),
-                        {'use_sim_time': use_sim_time}],
-            remappings=[('cloud_in', '/velodyne_points_hires'),
-                        ('cloud_no_ground', '/perception/lidar_obstacles')],
+                        {'use_sim_time': use_sim_time,
+                         'frame_id_override': lc('lidar_frame').perform(context)}],
+            remappings=[('cloud_in', lc('lidar_points').perform(context)),
+                        ('cloud_no_ground', lc('lidar_no_ground').perform(context))],
         ),
         Node(
             package='whill_perception',
@@ -109,7 +124,7 @@ def _nodes(context):
             name='lidar_obstacle_filter',
             output='screen',
             parameters=[filter_yaml, {'use_sim_time': use_sim_time}],
-            remappings=[('cloud_in', '/perception/lidar_obstacles'),
+            remappings=[('cloud_in', lc('lidar_no_ground').perform(context)),
                         ('cloud_out', '/perception/lidar_obstacles_filtered')],
         ),
         Node(
@@ -130,6 +145,22 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'use_sim_time', default_value='false',
             description='true only for bag replay with --clock.'),
+        DeclareLaunchArgument(
+            'lidar_hires', default_value='true',
+            description='Interim (until the LiDAR root fix, plan §8): start the '
+                        'second velodyne_transform_node with VLP16_hires_db.yaml '
+                        '(/velodyne_points_hires) and the velodyne_hires static TF.'),
+        DeclareLaunchArgument(
+            'lidar_points', default_value='/velodyne_points_hires',
+            description='Patchwork++ #2 input. /velodyne_points after the root fix.'),
+        DeclareLaunchArgument(
+            'lidar_frame', default_value='velodyne_hires',
+            description='Frame of the no-ground cloud (frame_id_override) and the '
+                        'LiDAR sensor_frame for STVL. velodyne after the root fix.'),
+        DeclareLaunchArgument(
+            'lidar_no_ground', default_value='/velodyne_points_hires_no_ground',
+            description='Patchwork++ #2 output; also read by Collision Monitor '
+                        '(cm_lidar_topic) and failsafe extra_perception_topics (C3).'),
         DeclareLaunchArgument(
             'depth', default_value='true',
             description='Start the D435 depth filter. false for LiDAR-only '

@@ -1,7 +1,10 @@
 # Patchwork++ #2 for the avoidance baseline (docs/ja/plans/
 # 2026-10-28-avoidance-baseline.md §2.1). Input is the Hi-Res-calibrated
-# cloud (/velodyne_points_hires); output /perception/lidar_obstacles is
+# cloud (/velodyne_points_hires); output /velodyne_points_hires_no_ground is
 # relabelled to `velodyne_hires` so the measured mount TF applies.
+# Topics and frame_id_override are set from perception_3d_launch.py args
+# (lidar_points / lidar_no_ground / lidar_frame); the value below is only
+# the default when the node is started by hand.
 #
 # Only sensor_height and frame_id_override differ from patchworkpp.yaml
 # (instance #1, which keeps feeding /scan, Layer C and the localizer path

@@ -9,7 +9,8 @@
 #
 # Inputs (whill_perception/launch/perception_3d_launch.py), both already in
 # base_link and already height-banded there:
-#   /perception/lidar_obstacles_filtered  Hi-Res LiDAR, ground removed (Patchwork++ #2)
+#   /perception/lidar_obstacles_filtered  Hi-Res LiDAR, ground removed (Patchwork++ #2,
+#                                         /velodyne_points_hires_no_ground), banded
 #   /perception/depth_obstacles           D435 depth, 0.10-1.6 m, <= 3.0 m (provisional)
 #
 # min/max_obstacle_height are deliberately wide (-50/50): STVL applies them
@@ -21,7 +22,9 @@
 # STVL takes the observation origin (obstacle_range) and the clearing
 # frustum pose from sensor_frame. The depth frustum (model_type 0) looks
 # along +z, hence the optical frame; the 3D-LiDAR frustum (model_type 1)
-# uses z-up, hence velodyne_hires.
+# uses z-up, hence velodyne_hires. nav_launch overwrites every lidar_*
+# sensor_frame with its perception_lidar_frame arg (velodyne after the LiDAR
+# root fix, plan §8), so the value written here is only the default.
 #
 # Decay / clearing values are first-pass, to be tuned in C4 on the chosen
 # outdoor segment:

@@ -23,11 +23,11 @@ Patchwork++のC++ coreを使って点群から地面を除去する自作ROS 2 w
 | ノード | 入力 → 出力 | 役割 |
 | --- | --- | --- |
 | `velodyne_transform_node_hires` | `/velodyne_packets` → `/velodyne_points_hires` | `VLP16_hires_db.yaml`（±10°）で変換し直す。今の driver は ±15° の表で変換している |
-| `patchworkpp_node_hires` | → `/perception/lidar_obstacles` | `sensor_height` 0.777、`frame_id_override: velodyne_hires` |
+| `patchworkpp_node_hires` | → `/velodyne_points_hires_no_ground` | `sensor_height` 0.777、`frame_id_override: velodyne_hires`。Collision Monitor と failsafe（C3）も読む |
 | `lidar_obstacle_filter` | → `/perception/lidar_obstacles_filtered` | base_link で 0.05〜1.6 m |
 | `depth_obstacle_filter` | `/camera/camera/depth/color/points` → `/perception/depth_obstacles` | base_link で 0.10〜1.6 m、0.3〜3.0 m（暫定） |
 | `static_tf_velodyne_hires` | | base_link → velodyne_hires（0.42, 0.36, 0.777、roll 0.24°、pitch 0.97°、yaw −0.317°） |
 
 `patchworkpp_node` の `frame_id_override` は既定が空で、空なら入力の frame をそのまま使う（今と同じ）。`cloud_height_filter_node` は sensor → base_link を最新の static TF で引く（センサは固定取付のため）。
 
-設定は `config/patchworkpp_hires.yaml` と `config/perception_3d.yaml`。深度だけの bag（点群なし）は `scripts/tools/replay_depth_to_points.py` で点群に戻して再生できる。根本対応（計画 §8）が済んだら、この経路は廃止する。
+設定は `config/patchworkpp_hires.yaml` と `config/perception_3d.yaml`。深度だけの bag（点群なし）は `scripts/tools/replay_depth_to_points.py` で点群に戻して再生できる。LiDAR の根本対応（計画 §8）の後は、ファイルを編集せず引数だけで切り替える：`lidar_hires:=false`（transform#2 と `velodyne_hires` TF を止める）、`lidar_points:=/velodyne_points`、`lidar_frame:=velodyne`。`nav_launch.py` では同じものを `perception_lidar_hires` / `perception_lidar_points` / `perception_lidar_frame` / `perception_lidar_no_ground` として渡し、STVL の LiDAR の `sensor_frame` も `perception_lidar_frame` に合わせる。
