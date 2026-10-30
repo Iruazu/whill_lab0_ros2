@@ -161,7 +161,8 @@ def _resolve_map_yaml(context):
     # Substitutions into Node(parameters=[...]) resolve to empty string
     # when this file is wrapped by IncludeLaunchDescription, so hard-code
     # the paths here inside OpaqueFunction where the LaunchContext is
-    # already active. See docs/session-2026-05-08.md.
+    # already active. Background: 2026-05-08 session log, removed from the
+    # tree; read it with `git show 83e5abf:docs/ja/session-2026-05-08.md`.
     nav2_params_src = os.path.join(nav_share, 'config', 'nav2_params.yaml')
     p2ls_params = os.path.join(nav_share, 'config',
                                'pointcloud_to_laserscan.yaml')

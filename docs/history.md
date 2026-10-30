@@ -5,13 +5,10 @@
 - [M5-e/Phase A〜C 凍結記録 (2026-06-13)](legacy-findings/2026-06-13-m5e-frozen.md)
 - [旧 M5-b マップディレクトリ リネーム記録 (2026-06-21)](legacy-findings/2026-06-21-m5b-maps-renamed.md)
 - [旧リポインデックス (`~/whill_lab0/`)](legacy-index.md)
-- [M1 — ROS 2 humble 環境構築](m1-environment-setup.md)
 - [M2 — ROS 2 humble での WHILL コアドライバ](m2-whill-core.md)
 - [noetic スタックから引き継ぐ LiDAR ↔ IMU 外部パラメータ](m3-extrinsics-from-noetic.md)
 - [M3 — ROS 2 humble でのセンサスタック](m3-sensors.md)
-- [M4 — ROS 2 humble での自己位置推定](m4-localization.md)
 - [M4-R 前置: ModelCr2State の単位曖昧性を実機で確定する](m4r-whill-units.md)
-- [M5 — ROS 2 humble での自律航法](m5-navigation.md)
 - [M5-R 前置: CUDA Toolkit 12.4 と cuDNN 8 のセットアップ](m5r-cuda-setup.md)
 - [M5-R 前置: FAST-LIO SAM 評価候補化 (clone-on-demand 運用)](m5r-fastlio-sam-eval.md)
 - [M5-R 前置: GLIM のソースビルドによるセットアップ](m5r-glim-setup.md)
@@ -21,7 +18,6 @@
 - [M5R-3: GLIM vs FAST-LIO SAM 実 bag 比較プロトコル](m5r3-comparison-protocol.md)
 - [M6-R デモ準備チェックリスト](m6r-demo-prep-checklist.md)
 - [Indoor calibration bag 収録プロトコル (M6-R / Issue #64 解消用)](m6r-indoor-calib-bag-protocol.md)
-- [移行計画: noetic → humble](migration-plan.md)
 - [開発方針: 配車プラットフォーム化に向けたアーキテクチャ再編](plans/2026-06-11-platform-pivot.md)
 - [M4-R 実行計画: odom 基盤の再構築](plans/2026-06-13-m4r-execution.md)
 - [M5-R 実行計画: マップ作成パイプライン](plans/2026-06-21-m5r-execution.md)
@@ -30,6 +26,13 @@
 - [Plan: M7 配車 API 層 (whill_dispatch) + 最小 Web UI](plans/2026-07-19-m7-dispatch.md)
 - [v2 map 品質改善パイプライン 実装レポート](reports/2026-07-18-pipeline-v2-report.md)
 - [Research: キャンパス自己位置推定 / SLAM 手法調査 (要約版)](research/2026-06-11-localization-survey.md)
-- [セッションログ: 2026-05-06 — 実機 CR2 で M2 wrap-up](session-2026-05-06.md)
-- [セッションログ: 2026-05-07 — 椅子上で M3 wrap-up](session-2026-05-07.md)
-- [セッションログ: 2026-05-08 — M4 ベースライン + 再現性試験](session-2026-05-08.md)
+
+## 削除した文書
+
+2026-10-30 に削除。本文は `git show 83e5abf:docs/ja/<ファイル名>` で読める（経緯は [整理の棚卸し](repository-refresh-2026-10-30.md)）。
+
+- `m1-environment-setup.md` — M1 環境構築。現行は [開発環境](development.md)
+- `m4-localization.md` — FAST-LIO を runtime とした旧 M4。現行は NDT localizer（ADR-0006）
+- `m5-navigation.md` — 旧 M5 計画。現行は `src/whill_navigation/README.md`
+- `migration-plan.md` — noetic → humble 初期移植計画。旧リポの対応は [旧リポインデックス](legacy-index.md)
+- `session-2026-05-06.md` / `-07.md` / `-08.md` — M2〜M4 のセッションログ

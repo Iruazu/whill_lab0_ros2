@@ -116,7 +116,7 @@ base_link → velodyne (translation)
 
 物理解釈 (Issue #61 後):
 - LiDAR は椅子の左 (+y, +0.382 m = IMU の左 0.412 m から車体中心の右 0.03 m を引いた値)
-- LiDAR は IMU から上 (+z, +0.324 m。`extrinsic_T` は本文冒頭の通り「IMU フレームで表した LiDAR 原点」であり、IMU フレームは REP-103 で +z=up を採用する。したがって `extrinsic_T[2] = +0.324 > 0` は LiDAR が IMU の +z 方向 = 上方にあることを直接意味する。`session-2026-05-08.md:26` の「~30 cm 下」表記は符号を見落とした誤記、上方が正しい (= 座面上のセンサポール先端))
+- LiDAR は IMU から上 (+z, +0.324 m。`extrinsic_T` は本文冒頭の通り「IMU フレームで表した LiDAR 原点」であり、IMU フレームは REP-103 で +z=up を採用する。したがって `extrinsic_T[2] = +0.324 > 0` は LiDAR が IMU の +z 方向 = 上方にあることを直接意味する。旧セッションログ `session-2026-05-08.md:26`（`git show 83e5abf:docs/ja/session-2026-05-08.md`）の「~30 cm 下」表記は符号を見落とした誤記、上方が正しい (= 座面上のセンサポール先端))
 - LiDAR は IMU からわずかに前方 (+x, +0.104 m)
 - Issue #61 で IMU が再測定により placeholder から (+0.18, -0.03, -0.03) m 動いたため、LiDAR も共締めの仮定で同じ delta だけスライド (相対位置 `extrinsic_T` は変えない)
 

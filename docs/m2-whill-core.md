@@ -170,4 +170,4 @@ ros2 topic echo /whill/states/model_cr2 --once
 | `whill_launch.py` が椅子に届き state を publish する | 完了 — コールドブートパッチ適用後、2026-05-06 に動作確認 |
 | ジョイスティックで椅子を動かしつつ ROS 2 がテレメトリを受ける | 完了 — `/tmp/m2_test.log` の 10 秒キャプチャで `right/left_motor_speed` が ±1.5、`battery_current` が 0–122 で振れることを確認 |
 
-M2 の受け入れ基準はすべて満たした。コールドブートパッチは fork PR #1 にある。調査の物語形式の記録は [Session log: 2026-05-06](session-2026-05-06.md) を参照。次は M3 (センサ)。詳細は [`m3-sensors.md`](m3-sensors.md)。
+M2 の受け入れ基準はすべて満たした。コールドブートパッチは fork PR #1 にある。調査の物語形式の記録（旧セッションログ）は `git show 83e5abf:docs/ja/session-2026-05-06.md` で読める。次は M3 (センサ)。詳細は [`m3-sensors.md`](m3-sensors.md)。
