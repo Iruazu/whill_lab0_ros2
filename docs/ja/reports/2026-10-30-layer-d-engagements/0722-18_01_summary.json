@@ -1,0 +1,20 @@
+{
+  "bag": "/home/systemlab/whill_lab0_ros2/docs/m7-bench-data/2026-07-22-live-campus/seimon-stall/rosbag2_2026_07_22-18_01_15",
+  "duration_s": 132.4,
+  "scans": 1306,
+  "live_cmd_vel_safety_msgs": 0,
+  "sector": {
+    "engagements": 0,
+    "engaged_time_s": 0,
+    "by_cause": {},
+    "by_lateral": {},
+    "by_mode": {}
+  },
+  "rectangle": {
+    "engagements": 0,
+    "engaged_time_s": 0,
+    "by_cause": {},
+    "by_lateral": {},
+    "by_mode": {}
+  }
+}

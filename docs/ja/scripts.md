@@ -37,6 +37,8 @@ OS、権限、ネットワークを変更するものを含む。実行前に内
 | `m7_ws_smoke.py` | rosbridge経由の投入・取消を含むE2E検証。実機での受動診断には使わない |
 | `m4r3_ekf_bench.py` | bagによるEKFの解析 |
 | `check_static.py` | IMU bagの静止区間の解析 |
+| `analyze_layer_d_engagements.py` | bagの `/scan` でfailsafe Layer D（扇形・長方形）の作動を再計算し、地図上の位置・原因分類をCSV / PNGに出す（bagは読むだけ） |
+| `replay_failsafe_layer_d.sh` | bagの `/scan` だけを再生し、failsafe_node 2個（扇形・長方形）の作動回数を数える。専用の `ROS_DOMAIN_ID` で実行し、domainにノードがあれば中止する |
 
 ## SLAM・動的除去・校正
 

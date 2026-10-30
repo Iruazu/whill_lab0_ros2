@@ -1,0 +1,5 @@
+n,t_rel_s,duration_s,blocked_scans,map_x,map_y,yaw_deg,mode,cmd_vx,cmd_wz,live_safety_msg_within_0.5s,n_points_first_scan,min_range_m,x_at_min_m,y_at_min_m,min_abs_y_m,max_abs_y_m,lateral,episode_points,episode_points_in_rect,frac_on_mapped_occupied,cell_at_min,obj_map_x,obj_map_y,cause
+1,134.21,1.9,15,-43.82,3.35,78.9,idle,0.0,0.0,True,2,1.09,1.01,-0.41,0.41,0.43,in_path,151,151,1.0,free,-43.22,4.27,mapped_structure
+2,141.21,12.45,110,-43.73,7.1,83.5,idle,0.0,0.0,True,2,2.02,1.99,-0.37,0.37,0.39,in_path,1578,1578,1.0,free,-43.14,9.03,mapped_structure
+3,154.8,1.05,6,-39.39,13.63,56.6,idle,0.0,0.0,True,5,1.97,1.96,0.24,0.19,0.26,in_path,56,56,1.0,unknown,-38.51,15.4,mapped_structure
+4,156.22,2.4,20,-38.65,14.34,20.9,idle,0.0,0.0,True,5,1.99,1.94,-0.47,0.44,0.5,in_path,602,602,1.0,unknown,-36.67,14.6,mapped_structure

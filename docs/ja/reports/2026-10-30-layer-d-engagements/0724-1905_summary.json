@@ -1,0 +1,37 @@
+{
+  "bag": "/home/systemlab/whill_lab0_ros2/docs/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26",
+  "duration_s": 842.8,
+  "scans": 8309,
+  "live_cmd_vel_safety_msgs": 587,
+  "sector": {
+    "engagements": 39,
+    "engaged_time_s": 28.9,
+    "by_cause": {
+      "single_point_flicker": 19,
+      "mapped_structure": 17,
+      "unmapped_object": 3
+    },
+    "by_lateral": {
+      "beside_path": 36,
+      "in_path": 3
+    },
+    "by_mode": {
+      "idle": 25,
+      "teleop": 14
+    }
+  },
+  "rectangle": {
+    "engagements": 3,
+    "engaged_time_s": 2.2,
+    "by_cause": {
+      "single_point_flicker": 1,
+      "unmapped_object": 2
+    },
+    "by_lateral": {
+      "in_path": 3
+    },
+    "by_mode": {
+      "idle": 3
+    }
+  }
+}

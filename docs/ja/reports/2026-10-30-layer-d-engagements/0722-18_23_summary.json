@@ -1,0 +1,34 @@
+{
+  "bag": "/home/systemlab/whill_lab0_ros2/docs/m7-bench-data/2026-07-22-live-campus/seimon-stall/rosbag2_2026_07_22-18_23_13",
+  "duration_s": 159.5,
+  "scans": 1573,
+  "live_cmd_vel_safety_msgs": 819,
+  "sector": {
+    "engagements": 8,
+    "engaged_time_s": 27.1,
+    "by_cause": {
+      "unmapped_object": 4,
+      "mapped_structure": 4
+    },
+    "by_lateral": {
+      "in_path": 7,
+      "beside_path": 1
+    },
+    "by_mode": {
+      "idle": 8
+    }
+  },
+  "rectangle": {
+    "engagements": 4,
+    "engaged_time_s": 17.8,
+    "by_cause": {
+      "mapped_structure": 4
+    },
+    "by_lateral": {
+      "in_path": 4
+    },
+    "by_mode": {
+      "idle": 4
+    }
+  }
+}

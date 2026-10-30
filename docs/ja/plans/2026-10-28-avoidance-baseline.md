@@ -70,7 +70,7 @@ twist_mux ─▶ velocity_smoother ─▶ /cmd_vel_smoothed ─▶ Collision Mon
 | # | 変更 | ファイル | `avoidance:=false` での影響 | 状態 |
 | --- | --- | --- | --- | --- |
 | F1 | failsafe の閾値を ROS パラメータにする（既定値は今の値と同じ） | `failsafe_node.py` | なし（bag 2本で作動・解除の順序と時刻が一致） | C0済 |
-| F2 | `layer_d_shape`（扇形・長方形） | 同上 | なし（既定は扇形） | C0済（引数との接続はC3） |
+| F2 | `layer_d_shape`（扇形・長方形） | 同上 | なし（既定は扇形） | C0済。`avoidance:=true` との接続は C3 で実装（`safety_launch.py`、実機未検証） |
 | F3 | `extra_perception_topics` | 同上 | なし（既定は空） | C0済 |
 | F4 | `/failsafe/state` を配信 | 同上 | トピックが1本増えるだけ | C0済 |
 | T1 | camera_link を (0.47, 0.378, 0.73) に直す | `static_tf_launch.py` | 使っているノードはない | C0済 |
@@ -79,7 +79,7 @@ twist_mux ─▶ velocity_smoother ─▶ /cmd_vel_smoothed ─▶ Collision Mon
 | R1 | 記録スクリプト、置いた物の検証ツール | `scripts/` | なし | C1済 |
 | P1 | transform#2、Patchwork++#2、`velodyne_hires` | 新しい launch、`patchworkpp_node.cpp` | なし | C2 |
 | N1 | STVL、MPPI、Collision Monitor の設定 | `nav_launch.py`、新しい yaml | なし | C2〜C4 |
-| V1 | smoother → Collision Monitor → driver（true のときだけ） | `nav_launch.py` | なし | C3 |
+| V1 | smoother → Collision Monitor → driver（true のときだけ） | `nav_launch.py`、`collision_monitor_launch.py`、`config/collision_monitor.yaml` | なし | C3 で実装（合成入力で確認、実機未検証） |
 | V2 | speed プリセットを MPPI の `vx_max` にも反映 | `nav_launch.py` | なし | C4 |
 
 twist_mux の優先度とタイムアウト、smoother の加減速、localizer と地図の設定、dispatch には手を入れない。
@@ -182,6 +182,8 @@ sudo apt install ros-humble-spatio-temporal-voxel-layer ros-humble-compressed-im
 ### 4.6 過去の走行中の停止との関係（原因候補として記録）
 
 2026-07-24 の走行 bag（`docs/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26`、843 s）を failsafe に流すと、今の扇形の Layer D は43回作動した。長方形（前方1.0〜2.0 m、左右±0.5 m）にすると3回だった。つまり、この走行の停止の大半は「経路の脇にある物」で起きていた可能性がある。過去の「走行中に止まる・進まない」事案（2026-07-22 の正門付近での停止など）の原因候補として記録する。どの物で作動したかの特定（点の位置と地図の照合）はまだしていない。C3 で長方形モードを接続するときに、同じ bag で作動箇所を地図上に描いて確かめる。
+
+**2026-10-30 C3 の結果**（[報告](../reports/2026-10-30-layer-d-engagements/README.md)）：node の再生では扇形 39 回・長方形 3 回だった（43 回との差は、帯の境界での再生タイミングによる揺れ）。扇形の 35 回は、発進前に止まっている間に、扇形の外側の角（r = 2.0 m、y −0.8 m）に掛かった、地図にある固定物1つによるもの。Nav2 で走った約 500 m では、どちらの形でも作動していない。長方形の 3 回は、終点で止まった後に正面 1.0〜1.1 m に現れた物によるもので、正しい作動だった。07-22 seimon の 1 本目は 0 回、2 本目の停滞区間は扇形で 2 回（1.7 s）だけなので、立ち往生の原因としては**支持されない**。
 
 ## 5. 記録の仕様
 

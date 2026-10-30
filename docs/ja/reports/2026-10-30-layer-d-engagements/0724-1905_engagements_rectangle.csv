@@ -1,0 +1,4 @@
+n,t_rel_s,duration_s,blocked_scans,map_x,map_y,yaw_deg,mode,cmd_vx,cmd_wz,live_safety_msg_within_0.5s,n_points_first_scan,min_range_m,x_at_min_m,y_at_min_m,min_abs_y_m,max_abs_y_m,lateral,episode_points,episode_points_in_rect,frac_on_mapped_occupied,cell_at_min,obj_map_x,obj_map_y,cause
+1,831.83,0.5,1,-49.38,0.69,-172.7,idle,0.0,0.0,True,1,1.1,1.04,-0.38,0.38,0.38,in_path,1,1,0.0,free,-50.46,0.93,single_point_flicker
+2,832.44,0.5,1,-49.38,0.73,-172.2,idle,0.0,0.0,True,3,1.05,1.0,-0.32,0.32,0.35,in_path,3,3,0.0,free,-50.42,0.9,unmapped_object
+3,833.86,1.2,8,-49.41,0.7,-172.2,idle,0.0,0.0,True,3,1.09,1.06,-0.26,0.22,0.28,in_path,75,75,0.0,free,-50.5,0.81,unmapped_object
