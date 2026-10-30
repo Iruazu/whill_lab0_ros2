@@ -9,7 +9,7 @@
 - 構成: `docs/architecture-overview.md`
 - スクリプト: `docs/scripts.md`
 - 開発: `docs/development.md`
-- 未解決事項: `docs/repository-maintenance.md`
+- 課題: GitHub Issues（マイルストーン M8-0〜M8-4・M9）。順番は `docs/plans/2026-10-30-roadmap-m8.md`、実装の制約は `docs/repository-maintenance.md`
 - パッケージ変更前に該当 `src/whill_*/README.md` を読む。
 
 ## 現行方針
