@@ -106,10 +106,30 @@ twist_mux の優先度とタイムアウト、smoother の加減速、localizer 
 4. 配布ページ（https://dev.realsenseai.com/docs/firmware-releases-d400 ）はダウンロードのリンクを JavaScript で表示するので、ファイルは依頼者に入手してもらう。書き込みは次のとおり：`rs-fw-update -l`（カメラを使うプロセスがないこと）→ `rs-fw-update -b ~/rs_fw_backup_938422070073.bin`（今のフラッシュを保存）→ `rs-fw-update -s 938422070073 -f <Signed_Image_UVC_5_17_3_10.bin>`。書き込み中はUSBを抜かない。
 5. `rs-enumerate-devices` で版を確認し、`ros2 launch whill_safety m6r_bringup_launch.py avoidance:=true` で、深度・カラー・点群のトピックと TF を確認する。
 
+**2026-10-30 実施結果**：
+
+- 5.12.11 → **5.17.3.10** に更新した。ファイルは公式 zip 内のものと sha256 が一致することを確かめた（`4c347e3a…e4d2`）。
+- 保存したもの（`~/rs_backup_938422070073/`、削除しない）：
+  - 更新前のフラッシュ全体（`flash_backup_fw5.12.11.bin`、2 MiB）
+  - 校正表（更新前と更新後）
+  - `rs-enumerate-devices -c` の出力（更新前と更新後）
+- **udev ルールが入っていない**ため、一般ユーザーでは更新モード（8086:0adb）の USB を開けず、書き込みの途中で止まった。カメラは更新モードのまま待機していた。`sudo rs-fw-update -r -f <bin>` で書き込みを完了した。ふだんの起動は UVC（video グループ）で動くので影響はない。次回の更新で同じことが起きないよう、`librealsense2-udev-rules` の導入を候補として挙げる（システムの変更なので、承認を得てから行う）。
+- 校正表（512 バイト）は、更新の前後でバイト単位で一致した。使う 848x480 の内部パラメータも変わっていない。変わった点は2つ：
+  - 480x270 の PPY が 0.07 px 動いた。
+  - 赤外線の 256x144 のモードが一覧から消えた。深度の 256x144@90 は残っているので、OCC には影響しない。
+- 起動の確認（worktree の overlay で `avoidance:=true`）：
+  - realsense-ros 4.58.4 と librealsense 2.58.4 で起動し、FW 5.17.3.10 と表示された。
+  - 次のトピックをすべて受信できた：`/velodyne_packets`、`/velodyne_points`、`/imu/data_rep145`、深度、カラーの圧縮画像、`depth/color/points`、`/whill/odom`、`/failsafe/state`（OK）。
+  - TF の `base_link→camera_link` は (0.470, 0.378, 0.730, RPY 0)。
+  - `/scan` は出ないが、設計どおり。nav_launch の `pointcloud_to_laserscan` が出すもので、センサだけの起動では出ない（`sensors_launch.py` の remap の説明）。
+- **worktree で起動するときは `WHILL_MAPS_ROOT=$HOME/whill_lab0_ros2/docs/maps` が要る**。地図の PCD は git 管理外なので worktree には無く、m6r_bringup は `docs/maps/<site>/static.pcd` が見つからないと起動を止める。
+- `Parameter 'avoidance' is not supported` などの警告が出るが、無害。rs_launch が、受け取った launch 引数のうち自分の知らないものすべてに出す警告で、既存の `site`、`realsense` にも同じ警告が出ている。
+
 ### 4.2 屋外での静止確認（C1）
 
 - **場所**：試験区間のアスファルト上。椅子は車線の向きに合わせて止める（横断勾配が roll として見えるようにするため）。
 - **置く物**：コーン（高さを記録する）を中心線上の 1.5／2／2.5／3／3.5／4／5 m に順に置く。低い物（高さ約20 cm）を 1.5／2／3 m に置く。何も置かない基準を最初と最後に1本ずつ撮る。
+- **起動**：worktree の `install/setup.bash` を main 側の後に source し、`WHILL_MAPS_ROOT=$HOME/whill_lab0_ros2/docs/maps` を付けて `m6r_bringup_launch.py avoidance:=true` を起動する（§4.1 の実施結果）。
 - **記録**：`scripts/record_avoidance_bag.sh --profile static --duration 12 <タグ>` を各位置で実行する。テープは `base_link` の原点（後輪車軸の中点）から前方へ伸ばす。
 - **解析**：`scripts/check_object_placement.py` を使う。notes.csv の列は `bag,object,x_m,height_m`。
 - **x の誤差（+2〜+8 cm）の切り分け**：
@@ -135,7 +155,7 @@ sudo apt install ros-humble-spatio-temporal-voxel-layer ros-humble-compressed-im
 
 手順（`scripts/tools/rs_calib_tool.cpp`。librealsense の公式APIを呼ぶだけ。`rs-on-chip-calib` は対話式で、今の校正値を保存・復元できないため）：
 
-1. `rs_calib_tool backup ~/rs_calib_backup_<日付>.bin`：今の校正値を保存する。
+1. `rs_calib_tool backup ~/rs_calib_backup_<日付>.bin`：今の校正値を保存する。**2026-10-30 実施済み**：保存先は `~/rs_backup_938422070073/calib_table_fw5.17.3.10_20261030_095735.bin`。FW 更新前の表と同一。
 2. 屋外の静止確認（§4.2）の bag を、校正前の基準として撮る。
 3. `rs_calib_tool occ occ.bin --write`：On-Chip Calibration（模様のある面を0.5〜2 m先に置き、カメラを止めておく）。health の値は 0.25 未満で Good。
 4. `rs_calib_tool tare <真の距離mm> tare.bin --write`：Tare Calibration（平らな面にカメラを正対させ、真の距離は深度の原点（前面ガラスの約4.2 mm奥）から測る）。
