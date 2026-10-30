@@ -12,7 +12,7 @@
 
 この bag (13:49 開始) 録画の**後**に追加 take2 を試行した際、
 `/velodyne_points` が 0.94 Hz まで詰まる現象が再現した。原因切り分けと
-恒久対策は `docs/ja/m5r-rmw-cyclonedds.md` に集約 (FastDDS の大メッセージ
+恒久対策は `docs/m5r-rmw-cyclonedds.md` に集約 (FastDDS の大メッセージ
 配送詰まり、CycloneDDS で解消)。
 
 **この bag 自体は症状発生前のセッションで取得しており、再録不要**。

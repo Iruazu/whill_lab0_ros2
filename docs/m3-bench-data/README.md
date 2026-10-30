@@ -1,6 +1,6 @@
 # M3 bench data
 
-> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../ja/runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
+> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
 
 
 Captured artifacts from on-bench / on-chair smoke tests of the M3 sensor
@@ -58,7 +58,7 @@ connected** to a common TF root. Wiring `base_link → velodyne / imu_link /
 camera_link` is the remaining M3 task — to be authored as
 `whill_sensors_bringup/launch/sensors_launch.py` (or by porting
 `tf_imus`), with extrinsics inherited per
-[`m3-extrinsics-from-noetic.md`](../ja/m3-extrinsics-from-noetic.md).
+[`m3-extrinsics-from-noetic.md`](../m3-extrinsics-from-noetic.md).
 
 ### Rosbag — `m3_smoke_2026-05-07/` (gitignored, 437 MiB)
 
@@ -82,7 +82,7 @@ ros2 bag record -o m3_smoke_$(date +%Y-%m-%d) \
   or a small wrapper script).
 - **`/imu/data_raw` matches FAST-LIO's expected topic name** out of the
   box, so the M4 LIO config inherited from
-  [`m3-extrinsics-from-noetic.md`](../ja/m3-extrinsics-from-noetic.md) does
+  [`m3-extrinsics-from-noetic.md`](../m3-extrinsics-from-noetic.md) does
   not need a remap on the IMU side.
 - **Velodyne driver publishes with sensor-data QoS** (best-effort).
   `ros2 topic hz` in humble does not auto-detect that — confirm with

@@ -3,7 +3,7 @@
 # the development host. The lab host's CUDA pin (12.4) does not match the
 # binaries available from the upstream apt PPA (koide3/ppa publishes 12.2,
 # 12.6 and 13.1 only), so source build is mandatory; we cannot fall back to
-# the PPA without diverging from docs/ja/m5r-cuda-setup.md.
+# the PPA without diverging from docs/m5r-cuda-setup.md.
 #
 # Idempotent — safe to re-run. Each step short-circuits when the upstream
 # source tree is already cloned at the pinned ref, or when the installed
@@ -12,7 +12,7 @@
 #
 # Scope notes:
 #   * Ubuntu 22.04 + CUDA 12.4 only. CUDA 12.4 is pinned by
-#     docs/ja/m5r-cuda-setup.md so that the GLIM build is bit-for-bit
+#     docs/m5r-cuda-setup.md so that the GLIM build is bit-for-bit
 #     reproducible across the team; bumping CUDA is a separate change that
 #     must update both this script and that document.
 #   * The script does NOT install the NVIDIA driver or the CUDA Toolkit.
@@ -110,7 +110,7 @@ require_cuda_124() {
   # found" message that doesn't point at scripts/install_cuda.sh.
   if [[ ! -x "${NVCC}" ]]; then
     echo "ERROR: ${NVCC} not found. Run scripts/install_cuda.sh first." >&2
-    echo "       See docs/ja/m5r-cuda-setup.md for the prerequisite." >&2
+    echo "       See docs/m5r-cuda-setup.md for the prerequisite." >&2
     exit 1
   fi
   if ! "${NVCC}" --version | grep -q 'release 12.4'; then
@@ -287,7 +287,7 @@ install_gtsam_points() {
   # the 12.4-pinned nvcc rather than relying on PATH — if the user has
   # multiple CUDA versions installed, cmake will silently pick the most
   # recent one in PATH, which can ABI-mismatch the runtime libraries that
-  # docs/ja/m5r-cuda-setup.md pinned. Spelling out nvcc removes that drift.
+  # docs/m5r-cuda-setup.md pinned. Spelling out nvcc removes that drift.
   #
   # BUILD_WITH_CUDA=ON is the whole reason we're not using the PPA: the
   # PPA's CUDA-enabled binaries are linked against 12.2/12.6/13.1, none of
@@ -404,7 +404,7 @@ GLIM is installed. To smoke-test with the upstream sample bag:
 
   # 1. Download the Ouster OS1-128 sample bag (~1 GB):
   #    https://zenodo.org/record/7233945/files/os1_128_01_downsampled.tar.gz?download=1
-  #    (bag fetch and mirror notes: docs/ja/m5r-glim-setup.md §4)
+  #    (bag fetch and mirror notes: docs/m5r-glim-setup.md §4)
 
   # 2. In one terminal, run GLIM with the OS1-128 config. Note the bag
   #    directory is a positional argument to glim_rosbag — without it the
@@ -417,7 +417,7 @@ GLIM is installed. To smoke-test with the upstream sample bag:
     -p dump_path:=/tmp/dump/
 
   # 3. The trajectory will be written to /tmp/dump/traj_lidar.txt.
-  #    See docs/ja/m5r-glim-setup.md §5 for the full procedure.
+  #    See docs/m5r-glim-setup.md §5 for the full procedure.
 EOF
 }
 

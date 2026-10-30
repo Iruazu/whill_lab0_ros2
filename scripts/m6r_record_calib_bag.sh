@@ -4,7 +4,7 @@
 # M6-R / Issue #64 helper: record an indoor motion bag for GRIL-Calib.
 #
 # Wraps `ros2 bag record` with the preflight checks that this project's
-# CLAUDE.md and docs/ja/m5r-rmw-cyclonedds.md require every time hardware
+# CLAUDE.md and docs/m5r-rmw-cyclonedds.md require every time hardware
 # recording is done, so a hurried session cannot forget to set them:
 #
 #   1. RMW = rmw_cyclonedds_cpp     (fastdds throttles /velodyne_points to 1 Hz)
@@ -15,7 +15,7 @@
 # The recorded topics match the GRIL-Calib runner's required set:
 #   /velodyne_points  /imu/data_rep145  /tf_static
 #
-# Companion doc: docs/ja/m6r-indoor-calib-bag-protocol.md.
+# Companion doc: docs/m6r-indoor-calib-bag-protocol.md.
 #   §1 preflight (this script enforces)
 #   §3 motion pattern (operator responsibility)
 # Next stage: scripts/m5r4_run_gril_calib.sh (this script prints the command).
@@ -53,7 +53,7 @@ Before running:
   running so that /velodyne_points (10 Hz) and /imu/data_rep145 (100 Hz) are
   live. This script checks that they are before opening the recorder.
 
-Motion protocol during recording: docs/ja/m6r-indoor-calib-bag-protocol.md §3.
+Motion protocol during recording: docs/m6r-indoor-calib-bag-protocol.md §3.
 EOF
   exit 2
 }
@@ -81,7 +81,7 @@ BAG_DIR="${RUN_DIR}/bag"
 # --- preflight ---------------------------------------------------------------
 
 # (1) RMW: must be CycloneDDS. FastDDS causes /velodyne_points 1 Hz stalls
-# (proven 2026-06-24, see docs/ja/m5r-rmw-cyclonedds.md).
+# (proven 2026-06-24, see docs/m5r-rmw-cyclonedds.md).
 if [[ "${RMW_IMPLEMENTATION:-}" != "rmw_cyclonedds_cpp" ]]; then
   echo "ERROR: RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-<unset>}" >&2
   echo "       Must be rmw_cyclonedds_cpp. Fix in ~/.bashrc:" >&2
@@ -136,7 +136,7 @@ echo "    /imu/data_rep145   ok"
 echo ""
 echo "==> starting recorder → ${BAG_DIR}"
 echo "    topics:  /velodyne_points  /imu/data_rep145  /tf_static"
-echo "    Follow docs/ja/m6r-indoor-calib-bag-protocol.md §3 for motion."
+echo "    Follow docs/m6r-indoor-calib-bag-protocol.md §3 for motion."
 echo "    Press Ctrl+C in this terminal to stop."
 echo ""
 
@@ -185,7 +185,7 @@ fi
 
 echo ""
 echo "==> next steps"
-echo "  1. Verify the motion protocol was fully covered (docs/ja/m6r-indoor-calib-bag-protocol.md §3)."
+echo "  1. Verify the motion protocol was fully covered (docs/m6r-indoor-calib-bag-protocol.md §3)."
 echo "  2. Run GRIL-Calib on this bag:"
 echo "       ./scripts/m5r4_run_gril_calib.sh ${BAG_DIR}"
 echo "  3. Interpret the result (see indoor-calib protocol §6, §7)."

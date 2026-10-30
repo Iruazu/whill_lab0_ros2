@@ -4,7 +4,7 @@
 # Issue #64 M5-R4: run GRIL-Calib over a rosbag2 to estimate T_lidar_imu and
 # diagnose the GLIM "IMU prediction is not good" warning.
 #
-# Automates docs/ja/m5r-imu-diagnostic.md appendix A:
+# Automates docs/m5r-imu-diagnostic.md appendix A:
 #   1. Patch GRIL-Calib's velodyne32.yaml for WHILL/VLP-16 (topics, scan_line,
 #      sensor height, initial T_IL guess from noetic).
 #   2. Source whill_lab0_ros2 + calib_ws installs.
@@ -119,19 +119,19 @@ if [[ ! -f "${CONFIG_SRC}" ]]; then
   exit 1
 fi
 
-# Patches (rationale tracked in docs/ja/m5r-imu-diagnostic.md appendix A):
+# Patches (rationale tracked in docs/m5r-imu-diagnostic.md appendix A):
 #   imu_topic      "/imu/data" -> "/imu/data_rep145"  (PR #56 REP-145 topic)
 #   scan_line      32 -> 16                          (VLP-16, not VLP-32)
 #   imu_sensor_height 0.73 -> 0.47                   (PR #61 measured base_link->imu_link.z)
 #   trans_IL_x/y/z 0.0 -> noetic initial guess       (faster convergence; this
 #                                                     is what we're refining)
-# noetic-derived extrinsic from docs/ja/m3-extrinsics-from-noetic.md:
+# noetic-derived extrinsic from docs/m3-extrinsics-from-noetic.md:
 #   extrinsic_T = [0.104136, 0.411548, 0.323704]  (LiDAR origin in IMU frame)
 # GRIL-Calib's trans_IL is "from IMU frame I to LiDAR frame L" so we pass
 # extrinsic_T directly (it already is the translation IMU->LiDAR per the
 # noetic FAST-LIO convention).
 #
-# 2026-07-09 audit (docs/ja/imu-coordinate-audit.md §4.1): この
+# 2026-07-09 audit (docs/imu-coordinate-audit.md §4.1): この
 # translation 初期値は現行 static TF chain と 1 µm 未満で一致することを
 # 確認済 (問題なし、今回も noetic 値を渡す)。
 # --- 初期 rotation について ---
@@ -143,7 +143,7 @@ fi
 # シナリオ B (LiDAR-IMU が別マウントで大きく傾いている) を示唆したら、
 # 上流ソースに直接 R_LI の init を仕込む改造が必要になる (現時点では未着手)。
 # noetic 由来の 8° pitch 相対値は GLIM の T_lidar_imu 用に残しているが
-# (docs/ja/imu-coordinate-audit.md §4.2)、それは GRIL-Calib には渡していない。
+# (docs/imu-coordinate-audit.md §4.2)、それは GRIL-Calib には渡していない。
 sed \
   -e 's|imu_topic:  "/imu/data"|imu_topic:  "/imu/data_rep145"|' \
   -e 's|scan_line: 32|scan_line: 16|' \
@@ -316,7 +316,7 @@ else
   echo "    GRIL-Calib did not reach data sufficiency before watchdog fired."
   echo "    This is the expected outcome for outdoor loop bags lacking the"
   echo "    motion excitation required by data_sufficiency_assess()."
-  echo "    See docs/ja/m5r-imu-diagnostic.md §2 for the motion bag protocol."
+  echo "    See docs/m5r-imu-diagnostic.md §2 for the motion bag protocol."
   STATUS="insufficient_motion"
 fi
 
@@ -356,7 +356,7 @@ else
   cat >> "${OUT_DIR}/SUMMARY.md" <<EOF
 - Result file: not produced (insufficient motion excitation)
 - Required next step: record a motion bag per
-  \`docs/ja/m5r-imu-diagnostic.md\` §2 (figure-8 + accel/decel + in-place
+  \`docs/m5r-imu-diagnostic.md\` §2 (figure-8 + accel/decel + in-place
   rotation, indoor flat floor, 3-5 min)
 EOF
 fi

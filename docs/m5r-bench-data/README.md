@@ -1,12 +1,12 @@
 # M5-R bench data
 
-> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../ja/runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
+> 過去の取得・検証記録です。現用の起動手順は [実機runbook](../runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
 
 
 Interim artifacts from the M5-R map-building pipeline (bag recording →
 GLIM SLAM → DUFOMap dynamic removal). The pipeline itself is documented
-in [`../ja/m5r-pipeline.md`](../ja/m5r-pipeline.md) (English mirror at
-[`../en/m5r-pipeline.md`](../ja/m5r-pipeline.md)). This README owns the
+in [`../m5r-pipeline.md`](../m5r-pipeline.md) (English mirror at
+[`../m5r-pipeline.md`](../m5r-pipeline.md)). This README owns the
 **storage convention** for this directory: what lives here, what is
 tracked in git, what is not.
 
@@ -144,8 +144,8 @@ Minimum fields:
 
 ## See also
 
-- [`../ja/m5r-pipeline.md`](../ja/m5r-pipeline.md) — pipeline procedure
+- [`../m5r-pipeline.md`](../m5r-pipeline.md) — pipeline procedure
 - [`../maps/README.md`](../maps/README.md) — registry convention (ADR-0005)
-- [`../ja/decisions/0003-mapping-slam-choice.md`](../ja/decisions/0003-mapping-slam-choice.md) — why GLIM
-- [`../ja/decisions/0004-dynamic-removal-choice.md`](../ja/decisions/0004-dynamic-removal-choice.md) — why DUFOMap
+- [`../decisions/0003-mapping-slam-choice.md`](../decisions/0003-mapping-slam-choice.md) — why GLIM
+- [`../decisions/0004-dynamic-removal-choice.md`](../decisions/0004-dynamic-removal-choice.md) — why DUFOMap
 - [`../m4r-bench-data/README.md`](../m4r-bench-data/README.md) — sibling convention this README is modelled on

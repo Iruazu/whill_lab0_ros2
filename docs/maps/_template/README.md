@@ -11,4 +11,4 @@
 
 runtimeは `static.pcd`、`occupancy[_<variant>].yaml`、`waypoints.yaml` を参照する。PCDを別配置する場合の受け渡し先も記録する。Web背景は別途生成する。
 
-地図の保存規約は [地図README](../README.md)、生成ツールは [スクリプト一覧](../../ja/scripts.md) を参照。SLAM・動的除去方式をテンプレートの旧候補値で固定しない。
+地図の保存規約は [地図README](../README.md)、生成ツールは [スクリプト一覧](../../scripts.md) を参照。SLAM・動的除去方式をテンプレートの旧候補値で固定しない。

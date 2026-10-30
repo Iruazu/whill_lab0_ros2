@@ -34,7 +34,7 @@ Usage:
         --output /tmp/m5r49_static.pcd
 
 Parameter defaults come from DUFOMap's upstream ``assets/config.toml``
-and are documented in ``docs/ja/m5r-pipeline.md``.
+and are documented in ``docs/m5r-pipeline.md``.
 """
 
 import argparse
@@ -231,7 +231,7 @@ def main() -> int:
     )
     # The three primary DUFOMap parameters; defaults come from
     # KTH-RPL/dufomap/assets/config.toml and are documented in
-    # docs/ja/m5r-pipeline.md.
+    # docs/m5r-pipeline.md.
     parser.add_argument(
         "--resolution", type=float, default=0.1,
         help="Voxel size (m). Upstream default 0.1; lower for indoors, "

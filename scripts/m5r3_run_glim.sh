@@ -5,7 +5,7 @@
 #
 # Why a wrapper instead of a one-liner in the protocol doc:
 #   * Wall time and peak VRAM are part of the comparison axes (see
-#     docs/ja/plans/2026-06-21-m5r-execution.md §6 acceptance B1/B4 and
+#     docs/plans/2026-06-21-m5r-execution.md §6 acceptance B1/B4 and
 #     §M5R-3). Doing them by hand each run loses reproducibility — one
 #     evaluator's `nvidia-smi` poll cadence differs from another's. The
 #     wrapper fixes the cadence at 0.5 s and dumps a single peak number.
@@ -47,7 +47,7 @@ Usage: ${0##*/} <bag-dir> <out-dir> [--force]
   <out-dir>  directory to write GLIM outputs into (created if missing)
   --force    overwrite existing <out-dir> contents
 
-Companion document: docs/ja/m5r3-comparison-protocol.md
+Companion document: docs/m5r3-comparison-protocol.md
 EOF
   exit 2
 }
@@ -262,7 +262,7 @@ select_glim_config() {
     # The numbers below are SE3-inverse of M4R-2's measured extrinsic
     # (extrinsic_T = LiDAR origin in IMU frame [0.104136, 0.411548,
     # 0.323704], extrinsic_R = LiDAR->IMU rotation in
-    # docs/ja/m3-extrinsics-from-noetic.md) with quaternion computed in
+    # docs/m3-extrinsics-from-noetic.md) with quaternion computed in
     # TUM (qx,qy,qz,qw) order. Roundtrip error < 1e-6.
     #
     # 2026-07-08 note: direct visual inspection revealed the IMU is
@@ -323,7 +323,7 @@ PY
     #     was (pitch -7.76°, roll -3.52°) on 07-09
     # Therefore R_lidar_imu ≈ RPY(-4.09°, -7.61°, 0°). Delta from 07-09 audit
     # is ~0.5° per axis (the natural mount stress-relaxation observed
-    # overnight; documented in docs/ja/calibration-ledger.md and static_tf
+    # overnight; documented in docs/calibration-ledger.md and static_tf
     # comment block).
     if [[ "${GLIM_TLI_FROM_AUDIT:-0}" == "1" ]]; then
       python3 - "${local_cfg}/config_sensors.json" <<'PY'
@@ -436,7 +436,7 @@ run_glim() {
 
   # Write the manifest BEFORE the run so a crash mid-run still leaves a
   # discoverable record of what was attempted. The fields here are the
-  # ones ADR-0003 will quote verbatim (see docs/ja/decisions/0003-mapping-slam-choice.md
+  # ones ADR-0003 will quote verbatim (see docs/decisions/0003-mapping-slam-choice.md
   # Context node).
   local git_commit
   git_commit="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -544,11 +544,11 @@ Next:
 
 For the formal B1 criterion (start/end wall 3-point mean), open the
 generated PCD (${OUT_DIR}/dump.pcd or map.pcd, depending on glim_ros
-release) in CloudCompare and follow docs/ja/m5r3-comparison-protocol.md
+release) in CloudCompare and follow docs/m5r3-comparison-protocol.md
 §"ループ誤差計測".
 
 Transcribe the manifest.yaml + traj_lidar.txt loop-error result into the
-Alternatives table of docs/ja/decisions/0003-mapping-slam-choice.md.
+Alternatives table of docs/decisions/0003-mapping-slam-choice.md.
 EOF
 }
 

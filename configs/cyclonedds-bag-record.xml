@@ -9,7 +9,7 @@
     2026-07-08 campus-outer bag (47 分) の bag time 1325 秒地点で 4.77 秒間の
     IMU/LiDAR 完全停止が発生。原因はテザリング接続中の CycloneDDS が外部ピア
     (10.130.7.163 / 172.20.10.2 等) への UDP 送信を延々リトライしてハング。
-    docs/ja/imu-coordinate-audit.md §7.6 参照。
+    docs/imu-coordinate-audit.md §7.6 参照。
 
     「録画前に WiFi を OFF する」という運用は 47 分の一発勝負では弱すぎるため
     (人間依存の抜けが致命的)、DDS 側で構造的に外部ピアを見せない設定にする。

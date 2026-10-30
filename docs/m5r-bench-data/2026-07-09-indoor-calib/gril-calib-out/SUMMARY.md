@@ -18,5 +18,5 @@
 
 - Result file: not produced (insufficient motion excitation)
 - Required next step: record a motion bag per
-  `docs/ja/m5r-imu-diagnostic.md` §2 (figure-8 + accel/decel + in-place
+  `docs/m5r-imu-diagnostic.md` §2 (figure-8 + accel/decel + in-place
   rotation, indoor flat floor, 3-5 min)

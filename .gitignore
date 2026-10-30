@@ -87,7 +87,7 @@ docs/m5r-bench-data/**/*.ply
 !docs/m5r-bench-data/**/manifest.yaml
 # GLIM per-run config/ copies (~15 JSON per run × dozens of runs = hundreds of
 # near-duplicate files). Reproducible from scripts/m5r3_run_glim.sh + the
-# T_lidar_imu values recorded in docs/ja/calibration-ledger.md — no
+# T_lidar_imu values recorded in docs/calibration-ledger.md — no
 # reason to preserve every copy in git history. The manifest.yaml records
 # which config source was used per run.
 docs/m5r-bench-data/**/glim-out*/config/

@@ -1,6 +1,6 @@
 # whill_safety
 
-実機統合bringup、failsafe、twist_muxを提供する。運用手順は [runbook](../../docs/ja/runbook-live-demo.md)。
+実機統合bringup、failsafe、twist_muxを提供する。運用手順は [runbook](../../docs/runbook-live-demo.md)。
 
 ## 起動単位
 

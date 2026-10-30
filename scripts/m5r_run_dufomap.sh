@@ -16,7 +16,7 @@
 #   pip install dufomap
 #
 # Verified on Ubuntu 22.04 + Python 3.10 (the lab host configuration
-# baked in by docs/ja/m5r-cuda-setup.md).  DUFOMap pulls a native wheel
+# baked in by docs/m5r-cuda-setup.md).  DUFOMap pulls a native wheel
 # with bundled UFO library; no separate UFO install is needed.
 #
 # Inputs:
@@ -46,8 +46,8 @@ Usage: ${0##*/} <glim-out-dir> <output-dir> [--force]
   -h, --help      Show this message
 
 Companion docs:
-  docs/ja/m5r-pipeline.md  (parameters, troubleshooting)
-  docs/ja/decisions/0004-dynamic-removal-choice.md  (why DUFOMap)
+  docs/m5r-pipeline.md  (parameters, troubleshooting)
+  docs/decisions/0004-dynamic-removal-choice.md  (why DUFOMap)
 EOF
   exit 2
 }
@@ -93,7 +93,7 @@ ERROR: dufomap is not importable from python3.
     sudo apt install -y python3-pip   # Ubuntu 22.04 default lacks pip
     pip install dufomap
 
-  See docs/ja/m5r-pipeline.md "DUFOMap セットアップ" for the verified
+  See docs/m5r-pipeline.md "DUFOMap セットアップ" for the verified
   Ubuntu 22.04 + Python 3.10 setup recipe.
 EOF
     exit 1

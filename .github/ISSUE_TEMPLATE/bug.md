@@ -30,7 +30,7 @@ labels: 'type:fix'
 
 ## 関連フェーズ
 
-`docs/ja/plans/2026-06-11-platform-pivot.md` のフェーズ (M4-R / M5-R / M6-R / M7 / M8 / M9 / chore) と、
+`docs/plans/2026-06-11-platform-pivot.md` のフェーズ (M4-R / M5-R / M6-R / M7 / M8 / M9 / chore) と、
 該当する問題 ID (P1〜P5) があれば併記する。
 
 ## 仮説 (任意)

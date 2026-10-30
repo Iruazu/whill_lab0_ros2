@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(whill_dispatch)
 
 # Hybrid ament_cmake + ament_cmake_python, mirroring whill_safety. The M7
-# plan (docs/ja/plans/2026-07-19-m7-dispatch.md) names ament_python, but
+# plan (docs/plans/2026-07-19-m7-dispatch.md) names ament_python, but
 # every package in this repo is ament_cmake and this repo has no
 # ament_python precedent; ament_cmake_python installs the pure-python
 # dispatch_node identically (see whill_safety/failsafe_node) and the

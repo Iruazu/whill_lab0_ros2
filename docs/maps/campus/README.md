@@ -2,12 +2,12 @@
 
 ## 現用ファイル（2026-10-14照合）
 
-実機デモは `occupancy_v2.yaml` の `image: v2/final.pgm` を使用する。localizerは `static.pcd`、dispatchは `waypoints.yaml`。Web背景は別途生成される。現在の手順は [runbook](../../ja/runbook-live-demo.md)。
+実機デモは `occupancy_v2.yaml` の `image: v2/final.pgm` を使用する。localizerは `static.pcd`、dispatchは `waypoints.yaml`。Web背景は別途生成される。現在の手順は [runbook](../../runbook-live-demo.md)。
 
 以下の品質表と生成経緯は過去の記録として保持する。旧occupancyの値をv2の品質値として流用しない。冒頭の「47分」と取得概要の「2162秒 / 36分2秒」は一致しないため、録画時間はbag / manifestで再確認する。今回どちらかに断定して書き換えていない。
 
 
-M5-R (`docs/ja/plans/2026-06-11-platform-pivot.md` §M5-R) の最終成果物。
+M5-R (`docs/plans/2026-06-11-platform-pivot.md` §M5-R) の最終成果物。
 2026-07-10 の 47 分 / 1310 m キャンパス外周走行 bag から GLIM +
 DUFOMap 経由で生成した静的マップ。
 
@@ -224,10 +224,10 @@ cp docs/m5r-bench-data/2026-XX-XX-campus/glim-out-audit-tli/traj_lidar.txt docs/
 
 ## 関連
 
-- 規約: [`../README.md`](../README.md)、[`../../decisions/0005-maps-spec.md`](../../ja/decisions/0005-maps-spec.md)
-- SLAM 選定: [`../../ja/decisions/0003-mapping-slam-choice.md`](../../ja/decisions/0003-mapping-slam-choice.md)
-- 動的除去: [`../../ja/decisions/0004-dynamic-removal-choice.md`](../../ja/decisions/0004-dynamic-removal-choice.md)
-- 校正記録: [`../../ja/calibration-ledger.md`](../../ja/calibration-ledger.md)
-- IMU coordinate 検証: [`../../ja/imu-coordinate-audit.md`](../../ja/imu-coordinate-audit.md) §8
+- 規約: [`../README.md`](../README.md)、[`../../decisions/0005-maps-spec.md`](../../decisions/0005-maps-spec.md)
+- SLAM 選定: [`../../decisions/0003-mapping-slam-choice.md`](../../decisions/0003-mapping-slam-choice.md)
+- 動的除去: [`../../decisions/0004-dynamic-removal-choice.md`](../../decisions/0004-dynamic-removal-choice.md)
+- 校正記録: [`../../calibration-ledger.md`](../../calibration-ledger.md)
+- IMU coordinate 検証: [`../../imu-coordinate-audit.md`](../../imu-coordinate-audit.md) §8
 - 元 bag: `docs/m5r-bench-data/2026-07-10-campus-outer-final/`
 - GLIM 出力: `docs/m5r-bench-data/2026-07-10-campus-outer-final/glim-out-audit-tli/`
