@@ -65,5 +65,6 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
+| `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数と終了処理のテスト（ROS・車体は起動しない） |
 
 地図生成は成果物を書き換える。現用地図を再生成する前に入力・出力先・mask を確認する。

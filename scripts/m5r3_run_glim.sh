@@ -354,7 +354,7 @@ PY
 
     # Optional bias-freeze patch (env-gated) — for the M6-R Z-drift
     # diagnostic on 2026-07-08 campus-outer. When the bias grows unbounded
-    # over a 47-min bag (see docs/session-2026-07-08 discussion), fixing
+    # over a 47-min bag (see docs/imu-coordinate-audit.md §7), fixing
     # the bias at its post-init value forces the extrinsic error to show
     # up in LiDAR residuals instead of being hidden in bias drift. The env
     # var keeps the default runbook (ADR-0003 baseline) unchanged.

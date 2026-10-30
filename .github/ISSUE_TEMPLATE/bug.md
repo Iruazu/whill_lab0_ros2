@@ -7,7 +7,7 @@ labels: 'type:fix'
 ## 観測された現象
 
 (1-3 行。「動かない」ではなく、観測可能な事実として書く。
-例: 「/Odometry の publish が 30 秒で停止し、fastlio_mapping プロセスは生存しているが No Effective Points! を吐き続ける」)
+例: 「/pcl_pose の publish が 30 秒で停止し、lidar_localization は active のままだが /velodyne_points は 10 Hz で届いている」)
 
 ## 再現手順
 

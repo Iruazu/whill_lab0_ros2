@@ -104,9 +104,10 @@ ros2 param get /controller_server FollowPath.use_collision_detection
 
 # Layer D armed の startup log
 ros2 topic echo /rosout | grep -E "failsafe_node ready|forward_blocked"
-# 期待: "forward_blocked > 5 pts in ±30° @ 0.5-2.0 m, hysteresis 0.5s"
+# 期待: "forward_blocked > 1 pts in ±30° @ 1.0-2.0 m, hysteresis 0.5s"
+# (値は failsafe_node.py の FORWARD_* 定数。1.0 m 未満は /scan に出ない)
 
-# 動作テスト (手を chair 前方 1 m 距離に翳して 2 秒)
+# 動作テスト (手を chair 前方約 1.5 m に翳して 2 秒。m6r_preflight.sh check 5 と同じ距離)
 ros2 topic hz /cmd_vel_safety
 # 期待: 遮断中は 20 Hz publish、手を外すと publish 停止
 ```

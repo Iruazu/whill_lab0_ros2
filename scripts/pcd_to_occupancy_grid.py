@@ -19,8 +19,8 @@ so this script:
   6. Writes a PGM (binary P5) and the matching nav2_map_server YAML.
 
 Usage:
-    python3 scripts/pcd_to_occupancy_grid.py docs/m5-maps/lab.pcd \\
-        docs/m5-maps/lab           # → docs/m5-maps/lab.pgm + lab.yaml
+    python3 scripts/pcd_to_occupancy_grid.py docs/maps/<site>/static.pcd \\
+        /tmp/<site>_occ            # → /tmp/<site>_occ.pgm + .yaml
 
 Optional flags:
     --xy-range METRES        crop XY to ±METRES around origin (default 20)

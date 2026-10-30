@@ -5,8 +5,7 @@
 
 Interim artifacts from the M5-R map-building pipeline (bag recording →
 GLIM SLAM → DUFOMap dynamic removal). The pipeline itself is documented
-in [`../m5r-pipeline.md`](../m5r-pipeline.md) (English mirror at
-[`../m5r-pipeline.md`](../m5r-pipeline.md)). This README owns the
+in [`../m5r-pipeline.md`](../m5r-pipeline.md). This README owns the
 **storage convention** for this directory: what lives here, what is
 tracked in git, what is not.
 
