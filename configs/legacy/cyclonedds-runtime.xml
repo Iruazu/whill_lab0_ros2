@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+  DEPRECATED (2026-10-30 に configs/legacy/ へ移動)
+    使わない。現用は configs/cyclonedds-runtime-min.xml
+    (start_dispatch_demo.sh と runbook が使用)。本ファイルはドック交換前の
+    NIC 名 enx00e04c6808dc を列挙しており、現在の LiDAR NIC
+    (2026-07-31 以降 enx00e04c680ec9) では有線側が使われない。また
+    AllowMulticast=spdp / DontRoute=true が unicast data path を塞いだ
+    (2026-07-24、runtime-min.xml の冒頭コメント)。
+    ~/.bashrc の CYCLONEDDS_URI がまだ旧パスを指していれば
+    configs/cyclonedds-runtime-min.xml へ書き換えること。
+    以下は当時の説明をそのまま残す。
+
   CycloneDDS 恒久設定: 運用時 (localization / Nav2 / M6-R bringup) 用
 
   Why:

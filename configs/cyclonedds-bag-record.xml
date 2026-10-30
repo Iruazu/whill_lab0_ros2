@@ -3,7 +3,8 @@
   CycloneDDS 設定: bag 録画専用 (loopback 限定 + マルチキャスト無効化)
 
   ⚠ この xml は bag 録画時のみ使用。localization / Nav2 / M6-R 運用には
-  `cyclonedds-runtime.xml` を使うこと。
+  `cyclonedds-runtime-min.xml` を使うこと (旧 `cyclonedds-runtime.xml` は
+  2026-10-30 に configs/legacy/ へ移した)。
 
   Why (旧 cyclonedds-lo-only.xml、2026-07-08 M5-R gap 対策 deb317d):
     2026-07-08 campus-outer bag (47 分) の bag time 1325 秒地点で 4.77 秒間の
@@ -19,11 +20,12 @@
     招き、localizer の subscription match が起動ごとに不安定化する
     (rmw_cyclonedds#376)。運用 (subscription が確実に成立してほしい局面) には
     向かない。ただし bag 録画は「録画中に外部 IP へ UDP を投げない」ことだけ
-    保証できれば十分なので、本 xml をそのまま流用する。運用側は
-    cyclonedds-runtime.xml (許可列挙方式 + AllowMulticast=spdp) を使う。
+    保証できれば十分なので、本 xml をそのまま流用する。運用側は当時
+    cyclonedds-runtime.xml (許可列挙方式 + AllowMulticast=spdp) を使った。
+    現在は cyclonedds-runtime-min.xml。
 
   How to use (bag 録画時のみ):
-    terminal 単位で切り替え (~/.bashrc は運用 default = runtime.xml のまま):
+    terminal 単位で切り替え (他の terminal は運用 default = runtime-min.xml のまま):
       export CYCLONEDDS_URI=file:///home/systemlab/whill_lab0_ros2/configs/cyclonedds-bag-record.xml
       ros2 daemon stop && ros2 daemon start
       ros2 bag record /velodyne_points /imu/data_rep145 /whill/odom /tf

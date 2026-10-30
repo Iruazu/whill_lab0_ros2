@@ -117,7 +117,7 @@ VLP-16 は USB ではなくイーサネット経由で繋ぐ。LiDAR 工場出�
 
 ```bash
 ip -br link show | grep -E '^(enx|eth|enp)'         # USB-Ethernet iface を探す
-./scripts/install_velodyne_network.sh enx00e04c6808dc   # 置き換えて適用
+./scripts/install_velodyne_network.sh <NIC名>   # 上で確かめた enx... に置き換えて適用
 ```
 
 スクリプトはテンプレから `${IFACE}` を展開し、`/etc/netplan/01-velodyne-static.yaml` にモード 600・root:root で配置し (最近の netplan は緩いパーミッションを拒否する)、`netplan apply` を実行する。`ping -c 3 192.168.1.201` で確認。

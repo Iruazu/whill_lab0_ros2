@@ -7,8 +7,8 @@
 # `${IFACE}` is substituted by scripts/install_velodyne_network.sh with
 # the predictable USB-Ethernet interface name on the host (find via:
 #   ip -br link show | grep -E '^(enx|eth)'
-# ). On the development host this is the Realtek RTL8153 adapter
-# `enx00e04c6808dc`.
+# ). The name is enx<MAC> and changes when the USB-Ethernet dock is
+# swapped, so always check the current name instead of copying an old one.
 #
 # Renderer: NetworkManager — matches Ubuntu Desktop's default
 # (`/etc/netplan/01-network-manager-all.yaml` ships with `renderer:

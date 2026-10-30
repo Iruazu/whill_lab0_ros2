@@ -5,7 +5,7 @@
 | 項目 | 現状と次の確認 |
 | --- | --- |
 | preflight | check 4 は `/rosout` を 1 件見るだけで、無期限に待つことがある。有限時間で入力状態を直接確かめる形に直す。runbook は外側の `timeout` を併用 |
-| DDS 設定 | `cyclonedds-runtime.xml` と現用の `runtime-min.xml` が併存。実機で使った NIC を確かめて一本化する |
+| DDS 設定 | 現用は `configs/cyclonedds-runtime-min.xml`。旧 `cyclonedds-runtime.xml`（旧 NIC 名）は `configs/legacy/` に移した。`~/.bashrc` の `CYCLONEDDS_URI` が旧パスを指していれば手で直す（bashrc は自動編集しない） |
 | 録画データ | M7 の大容量 bag が未追跡一覧に出る。録画本体と共有する記録の置き場を分ける |
 | 配車地点 | 2026-10-14 の報告とログ上の地点名が食い違う。実機で対応を確かめる（[検証記録](reports/2026-10-14-dispatch-demo.md)） |
 | 終了・再起動 | 終了時に rosapi と imu_sign_corrector の例外ログが出る。全プロセスの消失と連続再起動を確かめる |
