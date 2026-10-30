@@ -37,7 +37,7 @@ Python launch / スクリプトには必ずモジュール docstring を書く�
 
 ### Launch ファイル
 
-- `IncludeLaunchDescription` で wrap される可能性を考慮し、パスは `LaunchConfiguration` ではなく launch description 生成時にハードコード resolve する (`fast_lio_launch.py` の冒頭コメント参照)
+- `IncludeLaunchDescription` で wrap される可能性を考慮し、パスは `LaunchConfiguration` ではなく launch description 生成時にハードコード resolve する (`whill_navigation/launch/nav_launch.py` の `OpaqueFunction` 内のコメント参照)
 - `DeclareLaunchArgument` には必ず `description` を書く
 
 ### package.xml

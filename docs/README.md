@@ -7,14 +7,14 @@
 | 文書 | 用途 |
 | --- | --- |
 | [リポジトリ概要](../README.md) | 実装範囲・入口 |
-| [実機 runbook](ja/runbook-live-demo.md) | 準備、起動、初期位置、検査、停止、録画 |
-| [構成](ja/architecture-overview.md) | ノード、トピック、TF、速度指令 |
-| [スクリプト一覧](ja/scripts.md) | 実行ファイルの用途 |
-| [開発環境](ja/development.md) | 上流取得、ビルド、検証 |
-| [未解決事項と制約](ja/repository-maintenance.md) | 残課題と実装の制約 |
+| [実機 runbook](runbook-live-demo.md) | 準備、起動、初期位置、検査、停止、録画 |
+| [構成](architecture-overview.md) | ノード、トピック、TF、速度指令 |
+| [スクリプト一覧](scripts.md) | 実行ファイルの用途 |
+| [開発環境](development.md) | 上流取得、ビルド、検証 |
+| [未解決事項と制約](repository-maintenance.md) | 残課題と実装の制約 |
 | [地図一覧](maps/README.md) | 地図成果物の規約 |
-| [校正台帳](ja/calibration-ledger.md) | 校正履歴。現用値はコードと照合する |
-| [設計判断](ja/decisions/README.md) | ADR |
+| [校正台帳](calibration-ledger.md) | 校正履歴。現用値はコードと照合する |
+| [設計判断](decisions/README.md) | ADR |
 
 ## パッケージ
 
@@ -22,11 +22,11 @@
 
 ## 実機検証記録
 
-- [2026-10-14 統合起動・配車成功](ja/reports/2026-10-14-dispatch-demo.md)
+- [2026-10-14 統合起動・配車成功](reports/2026-10-14-dispatch-demo.md)
 
 ## 過去の記録
 
-- [過去の計画・調査・検証の索引](ja/history.md)
+- [過去の計画・調査・検証の索引](history.md)
 - `m*-bench-data/` は実測記録、`maps/` は地図成果物
 
 過去の記録にある旧設定や「未着手」は当時の状態。

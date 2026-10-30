@@ -1,6 +1,6 @@
 # docs/maps/campus-half-v3/metadata.yaml
 #
-# M6-R 実行計画 (docs/ja/plans/2026-06-24-m6r-localization.md) の入力地図。
+# M6-R 実行計画 (docs/plans/2026-06-24-m6r-localization.md) の入力地図。
 # 2026-07-07 屋外走行 bag (campus-half-v3) を GLIM + DUFOMap で処理して
 # 生成した static PCD + 2D 占有格子。
 #
@@ -10,7 +10,7 @@
 #   * ゴースト壁 (Z 方向 drift の 2D 投影)
 # 根本原因は Issue #64 の T_lidar_imu 未計測回転。demo 期日を守る本フェーズ
 # では M6R-1 smoke test で NDT locking を実測して合否を出す方針。
-# 改善案 A の詳細: docs/ja/m6r-indoor-calib-bag-protocol.md
+# 改善案 A の詳細: docs/m6r-indoor-calib-bag-protocol.md
 
 acquired_at: "2026-07-07T19:30:40+09:00"
 

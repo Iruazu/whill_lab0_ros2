@@ -1,6 +1,6 @@
 # M7 whill_dispatch — mock 検証エビデンス (2026-07-19)
 
-計画: [`docs/ja/plans/2026-07-19-m7-dispatch.md`](../../ja/plans/2026-07-19-m7-dispatch.md)
+計画: [`docs/plans/2026-07-19-m7-dispatch.md`](../../plans/2026-07-19-m7-dispatch.md)
 
 実機なし。`scripts/mock_navigate_to_pose.py` (理想化された NavigateToPose
 action server) を相手に、配車境界 (`whill_dispatch`) の全 AC を実測した。

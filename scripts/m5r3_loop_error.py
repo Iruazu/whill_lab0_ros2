@@ -3,7 +3,7 @@
 
 Used by scripts/m5r3_run_glim.sh and scripts/m5r3_run_fastlio_sam.sh as a
 quick, automatable companion to the formal B1 acceptance criterion. B1
-itself (docs/ja/plans/2026-06-21-m5r-execution.md §6) is the mean of
+itself (docs/plans/2026-06-21-m5r-execution.md §6) is the mean of
 three points picked on the same physical wall at start and end of the
 loop, measured in CloudCompare. That requires human interaction and the
 generated PCD, so it cannot be scripted here.
@@ -180,7 +180,7 @@ def print_human(metrics: dict, path: Path) -> None:
     print('Reminder: this is the SLAM-internal end-to-start distance, NOT')
     print('the formal B1 acceptance metric. B1 = mean of 3 wall points at')
     print('start vs end, measured in CloudCompare on the generated PCD.')
-    print('See docs/ja/m5r3-comparison-protocol.md §"ループ誤差計測".')
+    print('See docs/m5r3-comparison-protocol.md §"ループ誤差計測".')
 
 
 def main() -> int:

@@ -1,5 +1,5 @@
 # M5-R bench data — outdoor driving run (2本目 / GLIM 優先対象)
-# 構成は docs/ja/plans/2026-06-21-m5r-execution.md §0-§12 を踏襲
+# 構成は docs/plans/2026-06-21-m5r-execution.md §0-§12 を踏襲
 # 1本目 2026-07-07-campus-loop に対する対照データ (半距離・速度固定・停止なし)
 
 run:

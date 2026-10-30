@@ -5,11 +5,11 @@
 ## 読む文書
 
 - 概要: `README.md`
-- 運用: `docs/ja/runbook-live-demo.md`
-- 構成: `docs/ja/architecture-overview.md`
-- スクリプト: `docs/ja/scripts.md`
-- 開発: `docs/ja/development.md`
-- 未解決事項: `docs/ja/repository-maintenance.md`
+- 運用: `docs/runbook-live-demo.md`
+- 構成: `docs/architecture-overview.md`
+- スクリプト: `docs/scripts.md`
+- 開発: `docs/development.md`
+- 未解決事項: `docs/repository-maintenance.md`
 - パッケージ変更前に該当 `src/whill_*/README.md` を読む。
 
 ## 現行方針
@@ -31,4 +31,4 @@
 - mainへ直接commit / pushしない。ブランチとPRで提示し、マージはユーザーが行う。
 - 通常のADR採択は人が行う。ユーザーの明示指示による文書言語変更はADR-0001の追記に記録済み。
 - 既存の未コミット変更を破棄しない。bag・地図PCD・校正値を整理の名目で削除しない。
-- 旧noetic調査は `docs/ja/legacy-index.md` を起点とする。
+- 旧noetic調査は `docs/legacy-index.md` を起点とする。

@@ -1,6 +1,6 @@
 # whill_dispatch
 
-タブレットWebとNav2を接続する配車ノード・静的Web UI。起動手順は [runbook](../../docs/ja/runbook-live-demo.md)。
+タブレットWebとNav2を接続する配車ノード・静的Web UI。起動手順は [runbook](../../docs/runbook-live-demo.md)。
 
 ## 起動するもの
 
@@ -47,4 +47,4 @@ teleop入力が切れるとNav2入力に戻り得る。進行中の配車を取�
 
 `m7_ws_smoke.py` はジョブ投入・取消を含むため、読み取り専用の接続確認ではない。実機の接続診断に無条件で実行せず、模擬actionを使う検証環境で使用する。
 
-launch変更時は `ros2 launch whill_dispatch dispatch_launch.py --show-args`。現在の制約は [整備課題](../../docs/ja/repository-maintenance.md) を参照。
+launch変更時は `ros2 launch whill_dispatch dispatch_launch.py --show-args`。現在の制約は [整備課題](../../docs/repository-maintenance.md) を参照。

@@ -7,7 +7,7 @@ repositories:
     # downstream consumption.
     # Diff vs the previous M2 anchor (humble@ceebd45):
     #   - cold-boot init patch (SetPower + SendSetJoystickCommandWithLocal in
-    #     WhillNode::Initialize). See docs/ja/m2-whill-core.md.
+    #     WhillNode::Initialize). See docs/m2-whill-core.md.
     #   - /whill/odom publisher (nav_msgs/Odometry) in whill_driver, consumed
     #     by the M4R-3 robot_localization EKF. See Iruazu/whill_lab0_ros2#35.
     url: https://github.com/Iruazu/ros2_whill.git
@@ -27,12 +27,12 @@ repositories:
   # Intel RealSense D435 (USB 3, VID:PID 8086:0b07). Requires librealsense2
   # system package before colcon build will succeed; ros-humble-librealsense2
   # from the standard ROS apt repo is sufficient.
-  # See docs/ja/m3-sensors.md for the install snippet.
+  # See docs/m3-sensors.md for the install snippet.
   third_party/realsense-ros:
     type: git
     url: https://github.com/IntelRealSense/realsense-ros.git
     version: 4.55.1
-  # RT 9-axis USB IMU. Lab uses /imu/data_raw as FAST-LIO input topic.
+  # RT 9-axis USB IMU. /imu/data_raw -> imu_sign_corrector -> /imu/data_rep145 (EKF input).
   third_party/rt_usb_9axisimu_driver:
     type: git
     url: https://github.com/rt-net/rt_usb_9axisimu_driver.git
@@ -77,7 +77,7 @@ repositories:
   # model with region-wise plane fitting + A-GLE + RNR + TGR. Chosen for
   # the 2D-slice obstacle_layer's structural failure on gradient + local
   # unevenness observed at 工農研横 2026-07-14 Phase B (see
-  # docs/ja/decisions/0011-ground-removal-choice.md).
+  # docs/decisions/0011-ground-removal-choice.md).
   #
   # License note (important): the repo root LICENSE is BSD-2-Clause
   # (KAIST, 2024) covering the C++ core under cpp/. The ros/ subtree

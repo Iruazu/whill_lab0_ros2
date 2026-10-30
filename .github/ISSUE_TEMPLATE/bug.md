@@ -7,7 +7,7 @@ labels: 'type:fix'
 ## 観測された現象
 
 (1-3 行。「動かない」ではなく、観測可能な事実として書く。
-例: 「/Odometry の publish が 30 秒で停止し、fastlio_mapping プロセスは生存しているが No Effective Points! を吐き続ける」)
+例: 「/pcl_pose の publish が 30 秒で停止し、lidar_localization は active のままだが /velodyne_points は 10 Hz で届いている」)
 
 ## 再現手順
 
@@ -30,7 +30,7 @@ labels: 'type:fix'
 
 ## 関連フェーズ
 
-`docs/ja/plans/2026-06-11-platform-pivot.md` のフェーズ (M4-R / M5-R / M6-R / M7 / M8 / M9 / chore) と、
+`docs/plans/2026-06-11-platform-pivot.md` のフェーズ (M4-R / M5-R / M6-R / M7 / M8 / M9 / chore) と、
 該当する問題 ID (P1〜P5) があれば併記する。
 
 ## 仮説 (任意)

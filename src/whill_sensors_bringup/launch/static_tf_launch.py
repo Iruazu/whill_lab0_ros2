@@ -18,7 +18,7 @@ based extrinsics. `base_link` is provisionally defined as the rear-axle
 midpoint projected to the ground plane (x = rear axle, y = chassis
 centerline, z = ground). The derivation and the values below — together
 with the noetic-inherited LiDAR<->IMU extrinsic that anchors them — are
-documented in `docs/ja/m3-extrinsics-from-noetic.md`. Re-check this
+documented in `docs/m3-extrinsics-from-noetic.md`. Re-check this
 definition against the URDF / Nav2 footprint / saved-map origin when
 M5-R wires up the map pipeline; the chassis mount has not changed since
 the noetic era so the noetic extrinsic is reused as-is.
@@ -72,7 +72,7 @@ def generate_launch_description():
         # この傾きは純粋に pitch = -8° として表される (tf2 の R_y(-8°) が
         # +x を斜め上に向ける、gravity 検算で確認)。
         #
-        # 2026-07-09 audit (docs/ja/imu-coordinate-audit.md §3): 2026-07-08
+        # 2026-07-09 audit (docs/imu-coordinate-audit.md §3): 2026-07-08
         # campus-outer bag 冒頭 10 秒 (WHILL 停止) の /imu/data_rep145 を
         # 1000 サンプル取得し gravity 逆算した結果:
         #   pitch 実測 = -7.66°  (元の -8° 設定と 0.34° 差、実質一致)
@@ -115,7 +115,7 @@ def generate_launch_description():
         #
         # 回転: noetic `extrinsic_R` (3x3, LiDAR -> IMU) を Rz(yaw)*Ry(pitch)
         # *Rx(roll) 固定軸表現に分解した値を使う。分解式と数値の検算は
-        # docs/ja/m3-extrinsics-from-noetic.md の追補節を参照。
+        # docs/m3-extrinsics-from-noetic.md の追補節を参照。
         #   roll  = -0.035342 rad  (-2.025 deg)
         #   pitch = +0.156983 rad  (+8.995 deg)
         #   yaw   = -0.005527 rad  (-0.317 deg)

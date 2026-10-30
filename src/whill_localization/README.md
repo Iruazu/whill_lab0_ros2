@@ -22,4 +22,4 @@ IMUの符号補正と静的TFは `whill_sensors_bringup` が担当する。
 
 地図作成はGLIMのオフライン処理。FAST-LIOのruntime launchは削除済み。
 
-運用は [runbook](../../docs/ja/runbook-live-demo.md)、校正履歴は [校正台帳](../../docs/ja/calibration-ledger.md)。センサの物理配置を変更したら既存の数値をそのまま再利用しない。
+運用は [runbook](../../docs/runbook-live-demo.md)、校正履歴は [校正台帳](../../docs/calibration-ledger.md)。センサの物理配置を変更したら既存の数値をそのまま再利用しない。

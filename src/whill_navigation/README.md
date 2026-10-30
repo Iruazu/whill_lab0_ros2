@@ -1,6 +1,6 @@
 # whill_navigation
 
-Nav2 と障害物前処理を起動する。実機手順は [runbook](../../docs/ja/runbook-live-demo.md)。
+Nav2 と障害物前処理を起動する。実機手順は [runbook](../../docs/runbook-live-demo.md)。
 
 ## 起動と責務
 

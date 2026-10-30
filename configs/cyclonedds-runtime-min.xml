@@ -8,7 +8,7 @@
     失敗し discovery race を起こす (実測: velodyne 3.3 Hz に低下、
     Nav2 abort、cmd_vel_safety 9.5 Hz)。
 
-    元 configs/cyclonedds-runtime.xml との差分:
+    元 configs/cyclonedds-runtime.xml (現 configs/legacy/) との差分:
       - AllowMulticast=spdp を削除 (default = spdp、endpoint も unicast)
       - DontRoute=true を削除 (これが unicast data path を塞いでいた)
     残すもの: Interfaces=lo + enx で wlo1 除外、これが唯一必要な制限

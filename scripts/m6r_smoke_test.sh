@@ -21,7 +21,7 @@
 #   - Nav2 obstacle layer (M6R-4).
 #   - End-to-end G1-G3 gates (M6R-5).
 #
-# Companion doc: docs/ja/plans/2026-06-24-m6r-localization.md §6 M6R-1.
+# Companion doc: docs/plans/2026-06-24-m6r-localization.md §6 M6R-1.
 # Once this passes, ADR-0006 gets updated with:
 #   * commit SHA of lidar_localization_ros2 pinned in whill_lab.repos
 #   * the NDT failure threshold observed here
@@ -35,7 +35,7 @@
 #     <bag-dir>  rosbag2 directory to replay (e.g.
 #                docs/m5r-bench-data/2026-07-07-campus-half-v3/bag).
 #     --use-imu  Enable IMU input to the localizer (default: off, per
-#                docs/ja/plans/2026-06-24-m6r-localization.md §3.D). When
+#                docs/plans/2026-06-24-m6r-localization.md §3.D). When
 #                enabled, /imu is remapped to /imu/data_rep145 (PR #56).
 
 set -euo pipefail
@@ -299,5 +299,5 @@ echo "  * PCL_COUNT >= ${BAG_DUR%.*} (i.e. >=1 Hz over the replay)"
 echo "  * TF_OK >= 5 (map -> odom stayed alive over multiple polls)"
 echo "  * ALIGN_HAS = yes (localizer emits /alignment_status at all)"
 echo ""
-echo "Next: dump ${ALIGN_LOG} into docs/ja/m6r-localizer-eval.md for ADR-0006,"
+echo "Next: dump ${ALIGN_LOG} into docs/m6r-localizer-eval.md for ADR-0006,"
 echo "      and diff pass/fail against the same command run with --use-imu."

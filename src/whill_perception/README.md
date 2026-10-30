@@ -14,4 +14,4 @@ Patchwork++のC++ coreを使って点群から地面を除去する自作ROS 2 w
 
 上流C++ coreは `src/third_party/patchwork_plusplus/cpp/`（`whill_lab.repos` から取得）。自作wrapperがcoreを直接組み込むため、上流の `ros/` / `cpp/` / `python/` はcolconで個別にビルドしない（`COLCON_IGNORE`）。
 
-上流wrapperのライセンス表記の不整合を避ける設計判断は [ADR-0011](../../docs/ja/decisions/0011-ground-removal-choice.md) に保存している。車載ビルド手順は [開発環境](../../docs/ja/development.md)。
+上流wrapperのライセンス表記の不整合を避ける設計判断は [ADR-0011](../../docs/decisions/0011-ground-removal-choice.md) に保存している。車載ビルド手順は [開発環境](../../docs/development.md)。

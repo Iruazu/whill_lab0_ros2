@@ -2,15 +2,15 @@
 
 WHILL Model CR2 の実機スタック（ROS 2 Humble）。車体・センサ、自己位置推定、Nav2、フェイルセーフ、タブレットからの配車を含む。地図はオフラインで作り、実機では保存済みの地図を読む。
 
-統合起動と実機配車は 2026-10-14 に成功した（[検証記録](docs/ja/reports/2026-10-14-dispatch-demo.md)）。1 回の成功を全経路・全停止機能の受入とは扱わない。
+統合起動と実機配車は 2026-10-14 に成功した（[検証記録](docs/reports/2026-10-14-dispatch-demo.md)）。1 回の成功を全経路・全停止機能の受入とは扱わない。
 
 ## 文書
 
-- [実機起動・停止手順](docs/ja/runbook-live-demo.md)
-- [構成とデータの流れ](docs/ja/architecture-overview.md)
-- [スクリプト一覧](docs/ja/scripts.md)
-- [開発環境とビルド](docs/ja/development.md)
-- [未解決事項と制約](docs/ja/repository-maintenance.md)
+- [実機起動・停止手順](docs/runbook-live-demo.md)
+- [構成とデータの流れ](docs/architecture-overview.md)
+- [スクリプト一覧](docs/scripts.md)
+- [開発環境とビルド](docs/development.md)
+- [未解決事項と制約](docs/repository-maintenance.md)
 - [文書一覧](docs/README.md)
 
 文書は日本語のみ。過去の計画・検証記録は当時の記録で、現在の手順には使わない。
@@ -36,7 +36,7 @@ cd ~/whill_lab0_ros2
 scripts/start_dispatch_demo.sh
 ```
 
-bringup・Nav2・配車 Web・RViz を起動する。初期位置と preflight は手動。終了は Ctrl-C。詳細は [runbook](docs/ja/runbook-live-demo.md)。
+bringup・Nav2・配車 Web・RViz を起動する。初期位置と preflight は手動。終了は Ctrl-C。詳細は [runbook](docs/runbook-live-demo.md)。
 
 ## ビルド
 
@@ -49,7 +49,7 @@ colcon build --symlink-install --packages-up-to \
 source install/setup.bash
 ```
 
-上流ソースの取得と依存導入は [開発環境](docs/ja/development.md)。
+上流ソースの取得と依存導入は [開発環境](docs/development.md)。
 
 ## ディレクトリ
 
@@ -59,7 +59,7 @@ source install/setup.bash
 | `src/third_party/` | `whill_lab.repos` から取得する上流ソース（Git 管理外） |
 | `scripts/` | セットアップ、起動、地図生成、校正、検証 |
 | `configs/` | DDS・オフライン処理の設定 |
-| `docs/ja/` | 現用手順、設計判断、過去の記録 |
+| `docs/` | 現用手順、設計判断、過去の記録 |
 | `docs/maps/` | 地図と地点。`static.pcd` は別途配置 |
 | `docs/m*-bench-data/` | 実測記録・録画 |
 | `network/`, `udev/` | 有線接続とデバイス名の設定 |
