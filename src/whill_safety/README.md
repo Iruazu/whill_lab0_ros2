@@ -34,6 +34,8 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 | `layer_d_shape` | `sector` | `rectangle` で前方1〜2m・左右±`layer_d_rect_half_width_m`（既定0.5m）の長方形に切替。回避モード用で、Collision Monitorと併用する前提 |
 | `extra_perception_topics` | 空 | Layer Cと同じ途絶監視をPointCloud2トピックに追加する |
 
+`m6r_bringup_launch.py avoidance:=true` のときだけ、`safety_launch.py` が failsafe に `layer_d_shape: rectangle`、`layer_d_rect_half_width_m: 0.5`、`extra_perception_topics`（既定は Collision Monitor の入力2本。`failsafe_extra_perception_topics:=` で変えられる）を渡す。`avoidance:=false` では `use_sim_time` 以外を渡さないので、閾値は上表の既定値のまま（`test/test_safety_launch_params.py`）。07-24 の bag を再生すると、Layer D の作動は扇形で39回、長方形で3回だった（[報告](../../docs/ja/reports/2026-10-30-layer-d-engagements/README.md)）。
+
 状態は `/failsafe/state`（`std_msgs/String`）に、作動中の層をカンマ区切り、解除中は `OK` として、変化時と1秒ごとに出す。
 
 ## 調停と制約

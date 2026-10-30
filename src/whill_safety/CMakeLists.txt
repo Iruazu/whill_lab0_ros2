@@ -27,6 +27,9 @@ if(BUILD_TESTING)
   # Pure-Python geometry test for the Layer D zone; no ROS graph needed.
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_forward_zone test/test_forward_zone.py)
+  # safety_launch.py avoidance -> failsafe params (pure function, no graph).
+  ament_add_pytest_test(test_safety_launch_params
+    test/test_safety_launch_params.py)
 endif()
 
 ament_package()

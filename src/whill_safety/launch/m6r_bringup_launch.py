@@ -278,8 +278,10 @@ def generate_launch_description():
             default_value='false',
             description='Classical avoidance baseline (docs/ja/plans/'
                         '2026-10-28-avoidance-baseline.md). true starts the '
-                        'D435; later stages add the Hi-Res detection cloud '
-                        'and failsafe avoidance-mode parameters. false keeps '
+                        'D435 and switches failsafe Layer D to the rectangle '
+                        '(x 1-2 m, |y|<=0.5 m) plus a silence watch on the '
+                        'Collision Monitor inputs (safety_launch.py); later '
+                        'stages add the Hi-Res detection cloud. false keeps '
                         'the demo configuration unchanged.'),
 
         # M4-R odom layer: sensors + driver + EKF.
@@ -299,7 +301,13 @@ def generate_launch_description():
         # regardless of whether Nav2 (M6R-4) is up: with no Nav2 there
         # is simply nothing on /cmd_vel_nav for the mux to forward, and
         # /cmd_vel_safety fires only when a failsafe layer trips.
+        # avoidance:=true switches failsafe Layer D to the rectangle and
+        # watches the Collision Monitor inputs (safety_launch.py docstring);
+        # false passes nothing extra, so failsafe keeps its defaults.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(safety_launch),
-            launch_arguments={'use_sim_time': use_sim_time}.items()),
+            launch_arguments={
+                'use_sim_time': use_sim_time,
+                'avoidance': LaunchConfiguration('avoidance'),
+            }.items()),
     ])
