@@ -47,3 +47,12 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 設定は `config/twist_mux.yaml`。最高優先度の有効入力が勝ち、出力は `/cmd_vel`。後段にNav2のvelocity_smootherがあるため、ゼロ指令も平滑化される。物理E-stopとの統合や全周監視をこのパッケージが完成済みとは扱わない。
 
 preflightは `scripts/m6r_preflight.sh`。check 4の単発rosout検査に制約があり、runbookの入力確認を併用する。手動中のsafety優先停止について過去記録に未検証注記がある。実機受入の証跡を確認するまで完了表記にしない。
+
+## テスト
+
+```bash
+# ~/.local に pip で入った anyio の pytest プラグインが、システムの pytest 6.2.5 を
+# 起動時に壊す（ModuleNotFoundError: _pytest.scope）。プラグインの自動読み込みを止めて回避する。
+export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+colcon test --packages-select whill_safety && colcon test-result --verbose
+```
