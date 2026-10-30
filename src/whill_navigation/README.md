@@ -23,6 +23,16 @@ Nav2 と障害物前処理を起動する。2026-10-14 に現用の `nav_launch.
 
 速度選択はRPPとsmootherの前進上限だけを変更する。加減速や実測速度は別。設定の詳細は `config/nav2_params.yaml` と `pointcloud_to_laserscan.yaml` を参照。
 
+## 回避モード（`avoidance:=true`、比較基準の C2）
+
+計画は `docs/ja/plans/2026-10-28-avoidance-baseline.md`。false（既定）では何も追加せず、`nav2_params.yaml` もそのまま使う。
+
+- `whill_perception/launch/perception_3d_launch.py` を起動する（Hi-Res の LiDAR 点群、深度の検知用点群、`velodyne_hires` TF）。
+- `config/nav2_avoidance_stvl.yaml` の STVL 層を、実行時の params のコピーにだけ足す（local・global とも inflation の直前）。入力は `/perception/lidar_obstacles_filtered` と `/perception/depth_obstacles`。
+- 高さの帯は STVL ではなく base_link で切る。map 座標系の z が路面に沿っていないため（2026-07-24 の bag で車体の z が −1.2〜+3.8 m、pitch 約 −8°）。
+- 深度の範囲 3.0 m と最低の高さ 0.10 m は暫定。屋外の静止確認（計画 §4.2）で決める。
+- Collision Monitor と MPPI は未接続（C3・C4）。
+
 ## 速度指令
 
 controller / behavior → `/cmd_vel_nav` → twist_mux → `/cmd_vel` → velocity_smoother → `/whill/controller/cmd_vel` → WHILL driver。

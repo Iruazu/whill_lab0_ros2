@@ -1,0 +1,190 @@
+# STVL layers for the classical avoidance baseline (C2).
+# docs/ja/plans/2026-10-28-avoidance-baseline.md §2, §4 (C2).
+#
+# Merged into the per-run copy of nav2_params.yaml by nav_launch.py ONLY when
+# avoidance:=true. nav2_params.yaml itself is not edited, so avoidance:=false
+# runs exactly the demo configuration. Every key with a `plugin:` below is
+# inserted into that costmap's `plugins` list just before inflation_layer
+# (STVL marks lethal cells; inflation must run after it).
+#
+# Inputs (whill_perception/launch/perception_3d_launch.py), both already in
+# base_link and already height-banded there:
+#   /perception/lidar_obstacles_filtered  Hi-Res LiDAR, ground removed (Patchwork++ #2)
+#   /perception/depth_obstacles           D435 depth, 0.10-1.6 m, <= 3.0 m (provisional)
+#
+# min/max_obstacle_height are deliberately wide (-50/50): STVL applies them
+# in the global frame (`map`), whose z is not road-relative here (chair z
+# -1.2 .. +3.8 m, pitch ~ -8 deg in the 2026-07-24 bag). The real band is
+# applied in base_link by cloud_height_filter_node.
+#
+# sensor_frame is set per source because the clouds arrive in base_link:
+# STVL takes the observation origin (obstacle_range) and the clearing
+# frustum pose from sensor_frame. The depth frustum (model_type 0) looks
+# along +z, hence the optical frame; the 3D-LiDAR frustum (model_type 1)
+# uses z-up, hence velodyne_hires.
+#
+# Decay / clearing values are first-pass, to be tuned in C4 on the chosen
+# outdoor segment:
+#   local voxel_decay 10 s: a low object that leaves the depth FOV while the
+#     chair swerves past it (camera 0 deg, plan §1.3) stays in the local
+#     costmap for ~3 m of travel at 0.3 m/s. Tall/moving objects are cleared
+#     sooner by the LiDAR frustum (360 deg) once they are gone.
+#   global voxel_decay 15 s: the 2026-07-20 global obstacle_layer was removed
+#     because pedestrian traces never cleared (nav2_params.yaml comment).
+#     Time decay bounds that; 15 s ~ a few 1 Hz replans.
+#   LiDAR clearing does not reach low objects near the chair: the lowest
+#     Hi-Res ring is -10 deg from 0.777 m, so a 0.21 m top is inside the
+#     LiDAR frustum only beyond ~3.2 m, i.e. outside depth range anyway.
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      stvl_layer:
+        plugin: spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer
+        enabled: true
+        voxel_decay: 10.0
+        decay_model: 0              # linear
+        voxel_size: 0.05            # = costmap resolution
+        track_unknown_space: true
+        mark_threshold: 0           # one voxel in a column marks the cell (21 cm objects are 2-4 voxels tall)
+        update_footprint_enabled: true
+        combination_method: 1       # max with lower layers (keeps static map / /scan marks)
+        origin_z: 0.0
+        publish_voxel_map: false    # CPU; enable only while debugging in RViz
+        transform_tolerance: 0.2
+        mapping_mode: false
+        map_save_duration: 60.0
+        observation_sources: lidar_mark lidar_clear depth_mark depth_clear
+        lidar_mark:
+          data_type: PointCloud2
+          topic: /perception/lidar_obstacles_filtered
+          sensor_frame: velodyne_hires
+          marking: true
+          clearing: false
+          obstacle_range: 5.0       # half of the 10 m rolling window
+          min_obstacle_height: -50.0
+          max_obstacle_height: 50.0
+          expected_update_rate: 0.0  # staleness is watched by failsafe extra_perception_topics (C3)
+          observation_persistence: 0.0
+          inf_is_valid: false
+          filter: passthrough
+          voxel_min_points: 0
+          clear_after_reading: true
+        lidar_clear:
+          data_type: PointCloud2
+          topic: /perception/lidar_obstacles_filtered
+          sensor_frame: velodyne_hires
+          marking: false
+          clearing: true
+          min_z: 0.0
+          max_z: 5.0
+          vertical_fov_angle: 0.349     # Puck Hi-Res +-10 deg
+          vertical_fov_padding: 0.05
+          horizontal_fov_angle: 6.29
+          decay_acceleration: 5.0
+          model_type: 1
+        depth_mark:
+          data_type: PointCloud2
+          topic: /perception/depth_obstacles
+          sensor_frame: camera_depth_optical_frame
+          marking: true
+          clearing: false
+          obstacle_range: 3.0       # PROVISIONAL (outdoor check postponed), = depth filter max_range
+          min_obstacle_height: -50.0
+          max_obstacle_height: 50.0
+          expected_update_rate: 0.0
+          observation_persistence: 0.0
+          inf_is_valid: false
+          # Voxel filter with a minimum count rejects isolated depth speckle
+          # (flying pixels at edges). A 21 cm bottle at 3 m still fills a
+          # 5 cm voxel with ~10 points at 424x240.
+          filter: voxel
+          voxel_min_points: 3
+          clear_after_reading: true
+        depth_clear:
+          data_type: PointCloud2
+          topic: /perception/depth_obstacles
+          sensor_frame: camera_depth_optical_frame
+          marking: false
+          clearing: true
+          min_z: 0.3
+          max_z: 3.0                # PROVISIONAL, same as depth_mark range
+          vertical_fov_angle: 1.01  # D435 depth 58 deg
+          horizontal_fov_angle: 1.52  # D435 depth 87 deg
+          decay_acceleration: 5.0
+          model_type: 0
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      stvl_layer:
+        plugin: spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer
+        enabled: true
+        voxel_decay: 15.0
+        decay_model: 0
+        voxel_size: 0.05
+        track_unknown_space: true
+        mark_threshold: 0
+        update_footprint_enabled: true
+        combination_method: 1
+        origin_z: 0.0
+        publish_voxel_map: false
+        transform_tolerance: 0.2
+        mapping_mode: false
+        map_save_duration: 60.0
+        observation_sources: lidar_mark lidar_clear depth_mark depth_clear
+        lidar_mark:
+          data_type: PointCloud2
+          topic: /perception/lidar_obstacles_filtered
+          sensor_frame: velodyne_hires
+          marking: true
+          clearing: false
+          obstacle_range: 10.0      # replanning horizon (NavFn 1 Hz) beyond the local window
+          min_obstacle_height: -50.0
+          max_obstacle_height: 50.0
+          expected_update_rate: 0.0
+          observation_persistence: 0.0
+          inf_is_valid: false
+          filter: passthrough
+          voxel_min_points: 0
+          clear_after_reading: true
+        lidar_clear:
+          data_type: PointCloud2
+          topic: /perception/lidar_obstacles_filtered
+          sensor_frame: velodyne_hires
+          marking: false
+          clearing: true
+          min_z: 0.0
+          max_z: 10.0
+          vertical_fov_angle: 0.349
+          vertical_fov_padding: 0.05
+          horizontal_fov_angle: 6.29
+          decay_acceleration: 5.0
+          model_type: 1
+        depth_mark:
+          data_type: PointCloud2
+          topic: /perception/depth_obstacles
+          sensor_frame: camera_depth_optical_frame
+          marking: true
+          clearing: false
+          obstacle_range: 3.0       # PROVISIONAL
+          min_obstacle_height: -50.0
+          max_obstacle_height: 50.0
+          expected_update_rate: 0.0
+          observation_persistence: 0.0
+          inf_is_valid: false
+          filter: voxel
+          voxel_min_points: 3
+          clear_after_reading: true
+        depth_clear:
+          data_type: PointCloud2
+          topic: /perception/depth_obstacles
+          sensor_frame: camera_depth_optical_frame
+          marking: false
+          clearing: true
+          min_z: 0.3
+          max_z: 3.0                # PROVISIONAL
+          vertical_fov_angle: 1.01
+          horizontal_fov_angle: 1.52
+          decay_acceleration: 5.0
+          model_type: 0

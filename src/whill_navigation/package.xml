@@ -27,6 +27,8 @@
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_velocity_smoother</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <!-- avoidance:=true only: STVL costmap plugin (config/nav2_avoidance_stvl.yaml) -->
+  <exec_depend>spatio_temporal_voxel_layer</exec_depend>
   <exec_depend>whill_perception</exec_depend>
 
   <!-- ament_index_python (get_package_share_directory) and python3-yaml

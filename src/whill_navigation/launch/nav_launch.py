@@ -121,6 +121,38 @@ def _repo_root_from_pkg_share(pkg_share):
     return os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
 
 
+def apply_avoidance_costmaps(params, fragment_path):
+    """Merge the STVL layers (avoidance:=true only) into a nav2 params dict.
+
+    nav2_params.yaml stays the single source for the demo configuration;
+    the avoidance additions live in config/nav2_avoidance_stvl.yaml and are
+    merged into the per-run copy here. Each layer (a dict with `plugin`) in
+    the fragment is added to that costmap and inserted into its `plugins`
+    list just before inflation_layer, so inflation still runs last.
+
+    Module-level (not nested in the OpaqueFunction) so bag-replay harnesses
+    can build the exact same costmap parameters.
+    """
+    with open(fragment_path) as f:
+        fragment = yaml.safe_load(f)
+    for costmap, outer in fragment.items():
+        dst = params[costmap][costmap]['ros__parameters']
+        src = outer[costmap]['ros__parameters']
+        plugins = list(dst['plugins'])
+        for name, layer in src.items():
+            if name in dst:
+                raise RuntimeError(
+                    f'nav_launch: {costmap}.{name} already exists in '
+                    'nav2_params.yaml; the avoidance fragment only adds layers.')
+            dst[name] = layer
+            if isinstance(layer, dict) and 'plugin' in layer:
+                idx = (plugins.index('inflation_layer')
+                       if 'inflation_layer' in plugins else len(plugins))
+                plugins.insert(idx, name)
+        dst['plugins'] = plugins
+    return params
+
+
 def _resolve_map_yaml(context):
     """Resolve `docs/maps/<site>/occupancy[_<variant>].yaml` from args.
 
@@ -189,8 +221,8 @@ def _resolve_map_yaml(context):
     # slow=0.3 は従来値なので既定は無改変 (回帰なし)。
     # avoidance / controller: classical avoidance baseline (docs/ja/plans/
     # 2026-10-28-avoidance-baseline.md). Validated here so a typo fails
-    # before any node starts. STVL / Collision Monitor / MPPI are wired in
-    # later stages; until then avoidance:=true only logs that fact.
+    # before any node starts. STVL and the detection clouds are added below
+    # (C2); Collision Monitor / MPPI are wired in later stages.
     avoidance = LaunchConfiguration('avoidance').perform(context).lower()
     controller = LaunchConfiguration('controller').perform(context).lower()
     if avoidance not in ('true', 'false'):
@@ -220,6 +252,12 @@ def _resolve_map_yaml(context):
     bt_xml = os.path.join(nav_share, 'config', 'navigate_to_pose_no_spin_bt.xml')
     params['bt_navigator']['ros__parameters']['default_nav_to_pose_bt_xml'] = bt_xml
 
+    # avoidance:=true (C2): STVL in the local and global costmaps, fed by
+    # perception_3d_launch.py below. Nothing is merged when false.
+    if avoidance == 'true':
+        apply_avoidance_costmaps(
+            params, os.path.join(nav_share, 'config', 'nav2_avoidance_stvl.yaml'))
+
     tmp = tempfile.NamedTemporaryFile(
         prefix='whill_nav2_params_',
         suffix='.yaml',
@@ -245,10 +283,19 @@ def _resolve_map_yaml(context):
 
     pending = []
     if avoidance == 'true':
+        # Hi-Res LiDAR + D435 detection clouds and the velodyne_hires TF
+        # (whill_perception, plan §2.1). Lives here next to Patchwork++ #1
+        # because it is preprocessing for the costmaps; the sensor drivers
+        # it consumes stay in m6r_bringup (avoidance:=true starts the D435).
+        pending.append(IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory('whill_perception'),
+                'launch', 'perception_3d_launch.py')),
+        ))
         pending.append(LogInfo(msg=(
             f'nav_launch: avoidance:=true (controller={controller}) — '
-            'STVL / Collision Monitor / MPPI are not wired yet; running the '
-            'current Nav2 configuration.')))
+            'STVL (local+global) on /perception/*; Collision Monitor / MPPI '
+            'are not wired yet.')))
 
     return pending + [
         # Patchwork++ ground removal (ADR-0011). Sits between the LiDAR
