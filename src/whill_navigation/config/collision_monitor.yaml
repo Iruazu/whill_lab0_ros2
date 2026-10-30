@@ -1,0 +1,127 @@
+# Nav2 Collision Monitor for the classical avoidance baseline (C3).
+# Started ONLY with nav_launch.py avoidance:=true (collision_monitor_launch.py).
+# docs/ja/plans/2026-10-28-avoidance-baseline.md §2.2.
+#
+# Sources of truth (Humble = ros-humble-nav2-collision-monitor 1.1.x):
+#   - Concept / placement: https://docs.nav2.org/tutorials/docs/using_collision_monitor.html
+#     (now redirected to https://docs.nav2.org/rolling/tutorials/general_tutorials/using_collision_monitor/using_collision_monitor/)
+#   - Parameters: https://docs.nav2.org/configuration/packages/configuring-collision-monitor.html
+#     (now https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/collision_monitor/configuring_collision_monitor_node/)
+#     That page documents Rolling. Humble differs; the Humble behaviour below
+#     was read from the humble branch source and the installed library:
+#   - https://github.com/ros-navigation/navigation2/blob/humble/nav2_collision_monitor/README.md
+#   - https://github.com/ros-navigation/navigation2/blob/humble/nav2_collision_monitor/src/collision_monitor_node.cpp
+#   - https://github.com/ros-navigation/navigation2/blob/humble/nav2_collision_monitor/src/source.cpp
+#   - Template: /opt/ros/humble/share/nav2_collision_monitor/params/collision_monitor_params.yaml
+#
+# Humble specifics that drive the values below:
+#   * A polygon fires when points_inside > max_points (Rolling: >= min_points).
+#     Exception: the approach polygon's t=0 check uses >= max_points
+#     (Polygon::getCollisionTime), i.e. 3 points already inside the
+#     footprint circle give collision time 0 = zero velocity.
+#   * A source older than source_timeout is IGNORED, not a stop
+#     (Source::sourceValid). Rolling stops instead. failsafe_node therefore
+#     watches these topics (safety_launch.py avoidance:=true,
+#     extra_perception_topics, stop after 2.0 s of silence).
+#   * No per-source source_timeout, no "limit" action, no
+#     trigger/release_consecutive_points (all added after Humble).
+#   * Processing runs only when a cmd_vel_in message arrives; the smoother
+#     publishes at 20 Hz while commanded, which sets the check rate.
+#
+# Geometry (base_link: x forward, origin = rear-axle midpoint).
+# Sized from the footprint in nav2_params.yaml: robot_radius R = 0.45 m
+# (local and global costmap). test/test_collision_monitor_config.py pins
+# these numbers to R so a footprint change cannot silently desync them.
+#   PolygonStop   x 0 .. R+0.35 = 0.80 m, |y| <= R = 0.45 m
+#     0.35 m = stop distance at speed:=normal 0.45 m/s with the smoother's
+#     max_decel 0.5 m/s^2 (0.20 m) + 0.1 s latency (0.05 m) + 0.10 m margin.
+#     Provisional: C3 measures the real stopping distance in the field
+#     (plan §4 table). The zone includes the body area x 0..R so anything
+#     already inside the circle also stops the chair; self-returns are not
+#     expected there (Patchwork++ min_range 1.0 m around the LiDAR, the
+#     D435 sees nothing below ~0.7 m in front of the lens). If C2's cloud
+#     keeps near returns, start the zone at x = R instead.
+#   PolygonSlow   x 0 .. R+1.20 = 1.65 m, |y| <= R+0.20 = 0.65 m, ratio 0.5
+#     Reaches the Layer D band (1-2 m) so the chair is already at half speed
+#     when it passes an obstacle at <= 0.20 m from the footprint edge.
+#   FootprintApproach  circle R, time_before_collision 2.0 s
+#     Straight-ahead obstacle at distance d from the footprint edge gives
+#     v <= d / 2.0 (Humble processApproach), i.e. a smooth approach that
+#     ends in PolygonStop. Obstacles beside the swept path do not count.
+collision_monitor:
+  ros__parameters:
+    use_sim_time: false
+    base_frame_id: base_link
+    odom_frame_id: odom
+    # Topic wiring is set by collision_monitor_launch.py (from nav_launch):
+    # velocity_smoother output -> here -> WHILL driver.
+    cmd_vel_in_topic: /cmd_vel_smoothed
+    cmd_vel_out_topic: /whill/controller/cmd_vel
+    transform_tolerance: 0.5
+    # A silent source keeps its last obstacles (moved by
+    # base_shift_correction) for source_timeout, then Humble drops it.
+    # failsafe stops after perception_timeout_s 2.0 s (+1 tick), but its zero
+    # goes through twist_mux -> velocity_smoother, which needs 0.45/0.5 =
+    # 0.9 s to ramp speed:=normal down to 0. 2.0 + 0.05 + 0.9 = 2.95 s, so
+    # 3.5 s leaves no window in which the source is dropped while the chair
+    # is still moving. (2026-10-30 synthetic probe: with 2.5 s the dropped
+    # source let 0.30 m/s through 2.5 s after the cloud went silent.)
+    source_timeout: 3.5
+    base_shift_correction: true
+    # Keep publishing zero for 2 s after a stop (official default), then go
+    # quiet; the WHILL driver holds the last command (whill_node.cpp has no
+    # cmd timeout), i.e. the zero.
+    stop_pub_timeout: 2.0
+    polygons: [PolygonStop, PolygonSlow, FootprintApproach]
+    PolygonStop:
+      type: polygon
+      points: [0.80, 0.45, 0.80, -0.45, 0.0, -0.45, 0.0, 0.45]
+      action_type: stop
+      # Fires at >= 4 points (official example value). The 3-D clouds give
+      # tens to thousands of points on a real object at < 1 m, so this only
+      # rejects isolated depth speckle.
+      max_points: 3
+      visualize: true
+      polygon_pub_topic: collision_monitor/polygon_stop
+      enabled: true
+    PolygonSlow:
+      type: polygon
+      points: [1.65, 0.65, 1.65, -0.65, 0.0, -0.65, 0.0, 0.65]
+      action_type: slowdown
+      max_points: 3
+      slowdown_ratio: 0.5
+      visualize: true
+      polygon_pub_topic: collision_monitor/polygon_slowdown
+      enabled: true
+    FootprintApproach:
+      type: circle
+      radius: 0.45
+      action_type: approach
+      time_before_collision: 2.0
+      simulation_time_step: 0.1
+      max_points: 3
+      visualize: true
+      polygon_pub_topic: collision_monitor/footprint_approach
+      enabled: true
+    observation_sources: [lidar, depth]
+    # Hi-Res-corrected, ground-removed VLP-16 cloud (C2, frame velodyne_hires).
+    # Topic overridable: collision_monitor_launch.py cm_lidar_topic:=...
+    lidar:
+      type: pointcloud
+      topic: /velodyne_points_hires_no_ground
+      # Ground is already removed; 0.10 m only guards residual ground and
+      # matches nothing in particular yet. C1 decides the final minimum
+      # obstacle height (plan §4.2). 1.6 m = p2ls max_height (chair+rider).
+      min_height: 0.10
+      max_height: 1.6
+      enabled: true
+    # D435 depth points (contains the floor). cm_depth_topic:=... overrides.
+    depth:
+      type: pointcloud
+      topic: /camera/camera/depth/color/points
+      # Floor in this cloud: -0.1 cm at 2 m, -2.7 cm at 3 m (plan §4.4,
+      # errors point downwards). 0.10 m leaves room for road cross-slope.
+      # Provisional until the C1 outdoor static check.
+      min_height: 0.10
+      max_height: 1.6
+      enabled: true

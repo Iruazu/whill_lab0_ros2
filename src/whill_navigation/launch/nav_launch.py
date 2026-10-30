@@ -43,6 +43,12 @@ cmd_vel routing (matches ADR-0007 M6R-3 lite twist_mux, PR #79):
                                                               │
                                                               └─> /whill/controller/cmd_vel
 
+avoidance:=true (C3) only re-routes the last hop through Nav2 Collision
+Monitor (collision_monitor_launch.py, own lifecycle manager):
+
+    ... velocity_smoother -> /cmd_vel_smoothed -> collision_monitor
+                                                    └─> /whill/controller/cmd_vel
+
 Nav2 nodes publish to `/cmd_vel_nav`, twist_mux picks between it and
 `/cmd_vel_safety`, and the mux output `/cmd_vel` feeds velocity_smoother.
 The M6R4-1 scope is the two remaps below; twist_mux itself lives in the
@@ -244,11 +250,21 @@ def _resolve_map_yaml(context):
         'launch', 'ground_removal_launch.py')
 
     pending = []
+    # V1 (C3): avoidance:=true inserts Collision Monitor between the smoother
+    # and the driver by topic remapping only; smoother / twist_mux params are
+    # untouched. false keeps the smoother publishing straight to the driver.
+    smoother_out = '/whill/controller/cmd_vel'
     if avoidance == 'true':
+        smoother_out = '/cmd_vel_smoothed'
+        pending.append(IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                nav_share, 'launch', 'collision_monitor_launch.py')),
+            launch_arguments={'cmd_vel_in_topic': smoother_out}.items()))
         pending.append(LogInfo(msg=(
             f'nav_launch: avoidance:=true (controller={controller}) — '
-            'STVL / Collision Monitor / MPPI are not wired yet; running the '
-            'current Nav2 configuration.')))
+            'Collision Monitor wired (smoother -> /cmd_vel_smoothed -> '
+            'collision_monitor -> /whill/controller/cmd_vel); STVL / MPPI '
+            'are not wired yet.')))
 
     return pending + [
         # Patchwork++ ground removal (ADR-0011). Sits between the LiDAR
@@ -327,7 +343,9 @@ def _resolve_map_yaml(context):
             # RPP itself does not ramp, so without the smoother the chair
             # sees a 0 -> desired_linear_vel step that a seated rider
             # feels as a lurch (first noticed on live M5-d).
-            remappings=[('/cmd_vel_smoothed', '/whill/controller/cmd_vel')],
+            # avoidance:=true: smoother_out stays /cmd_vel_smoothed and
+            # collision_monitor_launch.py forwards it to the driver.
+            remappings=[('/cmd_vel_smoothed', smoother_out)],
         ),
         Node(
             package='nav2_lifecycle_manager',
