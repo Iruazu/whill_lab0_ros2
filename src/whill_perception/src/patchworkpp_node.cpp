@@ -9,7 +9,17 @@
 // Contract:
 //   sub  cloud_in         sensor_msgs/PointCloud2  (VLP-16, ~10 Hz)
 //   pub  cloud_no_ground  sensor_msgs/PointCloud2  (~10 Hz, xyz only,
-//                                                    same header frame_id)
+//                                                    same header frame_id
+//                                                    unless frame_id_override)
+//
+// frame_id_override (string, default ""): when non-empty, the output
+// header.frame_id is replaced with this value. Added for the avoidance
+// baseline's second instance (docs/ja/plans/2026-10-28-avoidance-baseline.md
+// §2.1): upstream velodyne_transform_node has no output-frame setting, so
+// the Hi-Res-calibrated cloud still says `velodyne`, whose TF carries the
+// VLP16db-era mount error. Relabelling here attaches the measured
+// `velodyne_hires` TF without touching the driver, the `velodyne` TF, or
+// the localizer. Empty keeps the original pass-through behaviour.
 //
 // The point cloud is copied into an Eigen matrix (Nx4 = x,y,z,intensity),
 // handed to PatchWorkpp::estimateGround, and the getNonground() Nx3
@@ -101,6 +111,7 @@ public:
     patchwork_        = std::make_unique<patchwork::PatchWorkpp>(params);
 
     stats_log_period_ = declare_parameter<int>("stats_log_period_frames", 100);
+    frame_id_override_ = declare_parameter<std::string>("frame_id_override", "");
 
     sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
       "cloud_in", rclcpp::SensorDataQoS(),
@@ -113,12 +124,12 @@ public:
 
     RCLCPP_INFO(get_logger(),
       "patchworkpp_node ready — sensor_height=%.2f, min_range=%.2f, max_range=%.2f, "
-      "RNR=%d RVPF=%d TGR=%d, stats every %d frames",
+      "RNR=%d RVPF=%d TGR=%d, stats every %d frames, frame_id_override='%s'",
       params.sensor_height, params.min_range, params.max_range,
       static_cast<int>(params.enable_RNR),
       static_cast<int>(params.enable_RVPF),
       static_cast<int>(params.enable_TGR),
-      stats_log_period_);
+      stats_log_period_, frame_id_override_.c_str());
   }
 
 private:
@@ -157,6 +168,17 @@ private:
     return p;
   }
 
+  // Output header: the input header, with frame_id swapped only when
+  // frame_id_override is set (see file header). The stamp is never touched.
+  std_msgs::msg::Header OutHeader(const std_msgs::msg::Header & in) const
+  {
+    std_msgs::msg::Header h = in;
+    if (!frame_id_override_.empty()) {
+      h.frame_id = frame_id_override_;
+    }
+    return h;
+  }
+
   void OnCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
   {
     // Absence of `intensity` means Patchwork++ RNR will silently reject
@@ -171,14 +193,14 @@ private:
         "enable_RNR:=false (loses reflected-noise removal).");
       // Publish an empty non-ground so downstream nodes see fresh data
       // and can distinguish "no obstacles" from "no publish at all".
-      pub_->publish(EigenXYZToPointCloud2(Eigen::MatrixX3f(0, 3), msg->header));
+      pub_->publish(EigenXYZToPointCloud2(Eigen::MatrixX3f(0, 3), OutHeader(msg->header)));
       return;
     }
 
     Eigen::MatrixXf cloud = PointCloud2ToEigenXYZI(*msg);
     if (cloud.rows() == 0) {
       RCLCPP_WARN(get_logger(), "empty PointCloud2 — passing through as empty non-ground");
-      pub_->publish(EigenXYZToPointCloud2(Eigen::MatrixX3f(0, 3), msg->header));
+      pub_->publish(EigenXYZToPointCloud2(Eigen::MatrixX3f(0, 3), OutHeader(msg->header)));
       return;
     }
 
@@ -199,7 +221,7 @@ private:
         static_cast<long>(cloud.rows()));
     }
 
-    pub_->publish(EigenXYZToPointCloud2(nonground, msg->header));
+    pub_->publish(EigenXYZToPointCloud2(nonground, OutHeader(msg->header)));
 
     if (++frames_since_log_ >= stats_log_period_) {
       RCLCPP_INFO(get_logger(),
@@ -219,6 +241,7 @@ private:
 
   int stats_log_period_;
   int frames_since_log_;
+  std::string frame_id_override_;
 };
 
 }  // namespace whill_perception
