@@ -14,6 +14,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 # Pull in the BSD-2-Clause Patchwork++ C++ core as a CMake subdirectory.
 # Upstream's ros/ package is skipped via a COLCON_IGNORE we drop after
@@ -46,7 +49,18 @@ ament_target_dependencies(patchworkpp_node
   rclcpp
   sensor_msgs)
 
-install(TARGETS patchworkpp_node
+# Base_link height-band filter in front of STVL / Collision Monitor
+# (avoidance baseline C2). Independent of the Patchwork++ core.
+add_executable(cloud_height_filter_node src/cloud_height_filter_node.cpp)
+target_link_libraries(cloud_height_filter_node Eigen3::Eigen)
+ament_target_dependencies(cloud_height_filter_node
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  tf2
+  tf2_ros)
+
+install(TARGETS patchworkpp_node cloud_height_filter_node
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}/)

@@ -1,0 +1,38 @@
+# Base_link height-band filters in front of STVL (avoidance baseline C2).
+#
+# Why base_link and not STVL's own min/max_obstacle_height: STVL filters in
+# the costmap global frame (`map`), whose z is not road-relative on this
+# site (2026-07-24 bag: chair z -1.2 .. +3.8 m, pitch ~ -8 deg in map).
+# See src/cloud_height_filter_node.cpp.
+
+# LiDAR: Patchwork++ #2 already removed the ground; the band only drops
+# overhangs (branches, eaves) above the chair+rider and stray low returns.
+# 0.05 / 1.6 m is the same band p2ls uses for /scan (ADR-0009), so the two
+# LiDAR paths agree on what counts as an obstacle.
+lidar_obstacle_filter:
+  ros__parameters:
+    target_frame: base_link
+    min_z: 0.05
+    max_z: 1.6
+    min_range: 0.0
+    max_range: 0.0        # range is limited per costmap in STVL instead
+
+# D435 depth: this is the only source for low objects (a 21 cm bottle is
+# below every LiDAR ring at 2-3 m, plan §1.1).
+#   max_range 3.0 m: PROVISIONAL. Stage-A static bags show a 12 cm object
+#     is placed within ~8 cm up to 3 m, +0.26 m long at 4 m and lost at 5 m.
+#     The outdoor static check (plan §4.2) that sets the final value is
+#     postponed.
+#   min_z 0.10 m: PROVISIONAL. Above the stage-A floor spread (per-frame
+#     floor false positives counted in the C2 report) while keeping half of
+#     a ~20 cm object. Re-derive from the outdoor floor 3-sigma + TF error
+#     (plan §4.2) and the road cross slope.
+#   min_range 0.3 m: below the D435 minimum depth (~0.2-0.3 m at 848x480)
+#     returns are invalid or speckle.
+depth_obstacle_filter:
+  ros__parameters:
+    target_frame: base_link
+    min_z: 0.10
+    max_z: 1.6
+    min_range: 0.3
+    max_range: 3.0

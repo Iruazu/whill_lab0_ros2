@@ -21,9 +21,17 @@
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>eigen</depend>
+  <!-- cloud_height_filter_node (avoidance baseline C2) -->
+  <depend>geometry_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <!-- perception_3d_launch.py: Hi-Res transform node (velodyne_hires TF uses tf2_ros above) -->
+  <exec_depend>velodyne_pointcloud</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
