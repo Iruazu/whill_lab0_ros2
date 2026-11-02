@@ -1,0 +1,82 @@
+{
+  "input_sha256": {
+    "/home/systemlab/bags/imu_investigation_20261030/data/odom_orig_30_330.npz": "a6052110a56a23fb8094361e6ededc6f41724108d5ccba0e51ab2609b91931b5",
+    "/home/systemlab/bags/imu_investigation_20261030/data/odom_hires_30_630.npz": "0a0bf1c66bece610e73191a84dd2c0236d7d0f90734c2cf1ccd9562d7be4e868",
+    "/home/systemlab/bags/imu_investigation_20261030/data/odom_hires_noskew_30_150.npz": "1c89e4e7e21e9c5185482c7d2dd3a29d6e3ffa13621e45f4f00849a018883e05",
+    "/home/systemlab/bags/imu_investigation_20261030/data/imu.npz": "3e109f6f5ccc7c5e3119cd4739a6902856c65178ffc508d957321da47b738ad7",
+    "/home/systemlab/bags/imu_investigation_20261030/data/scans.npz": "ac9d700305bb9fc987c0271c8c355ce20fb7f74b2f91cf59325c8707b50aecb8",
+    "/home/systemlab/bags/imu_investigation_20261030/tools/imu_vs_lidar.py": "36f0124d021e5b611340ef6cc5f095670e3ce1ab13a376af5a07580a9a2cd31c"
+  },
+  "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+  "numpy": "1.21.5",
+  "imu": {
+    "count": 216191,
+    "duration_s": 2161.982548713684,
+    "rate_hz": 99.99618180480998,
+    "dt_min_median_p99_max_s": [
+      0.009260892868041992,
+      0.010000228881835938,
+      0.010135412216186523,
+      0.020031213760375977
+    ],
+    "receive_delay_min_median_p99_max_s": [
+      0.00015091896057128906,
+      0.0005395412445068359,
+      0.0007719993591308594,
+      0.0013937950134277344
+    ],
+    "window_2_27s_count": 2500,
+    "window_2_27s_acc_mean": [
+      1.3357113137642174,
+      -0.5255289268868389,
+      9.794121592560467
+    ],
+    "window_2_27s_gyro_mean": [
+      -0.018108926923945546,
+      0.00048055959194898606,
+      0.001521311981510371
+    ],
+    "window_2_27s_gyro_std": [
+      0.0015488523302681066,
+      0.0015996273029291834,
+      0.0015322627191560175
+    ]
+  },
+  "scans": {
+    "count": 21311,
+    "duration_s": 2161.8041462898254,
+    "rate_hz": 9.857507229122985,
+    "dt_min_median_p99_max_s": [
+      0.1007528305053711,
+      0.10144543647766113,
+      0.10162565946578979,
+      0.1020960807800293
+    ],
+    "receive_delay_min_median_p99_max_s": [
+      0.004393815994262695,
+      0.005294084548950195,
+      0.006246232986450204,
+      0.10700750350952148
+    ],
+    "tmin_min_median_max": [
+      -0.10086604952812195,
+      -0.10012185573577881,
+      -0.09941913932561874
+    ],
+    "tmax_min_median_max": [
+      0.001306368038058281,
+      0.001306368038058281,
+      0.001306368038058281
+    ],
+    "n_min_median_max": [
+      29120.0,
+      29184.0,
+      29184.0
+    ]
+  },
+  "common_interval_epoch_s": [
+    1783663693.922934,
+    1783663813.8347602
+  ],
+  "common_scans": 1183
+}
