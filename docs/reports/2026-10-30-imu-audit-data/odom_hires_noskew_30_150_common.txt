@@ -1,0 +1,19 @@
+[odom_hires_noskew_30_150_common] scans=1183 fitness<0.5: 0
+[odom_hires_noskew_30_150_common] time offset tau (LiDAR stamp = IMU stamp + tau): +44.2 ms (rms omega residual 0.0166 rad/s; at tau=0: 0.0210)
+[odom_hires_noskew_30_150_common] hand-eye R_lidar_imu RPY (deg) = [-4.77 -8.96  4.9 ]  singular values [1.41 0.2  0.08] (yaw about the vertical is weakly observable if S[1],S[2] << S[0])
+[odom_hires_noskew_30_150_common] gyro bias (rad/s) = [-0.0181  0.0008  0.0014]  residual rms = 0.0166
+[odom_hires_noskew_30_150_common] GLIM cfg R_lidar_imu RPY = [-4.09 -7.61  0.  ]; angle(cfg, hand-eye) = 5.03 deg
+[odom_hires_noskew_30_150_common] dominant rotation axis: LiDAR [0.0574 0.0298 0.9979]  IMU [ 0.2263 -0.0609  0.9722]
+[odom_hires_noskew_30_150_common]   angle(R_cfg * axis_IMU, axis_LiDAR) = 2.49 deg
+[odom_hires_noskew_30_150_common]   angle(R_hand-eye * axis_IMU, axis_LiDAR) = 0.75 deg
+[odom_hires_noskew_30_150_common] gyro scale (LiDAR/IMU along yaw axis) = 0.9660
+[odom_hires_noskew_30_150_common] accel regression meas = M * pred(cfg) + c :
+[[ 0.13   0.004 -0.049]
+ [ 0.018  0.157  0.011]
+ [-0.025  0.01   0.011]]
+  c = [ 1.659 -0.609  9.714]
+[odom_hires_noskew_30_150_common]   axis x: corr(meas, pred_cfg) = +0.303  std meas 0.092 pred 0.212; mean meas-pred = -0.127
+[odom_hires_noskew_30_150_common]   axis y: corr(meas, pred_cfg) = +0.338  std meas 0.089 pred 0.188; mean meas-pred = -0.016
+[odom_hires_noskew_30_150_common]   axis z: corr(meas, pred_cfg) = +0.134  std meas 0.025 pred 0.284; mean meas-pred = +0.105
+[odom_hires_noskew_30_150_common] |meas - pred_cfg| (1.5 Hz LP) median 0.328 m/s^2; with hand-eye R: 0.513
+[odom_hires_noskew_30_150_common] plot: /home/systemlab/bags/imu_investigation_20261030/audit_147_reproduced/imu_vs_lidar_odom_hires_noskew_30_150_common.png

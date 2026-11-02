@@ -44,6 +44,8 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | --- | --- |
 | `m5r3_fix_imu_bag.py` | オフライン用IMU bag補正 |
 | `m5r3_run_glim.sh` | GLIMのオフライン実行 |
+| `velodyne_reproject_bag.py` | 誤った校正で記録した点群を、ring を使って正しい校正へ補正した bag を作る（入力は読むだけ） |
+| `imu_investigation/` | GLIM の IMU 調査（#147）の対照実験と解析。[報告](reports/2026-11-02-glim-imu-root-cause.md) |
 | `m5r3_export_merged_ply.py` | 結合点群の出力 |
 | `m5r_glim_to_pcd.py` | GLIM結果のPCD化 |
 | `m5r_run_dufomap.sh`, `m5r_run_dufomap_core.py` | DUFOMap処理 |

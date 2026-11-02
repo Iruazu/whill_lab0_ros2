@@ -1,0 +1,12 @@
+hires_fixfalse_r1      rc=0 warn= 11 n= 2560 rot=0.90 trans=0.39 vel=0.62 vel_err imu/cv=0.019/0.023 sub= 41 |acc|max=0.140 acc=[-0.08, 0.068, 0.092] gyro=[-0.0185, 0.0004, 0.0013] path=175.1 zspan=0.88
+hires_fixfalse_r2      rc=0 warn=  4 n= 1600 rot=0.91 trans=0.40 vel=0.64 vel_err imu/cv=0.019/0.024 sub= 41 |acc|max=0.126 acc=[-0.077, 0.042, 0.09] gyro=[-0.0186, 0.0005, 0.0014] path=175.0 zspan=1.23
+hires_fixfalse_r3      rc=0 warn=  0 n=    - rot=- trans=- vel=- vel_err imu/cv=-/- sub= 40 |acc|max=0.108 acc=[-0.063, -0.024, 0.084] gyro=[-0.0185, 0.0003, 0.0013] path=175.0 zspan=1.43
+hires_fixtrue_r1       rc=0 warn= 27 n= 2560 rot=0.90 trans=0.37 vel=0.59 vel_err imu/cv=0.019/0.022 sub= 40 |acc|max=0.087 acc=[-0.058, 0.025, 0.06] gyro=[-0.0183, 0.0003, 0.0013] path=175.1 zspan=1.00
+hires_fixtrue_r2       rc=0 warn= 20 n= 2560 rot=0.90 trans=0.25 vel=0.45 vel_err imu/cv=0.023/0.022 sub= 41 |acc|max=0.116 acc=[-0.082, -0.055, 0.059] gyro=[-0.0183, 0.0003, 0.0013] path=175.0 zspan=1.15
+hires_fixtrue_r3       rc=0 warn= 20 n= 2560 rot=0.91 trans=0.39 vel=0.62 vel_err imu/cv=0.019/0.023 sub= 40 |acc|max=0.080 acc=[-0.049, 0.023, 0.058] gyro=[-0.0182, 0.0003, 0.0013] path=175.0 zspan=1.22
+orig_fixfalse_r1       rc=0 warn= 38 n= 2560 rot=0.84 trans=0.03 vel=0.06 vel_err imu/cv=0.095/0.026 sub= 39 |acc|max=1.008 acc=[-0.867, 0.4, 0.323] gyro=[-0.0178, 0.0014, 0.0013] path=176.0 zspan=2.78
+orig_fixfalse_r2       rc=0 warn= 38 n= 2624 rot=0.83 trans=0.03 vel=0.06 vel_err imu/cv=0.097/0.026 sub= 38 |acc|max=1.071 acc=[-0.986, 0.246, 0.337] gyro=[-0.0182, 0.0015, 0.0014] path=176.1 zspan=3.24
+orig_fixfalse_r3       rc=0 warn= 37 n= 2560 rot=0.85 trans=0.03 vel=0.06 vel_err imu/cv=0.094/0.026 sub= 38 |acc|max=1.022 acc=[-0.918, 0.311, 0.325] gyro=[-0.0178, 0.0013, 0.0013] path=175.7 zspan=2.10
+orig_fixtrue_r1        rc=0 warn= 37 n= 2560 rot=0.84 trans=0.03 vel=0.06 vel_err imu/cv=0.099/0.026 sub= 40 |acc|max=0.650 acc=[-0.549, 0.282, 0.205] gyro=[-0.018, 0.0016, 0.0013] path=175.9 zspan=3.06
+orig_fixtrue_r2        rc=0 warn= 38 n= 2560 rot=0.84 trans=0.03 vel=0.06 vel_err imu/cv=0.101/0.026 sub= 38 |acc|max=0.667 acc=[-0.585, 0.241, 0.21] gyro=[-0.0174, 0.0013, 0.0013] path=175.8 zspan=4.09
+orig_fixtrue_r3        rc=0 warn= 38 n= 2560 rot=0.85 trans=0.03 vel=0.06 vel_err imu/cv=0.112/0.026 sub= 39 |acc|max=0.733 acc=[-0.644, 0.258, 0.237] gyro=[-0.0173, 0.0016, 0.0013] path=175.7 zspan=3.09
