@@ -22,6 +22,12 @@ Closes #
 - 受け入れ基準の充足 (Issue から転記し、結果を併記):
   - [ ]
 
+## デモ回帰チェック（[手順](../docs/regression-check.md)）
+
+- [ ] `scripts/demo_regression.sh`（全 PR）
+- [ ] `scripts/demo_regression.sh --level replay`（安全・位置推定・TF・センサ処理・地図の変更）
+- [ ] 屋外でデモのルートを1周（走行に影響する変更）。実施しない場合は理由:
+
 ## code-reviewer 結果
 
 重大: N / 改善余地あり: N / 好みの問題: N

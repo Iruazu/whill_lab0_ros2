@@ -11,6 +11,7 @@
 | [構成](architecture-overview.md) | ノード、トピック、TF、速度指令 |
 | [スクリプト一覧](scripts.md) | 実行ファイルの用途 |
 | [開発環境](development.md) | 上流取得、ビルド、検証 |
+| [デモ回帰チェック](regression-check.md) | マージ前に通す確認 |
 | [未解決事項と制約](repository-maintenance.md) | 残課題と実装の制約 |
 | [M8 ロードマップ](plans/2026-10-30-roadmap-m8.md) | 課題の順番。課題の正本は GitHub Issues |
 | [地図一覧](maps/README.md) | 地図成果物の規約 |

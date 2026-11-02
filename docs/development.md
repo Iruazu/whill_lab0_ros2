@@ -44,6 +44,8 @@ ros2 launch whill_dispatch dispatch_launch.py --show-args
 - ROS グラフは domain 137・localhost に閉じる。実機は要らない。
 - CI は無い。PR の前に手元で実行する。
 
+マージ前の確認全体は [デモ回帰チェック](regression-check.md)。
+
 ## 文書の置き場所
 
 起動手順は runbook、責務・入出力・設定はパッケージ README、過去の証跡は計画・ベンチ記録に置く。同じ手順を複数の文書に書かない。

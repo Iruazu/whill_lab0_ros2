@@ -1,0 +1,26 @@
+{
+  "comment": "docs/regression-check.md を参照。値を変えるときは PR に理由を書く。",
+  "bag": "docs/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26",
+  "site": "campus",
+  "measured_on": "2026-11-02, main 81f3ec7",
+  "observed": {
+    "failsafe": "作動 40-42 回, 32.7-33.6 秒, 走行中 0 回（2回）",
+    "localizer": "xy p50 0.000 m, p95 0.053-0.080 m, max 0.683 m, yaw p95 0.13-0.18 度, 姿勢 2350-2354 個（3回）",
+    "detected": "TF x+10 cm: xy p50 0.099 m, p95 0.132 m / 扇形 60 度: 走行中 9 回, 43.3 秒, 作動 52 回"
+  },
+  "limits": {
+    "failsafe": {
+      "stops_while_driving": {"max": 0},
+      "engaged_s": {"min": 28.0, "max": 38.0},
+      "engagements": {"min": 34, "max": 48}
+    },
+    "localizer": {
+      "xy_err_p50_m": {"max": 0.02},
+      "xy_err_p95_m": {"max": 0.11},
+      "xy_err_max_m": {"max": 1.0},
+      "yaw_err_p95_deg": {"max": 0.3},
+      "poses": {"min": 2200},
+      "max_gap_s": {"max": 2.0}
+    }
+  }
+}
