@@ -66,6 +66,8 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `pipeline_v2_verify.py` | v2成果物の検証 |
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
+| `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
+| `regression/` | 回帰チェックの基準と bag 再生の検査 |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
 | `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数と終了処理のテスト（ROS・車体は起動しない） |
