@@ -20,8 +20,8 @@ ONLY=()
 MEASURE=()
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 MAIN_ROOT=$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")
-# git 管理外なので main 側にしか無い。置き場が変わるときは #139 で直す。
-BAG="$MAIN_ROOT/docs/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26"
+# 置き場は docs/bags.md。
+BAG="${WHILL_BAGS_ROOT:-$HOME/bags}/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26"
 while (($#)); do
     case "$1" in
         --level) LEVEL=${2:-}; shift 2 ;;
@@ -76,7 +76,7 @@ if [[ "$LEVEL" == replay ]]; then
     OUT="$ROOT/.test_ws/regression/$(date +%Y%m%d-%H%M%S)"
     echo "==> 基準 bag の再生（結果: $OUT）"
     if [[ ! -r "$BAG/metadata.yaml" ]]; then
-        record replay FAIL "bag が無い: $BAG"
+        record replay FAIL "bag が無い: $BAG（docs/bags.md を参照）"
     elif python3 "$ROOT/scripts/regression/replay_check.py" --bag "$BAG" \
             --baseline "$ROOT/scripts/regression/baseline.json" --out "$OUT" \
             "${ONLY[@]}" "${MEASURE[@]}"; then

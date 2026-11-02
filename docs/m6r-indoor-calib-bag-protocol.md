@@ -119,7 +119,7 @@ ros2 launch whill_localization odom_bringup_launch.py
 Terminal B (録画):
 ```bash
 cd ~/whill_lab0_ros2
-./scripts/m6r_record_calib_bag.sh docs/m5r-bench-data/2026-07-08-indoor-calib
+./scripts/m6r_record_calib_bag.sh ~/bags/m5r-bench-data/2026-07-08-indoor-calib
 # 録画開始 → §3 のプロトコルを実施 → Ctrl+C で終了
 ```
 
@@ -143,7 +143,8 @@ cd ~/whill_lab0_ros2
 
 ```bash
 ./scripts/m5r4_run_gril_calib.sh \
-    docs/m5r-bench-data/2026-07-08-indoor-calib/bag
+    ~/bags/m5r-bench-data/2026-07-08-indoor-calib/bag \
+    docs/m5r-bench-data/2026-07-08-indoor-calib/gril-calib-out
 ```
 
 出力: `docs/m5r-bench-data/2026-07-08-indoor-calib/gril-calib-out/`
@@ -163,7 +164,7 @@ cat docs/m5r-bench-data/2026-07-08-indoor-calib/gril-calib-out/new_tli.txt
 
 # 3. campus-half-v3 bag で GLIM 再実行 (校正効果測定)
 ./scripts/m5r3_run_glim.sh \
-    docs/m5r-bench-data/2026-07-07-campus-half-v3/bag \
+    ~/bags/m5r-bench-data/2026-07-07-campus-half-v3/bag \
     docs/m5r-bench-data/2026-07-07-campus-half-v3/glim-out-calibrated
 ```
 

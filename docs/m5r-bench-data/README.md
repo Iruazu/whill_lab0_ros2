@@ -1,6 +1,8 @@
 # M5-R bench data
 
 > 過去の取得・検証記録です。現用の起動手順は [実機runbook](../runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
+>
+> `bag/` と `bag-imu-fixed/` は `~/bags/m5r-bench-data/` に移しました（[置き場](../bags.md)）。下の構成図は移動前のものです。
 
 
 Interim artifacts from the M5-R map-building pipeline (bag recording →
@@ -119,7 +121,7 @@ Minimum fields:
 - Weather (outdoor): <conditions>
 
 ## Bag
-- Path: `docs/m5r-bench-data/<YYYY-MM-DD>-<run-id>/bag/`
+- Path: `~/bags/<YYYY-MM-DD>-<run-id>/`
 - Duration: <s>
 - Topics: /velodyne_points, /imu/data_rep145, /tf_static
 
