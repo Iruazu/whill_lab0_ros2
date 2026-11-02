@@ -161,7 +161,7 @@ result=$?
 printf 'preflight 終了コード: %s\n' "$result"
 ```
 
-check 0〜5。Layer D の検査では指示に従って人が前方約 1.5 m に立つ。0 以外は失敗。check 4 は `/rosout` を 1 件見るだけなので、0 でも上の受信確認と起動ログを併用する。
+check 0〜5。Layer D の検査では指示に従って人が前方約 1.5 m に立つ。0 以外は失敗。check 0 は DDS の XML と LiDAR の NIC の一致を、check 4 は failsafe の入力の受信を確かめる。初期位置を与える前は `/pcl_pose` が届かないので、check 4 は失敗する。
 
 `/cmd_vel_safety` が出ていないのは、入力未受信で監視が始まっていないだけのこともある。
 

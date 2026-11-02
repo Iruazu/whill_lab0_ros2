@@ -37,4 +37,4 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 
 設定は `config/twist_mux.yaml`。最高優先度の有効入力が勝ち、出力は `/cmd_vel`。後段にNav2のvelocity_smootherがあるため、ゼロ指令も平滑化される。物理E-stopとの統合や全周監視をこのパッケージが完成済みとは扱わない。
 
-preflightは `scripts/m6r_preflight.sh`。check 4の単発rosout検査に制約があり、runbookの入力確認を併用する。手動中のsafety優先停止は実機で未検証。
+preflightは `scripts/m6r_preflight.sh`。check 4は各入力の受信を、failsafeと同じ型とQoSで確かめる。
