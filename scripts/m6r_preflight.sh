@@ -6,10 +6,11 @@
 # into a person during V2 verification. Non-blocking pre-drive checks
 # (rely on operator to eyeball a log line) let this slip through.
 #
-# This script FAILS LOUD (exit 1) if failsafe_node is not up, if the
-# whill driver has no live serial (/whill/odom silent), has DEAD
-# INPUT errors within its 10-s watchdog window, or if a live-fire hand
-# test shows /cmd_vel_safety not publishing at the expected 20 Hz.
+# This script FAILS LOUD (exit 1) if the DDS XML does not match the LiDAR
+# NIC, if failsafe_node is not up, if the whill driver has no live serial
+# (/whill/odom silent), if an input of the failsafe layers is not arriving,
+# or if a live-fire hand test shows /cmd_vel_safety not publishing at the
+# expected 20 Hz.
 #
 # Usage:
 #   # After bringup + nav_launch have been running for ~15 s:
@@ -28,14 +29,26 @@ echo
 # whill_labo_ros2 の typo により実際に発生、原因特定に ~40 分を消費)。
 # ここで環境自体を先に検証して、env 壊れは env 壊れとして落とす。
 echo -n "0. environment (CYCLONEDDS_URI / DDS participant) ... "
-if [ -n "${CYCLONEDDS_URI:-}" ]; then
-    _xml="${CYCLONEDDS_URI#file://}"
-    if [ ! -r "$_xml" ]; then
-        echo "FAIL"
-        echo "   CYCLONEDDS_URI points to a missing file: $_xml"
-        echo "   Fix the export (typo?) and re-run. Do NOT drive."
-        exit 1
-    fi
+# 未設定も失敗にする。Cyclone の既定は全 NIC を使い、wlo1 で discovery が崩れて
+# velodyne 3.3 Hz・Nav2 abort に至った (2026-07-24, cyclonedds-runtime-min.xml)。
+if [ -z "${CYCLONEDDS_URI:-}" ]; then
+    echo "FAIL"
+    echo "   CYCLONEDDS_URI is not set. Use configs/cyclonedds-runtime-min.xml."
+    echo "   Do NOT drive."
+    exit 1
+fi
+_xml="${CYCLONEDDS_URI#file://}"
+if [ ! -r "$_xml" ]; then
+    echo "FAIL"
+    echo "   CYCLONEDDS_URI points to a missing file: $_xml"
+    echo "   Fix the export (typo?) and re-run. Do NOT drive."
+    exit 1
+fi
+if ! _nic=$(python3 "$(dirname "${BASH_SOURCE[0]}")/check_dds_nic.py" "$_xml"); then
+    echo "FAIL"
+    printf '   %s\n' "$_nic"
+    echo "   $_xml を実機の NIC 名に合わせてください。Do NOT drive."
+    exit 1
 fi
 if ! timeout 10 ros2 topic list >/dev/null 2>&1; then
     echo "FAIL"
@@ -84,21 +97,18 @@ if ! timeout 5 ros2 topic echo /whill/odom --once >/dev/null 2>&1; then
 fi
 echo "PASS"
 
-# ---- 4. Wait past dead-input watchdog window -----------------------
-# failsafe_node's STARTUP_DEAD_INPUT_TIMEOUT_S = 10 s. If the
-# subscriptions did not arm within that budget, an ERROR line shows
-# up on /rosout with the substring "DEAD INPUT".
-echo "4. dead-input watchdog: waiting 12 s to catch any ERROR ..."
-sleep 12
-if ros2 topic echo --once --qos-durability transient_local /rosout 2>/dev/null \
-        | grep -q "DEAD INPUT"; then
-    echo "   FAIL — /rosout carries DEAD INPUT from failsafe_node"
-    echo "   Fix: check publisher QoS on the reported topic(s), or check"
-    echo "        that the upstream (localizer / patchworkpp / p2ls) is"
-    echo "        running. Do NOT drive."
+# ---- 4. failsafe inputs arriving -----------------------------------
+# 以前は /rosout の先頭1件だけを見ていて、DEAD INPUT を見逃すうえ、ログが無いと
+# 無期限に待った。入力ごとに、時間を区切って直接確かめる (#168)。
+echo "4. failsafe inputs ..."
+if ! "$(dirname "${BASH_SOURCE[0]}")/check_failsafe_inputs.sh"; then
+    echo "   FAIL — the layers above cannot arm."
+    echo "   Check that the upstream (localizer / patchworkpp / p2ls) is running,"
+    echo "   that the initial pose is set (/pcl_pose), and the publisher QoS."
+    echo "   Do NOT drive."
     exit 1
 fi
-echo "   PASS (no DEAD INPUT reported)"
+echo "   PASS"
 
 # ---- 5. Live-fire Layer D test -------------------------------------
 echo "5. Layer D live fire test."
