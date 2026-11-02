@@ -37,7 +37,12 @@ ros2 launch whill_navigation nav_launch.py --show-args
 ros2 launch whill_dispatch dispatch_launch.py --show-args
 ```
 
-テストがあるパッケージは `colcon test --packages-select <package>` と `colcon test-result --verbose`。
+テストは `scripts/run_tests.sh` で全部回す。失敗があれば非0で終わる。`--scripts-only` なら `scripts/tests` だけを数秒で回せる。
+
+- 出力は `.test_ws/` に置き、デモが使う `install/` は変えない。上流パッケージは main 側の `install/` を土台にするので、先に上のビルドが要る。
+- worktree では `src/third_party` を main 側へのシンボリックリンクにする（`whill_perception` のビルドに要る）。
+- ROS グラフは domain 137・localhost に閉じる。実機は要らない。
+- CI は無い。PR の前に手元で実行する。
 
 ## 文書の置き場所
 

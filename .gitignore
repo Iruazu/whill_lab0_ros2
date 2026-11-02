@@ -2,9 +2,10 @@
 build/
 install/
 log/
+.test_ws/
 
 # Upstream packages imported via `vcs import` — pin via whill_lab.repos
-src/third_party/
+src/third_party
 
 # Python
 __pycache__/
