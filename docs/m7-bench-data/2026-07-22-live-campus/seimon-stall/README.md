@@ -1,6 +1,6 @@
 # 2026-07-22 seimon 方向 立ち往生の bag 解析
 
-- bag: `rosbag2_2026_07_22-18_01_15/` (875.9 MiB, 132.5 s, 本ディレクトリ・未 commit)
+- bag: `~/bags/m7-bench-data/2026-07-22-live-campus/seimon-stall/rosbag2_2026_07_22-18_01_15/` (875.9 MiB, 132.5 s)
 - 症状: bldg7 付近から seimon へ配車中、(-63.2, -0.9) 付近でその場左右回頭を
   繰り返して前進しない (現地報告は「道の狭さ故に立ち往生」)
 - 起動構成: `map_variant:=v2 speed:=normal`、#120-#124 適用後

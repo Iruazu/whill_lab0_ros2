@@ -61,7 +61,7 @@ source install/setup.bash
 | `configs/` | DDS・オフライン処理の設定 |
 | `docs/` | 現用手順、設計判断、過去の記録 |
 | `docs/maps/` | 地図と地点。`static.pcd` は別途配置 |
-| `docs/m*-bench-data/` | 実測記録・録画 |
+| `docs/m*-bench-data/` | 実測記録。走行 bag は `~/bags/`（[置き場](docs/bags.md)） |
 | `network/`, `udev/` | 有線接続とデバイス名の設定 |
 
 ## 変更のルール

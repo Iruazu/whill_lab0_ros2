@@ -9,7 +9,7 @@ DEPRECATED (Issue #56):
   subscribe to /imu/data_rep145 instead of pre-rewriting the bag.
 
   This script is retained only for historical bags recorded before #56
-  was merged — e.g. docs/m5r-bench-data/2026-06-21-loop-outdoor/bag/
+  was merged — e.g. ~/bags/m5r-bench-data/2026-06-21-loop-outdoor/bag/
   which carries the raw inverted /imu/data_raw. For those bags the
   rewritten output is still the canonical input to the SLAM comparison.
   Do not use this script on bags recorded after #56.

@@ -33,7 +33,7 @@
 #     <site>     Name under docs/maps/ (e.g. "campus-half-v3"). The script
 #                expects docs/maps/<site>/static.pcd to exist.
 #     <bag-dir>  rosbag2 directory to replay (e.g.
-#                docs/m5r-bench-data/2026-07-07-campus-half-v3/bag).
+#                ~/bags/m5r-bench-data/2026-07-07-campus-half-v3/bag).
 #     --use-imu  Enable IMU input to the localizer (default: off, per
 #                docs/plans/2026-06-24-m6r-localization.md §3.D). When
 #                enabled, /imu is remapped to /imu/data_rep145 (PR #56).
