@@ -66,8 +66,7 @@ gap ゼロと誤読するリスクあり):
 ros2 launch whill_localization odom_bringup_launch.py
 
 # ターミナル B: 検証 bag 録画開始
-cd docs/m5r-bench-data/2026-07-10-dds-verify  # (mkdir しておく)
-ros2 bag record -o bag /velodyne_points /imu/data_rep145 /tf_static
+ros2 bag record -o ~/bags/m5r-bench-data/2026-07-10-dds-verify/bag /velodyne_points /imu/data_rep145 /tf_static
 
 # ターミナル C: 意図的に外乱を発生 (5 分程度)
 #   - WiFi ON/OFF 切替
@@ -92,8 +91,8 @@ ros2 bag record -o bag /velodyne_points /imu/data_rep145 /tf_static
 ### 0.4 本番録画
 
 - run-id: `2026-07-10-campus-outer-final` (仮)
-- run-dir: `docs/m5r-bench-data/<run-id>/`
-- コマンド: `ros2 bag record -o bag /velodyne_points /imu/data_rep145 /tf_static`
+- run-dir: `~/bags/m5r-bench-data/<run-id>/`
+- コマンド: `ros2 bag record -o ~/bags/m5r-bench-data/<run-id>/bag /velodyne_points /imu/data_rep145 /tf_static`
 - 走行完了 → Ctrl+C
 - `ros2 bag info` で count 再確認 (0.3 と同じ基準)
 - run.log で `large time gap` ゼロ確認
@@ -108,7 +107,7 @@ ros2 bag record -o bag /velodyne_points /imu/data_rep145 /tf_static
 
 ```bash
 GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
-  docs/m5r-bench-data/<run-id>/bag \
+  ~/bags/m5r-bench-data/<run-id>/bag \
   docs/m5r-bench-data/<run-id>/glim-out-audit-tli
 ```
 
@@ -183,7 +182,7 @@ M5-R 山越え記録。本番マップ候補として正式採用。
 
 ### 対象 run
 - run-id: `2026-07-10-campus-outer-final`
-- bag: `docs/m5r-bench-data/2026-07-10-campus-outer-final/bag` (2162 s / 12.8 GiB)
+- bag: `~/bags/m5r-bench-data/2026-07-10-campus-outer-final/bag` (2162 s / 12.8 GiB)
 - glim-out: `docs/m5r-bench-data/2026-07-10-campus-outer-final/glim-out-audit-tli/`
 - git commit: **`39bf794`** (GLIM audit quat = 07-10 pre-run)
 

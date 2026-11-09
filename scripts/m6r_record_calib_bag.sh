@@ -23,7 +23,7 @@
 # Usage:
 #   scripts/m6r_record_calib_bag.sh <run-dir>
 #
-#     <run-dir>   The per-run directory under docs/m5r-bench-data/. The bag
+#     <run-dir>   The per-run directory under ~/bags/ (docs/bags.md). The bag
 #                 is written to <run-dir>/bag/ (rosbag2 default layout).
 #                 If the directory already contains a bag/ subdir, aborts
 #                 unless --force is passed.
@@ -42,8 +42,8 @@ usage() {
   cat >&2 <<EOF
 Usage: ${0##*/} <run-dir> [--force]
 
-  <run-dir>  Per-run directory under docs/m5r-bench-data/ (e.g.
-             docs/m5r-bench-data/2026-07-08-indoor-calib). Bag is written
+  <run-dir>  Per-run directory under ~/bags/ (e.g.
+             ~/bags/2026-11-10-indoor-calib). Bag is written
              to <run-dir>/bag/.
   --force    Overwrite existing <run-dir>/bag/ contents.
   -h, --help Show this message.

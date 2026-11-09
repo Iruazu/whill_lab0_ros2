@@ -1,5 +1,7 @@
 # M3 bench data
 
+> rosbag のディレクトリ（`m3_*`、`m4_*`、`m5_*`）は `~/bags/m3-bench-data/` に移しました（[置き場](../bags.md)）。
+
 > 過去の取得・検証記録です。現用の起動手順は [実機runbook](../runbook-live-demo.md) を参照してください。本文の旧構成・英語の実測記録は証跡として保持しています。
 
 

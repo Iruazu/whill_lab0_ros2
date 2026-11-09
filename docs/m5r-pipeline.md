@@ -19,7 +19,7 @@
 [1] bag 録画 (M4-R bringup)
         | /velodyne_points + /imu/data_rep145 + /tf_static
         v
-    docs/m5r-bench-data/<run-id>/bag/         (gitignored)
+    ~/bags/<run-id>/                          (docs/bags.md)
 
 [2] SLAM (ADR-0003: GLIM)
         | scripts/m5r3_run_glim.sh
@@ -85,9 +85,8 @@ ros2 launch whill_localization odom_bringup_launch.py
 別ターミナル:
 
 ```bash
-mkdir -p docs/m5r-bench-data/$(date +%Y-%m-%d)-<run-id>
 ros2 bag record \
-  -o docs/m5r-bench-data/$(date +%Y-%m-%d)-<run-id>/bag \
+  -o ~/bags/$(date +%Y-%m-%d)-<run-id> \
   /velodyne_points /imu/data_rep145 /tf_static
 # 走行 → Ctrl-C
 ```
@@ -115,7 +114,7 @@ zstd 圧縮された `bag_0.db3.zstd` を sqlite3 として直接開こうとし
 ### 録画後の bag 検証
 
 ```bash
-ros2 bag info docs/m5r-bench-data/<run-id>/bag
+ros2 bag info ~/bags/<run-id>
 ```
 
 期待 (M5R-3 outdoor-loop bag を例にすると):
@@ -146,7 +145,7 @@ FAST-LIO SAM は upstream LICENSE 不在のため棄却。
 
 ```bash
 scripts/m5r3_run_glim.sh \
-  docs/m5r-bench-data/<run-id>/bag \
+  ~/bags/<run-id> \
   docs/m5r-bench-data/<run-id>/glim-out
 ```
 
@@ -164,9 +163,9 @@ scripts/m5r3_run_glim.sh \
 
 ```bash
 python3 scripts/m5r3_fix_imu_bag.py \
-  docs/m5r-bench-data/<old-run-id>/bag \
-  docs/m5r-bench-data/<old-run-id>/bag-imu-fixed
-# その後 m5r3_run_glim.sh の入力に bag-imu-fixed を渡す
+  ~/bags/<old-run-id> \
+  ~/bags/<old-run-id>-imu-fixed
+# その後 m5r3_run_glim.sh の入力に <old-run-id>-imu-fixed を渡す
 ```
 
 詳細は同スクリプトの DEPRECATED docstring + ADR-0003 注記参照。
@@ -437,7 +436,7 @@ M5-R パイプライン由来の値は次の手順で埋める:
 | `slam_method` | `glim` 固定 (ADR-0003 確定) |
 | `slam_params` | 既定設定なら省略可。カスタム config を使った場合のみ `docs/m5r-bench-data/<run-id>/glim-out/config/` への相対パス |
 | `erasor_params` | DUFOMap パラメータを inline (`resolution`, `d_s`, `d_p` を非デフォルト時のみ) |
-| `source_bag` | `docs/m5r-bench-data/<run-id>/bag/` の repo 相対パス |
+| `source_bag` | `~/bags/<run-id>`。過去の地図の値は移動前のパス（[置き場](bags.md)） |
 | `commit` | `git rev-parse HEAD` の出力 (40 文字 SHA) |
 
 `erasor_params` キー名は ADR-0005 起案時の歴史的事情で残しているが、
