@@ -98,11 +98,13 @@ def main(args: list[str] | None = None) -> None:
     #   - destroy_node と shutdown の競合とみられる SIGSEGV (約 2%)
     # 例外を捕まえるだけでは後の2つが残る。
     #
-    # そこで failsafe_node / dispatch_node と同じく rclpy のハンドラを外し、
-    # SIGINT / SIGTERM で KeyboardInterrupt を上げる。shutdown するのは
-    # 主スレッドだけになり、競合が無くなる。Python のハンドラは spin が
-    # C の wait から戻ったときにしか走らないので、SHUTDOWN_POLL_S の
-    # タイマーで定期的に戻す。
+    # そこで failsafe_node / dispatch_node と同じ方式を拡張する。rclpy の
+    # ハンドラを外し、SIGINT / SIGTERM で KeyboardInterrupt を上げる。
+    # shutdown するのは主スレッドだけになり、競合が無くなる。両ノードに
+    # 無い追加は4つ: (1) Python のハンドラは spin が C の wait から戻った
+    # ときにしか走らないので、SHUTDOWN_POLL_S のタイマーで定期的に戻す、
+    # (2) executor をノードより先に作る、(3) ノード生成を try の中に置く、
+    # (4) 後始末の間は2回目のシグナルを無視する。
     rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
     signal.signal(signal.SIGINT, _raise_keyboard_interrupt)
     signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
