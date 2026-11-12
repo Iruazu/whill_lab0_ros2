@@ -14,6 +14,16 @@ The driver publishes organized clouds (NaN for no return), so points are
 compared index by index and the NaN masks must be identical; a mask mismatch
 would mean the two paths kept different returns, which the xyz error alone
 would hide.
+
+PASS also needs at least --min-matched (0.99) of the reference clouds to have a
+candidate with the same stamp, so a recording that lost most clouds cannot pass
+on the few that remain.
+
+Memory: the reference bag is held in memory as float64 (about 32 bytes per
+point incl. ring: ~2 GB for the 300 s segment, 62 M points); the candidate is
+streamed one cloud at a time. Put the smaller bag first. Holding the whole 07-10
+map bag (21311 clouds, ~450 M points) as the reference would need ~14 GB plus
+the temporaries of the conversion (plan for ~20 GB).
 """
 import argparse
 import sys
@@ -26,13 +36,14 @@ from rosidl_runtime_py.utilities import get_message
 DT = {1: 'i1', 2: 'u1', 3: 'i2', 4: 'u2', 5: 'i4', 6: 'u4', 7: 'f4', 8: 'f8'}
 
 
-def read_clouds(uri, topic):
+def iter_clouds(uri, topic):
+    # A generator, so the candidate bag (the whole 13 GB map bag in #152) is
+    # streamed cloud by cloud instead of held in memory (~14-20 GB as float64).
     reader = rosbag2_py.SequentialReader()
     reader.open(rosbag2_py.StorageOptions(uri=uri, storage_id=''),
                 rosbag2_py.ConverterOptions('cdr', 'cdr'))
     reader.set_filter(rosbag2_py.StorageFilter(topics=[topic]))
     pc_type = get_message('sensor_msgs/msg/PointCloud2')
-    out = {}
     while reader.has_next():
         _, data, _ = reader.read_next()
         msg = deserialize_message(data, pc_type)
@@ -43,9 +54,8 @@ def read_clouds(uri, topic):
                        'offsets': [f.offset for f in msg.fields],
                        'itemsize': msg.point_step})
         arr = np.frombuffer(bytes(msg.data), dtype=dt)[: msg.width * msg.height]
-        out[key] = (np.stack([arr['x'], arr['y'], arr['z']], axis=1).astype(np.float64),
+        yield key, (np.stack([arr['x'], arr['y'], arr['z']], axis=1).astype(np.float64),
                     arr['ring'].astype(np.int64) if 'ring' in arr.dtype.names else None)
-    return out
 
 
 def main():
@@ -61,17 +71,23 @@ def main():
     # is still ~1000x below the Hi-Res vs VLP16db error (cm to dm).
     ap.add_argument('--tol-mm', type=float, default=0.05,
                     help='pass threshold on the max xyz difference [mm]')
+    # A recorder that dropped most clouds would otherwise "pass" on a handful.
+    ap.add_argument('--min-matched', type=float, default=0.99,
+                    help='minimum fraction of reference clouds that must have a '
+                         'candidate with the same stamp')
     a = ap.parse_args()
 
-    ref = read_clouds(a.reference_bag, a.ref_topic)
-    cand = read_clouds(a.candidate_bag, a.cand_topic)
-    common = sorted(set(ref) & set(cand))
-    if not common:
-        sys.exit('no cloud with a common header.stamp; nothing compared')
+    # The reference is held in memory (it should be the smaller bag: the driver
+    # output of a short packet bag, or a segment); the candidate is streamed.
+    ref = dict(iter_clouds(a.reference_bag, a.ref_topic))
     max_err, n_pts, n_mask_bad, n_ring_bad, n_shape_bad = 0.0, 0, 0, 0, 0
-    errs = []
-    for k in common:
-        (p, rr), (q, rc) = ref[k], cand[k]
+    errs, n_cand, n_common = [], 0, 0
+    for k, (q, rc) in iter_clouds(a.candidate_bag, a.cand_topic):
+        n_cand += 1
+        if k not in ref:
+            continue
+        n_common += 1
+        p, rr = ref[k]
         if p.shape != q.shape:
             n_shape_bad += 1
             continue
@@ -85,14 +101,17 @@ def main():
         if e.size:
             max_err = max(max_err, float(e.max()))
             errs.append(np.percentile(e, 99.9))
-    print(f'clouds: ref={len(ref)} cand={len(cand)} common={len(common)}')
+    if n_common == 0:
+        sys.exit('no cloud with a common header.stamp; nothing compared')
+    matched = n_common / len(ref)
+    print(f'clouds: ref={len(ref)} cand={n_cand} common={n_common} (matched {matched:.3f})')
     print(f'points compared: {n_pts}')
     print(f'shape mismatches: {n_shape_bad}, NaN-mask mismatches: {n_mask_bad}, '
           f'ring mismatches: {n_ring_bad}')
     print(f'max |dxyz| = {max_err * 1000:.6f} mm; '
           f'worst per-cloud p99.9 = {max(errs) * 1000 if errs else 0:.6f} mm')
     ok = (max_err * 1000 <= a.tol_mm and n_mask_bad == 0 and n_shape_bad == 0
-          and n_ring_bad == 0)
+          and n_ring_bad == 0 and matched >= a.min_matched)
     print('PASS' if ok else 'FAIL')
     sys.exit(0 if ok else 1)
 
