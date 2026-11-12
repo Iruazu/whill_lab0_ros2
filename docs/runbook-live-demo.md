@@ -215,4 +215,9 @@ python3 scripts/m7_make_web_map.py \
   --yaml docs/maps/campus/occupancy_v2.yaml --out-dir src/whill_dispatch/web
 ```
 
-Nav2 の地図とは別の成果物。`install` に反映されたかも確かめる。
+Nav2 の地図とは別の成果物。`start_dispatch_demo.sh` は起動前に、install 側の背景と Nav2 の地図を `scripts/check_map_sync.py` で照合し、食い違えば起動しない。手で確かめるとき:
+
+```bash
+cd ~/whill_lab0_ros2
+python3 scripts/check_map_sync.py --web-dir install/whill_dispatch/share/whill_dispatch/web
+```
