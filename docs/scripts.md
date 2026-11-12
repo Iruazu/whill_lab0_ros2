@@ -53,6 +53,8 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m5r_run_dufomap.sh`, `m5r_run_dufomap_core.py` | DUFOMap処理 |
 | `m5r_dufomap_diff.py` | 動的除去の差分解析 |
 | `m5r3_loop_error.py`, `m5r3_b1_numeric.py` | 地図のループ・高さずれ解析 |
+| `map_tilt_metrics.py` | 地図の傾き（軌跡の平面、始点・終点の地面）と点数。campus の 1.81° と同じ式 |
+| `map_align.py` | 同じ bag から作った2つの地図の座標変換を、軌跡の同時刻の点から求める。waypoint の写像と局所差も出す |
 | `m5r4_run_gril_calib.sh` | LiDAR / IMU校正 |
 
 ## 占有格子・v2マスク

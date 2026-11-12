@@ -1,0 +1,45 @@
+# docs/maps/campus-m8/metadata.yaml — M8-2 で作り直した campus 地図（候補、未採用）。
+# スキーマ正本は docs/maps/README.md。品質の数値と経緯は隣の README.md。
+
+# 元 bag の取得時刻（旧 campus と同じ記録）
+acquired_at: "2026-07-10T15:07:43+09:00"
+
+route_summary: "宇都宮大学キャンパス外周ループ（旧 campus と同じ走行、2162 s）。GLIM の経路長 1301 m"
+
+weather: "outdoor, 07-10 15:07-15:43 JST, dry surface（旧 campus の記録のまま）"
+
+slam_method: "glim"
+
+# 実行した設定を通常のファイルとして固定したもの（#147 の指摘: シンボリックリンクにしない）。
+# 元は ~/bags/imu_investigation_20261030/gpu135-post-reboot/config に次の変更だけを加えた:
+#   config_odometry_gpu.json  odometry_estimation.fix_imu_bias = false
+# 雑音は imu_acc_noise 0.008 / imu_gyro_noise 0.0013（上流は 0.05 / 0.02。比較は README）。
+# T_lidar_imu は audit 値 [-0.05, -0.4, -0.35, -0.035606, -0.066319, -0.002368, 0.997163]。
+slam_params: "docs/maps/campus-m8/glim_config/"
+
+# 旧フィールド名。中身は DUFOMap（ERASOR ではない）。
+erasor_params: null
+dynamic_removal:
+    method: "dufomap 1.1.1 (pip)"
+    command: "scripts/m5r_run_dufomap.sh <glim-out>/glim <out>"
+    resolution_m: 0.1
+    inflate_hits_dist_m: 0.2
+    inflate_unknown_voxels: 2
+
+# 元 bag（#152 で Hi-Res に補正したもの）。補正前の bag は ~/bags/.../bag/ に残っている。
+source_bag: "~/bags/m5r-bench-data/2026-07-10-campus-outer-final/bag-hires/"
+source_bag_correction: "scripts/velodyne_reproject_bag.py --src-calib VLP16db.yaml --dst-calib VLP16_hires_db.yaml"
+
+# GLIM / DUFOMap の生の出力（git 管理外）
+glim_output: "~/bags/m5r-bench-data/2026-07-10-campus-outer-final/glim-m8-hires-noise-local/"
+dufomap_output: "~/bags/m5r-bench-data/2026-07-10-campus-outer-final/dufomap-m8-hires-noise-local/static.pcd"
+# docs/maps/campus-m8/static.pcd（git 管理外、上の dufomap_output の複製）
+static_pcd_sha256: "d244865866e3eacdea6e26851dd3ed61ba626029fdc6dd4f2dabfb6d720d03b5"
+static_pcd_points: 7614632
+
+# 生成に使ったリポジトリの版（feat/152-153-hires-map ブランチ）
+commit: "2fa22ef"
+
+# 占有格子は旧 campus v2 と同じ格子（origin [-128.25, -90.35]、6640x6295、0.05 m）。
+occupancy_grid_ref: "docs/maps/campus/occupancy_cleaned.yaml"
+status: "candidate — 手塗りの確定（#154）と屋外の受入（#156）が済むまで採用しない"
