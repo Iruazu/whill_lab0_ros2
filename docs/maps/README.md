@@ -41,6 +41,7 @@ launchは既定でこの地図ディレクトリをworkspaceから解決する�
 v2の人手maskは編集成果物として保持する。PCD・bag・再生成キャッシュとGit管理する画像を混同しない。旧地図は根拠なく削除しない。
 
 - [campus地図](campus/README.md)
+- [campus-m8地図](campus-m8/README.md)：M8-2 で Hi-Res の点群から作り直した候補。採用は未定（手塗りの確定と屋外の受入が先）
 - [新規siteのテンプレート](_template/README.md)
 - [旧試作地図](lab-legacy-m5b/README.md)
 - [v2塗り手順](v2-paint-guide.md)

@@ -75,7 +75,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
-| `regression/` | 回帰チェックの基準と bag 再生の検査 |
+| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節） |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
 | `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数と終了処理のテスト（ROS・車体は起動しない） |

@@ -1,0 +1,24 @@
+{
+  "site": "campus",
+  "lidar_tf": "branch static_tf_launch.py",
+  "map_transform": null,
+  "window_s": [
+    73.0,
+    741.0
+  ],
+  "poses": 7290,
+  "recorded_poses": 7298,
+  "max_gap_s": 1.116,
+  "fitness_n": 7295,
+  "fitness_p50": 0.0306,
+  "fitness_p95": 0.1985,
+  "fitness_max": 10.4661,
+  "fitness_over_threshold_warnings": 6,
+  "not_converged_warnings": 0,
+  "vs_recorded_xy_p50_m": 0.0,
+  "vs_recorded_xy_p95_m": 0.123,
+  "vs_recorded_xy_max_m": 0.683,
+  "vs_recorded_dz_p50_m": 0.0,
+  "vs_recorded_dyaw_p50_deg": -0.0,
+  "vs_recorded_dyaw_p95_abs_deg": 0.173
+}

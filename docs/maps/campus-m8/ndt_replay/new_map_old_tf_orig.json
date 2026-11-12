@@ -1,0 +1,24 @@
+{
+  "site": "campus-m8",
+  "lidar_tf": "branch static_tf_launch.py",
+  "map_transform": "/home/systemlab/whill_lab0_ros2/.claude/worktrees/agent-a267c0b69ff573558/docs/maps/campus-m8/align_from_campus/T_new_old.txt",
+  "window_s": [
+    73.0,
+    240.0
+  ],
+  "poses": 2360,
+  "recorded_poses": 2361,
+  "max_gap_s": 0.913,
+  "fitness_n": 2359,
+  "fitness_p50": 0.3427,
+  "fitness_p95": 0.4956,
+  "fitness_max": 3.1979,
+  "fitness_over_threshold_warnings": 0,
+  "not_converged_warnings": 0,
+  "vs_recorded_xy_p50_m": 0.052,
+  "vs_recorded_xy_p95_m": 0.139,
+  "vs_recorded_xy_max_m": 0.639,
+  "vs_recorded_dz_p50_m": -0.583,
+  "vs_recorded_dyaw_p50_deg": -0.068,
+  "vs_recorded_dyaw_p95_abs_deg": 0.587
+}
