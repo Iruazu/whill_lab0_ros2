@@ -44,6 +44,15 @@ record() {
 echo '==> テスト（scripts/run_tests.sh）'
 if "$ROOT/scripts/run_tests.sh"; then record tests OK; else record tests FAIL; fi
 
+# 地図と Web の背景はどちらも Git 管理なので、このブランチの組み合わせを見る（#171）。
+# main 側の地図と比べると、地図を作り直すブランチでは必ず食い違ってしまう。
+echo '==> 地図と Web の背景の同期（scripts/check_map_sync.py）'
+if python3 "$ROOT/scripts/check_map_sync.py" --maps-root "$ROOT/docs/maps"; then
+    record map-sync OK
+else
+    record map-sync FAIL
+fi
+
 # run_tests.sh が作った、このブランチのビルドを使う。
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash

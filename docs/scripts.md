@@ -34,6 +34,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m7_make_tls_cert.sh` | 配車Webの証明書作成。接続先IPを指定 |
 | `m7_https_server.py` | dispatch launchが使うHTTPS配信 |
 | `m7_make_web_map.py` | YAMLの画像からWeb背景とmetaを生成 |
+| `check_map_sync.py` | Web背景とmetaがNav2の地図YAMLと揃っているかを確かめる（demo_regression・起動前検査が実行） |
 | `mock_navigate_to_pose.py` | 模擬Nav2 action。実機bringupを再現しない |
 | `m7_ws_smoke.py` | rosbridge経由の投入・取消を含むE2E検証。実機での受動診断には使わない |
 | `m4r3_ekf_bench.py` | bagによるEKFの解析 |
@@ -69,6 +70,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
+| `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
 | `regression/` | 回帰チェックの基準と bag 再生の検査 |

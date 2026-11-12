@@ -26,6 +26,16 @@
 
 - [2026-10-14 統合起動・配車成功](reports/2026-10-14-dispatch-demo.md)
 
+## 研究テーマの検討
+
+- [研究の系譜と未解決性を確かめる（HTML、2026-10-16）](research/whill-research-evidence.html)：信頼性・診断・適応・学習制御の14文献。到達点、仮定、比較条件、専門性を整理。
+
+- [選んだ5件の到達点と残る問いを読む（HTML）](research/whill-research-selected.html)：研究名で比較。実験の到達点・未検証事項・後続研究・拡張仮説と判断メモ。
+
+- [26件の研究をカードで読む（HTML）](research/whill-research-papers.html)：具体的な問い・方法・成果・限界。分野の絞り込みと「気になる」選択。
+
+- [WHILLを実験基盤とする研究課題のサーベイ（2026-10-15改訂）](research/2026-10-15-whill-research-topics.md)：先行研究25件の到達点・検証範囲、既存案の再評価、研究上の問い5案と実験設計。
+
 ## 過去の記録
 
 - [過去の計画・調査・検証の索引](history.md)

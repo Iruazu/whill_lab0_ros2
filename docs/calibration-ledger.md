@@ -116,9 +116,10 @@ z・roll・pitch の候補：
 | z | 0.73 m | 2026-10-28 | レンズ中心（巻尺） | 静止物 bag で物体最大高の誤差 +0.3〜+0.8 cm |
 | roll / pitch / yaw | 0 | 2026-10-28 | 水平・前向き取付の申告 | 床面フィットで約 1° 上向きの疑い |
 
-- 状態：**実測済み**。実機静止確認は未了（#149）。
-- 依存関係：x, y は LiDAR の巻尺値（§2.1 の x 0.42、y 0.36）から導出している。#149 などで LiDAR の x, y が変われば、camera_link も同じだけ動かす。
-- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py` の `static_tf_camera`。launch への反映は #146（ブランチ `fix/146-camera-tf`）が行う。#146 がマージされるまで launch は旧値 (0.54, 0.382, 0.79) のまま（§6）。
+- 状態：**実測済み**（2026-10-28、巻尺 + データシート）。実機静止確認は未了（#149）。
+- 依存関係：x・y は LiDAR の巻尺値 0.42/0.36（§2.1）から導出している。#149 などで LiDAR の x, y が変われば、camera_link も同じだけ動かす。
+- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:92`（`static_tf_camera`、#146 で反映済み）、`src/whill_sensors_bringup/README.md` の TF 表。
+- 影響範囲：RealSense を使う下流タスク（現用ナビゲーションでは未使用）。
 
 ## 4. IMU（RT 9 軸 USB IMU）
 
@@ -179,7 +180,6 @@ z・roll・pitch の候補：
 | --- | --- | --- | --- |
 | `src/whill_navigation/config/nav2_params.yaml:231`、`:282` | robot_radius 0.45 | §1 未測定 | #143（実測）→ #157（多角形） |
 | `src/whill_safety/whill_safety/failsafe_node.py:59` | 車幅 0.6 m の前提 | §1 未測定 | #143 → #157 |
-| `src/whill_sensors_bringup/launch/static_tf_launch.py` の `static_tf_camera`、`src/whill_sensors_bringup/README.md` の TF 表 | camera_link | §3 (0.47, 0.378, 0.73) | #146 のマージ前は旧値 (0.54, 0.382, 0.79) で**食い違い**。マージ後は一致（この行を消す） |
 | `src/whill_perception/config/patchworkpp.yaml:25` | sensor_height 0.79 | §2.1 z 0.777 | **食い違い**（1.3 cm）。担当 Issue なし（起票案あり） |
 | `src/whill_navigation/config/pointcloud_to_laserscan.yaml:46-49` | 高さの帯 0.05〜1.6 m（base_link 系。ADR-0009、2026-07-15 に旧 TF・旧校正表で調整） | §2.1 | 台帳の写しではないが、旧 TF 前提の値。新しい TF で点の高さが 2 m 先で約 0.28 m 変わるので再検証が要る。担当 Issue なし（起票案あり） |
 | failsafe の Layer D（`/scan`）・Layer C（no_ground） | しきい値 | §2.1 | 同上。再検証が要る。担当 Issue なし（起票案あり） |
@@ -198,7 +198,7 @@ z・roll・pitch の候補：
 | --- | --- | --- | --- | --- | --- |
 | 2026-10-28 | 2026-11-12 | LiDAR 校正ファイル | VLP16db.yaml → VLP16_hires_db.yaml | 実機は Puck Hi-Res（銘板） | #144 |
 | 2026-10-28 | 2026-11-12 | base_link→velodyne | (0.484136, 0.381548, 0.793704) / RPY (−0.035342, +0.156983, −0.005527) rad → (0.42, 0.36, 0.777) / RPY (0.24°, 0.97°, −0.3167°) | 巻尺 + 床面フィット（§2.1）。旧値は IMU TF + noetic extrinsic | #145 |
-| 2026-10-28 | 2026-11-12 | base_link→camera_link | (0.54, 0.382, 0.79) → (0.47, 0.378, 0.73)、RPY 0 | 巻尺 + データシート。旧値は M4R-2 の概算を #61 で IMU と一緒にずらしたもので、旧 z 0.79 では深度の物体高が常に約 +6 cm 高く出た | #146 |
+| 2026-10-28 | 2026-11-12 | base_link→camera_link | (0.54, 0.382, 0.79) → (0.47, 0.378, 0.73)、RPY 0 | 巻尺 + データシート。旧値は M4R-2 の概算を #61 で IMU と一緒にずらしたもので、旧 z 0.79 では深度の物体高が常に +6 cm 高く出た | #146 |
 | 2026-07-10 | 2026-07-10 | GLIM audit T_lidar_imu | RPY (−3.52°, −7.26°, 0°)（07-09 audit、`docs/imu-coordinate-audit.md` §7.2）→ (−4.09°, −7.61°, 0°) | 07-10 朝の IMU 静止値に追随 | `39bf794` |
 | 2026-07-10 | 2026-07-10 | base_link→imu_link | roll −3.52° / pitch −7.76° → −4.09° / −8.11° | 一晩で締結が緩んだ分（再固定はしていない） | `9cc4be2` |
 | 2026-07-09 | 2026-07-09 | GLIM audit T_lidar_imu | 追加（環境変数で切替） | IMU 監査の反映 | `494ea77` |
