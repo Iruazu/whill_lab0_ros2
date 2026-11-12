@@ -12,6 +12,7 @@ import math
 
 import pytest
 import rclpy
+from rclpy.exceptions import InvalidParameterTypeException
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from sensor_msgs.msg import LaserScan, PointCloud2
 
@@ -180,7 +181,7 @@ def test_integer_value_is_refused_not_ignored(make_node):
     # safety_launch.py converts with ParameterValue(value_type=float); a
     # direct "-p startup_grace_sec:=5" (integer) must fail loudly rather
     # than silently fall back to the default.
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidParameterTypeException):
         make_node(grace='5')
     node, _, _ = make_node(grace='5.0')
     assert math.isclose(node._startup_grace_s, 5.0)

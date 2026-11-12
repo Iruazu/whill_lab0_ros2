@@ -32,9 +32,11 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 | 値 | 動作 |
 | --- | --- |
 | `0.0`（既定） | 従来どおり。10秒後の `DEAD INPUT` ログだけで、止めない |
-| `> 0` | 開始からこの秒数までに1件も届かないB / C / D入力（`/pcl_pose`、`/velodyne_points_no_ground`、`/scan`）ごとに、`B:pcl_pose_never_arrived`・`C:perception_never_arrived`・`D:scan_never_arrived` として停止する。他の層と同じく `/cmd_vel_safety` にゼロを20Hzで出す。初回受信でその入力の停止は解け、以後は既存の途絶監視に移る |
+| `> 0` | 開始からこの秒数までに1件も届かないB / C / D入力（`/pcl_pose`、`/velodyne_points_no_ground`、`/scan`）ごとに、`B:pcl_pose_never_arrived`・`C:perception_never_arrived`・`D:scan_never_arrived` として停止する。他の層と同じく `/cmd_vel_safety` にゼロを20Hzで出す。初回受信でその入力の停止は解け、以後はB / Cは既存の途絶監視に移る。**Dは例外**で、初回受信後の `/scan` 途絶を監視する仕組みが無い（既存の欠陥。`D:scan_silent` の追加を別issueで扱う） |
 
-負の値やNaNは起動時に拒否する。`use_sim_time` では最初の `/clock` から数える。
+負の値やNaNは起動時に拒否する。このときfailsafe_nodeは起動直後に終了するが、twist_muxは動き続けるので、safetyの無い状態（fail-open）になる。preflightのcheck 2（`/failsafe_node` の存在）で検出される。failsafeが落ちたらlaunch全体を止める `on_exit=Shutdown` は、挙動の変更なので承認待ちの選択肢として残す（未実装）。
+
+`use_sim_time` では最初の `/clock` から数える。既存の `DEAD INPUT` 判定は `_start_time=0` のまま数えるので、bag再生では最初のtickで出る（既存の動作。変えていない）。
 
 選択肢と影響：
 

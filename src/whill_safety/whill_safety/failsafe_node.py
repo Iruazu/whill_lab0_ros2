@@ -98,7 +98,10 @@ STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0
 # above; the first-message-arm layers stay unarmed and nothing stops. With
 # startup_grace_sec > 0, such an input becomes an active layer of its own
 # ("<layer>:<name>_never_arrived") once the grace expires, and clears on
-# its first message, after which the normal silence check takes over.
+# its first message, after which the normal silence check takes over --
+# for B and C only. Layer D has NO silence check after its first /scan
+# (pre-existing gap, tracked separately as D:scan_silent); once /scan has
+# arrived once, a later /scan outage is not caught by this option either.
 # 0.0 (the default) disables it, i.e. the pre-#159 behaviour: warning only.
 # Changing the default needs the user's approval (failsafe change), so the
 # default stays off and the option is documented in the package README.
@@ -172,6 +175,9 @@ class FailsafeNode(Node):
         # so the existing DEAD INPUT warning keeps its exact behaviour. With
         # use_sim_time the clock reads 0 until the first /clock message;
         # anchoring there would expire the grace on the first bag stamp.
+        # (The existing DEAD INPUT check does exactly that: it counts from
+        # _start_time=0 and fires on the first sim tick. Pre-existing, left
+        # unchanged so the default stays bit-for-bit.)
         self._grace_anchor = self._start_time if self._start_time > 0.0 \
             else None
 
