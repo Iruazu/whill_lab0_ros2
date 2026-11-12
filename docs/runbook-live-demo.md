@@ -41,7 +41,7 @@ scripts/start_dispatch_demo.sh
 ```bash
 cd ~/whill_lab0_ros2
 git status --short
-ls -l /dev/whill /dev/imu
+scripts/check_device_aliases.sh
 ls -l install/setup.bash configs/cyclonedds-runtime-min.xml
 ls -l docs/maps/campus/static.pcd docs/maps/campus/occupancy_v2.yaml docs/maps/campus/v2/final.pgm
 ls -l docs/maps/campus/waypoints.yaml
@@ -52,7 +52,7 @@ ss -ltnp | grep -E ':(8000|9090)\b'
 pgrep -af 'ros2 launch|dispatch_node|mock_navigate_to_pose|m7_https_server|http.server'
 ```
 
-- `/dev/whill` `/dev/imu` はリンク先が存在し読み書きできればよい（番号は固定でない）
+- `check_device_aliases.sh` は `/dev/whill` `/dev/imu` の有無、リンク先の VID:PID（`udev/99-whill-stack.rules` と照合）、読み書きを確かめる。番号は固定でない。別名だけ無いときは、記録を残すコマンドと戻すコマンド（`sudo udevadm trigger --action=change --name-match=/dev/ttyACM0` など）を表示する（#141）
 - `static.pcd` は Git 管理外。別途配置する
 - `cyclonedds-runtime-min.xml` は lo と `enx00e04c680ec9` を列挙する。実際の LiDAR NIC 名と一致するか確かめる（NIC は optional なので、違っていても起動してしまう）
 - 残っているプロセスは起動元で Ctrl-C する。一括 kill しない
@@ -161,7 +161,7 @@ result=$?
 printf 'preflight 終了コード: %s\n' "$result"
 ```
 
-check 0〜5。Layer D の検査では指示に従って人が前方約 1.5 m に立つ。0 以外は失敗。check 0 は DDS の XML と LiDAR の NIC の一致を、check 4 は failsafe の入力の受信を確かめる。初期位置を与える前は `/pcl_pose` が届かないので、check 4 は失敗する。
+check 0〜5。Layer D の検査では指示に従って人が前方約 1.5 m に立つ。0 以外は失敗。check 0 は DDS の XML と LiDAR の NIC の一致を、check 0b は `/dev/whill` `/dev/imu` の別名を、check 4 は failsafe の入力の受信を確かめる。初期位置を与える前は `/pcl_pose` が届かないので、check 4 は失敗する。
 
 `/cmd_vel_safety` が出ていないのは、入力未受信で監視が始まっていないだけのこともある。
 

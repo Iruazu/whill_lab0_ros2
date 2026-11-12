@@ -68,6 +68,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
+| `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
 | `regression/` | 回帰チェックの基準と bag 再生の検査 |
