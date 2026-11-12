@@ -15,7 +15,7 @@
 | [未解決事項と制約](repository-maintenance.md) | 残課題と実装の制約 |
 | [M8 ロードマップ](plans/2026-10-30-roadmap-m8.md) | 課題の順番。課題の正本は GitHub Issues |
 | [地図一覧](maps/README.md) | 地図成果物の規約 |
-| [校正台帳](calibration-ledger.md) | 校正履歴。現用値はコードと照合する |
+| [校正台帳](calibration-ledger.md) | 車体とセンサの実測値の正本（値・測定方法・状態・反映先） |
 | [設計判断](decisions/README.md) | ADR |
 
 ## パッケージ
