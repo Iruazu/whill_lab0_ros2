@@ -17,6 +17,7 @@ a waypoint at a road edge is still reachable by the planner's goal tolerance.
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import cv2
 import numpy as np
@@ -44,7 +45,6 @@ def main():
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
     eroded = cv2.erode(free.astype(np.uint8), k).astype(bool)
     n, lab = cv2.connectedComponents(eroded.astype(np.uint8), connectivity=8)
-    dist, (iy, ix) = None, (None, None)
     wps = yaml.safe_load(Path(a.waypoints_yaml).read_text())['waypoints']
     out = []
     for w in wps:
@@ -69,7 +69,8 @@ def main():
               'eroded_free_components': int(n - 1), 'waypoints': out,
               'all_connected': len(comps) == 1 and 0 not in comps}
     print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0 if result['all_connected'] else 1
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

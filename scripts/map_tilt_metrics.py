@@ -44,7 +44,10 @@ def read_pcd_xyz(path):
     with open(path, 'rb') as f:
         header = {}
         while True:
-            line = f.readline().decode('ascii', 'replace').strip()
+            raw = f.readline()
+            if not raw:
+                sys.exit(f'{path}: end of file before the DATA line; not a PCD')
+            line = raw.decode('ascii', 'replace').strip()
             if not line or line.startswith('#'):
                 continue
             key, *vals = line.split()

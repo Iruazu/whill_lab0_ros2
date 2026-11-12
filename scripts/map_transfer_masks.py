@@ -135,10 +135,15 @@ def main():
                 merged[f'candidate_{name.split("_")[0]}_merged.png'] = (
                     outputs[f'candidate_{name}.png'][0] | direct[0], -1)
 
-    for fname, (m, n_old) in {**outputs, **merged}.items():
+    every = {**outputs, **merged}
+    # Check all targets first, so a refusal never leaves a half-written set.
+    if not a.force:
+        clash = [f for f in list(every) + ['candidate_review_overlay.png', 'candidate_transfer.json']
+                 if (a.out_dir / f).exists()]
+        if clash:
+            sys.exit(f'{a.out_dir}: {clash} exist; use --force')
+    for fname, (m, n_old) in every.items():
         p = a.out_dir / fname
-        if p.exists() and not a.force:
-            sys.exit(f'{p} exists; use --force')
         save_mask(p, m)
         report['outputs'][fname] = {'old_cells': n_old, 'new_cells': int(m.sum())}
 

@@ -19,13 +19,15 @@ Optional --old-pcd/--new-pcd refine T with point-to-plane ICP (open3d) and
 report the fitness, as an independent check of the trajectory fit.
 
 Outputs (in --out): T_new_old.txt (4x4), se2.json (x, y, yaw for 2D grids),
-align.json (statistics), waypoints_transformed.yaml if --waypoints is given.
+align.json (statistics), waypoints_transformed.yaml if --waypoints is given,
+and residual_per_pose.txt (2.6 MB for 21300 poses; gitignored, regenerable).
 Inputs are only read.
 """
 import argparse
 import json
 import math
 from pathlib import Path
+import sys
 
 import numpy as np
 import yaml
@@ -64,6 +66,7 @@ def main():
     ap.add_argument('--waypoints', help='waypoints.yaml of the old map')
     ap.add_argument('--max-dt', type=float, default=0.02,
                     help='max stamp difference for a pose pair [s]')
+    ap.add_argument('--min-pairs', type=int, default=100)
     ap.add_argument('--out', required=True, type=Path)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -72,6 +75,10 @@ def main():
     idx = np.clip(np.searchsorted(new[:, 0], old[:, 0]), 1, len(new) - 1)
     idx -= (old[:, 0] - new[idx - 1, 0]) < (new[idx, 0] - old[:, 0])
     ok = np.abs(new[idx, 0] - old[:, 0]) < a.max_dt
+    # Fewer pairs than this means the two trajectories are not from the same
+    # bag (or the stamps were shifted); a fit on a few points would be noise.
+    if ok.sum() < a.min_pairs:
+        sys.exit(f'only {int(ok.sum())} pose pairs within {a.max_dt} s; need {a.min_pairs}')
     P, Q = old[ok, 1:4], new[idx[ok], 1:4]
     T = umeyama(P, Q)
     res = np.linalg.norm(apply(T, P) - Q, axis=1)
