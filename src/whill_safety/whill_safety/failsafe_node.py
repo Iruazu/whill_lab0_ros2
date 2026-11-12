@@ -28,6 +28,11 @@ Layers (per ADR-0007 §Demo-scope reduction):
      the stop-for-obstacle behaviour independently of Nav2 planning.
      See ADR-0007 §Layer D for the geometry rationale.
 
+Optional (parameter startup_grace_sec, default 0.0 = off, Issue #159):
+  B/C/D inputs that have received NOTHING startup_grace_sec after start
+  (/pcl_pose, /velodyne_points_no_ground, /scan) stop the chair as
+  '<layer>:<name>_never_arrived' until their first message.
+
 Deliberately omitted (post-demo backlog): jump detection (3-frame /pcl_pose
 delta), SAFE_HOLD release hysteresis, G4 hardware 3-test acceptance. The
 demo is operated with a walker beside the chair whose WHILL joystick
@@ -89,8 +94,32 @@ FORWARD_CLEAR_HYSTERESIS_S = 0.5
 # during V2 verification because failsafe stayed dormant. The watchdog
 # turns that failure mode from silent to loud.
 STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0
+# Issue #159: an input that NEVER arrives is only logged by the watchdog
+# above; the first-message-arm layers stay unarmed and nothing stops. With
+# startup_grace_sec > 0, such an input becomes an active layer of its own
+# ("<layer>:<name>_never_arrived") once the grace expires, and clears on
+# its first message, after which the normal silence check takes over.
+# 0.0 (the default) disables it, i.e. the pre-#159 behaviour: warning only.
+# Changing the default needs the user's approval (failsafe change), so the
+# default stays off and the option is documented in the package README.
+STARTUP_GRACE_S_DEFAULT = 0.0
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
+
+
+def never_arrived_layers(now, anchor, grace_s, last_times):
+    """Active-layer labels for inputs that never arrived within grace_s.
+
+    last_times maps a layer label (e.g. 'C:perception_never_arrived') to
+    the input's last arrival time, or None if nothing has arrived yet.
+    grace_s <= 0 disables the check. anchor is None while the clock has
+    not started (use_sim_time before the first /clock); nothing fires then,
+    because a grace measured from time 0 would expire on the first bag
+    timestamp.
+    """
+    if grace_s <= 0.0 or anchor is None or now - anchor < grace_s:
+        return []
+    return [label for label, last in last_times.items() if last is None]
 
 
 def _to_float(s):
@@ -116,6 +145,19 @@ class FailsafeNode(Node):
     def __init__(self):
         super().__init__('failsafe_node')
 
+        # Issue #159. ParameterValue(value_type=float) in safety_launch.py
+        # keeps a launch value like "10" from arriving as an integer and
+        # failing the double type check here.
+        self._startup_grace_s = float(self.declare_parameter(
+            'startup_grace_sec', STARTUP_GRACE_S_DEFAULT).value)
+        if not math.isfinite(self._startup_grace_s) \
+                or self._startup_grace_s < 0.0:
+            # A negative or NaN grace would silently mean "disabled";
+            # refuse to start so a typo cannot switch the stop off.
+            raise ValueError(
+                f'startup_grace_sec={self._startup_grace_s!r} must be a '
+                f'finite value >= 0 (0 disables the never-arrived stop)')
+
         self._last_reinit_time = None
         self._fitness_bad_since = None
         self._converged_bad_since = None
@@ -126,6 +168,12 @@ class FailsafeNode(Node):
         self._active_prev = ()
         self._start_time = self._now_s()
         self._dead_input_warned = False
+        # Grace anchor for never_arrived_layers(). Separate from _start_time
+        # so the existing DEAD INPUT warning keeps its exact behaviour. With
+        # use_sim_time the clock reads 0 until the first /clock message;
+        # anchoring there would expire the grace on the first bag stamp.
+        self._grace_anchor = self._start_time if self._start_time > 0.0 \
+            else None
 
         self.create_subscription(
             Bool, '/reinitialization_requested', self._on_reinit, 10)
@@ -172,7 +220,10 @@ class FailsafeNode(Node):
             f'±{math.degrees(FORWARD_SECTOR_HALF_ANGLE_RAD):.0f}° @ '
             f'{FORWARD_SECTOR_MIN_M}-{FORWARD_SECTOR_MAX_M} m, '
             f'hysteresis {FORWARD_CLEAR_HYSTERESIS_S}s | '
-            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz')
+            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz | '
+            + (f'never-arrived inputs stop after {self._startup_grace_s}s'
+               if self._startup_grace_s > 0.0
+               else 'never-arrived inputs: warning only'))
 
     def _now_s(self):
         return self.get_clock().now().nanoseconds * 1e-9
@@ -273,10 +324,20 @@ class FailsafeNode(Node):
         if self._forward_last_blocked_time is not None \
                 and now - self._forward_last_blocked_time < FORWARD_CLEAR_HYSTERESIS_S:
             out.append('D:forward_blocked')
+        # Issue #159: inputs that never arrived. Appended last so the labels
+        # of the pre-existing layers keep their order in the log.
+        out.extend(never_arrived_layers(
+            now, self._grace_anchor, self._startup_grace_s, {
+                'B:pcl_pose_never_arrived': self._last_pose_time,
+                'C:perception_never_arrived': self._last_perception_time,
+                'D:scan_never_arrived': self._last_scan_time,
+            }))
         return tuple(out)
 
     def _tick(self):
         now = self._now_s()
+        if self._grace_anchor is None and now > 0.0:
+            self._grace_anchor = now
         # Dead-input watchdog: shout once when the startup budget expires
         # if any first-message-arm layer has not received its input.
         # 2026-07-16 incident: Layer D was subscribing to /scan on the
