@@ -267,6 +267,12 @@ def generate_launch_description():
                         'runtime stack, and past USB 2.1 enumeration issues '
                         'make an accidental start expensive. Flip true for '
                         'camera-specific tests.'),
+        DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
+                        'proposed). true = teleop reverse/rotate passes '
+                        'while only Layer D stops the chair.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
@@ -287,5 +293,9 @@ def generate_launch_description():
         # /cmd_vel_safety fires only when a failsafe layer trips.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(safety_launch),
-            launch_arguments={'use_sim_time': use_sim_time}.items()),
+            launch_arguments={
+                'use_sim_time': use_sim_time,
+                'failsafe_layer_d_rescue':
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
+            }.items()),
     ])

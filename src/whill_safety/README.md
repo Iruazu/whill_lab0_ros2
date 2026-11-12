@@ -37,4 +37,17 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 
 設定は `config/twist_mux.yaml`。最高優先度の有効入力が勝ち、出力は `/cmd_vel`。後段にNav2のvelocity_smootherがあるため、ゼロ指令も平滑化される。物理E-stopとの統合や全周監視をこのパッケージが完成済みとは扱わない。
 
+### 停止中の救援（#161、ADR-0013 提案、既定は無効）
+
+既定では、どの層の作動中もteleopは通らない（safetyが優先）。パラメータ `layer_d_rescue_enabled`（launch引数 `failsafe_layer_d_rescue`）をtrueにすると、作動しているのがLayer Dだけのとき、0.3秒以内に届いた前進を含まない `/cmd_vel_teleop`（後退0.2m/s以内、回転0.6rad/s以内）に限ってゼロ指令を控える。前進・範囲外・途絶した指令、A / B / Cの作動中は今どおり止める。救援中に `/cmd_vel` へ前進が出たら、Layer Dが解けるまで救援を止める。有効時だけ `/cmd_vel_teleop` と `/cmd_vel` を購読する。
+
+| パラメータ | 既定 | 内容 |
+| --- | --- | --- |
+| `layer_d_rescue_enabled` | false | 救援の有効化 |
+| `rescue_cmd_timeout_s` | 0.3 | teleop指令の鮮度。twist_muxのteleopタイムアウト0.5秒より短くないと起動しない |
+| `rescue_max_reverse_mps` | 0.2 | 救援と見なす後退速度の上限 |
+| `rescue_max_wz` | 0.6 | 救援と見なす回転速度の上限 |
+
+後方は監視しない。後退から前進へ切り替えた瞬間に前進が1回通り得る。設計の比較と残る危険はADR-0013。実機では未検証。
+
 preflightは `scripts/m6r_preflight.sh`。check 4は各入力の受信を、failsafeと同じ型とQoSで確かめる。

@@ -14,6 +14,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -28,13 +29,28 @@ def generate_launch_description():
             default_value='false',
             description='Forwarded to failsafe_node and twist_mux. '
                         'Only relevant for bag replay via --clock.'),
+        DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='failsafe_node layer_d_rescue_enabled (Issue #161, '
+                        'ADR-0013 proposed). true = while Layer D is the '
+                        'only active layer, a fresh reverse/rotate '
+                        '/cmd_vel_teleop command is let through. Default '
+                        'off until the user adopts ADR-0013.'),
 
         Node(
             package='whill_safety',
             executable='failsafe_node',
             name='failsafe_node',
             output='screen',
-            parameters=[{'use_sim_time': use_sim_time}],
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                # value_type=bool: the launch string must arrive as a bool,
+                # not as the string 'true' that would fail the type check.
+                'layer_d_rescue_enabled': ParameterValue(
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
+                    value_type=bool),
+            }],
         ),
         Node(
             package='twist_mux',
