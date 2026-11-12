@@ -11,22 +11,36 @@
 # The map bags have no packets, so this is the only way to test the analytic
 # inverse against the driver code instead of against the same formula.
 #
-# The input bag is only read. The ROS graph is localhost-only on its own domain
-# so the replay cannot reach a running robot or another session.
+# The input bag is only read. This runs on the on-vehicle PC, where the runbook
+# terminals export ROS_DOMAIN_ID=0: replaying /velodyne_packets there would feed
+# the live localizer and safety stack. So the domain is NEVER inherited from the
+# caller (VERIFY_DOMAIN_ID, default 152), the graph is localhost-only, and the
+# script aborts unless that domain is empty before anything is started.
 # Usage: velodyne_reproject_verify.sh <bag-with-packets> <work-dir>
-set -eo pipefail
+set -euo pipefail
+[[ $# -eq 2 && -n "$1" && -n "$2" ]] || { echo "usage: $0 <bag> <work-dir>" >&2; exit 2; }
+[[ -r "$1/metadata.yaml" ]] || { echo "$1: not a rosbag2 directory" >&2; exit 2; }
 BAG=$(readlink -f "$1"); WORK=$2
-[[ -n "$BAG" && -n "$WORK" ]] || { echo "usage: $0 <bag> <work-dir>" >&2; exit 2; }
 # Re-runnable: each run gets a fresh work dir instead of overwriting a previous result.
 [[ ! -e "$WORK" ]] || { echo "$WORK exists; pick a new work dir" >&2; exit 2; }
-mkdir -p "$WORK"; WORK=$(readlink -f "$WORK")
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ROS setup files read unset variables, so -u is suspended only around them.
 set +u
 source /opt/ros/humble/setup.bash
 source "${WHILL_UPSTREAM_INSTALL:-$HOME/whill_lab0_ros2/install}/setup.bash"
-export ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-152} ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+set -u
+export ROS_DOMAIN_ID=${VERIFY_DOMAIN_ID:-152} ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 unset CYCLONEDDS_URI
+# Fail closed: if the listing itself fails, the domain cannot be shown to be empty.
+NODES=$(ros2 node list --no-daemon 2>/dev/null) \
+  || { echo "ros2 node list failed on domain $ROS_DOMAIN_ID; refusing to replay" >&2; exit 3; }
+if [[ -n "$NODES" ]]; then
+  echo "ROS domain $ROS_DOMAIN_ID is not empty; refusing to replay packets:" >&2
+  echo "$NODES" >&2
+  exit 3
+fi
+mkdir -p "$WORK"; WORK=$(readlink -f "$WORK")
 PKG=$(ros2 pkg prefix velodyne_pointcloud)/share/velodyne_pointcloud
 SRC_CAL=$PKG/params/VLP16db.yaml
 DST_CAL=$PKG/params/VLP16_hires_db.yaml
