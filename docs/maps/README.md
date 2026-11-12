@@ -13,7 +13,7 @@
 | `waypoints.yaml` | dispatchの地点一覧 |
 | `metadata.yaml` | 取得・生成の出典記録。runtimeによる必須検証はない |
 
-現用campusデモは `occupancy_v2.yaml` → `v2/final.pgm`。Web背景は別成果物の `src/whill_dispatch/web/map.png` / `map_meta.json` であり、地図変更時に再生成する。
+現用campusデモは `occupancy_v2.yaml` → `v2/final.pgm`。Web背景は別成果物の `src/whill_dispatch/web/map.png` / `map_meta.json` であり、地図変更時に再生成する。食い違いは `scripts/check_map_sync.py` で検出する。
 
 launchは既定でこの地図ディレクトリをworkspaceから解決する。配置が異なる場合は `WHILL_MAPS_ROOT` を `site` ディレクトリの親に指定する。
 

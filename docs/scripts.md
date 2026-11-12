@@ -34,6 +34,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m7_make_tls_cert.sh` | 配車Webの証明書作成。接続先IPを指定 |
 | `m7_https_server.py` | dispatch launchが使うHTTPS配信 |
 | `m7_make_web_map.py` | YAMLの画像からWeb背景とmetaを生成 |
+| `check_map_sync.py` | Web背景とmetaがNav2の地図YAMLと揃っているかを確かめる（demo_regression・起動前検査が実行） |
 | `mock_navigate_to_pose.py` | 模擬Nav2 action。実機bringupを再現しない |
 | `m7_ws_smoke.py` | rosbridge経由の投入・取消を含むE2E検証。実機での受動診断には使わない |
 | `m4r3_ekf_bench.py` | bagによるEKFの解析 |

@@ -176,6 +176,12 @@ image = pathlib.Path(yaml.safe_load(path.read_text())['image'])
 if not (path.parent / image).is_file():
     sys.exit(f'地図画像がありません: {path.parent / image}')
 PY
+    # Webの背景地図はNav2の地図と別の成果物で、手で再生成している（#171）。ずれたままだと、
+    # タップした地点とNav2のゴールが食い違う。配信されるのはinstall側のweb/なので、そちらを見る。
+    local web_dir
+    web_dir="$(ros2 pkg prefix whill_dispatch)/share/whill_dispatch/web" || fail 'whill_dispatchが見つかりません'
+    python3 "$REPO_ROOT/scripts/check_map_sync.py" --maps-root "$maps_root" --site "$SITE" \
+        --variant v2 --web-dir "$web_dir" --quiet-notes || fail 'Webの背景地図がNav2の地図と揃っていません（上の表示を参照）'
     python3 - <<'PY'
 import socket
 for port in (8000, 9090):

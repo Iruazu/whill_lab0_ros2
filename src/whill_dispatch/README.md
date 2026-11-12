@@ -31,7 +31,7 @@ campusの地点名は `kounoken`、`bldg7`、`seimon`、`bldg3`。座標の正�
 
 Web背景は `web/map.png` / `web/map_meta.json`。現用metaは `docs/maps/campus/v2/final.pgm` を出典として記録し、縮小率8、解像度0.4m/pixel。再生成は `scripts/m7_make_web_map.py --yaml docs/maps/campus/occupancy_v2.yaml --out-dir src/whill_dispatch/web`。
 
-WebのFREE判定は縮小画像上の補助判定。dispatchは地図の占有状態を再検査しない。最終的な経路計画はNav2が行う。画像と地図の同期は自動ではない。
+WebのFREE判定は縮小画像上の補助判定。dispatchは地図の占有状態を再検査しない。最終的な経路計画はNav2が行う。画像と地図の同期は自動ではない。食い違いは `scripts/check_map_sync.py` が検出する（出典・origin・解像度・寸法・画素、negate と FREE_THRESHOLD の前提）。`demo_regression.sh` と `start_dispatch_demo.sh` の起動前検査が実行する。元画像の高さ6295が8で割り切れないため、Webの座標は縦方向に原点からの距離に比例してずれる。原点側の端で0、地点のあるy≈0付近で約0.10m、反対の端で最大0.35m。Webの1画素（0.4m）より小さいので、直すのはバックログ扱い。検査は注意として表示し、起動前検査では表示しない。画素の比較は、Pillowの版による丸めの差で止まらないよう、差が2を超える画素だけを数える。
 
 ## 手動救出
 
