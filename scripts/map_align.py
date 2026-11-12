@@ -19,8 +19,10 @@ Optional --old-pcd/--new-pcd refine T with point-to-plane ICP (open3d) and
 report the fitness, as an independent check of the trajectory fit.
 
 Outputs (in --out): T_new_old.txt (4x4), se2.json (x, y, yaw for 2D grids),
-align.json (statistics), waypoints_transformed.yaml if --waypoints is given,
-and residual_per_pose.txt (2.6 MB for 21300 poses; gitignored, regenerable).
+align.json (statistics), waypoints_transformed.yaml if --waypoints is given.
+--write-residuals also writes residual_per_pose.txt (2.6 MB for 21300 poses).
+It is off by default because the summary in align.json is what the docs cite and
+the per-pose file is regenerable; .gitignore keeps it out of docs/maps/ anyway.
 Inputs are only read.
 """
 import argparse
@@ -66,7 +68,10 @@ def main():
     ap.add_argument('--waypoints', help='waypoints.yaml of the old map')
     ap.add_argument('--max-dt', type=float, default=0.02,
                     help='max stamp difference for a pose pair [s]')
-    ap.add_argument('--min-pairs', type=int, default=100)
+    ap.add_argument('--min-pairs', type=int, default=100,
+                    help='abort if fewer pose pairs match within --max-dt')
+    ap.add_argument('--write-residuals', action='store_true',
+                    help='also write residual_per_pose.txt (t, old xyz, residual_xy)')
     ap.add_argument('--out', required=True, type=Path)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
@@ -115,8 +120,9 @@ def main():
     np.savetxt(a.out / 'T_new_old.txt', T)
     (a.out / 'se2.json').write_text(json.dumps(
         {'x': float(T[0, 3]), 'y': float(T[1, 3]), 'yaw_rad': math.radians(yaw)}, indent=2))
-    np.savetxt(a.out / 'residual_per_pose.txt',
-               np.c_[old[ok, 0], P, res_xy], header='t old_x old_y old_z residual_xy_m')
+    if a.write_residuals:
+        np.savetxt(a.out / 'residual_per_pose.txt',
+                   np.c_[old[ok, 0], P, res_xy], header='t old_x old_y old_z residual_xy_m')
 
     if a.waypoints:
         wp = yaml.safe_load(Path(a.waypoints).read_text())

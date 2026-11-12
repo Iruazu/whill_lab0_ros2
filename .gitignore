@@ -195,3 +195,7 @@ scratchpad/*.jpg
 scratchpad/*.jpeg
 scratchpad/*.pdf
 scratchpad/*.svg
+
+# map_align.py --write-residuals の局所差（姿勢ごと、2.6 MB）。既定では書かない。
+# 要約は align.json にあり、再生成できるので管理しない。
+docs/maps/**/residual_per_pose.txt
