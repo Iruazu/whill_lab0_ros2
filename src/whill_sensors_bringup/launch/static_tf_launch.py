@@ -126,33 +126,15 @@ def generate_launch_description():
                    -0.035342, 0.156983, -0.005527,
                    'base_link', 'velodyne'),
 
-        # base_link -> camera_link
-        # RealSense D435 は LiDAR にリジッドにサポートフレームで共締めされて
-        # いる。本 Issue (M4R-2) は M4R-3 EKF 配線に必要な「ゼロでない概算」
-        # を入れる段階に留め、本格的な extrinsic 再キャリブは M6-R で行う
-        # (旧 M5-R で予定だった target-based キャリブは M6-R に繰り越し)。
-        #
-        # 旧値の経緯 (M4R-2 / #61、2026-10-28 に下記の実測で置き換え):
-        # 簡易測定: LiDAR よりわずかに前方 (D435 は前向き)、y/z は LiDAR と
-        # 同等。Issue #61 (IMU 実測) で IMU と LiDAR が共締めユニットごと
-        # (+0.18, -0.03, -0.03) m スライドしたため、camera_link も同じ
-        # 相対位置を維持するためスライド: (0.36, 0.412, 0.82) ->
-        # (0.54, 0.382, 0.79)。姿勢は LiDAR と同方位 (RPY=0) で簡易化。
-        #
-        # 2026-10-28 実測で更新 (#146、avoidance-baseline T1):
-        #   - 取付: VLP-16 の真下に 3D プリントホルダで共締め、水平・前向き。
-        #   - x: 後輪車軸→LiDAR 回転軸 0.42 m (巻尺) + カメラ前面までベース
-        #     プレート奥行きの半分 ~0.05 m - 前面→camera_link ~0.004 m
-        #     (realsense2_description _d435.urdf.xacro) = 0.466 → 0.47。
-        #   - y: 車体中心→LiDAR 軸 0.36 m (巻尺) + camera_link (左 IR 原点)
-        #     は筐体中心より +0.0175 m (同 URDF の d435_cam_depth_py) = 0.378。
-        #     realsense2_camera は camera_link を深度 (左 IR) の原点として
-        #     depth/color frame を出すため、筐体中心ではなくこの点を置く。
-        #   - z: レンズ中心 0.73 m (巻尺)。静止物 bag の深度点群で物体最大高の
-        #     誤差 +0.3〜+0.8 cm を確認 (旧値 0.79 は常に +6 cm 高く出た)。
-        # 回転は水平の申告どおり 0。床面フィットで ~1° 上向きの疑いがあり、
-        # 屋外の静止確認 (#149) で再評価する。値の正本は
-        # docs/calibration-ledger.md。
+        # base_link -> camera_link (2026-10-28 実測、#146)
+        # 値の正本: docs/calibration-ledger.md の camera_link 節 (#151 後は §3)。
+        # D435 は VLP-16 の真下に 3D プリントホルダで共締め、水平・前向き。
+        # x, y は LiDAR の巻尺値 (0.42, 0.36) にホルダとデータシートの寸法を
+        # 足したもので、LiDAR の x, y が変われば一緒に動く。y の +17.5 mm は、
+        # realsense2_camera が camera_link を筐体中心ではなく左 IR (深度) の
+        # 原点に置くため。z はレンズ中心の巻尺。回転は水平の申告どおり 0
+        # (床面フィットで ~1° 上向きの疑いあり、#149 で再評価)。
+        # 導出・誤差・旧値 (0.54, 0.382, 0.79) は台帳。
         _static_tf('static_tf_camera',
                    0.47, 0.378, 0.73, 0.0, 0.0, 0.0,
                    'base_link', 'camera_link'),
