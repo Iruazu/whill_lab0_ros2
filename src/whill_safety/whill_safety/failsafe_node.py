@@ -30,9 +30,10 @@ Layers (per ADR-0007 §Demo-scope reduction):
 
 Optional (parameter layer_d_rescue_enabled, default false, Issue #161,
 ADR-0013 proposed): while Layer D is the ONLY active layer, a fresh
-non-forward /cmd_vel_teleop command (reverse / rotate within limits)
-suppresses the zero so the operator can back away from what blocks the
-chair. Forward commands, stale commands and every other layer still stop.
+/cmd_vel_teleop command with no forward component (reverse / rotate within
+limits) is RELAYED by this node on /cmd_vel_safety instead of the zero.
+The safety slot (priority 100) never goes silent, so neither Nav2 nor a
+forward teleop command can reach /cmd_vel while the stop holds.
 
 Deliberately omitted (post-demo backlog): jump detection (3-frame /pcl_pose
 delta), SAFE_HOLD release hysteresis, G4 hardware 3-test acceptance. The
@@ -96,54 +97,25 @@ FORWARD_CLEAR_HYSTERESIS_S = 0.5
 # turns that failure mode from silent to loud.
 STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0
 LAYER_A_HOLD_S = 1.0
+PUBLISH_HZ = 20.0
 # Issue #161 / ADR-0013 (proposed) — teleop rescue while Layer D stops.
 # Default off: changing the stop behaviour needs the user's approval.
 RESCUE_LAYER = 'D:forward_blocked'
-# twist_mux drops the teleop slot after this long (config/twist_mux.yaml;
-# test_failsafe_rescue.py pins the two together). The rescue window must
-# close BEFORE that, so when teleop stops the safety zero comes back while
-# teleop still outranks navigation and Nav2 never gets a turn.
+# twist_mux's teleop timeout (config/twist_mux.yaml; test_failsafe_rescue.py
+# pins the two together). A relayed command may outlive the operator's last
+# teleop message by up to rescue_cmd_timeout_s + one tick; that must stay
+# shorter than what twist_mux itself would honour for teleop.
 TWIST_MUX_TELEOP_TIMEOUT_S = 0.5
-# 0.3 s: the Web UI streams at 10 Hz, so two lost commands are tolerated,
-# and 0.2 s of margin remains before the mux timeout (> one 50 ms tick).
+# Head-room on top of timeout + tick for DDS / executor jitter.
+RESCUE_TIMING_MARGIN_S = 0.1
+# 0.3 s: the Web UI streams at 10 Hz, so two lost commands are tolerated.
 RESCUE_CMD_TIMEOUT_S = 0.3
 # Ceilings for a command to count as rescue. Commands outside are refused
-# (stop continues), not clamped: failsafe cannot rewrite what twist_mux
-# forwards. 0.2 m/s = the Web UI reverse speed (velocity_smoother limits
-# reverse further to 0.1); 0.6 rad/s = dispatch_node's TELEOP_WZ_MAX.
+# (zero continues), not clamped. 0.2 m/s = the Web UI reverse speed
+# (velocity_smoother limits reverse further to 0.1); 0.6 rad/s =
+# dispatch_node's TELEOP_WZ_MAX.
 RESCUE_MAX_REVERSE_MPS = 0.2
 RESCUE_MAX_WZ = 0.6
-PUBLISH_HZ = 20.0
-
-
-def rescue_command_ok(cmd, max_reverse_mps, max_wz):
-    """True when a teleop Twist cannot move the chair forward.
-
-    Reverse (-max_reverse_mps <= x <= 0) and rotation (|z| <= max_wz) only;
-    every other component must be exactly 0 and every value finite, so a
-    malformed or unexpected command fails closed.
-    """
-    lin, ang = cmd.linear, cmd.angular
-    vals = (lin.x, lin.y, lin.z, ang.x, ang.y, ang.z)
-    if not all(math.isfinite(v) for v in vals):
-        return False
-    return (-max_reverse_mps <= lin.x <= 0.0
-            and abs(ang.z) <= max_wz
-            and lin.y == 0.0 and lin.z == 0.0
-            and ang.x == 0.0 and ang.y == 0.0)
-
-
-def rescue_passes(active, cmd_ok, cmd_age_s, timeout_s, locked):
-    """True when failsafe should withhold its zero for a rescue command.
-
-    Only Layer D on its own may be bypassed: A (reinit), B (localization)
-    and C (perception) stops keep blocking teleop as before.
-    """
-    return (tuple(active) == (RESCUE_LAYER,)
-            and not locked
-            and cmd_ok
-            and cmd_age_s is not None
-            and cmd_age_s <= timeout_s)
 
 
 def _to_float(s):
@@ -164,40 +136,53 @@ def _to_bool(s):
     return None
 
 
+def rescue_command_ok(cmd, max_reverse_mps, max_wz):
+    """True when a teleop Twist cannot move the chair forward.
+
+    Reverse (-max_reverse_mps <= x <= 0) and rotation (|z| <= max_wz) only;
+    every other component must be exactly 0 and every value finite, so a
+    malformed or unexpected command fails closed.
+    """
+    lin, ang = cmd.linear, cmd.angular
+    vals = (lin.x, lin.y, lin.z, ang.x, ang.y, ang.z)
+    if not all(math.isfinite(v) for v in vals):
+        return False
+    return (-max_reverse_mps <= lin.x <= 0.0
+            and abs(ang.z) <= max_wz
+            and lin.y == 0.0 and lin.z == 0.0
+            and ang.x == 0.0 and ang.y == 0.0)
+
+
+def rescue_cmd_valid(cmd_ok, cmd_age_s, timeout_s):
+    """The latest teleop command is fresh and rescue-shaped."""
+    return cmd_ok and cmd_age_s is not None and cmd_age_s <= timeout_s
+
+
+def rescue_relay_allowed(active, cmd_ok, cmd_age_s, timeout_s):
+    """True when failsafe should relay the teleop command instead of zero.
+
+    Only Layer D on its own: A (reinit), B (localization), C (perception)
+    and any later-added layer (e.g. #159's *_never_arrived) keep the zero.
+    """
+    return (tuple(active) == (RESCUE_LAYER,)
+            and rescue_cmd_valid(cmd_ok, cmd_age_s, timeout_s))
+
+
+def check_rescue_timing(timeout_s, publish_hz):
+    """Raise unless the relay cannot outlive twist_mux's teleop timeout."""
+    if not timeout_s > 0.0 or not publish_hz > 0.0 or not (
+            timeout_s + 1.0 / publish_hz + RESCUE_TIMING_MARGIN_S
+            < TWIST_MUX_TELEOP_TIMEOUT_S):
+        raise ValueError(
+            f'rescue_cmd_timeout_s={timeout_s!r} + 1/publish_hz '
+            f'({publish_hz!r} Hz) + {RESCUE_TIMING_MARGIN_S}s margin must '
+            f'be < the twist_mux teleop timeout {TWIST_MUX_TELEOP_TIMEOUT_S}s')
+
+
 class FailsafeNode(Node):
 
     def __init__(self):
         super().__init__('failsafe_node')
-
-        # Issue #161. Declared even when disabled so `ros2 param get` shows
-        # the state; the subscriptions below exist only when enabled, so the
-        # default node graph is unchanged.
-        self._rescue_enabled = bool(self.declare_parameter(
-            'layer_d_rescue_enabled', False).value)
-        self._rescue_timeout_s = float(self.declare_parameter(
-            'rescue_cmd_timeout_s', RESCUE_CMD_TIMEOUT_S).value)
-        self._rescue_max_reverse = float(self.declare_parameter(
-            'rescue_max_reverse_mps', RESCUE_MAX_REVERSE_MPS).value)
-        self._rescue_max_wz = float(self.declare_parameter(
-            'rescue_max_wz', RESCUE_MAX_WZ).value)
-        # Refuse values that would silently widen the bypass: a timeout at
-        # or past twist_mux's opens a window for Nav2; a negative or NaN
-        # limit makes the range test meaningless.
-        if not 0.0 < self._rescue_timeout_s < TWIST_MUX_TELEOP_TIMEOUT_S:
-            raise ValueError(
-                f'rescue_cmd_timeout_s={self._rescue_timeout_s!r} must be '
-                f'> 0 and < the twist_mux teleop timeout '
-                f'{TWIST_MUX_TELEOP_TIMEOUT_S}s')
-        for name, v in (('rescue_max_reverse_mps', self._rescue_max_reverse),
-                        ('rescue_max_wz', self._rescue_max_wz)):
-            if not math.isfinite(v) or v < 0.0:
-                raise ValueError(f'{name}={v!r} must be a finite value >= 0')
-        self._rescue_cmd_ok = False
-        self._rescue_cmd_time = None
-        self._rescue_passing = False
-        # Set when a forward command shows up on the mux output while the
-        # rescue is passing; cleared only when Layer D releases.
-        self._rescue_locked = False
 
         self._last_reinit_time = None
         self._fitness_bad_since = None
@@ -245,17 +230,15 @@ class FailsafeNode(Node):
             LaserScan, '/scan', self._on_scan, qos_profile_sensor_data)
 
         self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
-        if self._rescue_enabled:
-            # Same depth as twist_mux's own subscription; teleop is a
-            # 10 Hz stream of small Twists.
-            self.create_subscription(
-                Twist, '/cmd_vel_teleop', self._on_teleop, 10)
-            # twist_mux output. The only way to notice that the mux and
-            # failsafe disagree about the teleop stream (mux let Nav2
-            # through while failsafe withholds its zero).
-            self.create_subscription(Twist, '/cmd_vel', self._on_cmd_vel, 10)
-        self.create_timer(1.0 / PUBLISH_HZ, self._tick)
+        # Kept as an attribute so the rescue timing check uses the real rate
+        # (C3 turns it into a parameter; substitute there).
+        self._publish_hz = PUBLISH_HZ
+        self._init_rescue()
+        self.create_timer(1.0 / self._publish_hz, self._tick)
 
+        # Optional features append one note each; kept as a list so later
+        # options (#159 startup_grace_sec) merge as one more append.
+        ready_notes = [self._rescue_note()]
         self.get_logger().info(
             f'failsafe_node ready: fitness > {FITNESS_MAX} for '
             f'{FITNESS_WINDOW_S}s | pcl_pose silent > {PCL_POSE_TIMEOUT_S}s | '
@@ -264,11 +247,99 @@ class FailsafeNode(Node):
             f'±{math.degrees(FORWARD_SECTOR_HALF_ANGLE_RAD):.0f}° @ '
             f'{FORWARD_SECTOR_MIN_M}-{FORWARD_SECTOR_MAX_M} m, '
             f'hysteresis {FORWARD_CLEAR_HYSTERESIS_S}s | '
-            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz | '
-            + (f'Layer D rescue ON (reverse <= {self._rescue_max_reverse} '
-               f'm/s, |wz| <= {self._rescue_max_wz} rad/s, teleop fresh '
-               f'<= {self._rescue_timeout_s}s)'
-               if self._rescue_enabled else 'Layer D rescue off'))
+            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz'
+            + ''.join(f' | {n}' for n in ready_notes))
+
+    def _init_rescue(self):
+        # Issue #161. Declared even when disabled so `ros2 param get` shows
+        # the state; the subscription exists only when enabled, so the
+        # default node graph is unchanged.
+        self._rescue_enabled = bool(self.declare_parameter(
+            'layer_d_rescue_enabled', False).value)
+        self._rescue_timeout_s = float(self.declare_parameter(
+            'rescue_cmd_timeout_s', RESCUE_CMD_TIMEOUT_S).value)
+        self._rescue_max_reverse = float(self.declare_parameter(
+            'rescue_max_reverse_mps', RESCUE_MAX_REVERSE_MPS).value)
+        self._rescue_max_wz = float(self.declare_parameter(
+            'rescue_max_wz', RESCUE_MAX_WZ).value)
+        # Refuse values that would silently widen the bypass.
+        check_rescue_timing(self._rescue_timeout_s, self._publish_hz)
+        for name, v in (('rescue_max_reverse_mps', self._rescue_max_reverse),
+                        ('rescue_max_wz', self._rescue_max_wz)):
+            if not math.isfinite(v) or v < 0.0:
+                raise ValueError(f'{name}={v!r} must be a finite value >= 0')
+        self._rescue_cmd = Twist()
+        self._rescue_cmd_ok = False
+        self._rescue_cmd_time = None
+        self._relaying = False
+        if self._rescue_enabled:
+            # Same depth as twist_mux's own subscription.
+            self.create_subscription(
+                Twist, '/cmd_vel_teleop', self._on_teleop, 10)
+
+    def _rescue_note(self):
+        if not self._rescue_enabled:
+            return 'Layer D rescue off'
+        return (f'Layer D rescue relay ON (reverse <= '
+                f'{self._rescue_max_reverse} m/s, |wz| <= '
+                f'{self._rescue_max_wz} rad/s, teleop fresh <= '
+                f'{self._rescue_timeout_s}s)')
+
+    def _on_teleop(self, msg):
+        self._rescue_cmd = msg
+        self._rescue_cmd_time = self._now_s()
+        self._rescue_cmd_ok = rescue_command_ok(
+            msg, self._rescue_max_reverse, self._rescue_max_wz)
+        # A non-rescue command (e.g. forward) while relaying: zero at once
+        # instead of relaying the previous reverse until the next tick.
+        # Forward teleop itself cannot reach /cmd_vel either way, because
+        # the safety slot stays live.
+        if self._relaying and not self._rescue_cmd_ok:
+            self._end_relay('teleop command not reverse/rotate')
+
+    def _rescue_cmd_age(self, now):
+        return None if self._rescue_cmd_time is None \
+            else now - self._rescue_cmd_time
+
+    def _end_relay(self, why):
+        self._relaying = False
+        self.get_logger().warn(f'failsafe RESCUE ended — {why}')
+        self._pub.publish(Twist())
+
+    def _rescue_output(self, active, now):
+        """Twist to publish on /cmd_vel_safety this tick, or None (silent).
+
+        Rescue disabled: zero while any layer is active, else silent, i.e.
+        exactly the pre-#161 behaviour.
+        """
+        if not self._rescue_enabled:
+            return Twist() if active else None
+        age = self._rescue_cmd_age(now)
+        if active:
+            if rescue_relay_allowed(active, self._rescue_cmd_ok, age,
+                                    self._rescue_timeout_s):
+                if not self._relaying:
+                    self.get_logger().warn(
+                        'failsafe RESCUE relay — Layer D only, teleop '
+                        'reverse/rotate relayed on /cmd_vel_safety')
+                self._relaying = True
+                return self._rescue_cmd
+            if self._relaying:
+                self._relaying = False
+                self.get_logger().warn(
+                    f'failsafe RESCUE ended — {list(active)}')
+            return Twist()
+        if self._relaying:
+            # Layer D cleared mid-relay. Keep relaying until the teleop goes
+            # stale (or stops being rescue-shaped), then send one zero: going
+            # silent at once would let the last relayed motion hold in
+            # twist_mux's safety slot for its 0.5 s timeout and drop the
+            # operator's release-zero (it arrives on the outranked teleop).
+            if rescue_cmd_valid(self._rescue_cmd_ok, age,
+                                self._rescue_timeout_s):
+                return self._rescue_cmd
+            self._end_relay('teleop stale after Layer D cleared')
+        return None
 
     def _now_s(self):
         return self.get_clock().now().nanoseconds * 1e-9
@@ -339,39 +410,6 @@ class FailsafeNode(Node):
                     return
             angle += msg.angle_increment
 
-    def _on_teleop(self, msg):
-        self._rescue_cmd_time = self._now_s()
-        self._rescue_cmd_ok = rescue_command_ok(
-            msg, self._rescue_max_reverse, self._rescue_max_wz)
-        # A forward command while stopped: answer at once instead of on the
-        # next tick, so twist_mux sees the zero as early as possible. The
-        # mux may still forward this one command first (ADR-0013 結果).
-        if self._rescue_passing and not self._rescue_cmd_ok:
-            self._rescue_passing = False
-            self.get_logger().warn(
-                'failsafe RESCUE BLOCKED — teleop command not reverse/rotate')
-            self._pub.publish(Twist())
-
-    def _on_cmd_vel(self, msg):
-        if self._rescue_passing and msg.linear.x > 0.0:
-            self._rescue_passing = False
-            self._rescue_locked = True
-            self.get_logger().error(
-                'failsafe RESCUE LOCKED — forward command on /cmd_vel while '
-                'the Layer D rescue was passing (twist_mux and failsafe '
-                'disagree about teleop). Stop resumes until Layer D clears.')
-            self._pub.publish(Twist())
-
-    def _rescue_now(self, active, now):
-        if not self._rescue_enabled:
-            return False
-        if RESCUE_LAYER not in active:
-            self._rescue_locked = False
-        age = None if self._rescue_cmd_time is None \
-            else now - self._rescue_cmd_time
-        return rescue_passes(active, self._rescue_cmd_ok, age,
-                             self._rescue_timeout_s, self._rescue_locked)
-
     def _active_layers(self):
         now = self._now_s()
         out = []
@@ -440,17 +478,9 @@ class FailsafeNode(Node):
             else:
                 self.get_logger().info('failsafe RELEASED')
             self._active_prev = active
-        passing = self._rescue_now(active, now)
-        if passing != self._rescue_passing:
-            if passing:
-                self.get_logger().warn(
-                    'failsafe RESCUE PASS — Layer D only, teleop reverse/'
-                    'rotate; zero withheld')
-            elif active:
-                self.get_logger().info('failsafe RESCUE ended — stop resumes')
-            self._rescue_passing = passing
-        if active and not passing:
-            self._pub.publish(Twist())
+        out = self._rescue_output(active, now)
+        if out is not None:
+            self._pub.publish(out)
 
 
 def _raise_keyboard_interrupt(*_):

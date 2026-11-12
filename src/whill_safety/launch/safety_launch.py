@@ -34,9 +34,10 @@ def generate_launch_description():
             default_value='false',
             description='failsafe_node layer_d_rescue_enabled (Issue #161, '
                         'ADR-0013 proposed). true = while Layer D is the '
-                        'only active layer, a fresh reverse/rotate '
-                        '/cmd_vel_teleop command is let through. Default '
-                        'off until the user adopts ADR-0013.'),
+                        'only active layer, failsafe relays a fresh '
+                        'reverse/rotate /cmd_vel_teleop command on '
+                        '/cmd_vel_safety. Default off until the user '
+                        'adopts ADR-0013.'),
 
         Node(
             package='whill_safety',

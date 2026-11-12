@@ -260,6 +260,13 @@ def generate_launch_description():
                         'scripts/m6r_smoke_test.sh is the usual bag-'
                         'replay entry point).'),
         DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
+                        'proposed). true = while only Layer D stops the '
+                        'chair, failsafe relays teleop reverse/rotate on '
+                        '/cmd_vel_safety.'),
+        DeclareLaunchArgument(
             'realsense',
             default_value='false',
             description='Forward to sensors_launch to start the D435. Off '
@@ -267,12 +274,6 @@ def generate_launch_description():
                         'runtime stack, and past USB 2.1 enumeration issues '
                         'make an accidental start expensive. Flip true for '
                         'camera-specific tests.'),
-        DeclareLaunchArgument(
-            'failsafe_layer_d_rescue',
-            default_value='false',
-            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
-                        'proposed). true = teleop reverse/rotate passes '
-                        'while only Layer D stops the chair.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
