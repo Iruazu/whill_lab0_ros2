@@ -146,17 +146,16 @@ GLIM_TLI_FROM_AUDIT=1 ./scripts/m5r3_run_glim.sh \
 ### base_link → velodyne
 | 成分 | 値 | 根拠 |
 |------|-----|------|
-| x    | +0.484136 m | noetic 由来 (imu 位置 + noetic extrinsic_T) |
-| y    | +0.381548 m | 同上 |
-| z    | +0.793704 m | 同上 (地面から 79.4 cm、user 実測 80 cm と一致) |
-| roll | -0.035342 rad (-2.03°)  | 未更新 (noetic 由来) |
-| pitch| +0.156983 rad (+9.00°)  | 未更新 (noetic 由来) |
-| yaw  | -0.005527 rad (-0.32°)  | 未更新 (noetic 由来) |
+| x    | +0.42 m | 巻尺 2 回 (旧 URDF と一致)、2026-10-28 |
+| y    | +0.36 m | 同上 |
+| z    | +0.777 m | Hi-Res 校正表で投影した点群の床面フィット、2026-10-28 |
+| roll | +0.24° | 同上 |
+| pitch| +0.97° | 同上 |
+| yaw  | -0.317° | 床面から観測不可。noetic extrinsic_R 由来を維持 |
 
-- 未検証事項: LiDAR の実測姿勢は **ほぼ水平** (`docs/imu-coordinate-audit.md`
-  §7.1 の ring 別解析)。現行 TF の pitch = +9° は誤り。ただし GLIM は
-  ROS TF を見ないので影響は Nav2 / rviz のみ。M6-R 開始前に更新するべし
-- 影響範囲: Nav2 costmap、rviz 表示。GLIM/GRIL-Calib には影響なし
+- 校正ファイル: `VLP16_hires_db.yaml` (実機は Puck Hi-Res ±10°。#144)
+- 状態: 実測済み。屋外静止確認 (#149) は未了。地図の作り直し (#153) と同時マージ
+- 旧値 (noetic 由来): (0.484136, 0.381548, 0.793704) / RPY (-0.035342, +0.156983, -0.005527) rad。pitch +9° は IMU との相対姿勢を対 base_link に流用した誤り
 
 ### GLIM の `T_lidar_imu` (config_sensors.json)
 | Mode | 並進 [m] | 回転 (qx, qy, qz, qw) | 由来 |

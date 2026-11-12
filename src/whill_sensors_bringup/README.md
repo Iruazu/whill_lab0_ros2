@@ -4,7 +4,7 @@ VLP-16、RT USB 9軸IMU、任意のRealSense D435と静的TFを起動する。
 
 ## 起動構成
 
-`sensors_launch.py` はVelodyne、`imu_launch.py`、静的TFを含む。`realsense:=true` の場合だけカメラを追加する。Velodyne側のscanは `/scan_raw` にremapされ、Nav2が使用する `/scan` と区別する。
+`sensors_launch.py` はVelodyneの3ノード（driver / transform / laserscan）、`imu_launch.py`、静的TFを含む。上流の `velodyne-all-nodes-VLP16-launch.py` は校正ファイルを `VLP16db.yaml` に固定しているため include せず、同じ構成を直接起動する。校正ファイルは `velodyne_calibration` 引数で選び、既定は実機（Puck Hi-Res）に合う `VLP16_hires_db.yaml`（#144）。`realsense:=true` の場合だけカメラを追加する。Velodyne側のscanは `/scan_raw` にremapされ、Nav2が使用する `/scan` と区別する。
 
 IMUはlifecycleのconfigure / activateをlaunchで行う。`imu_sign_corrector` は `/imu/data_raw` の加速度3軸を反転し `/imu/data_rep145` に再配信する。EKFは補正後を使う。
 
@@ -23,7 +23,7 @@ VLP-16は有線UDP接続。DDS用XMLのNIC名と実際の有線設定を別々�
 | 子frame | x, y, z | roll, pitch, yaw |
 | --- | --- | --- |
 | imu_link | 0.38, -0.03, 0.47 | -0.0713, -0.1415, 0 |
-| velodyne | 0.484136, 0.381548, 0.793704 | -0.035342, 0.156983, -0.005527 |
+| velodyne | 0.42, 0.36, 0.777 | 0.24°, 0.97°, -0.317°（コードで rad に変換） |
 | camera_link | 0.54, 0.382, 0.79 | 0, 0, 0 |
 
-親はすべて `base_link`。カメラは概算、LiDARは旧校正由来の値を含む。根拠と履歴は [外部パラメータ記録](../../docs/m3-extrinsics-from-noetic.md) と [校正台帳](../../docs/calibration-ledger.md) を参照。
+親はすべて `base_link`。カメラは概算。LiDARは2026-10-28の実測（屋外静止確認 #149 は未了）で、旧地図とは合わないため地図の作り直し（#153）と一緒に使う。値・測定方法・状態の正本は [校正台帳](../../docs/calibration-ledger.md)。noetic由来の旧値の導出は [外部パラメータ記録](../../docs/m3-extrinsics-from-noetic.md)。
