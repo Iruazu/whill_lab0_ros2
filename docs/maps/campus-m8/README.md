@@ -6,6 +6,14 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直す campus 地�
 
 この地図は #145 の新しい LiDAR の TF と Hi-Res の校正（#144）を前提にする。今の launch（VLP16db.yaml、旧 TF）のまま使うと NDT の当てはまりが旧地図より悪い（4 節）。
 
+**禁止：#144 と #145 が main にマージされるまで、この地図で自律走行しない**（`site:=campus-m8`、`map_variant:=candidate` を含む）。今の launch の点群と TF では、この地図に対する NDT の当てはまりが旧地図の 15 倍悪い（4 節）。#156 の屋外受入も、#144・#145 を入れた構成で行う。
+
+### TF・校正が変わったときに作り直しが要るか
+
+- この地図は、GLIM に渡した T_lidar_imu（audit 値、2 節）と、Hi-Res の校正で補正した点群だけから作った。GLIM・DUFOMap は velodyne フレームの点群と IMU で動き、**base_link→velodyne の TF は使っていない**。
+- したがって、#151（校正台帳）や #149（屋外の静止確認）で base_link→velodyne の値が #145 から変わっても、**地図の作り直しは要らない**。ただし NDT の当てはまりは LiDAR の TF に依存するので、**4 節の NDT の再生比較は新しい TF でやり直す**（`--lidar-tf` を変えるだけ）。
+- 作り直しが要るのは、GLIM に渡す T_lidar_imu を変えるとき（2 節の実行 C のように、地図の傾きが変わる）と、点群の校正（VLP16_hires_db.yaml）を変えるとき。
+
 ## 状態
 
 | 段階 | Issue | 状態 |
@@ -17,7 +25,7 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直す campus 地�
 
 | ファイル | 中身 | Git |
 | --- | --- | --- |
-| `static.pcd` | DUFOMap 後の点群（7,614,632 点、91 MB） | 管理外（sha256 は `metadata.yaml`） |
+| `static.pcd` | DUFOMap 後の点群（7,614,632 点、91 MB） | 管理外。正本と複製の手順は 2 節の「static.pcd の置き場」 |
 | `traj_lidar.txt` | GLIM の軌跡（TUM、21300 姿勢） | 管理 |
 | `glim_config/` | 実行した GLIM の設定（実ファイル） | 管理 |
 | `metadata.yaml` | 出典と設定 | 管理 |
@@ -60,15 +68,22 @@ python3 scripts/velodyne_reproject_bag.py $B/bag $B/bag-hires \
    Issue の「0.00 mm で一致」は、小数第2位までなら 0.02 mm であり、厳密な 0 ではない。差は float32 の丸め（130 m で 1 回 0.008 mm、入力・補正・ドライバの出力でそれぞれ丸める）で、判定の許容は 0.05 mm にした。
 
    ```bash
-   scripts/velodyne_reproject_verify.sh ~/bags/sensor_check_20261028/chk_empty_0m_160726 <新しい作業ディレクトリ>
+   cd ~/whill_lab0_ros2   # このブランチの checkout
+   scripts/velodyne_reproject_verify.sh ~/bags/sensor_check_20261028/chk_empty_0m_160726 ~/reproject_verify_$(date +%Y%m%d_%H%M%S)
    ```
+
+   パケットを再生するので、呼び出し元の `ROS_DOMAIN_ID` は引き継がない（runbook の端末は 0 で、動いているローカライザに届く）。domain は `VERIFY_DOMAIN_ID`（既定 152）、localhost のみで、その domain にノードがあれば何も起動せずに止まる。PASS には、基準の点群の 99% 以上に同じ stamp の補正後の点群があることも要る。
 
 2. **全行程の出力と、#147 の区間の一致**。#147 で別に作った先頭 300 秒（`~/bags/imu_investigation_20261030/seg_0_300_hires`）と、今回の全行程の先頭 2957 個は、6184 万点すべてで差 0.000 mm（同じ式なので当然だが、全行程を通しても壊れていないことの確認）。
 
    ```bash
+   cd ~/whill_lab0_ros2   # このブランチの checkout
+   source /opt/ros/humble/setup.bash
    python3 scripts/velodyne_compare_clouds.py ~/bags/imu_investigation_20261030/seg_0_300_hires \
      ~/bags/m5r-bench-data/2026-07-10-campus-outer-final/bag-hires
    ```
+
+   メモリ：1つ目の引数（基準）は全部を float64 でメモリに持ち、2つ目は1個ずつ読む。300 秒の区間を基準にすると約 2 GB で済む。全行程の bag（約 4.5 億点）を基準にすると 14〜20 GB 要るので、小さい方を先に渡す。
 
 確かめていないこと：補正後の点群が実物の形に合うこと（真値が無い）。これは地図の品質（下の節）と屋外の静止確認（#149）で見る。
 
@@ -109,7 +124,29 @@ cp $B/glim-m8-hires-noise-local/config/*.json docs/maps/campus-m8/glim_config/
 
 - `glim_control.sh` は設定を `cp -rL` で実ファイルとして固定し、`glim_rosbag` を stdin なし（`</dev/null`）、localhost の専用 domain で動かす。全行程は 300 秒を超えるので `GLIM_TIMEOUT` を延ばした。
 - B は雑音の2行（`config_sensors.json:sensors.imu_acc_noise=0.05`、`imu_gyro_noise=0.02`）、C は `config_sensors.json:sensors.T_lidar_imu=[...]` を足しただけ。出力は同じディレクトリの `glim-m8-hires-noise-upstream/`、`glim-m8-hires-tli-recomputed/`。
-- `static.pcd` は Git 管理外。sha256 と点数は `metadata.yaml`。
+- 実行した版：GLIM の開始時の HEAD は 14208d0 で、`glim_control.sh` の `GLIM_TIMEOUT` の変更は未コミットだった（15a350b で記録）。詳細と glim / glim_ros の版、GPU ドライバは `metadata.yaml`。
+
+### static.pcd の置き場
+
+`static.pcd` は Git 管理外（`.gitignore` の `docs/maps/**/*.pcd`）。
+
+| 置き場 | 役割 |
+| --- | --- |
+| `~/bags/m5r-bench-data/2026-07-10-campus-outer-final/dufomap-m8-hires-noise-local/static.pcd` | **正本**。DUFOMap の出力そのもの。変えない・消さない |
+| この作業の worktree の `docs/maps/campus-m8/static.pcd` | 正本の複製（sha256 一致を確認済み）。worktree を消すと無くなる |
+
+- sha256 は `d244865866e3eacdea6e26851dd3ed61ba626029fdc6dd4f2dabfb6d720d03b5`、点数 7,614,632（`metadata.yaml`）。
+- **作り直しでは同じファイルにならない**。GLIM の GPU 実行は非決定的なので、同じ bag・同じ設定・同じコマンドで回しても軌跡と点群が少し変わり、sha256 は一致しない。品質の数値（2 節の表）も少し変わる。この地図を使うなら、作り直さずに正本を複製する。
+- main の checkout（launch が `docs/maps/<site>/` を読む場所）に置く手順。マージの後に実行する：
+
+  ```bash
+  cd ~/whill_lab0_ros2
+  cp ~/bags/m5r-bench-data/2026-07-10-campus-outer-final/dufomap-m8-hires-noise-local/static.pcd docs/maps/campus-m8/static.pcd
+  echo "d244865866e3eacdea6e26851dd3ed61ba626029fdc6dd4f2dabfb6d720d03b5  docs/maps/campus-m8/static.pcd" | sha256sum -c
+  ```
+
+  `docs/maps/campus-m8/static.pcd: OK` と出れば正しい。`FAILED` なら使わない。
+- **危険：正本は 1 か所にしかない**。worktree の複製も同じディスク（`~` と同じ NVMe）にあり、ディスクの故障や `~/bags` の整理で両方失われうる。作り直しても同じ地図にならないので、外付けの媒体か研究室の共有ストレージに、sha256 を添えて複製を置くことを勧める（この作業では置いていない。91 MB をリポジトリに入れることはしない）。
 
 ### 品質
 
@@ -184,7 +221,12 @@ scripts/map_align.py --old-traj docs/maps/campus/traj_lidar.txt --new-traj docs/
   | `candidate_review_overlay.png` | 候補の合成結果に色を重ねた確認用（青=roadway、黄=free、緑=直接の拡幅） | — |
   | `candidate_transfer.json` | 変換と各セル数の記録 | — |
 
-  旧 `final.pgm` の直接の塗りは、FREE を増やしただけ（FREE を減らした・障害物を足したセルは 0）。そのうち 4,357 セルは機械の障害物を FREE にしていた。合成し直した結果は、b36b204 時点の `final.pgm` と 1 セルも違わないことを確かめた。
+  旧 `final.pgm` の直接の塗りは、FREE を増やしただけ（FREE を減らした・障害物を足したセルは 0）。そのうち 4,357 セルは機械の障害物を FREE にしていた。合成し直した結果は、b36b204 時点の `final.pgm` と 1 セルも違わない（バイト単位で同じ）ことを確かめた。b36b204 以後、旧 v2 のマスク・`v2_layers.yaml`・合成スクリプトは変わっておらず、`final.pgm` だけが直接の塗りで変わった。確かめるコマンド（下の「再現」の旧マスクでの合成の後）：
+
+  ```bash
+  cd ~/whill_lab0_ros2   # このブランチの checkout
+  git show b36b204:docs/maps/campus/v2/final.pgm | cmp - /tmp/old/final_recomposed.pgm && echo "b36b204 と同一"
+  ```
 - `v2/candidate_final.pgm`、`occupancy_candidate.yaml`：候補のマスクで合成した地図。`nav_launch.py site:=campus-m8 map_variant:=candidate` で読める。`occupancy.yaml`（variant 無指定）は、確定するまで置かない。
 
 ### 候補の合成の結果
@@ -202,7 +244,7 @@ scripts/map_align.py --old-traj docs/maps/campus/traj_lidar.txt --new-traj docs/
 scripts/map_route_check.py docs/maps/campus-m8/occupancy_candidate.yaml docs/maps/campus-m8/waypoints.yaml
 ```
 
-これは「全体の経路が計画できる」の代わりの必要条件で、Nav2 の planner は動かしていない（コストの膨張、smoother、controller は見ていない）。
+つながらない（`all_connected: false`）と終了コード 1 で終わる。これは「全体の経路が計画できる」の代わりの必要条件で、Nav2 の planner は動かしていない（コストの膨張、smoother、controller は見ていない）。
 
 ### ユーザーが確かめること
 
@@ -214,7 +256,9 @@ scripts/map_route_check.py docs/maps/campus-m8/occupancy_candidate.yaml docs/map
 ### 再現
 
 ```bash
+cd ~/whill_lab0_ros2   # このブランチの checkout
 D=docs/maps/campus-m8; OV=docs/maps/campus/v2
+mkdir -p /tmp/old /tmp/new
 scripts/pcd_to_occupancy_v2.py --input-pcd $D/static.pcd --input-yaml docs/maps/campus/occupancy_cleaned.yaml \
   --traj $D/traj_lidar.txt --output-dir $D/v2 --cache-npz $D/.v2_cache.npz
 # 旧地図の直接の塗りを取り出すため、旧マスクで合成し直す
@@ -253,21 +297,55 @@ scripts/compose_occupancy.py --layers-yaml $D/v2/v2_layers.yaml \
 
 - 「局所差の目安」は、その点に最も近い旧軌跡の点で、剛体変換で吸収しきれなかった両地図の差（`align_from_campus/align.json`）。seimon は最寄りの軌跡から 7.2 m 離れているので目安の信頼性が低い。
 - **初期位置**：運用では発進点（kounoken、map の原点付近）で RViz の 2D Pose Estimate を打つ。新しい地図でも原点は発進点付近（ずれ 0.07 m、yaw −0.10°）で、手順は変わらない。`m6r_smoke_test.sh` の初期位置 (0, 0, 0) もそのまま使える。
-- **配車の Web 背景**：`src/whill_dispatch/web/map_meta.json` の origin・解像度は新しい格子と同じ（旧 v2 と同じ格子にしたため）。`map.png` は地図を確定した後に `scripts/m7_make_web_map.py` で作り直す。この PR では変えていない。
+- **配車の Web 背景**：`src/whill_dispatch/web/map_meta.json` の origin（[−128.25, −90.35]）と、格子との関係（0.05 m の格子を 8 分の 1 に縮めた 0.4 m、830×786）は、新しい格子にもそのまま当てはまる（旧 v2 と同じ格子にしたため）。解像度そのものは Web が 0.4 m、地図が 0.05 m で、同じではない。`map.png` は地図を確定した後に `scripts/m7_make_web_map.py` で作り直す。この PR では変えていない。
 - 地点の名前の変更（#170）はこの作業に含まない。
 
 ### NDT の再生
 
 07-24 の走行 bag（`~/bags/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26`。回帰チェックの基準 bag）の点群を #152 と同じ方法で補正し（`...-19_05_26-hires/`、8309 個）、デモと同じローカライザの設定で再生した。地図・TF・点群の組み合わせを変えて比べる。初期位置は bag に記録された最初の `/pcl_pose`（旧地図の座標）を T_new_old で写したもの。
 
+#### 07-24 の bag の補正（所要 6 分 29 秒、出力 5.3 GB）
+
 ```bash
-B=~/bags/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26
-ROS_DOMAIN_ID=153 ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
-scripts/regression/ndt_replay_compare.py --bag $B-hires --site campus-m8 --maps-root docs/maps \
-  --lidar-tf "0.42 0.36 0.777 0.24 0.97 -0.317" \
-  --map-transform docs/maps/campus-m8/align_from_campus/T_new_old.txt \
-  --start 73 --duration 240 --out <新しい出力先>
+cd ~/whill_lab0_ros2   # このブランチの checkout（worktree でもよい）
+source /opt/ros/humble/setup.bash
+source ~/whill_lab0_ros2/install/setup.bash
+P=$(ros2 pkg prefix velodyne_pointcloud)/share/velodyne_pointcloud/params
+D=~/bags/m7-bench-data/2026-07-24-live-campus
+python3 scripts/velodyne_reproject_bag.py $D/rosbag2_2026_07_24-19_05_26 $D/rosbag2_2026_07_24-19_05_26-hires \
+  --src-calib $P/VLP16db.yaml --dst-calib $P/VLP16_hires_db.yaml
 ```
+
+結果：点群 8309 個を補正、他のメッセージ 191113 個を複写、z の再計算の食い違いは最大 3.48 µm。元の bag は読むだけ。
+
+#### 再生の6本
+
+実際の実行は、下と同じ引数を渡す一時的なラッパーで行った。3本（`new_map_old_tf_orig`、`full_*` の2本）はラッパーの呼び出しの記録から、残る3本は各実行の `localizer.log` / `play.log`（開いた bag と static.pcd のパス、TF の出し方）から引数を戻した**再構成**。どれも今の `ndt_replay_compare.py`（引数は当時と同じ）で同じ条件になる。旧地図は main の checkout（`~/whill_lab0_ros2/docs/maps`）から、新しい地図はこのブランチの `docs/maps` から読んだ。「今の launch」の TF は、`~/whill_lab0_ros2/install` の `static_tf_launch.py`（このブランチに install が無いため main 側のビルド）。
+
+```bash
+cd ~/whill_lab0_ros2   # このブランチの checkout（worktree なら、そのディレクトリ）
+source /opt/ros/humble/setup.bash
+source ~/whill_lab0_ros2/install/setup.bash
+# 車載 PC の runbook の domain（0）と分ける。ndt_replay_compare.py は domain が空でなければ止まる。
+export ROS_DOMAIN_ID=153 ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+unset CYCLONEDDS_URI
+B=~/bags/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26
+T=docs/maps/campus-m8/align_from_campus/T_new_old.txt
+OLD_MAPS=~/whill_lab0_ros2/docs/maps   # 旧 campus（main の checkout）
+NEW_TF="0.42 0.36 0.777 0.24 0.97 -0.317"
+O=~/ndt_replay_$(date +%Y%m%d_%H%M%S); mkdir -p $O   # 出力先は毎回新しくする（既にあると止まる）
+# 240 秒（bag の 73〜313 秒）
+python3 scripts/regression/ndt_replay_compare.py --bag $B       --site campus    --maps-root $OLD_MAPS --start 73 --duration 240 --out $O/old_map_old_tf_orig
+python3 scripts/regression/ndt_replay_compare.py --bag $B-hires --site campus    --maps-root $OLD_MAPS --lidar-tf "$NEW_TF" --start 73 --duration 240 --out $O/old_map_new_tf_hires
+python3 scripts/regression/ndt_replay_compare.py --bag $B       --site campus-m8 --maps-root docs/maps --map-transform $T --start 73 --duration 240 --out $O/new_map_old_tf_orig
+python3 scripts/regression/ndt_replay_compare.py --bag $B-hires --site campus-m8 --maps-root docs/maps --lidar-tf "$NEW_TF" --map-transform $T --start 73 --duration 240 --out $O/new_map_new_tf_hires
+# 全区間（bag の 73〜814 秒）
+python3 scripts/regression/ndt_replay_compare.py --bag $B       --site campus    --maps-root $OLD_MAPS --start 73 --duration 741 --out $O/full_old_map_old_tf_orig
+python3 scripts/regression/ndt_replay_compare.py --bag $B-hires --site campus-m8 --maps-root docs/maps --lidar-tf "$NEW_TF" --map-transform $T --start 73 --duration 741 --out $O/full_new_map_new_tf_hires
+```
+
+- 1本あたり 240 秒の区間で約 5 分、全区間で約 13 分。6本は順に回す（同じ domain を使うので並べられない）。
+- `ndt_replay/*.json` は各実行の `result.json` の写し。bag・maps_root・版（`git`）とパスの書き方は、再生の後に手で直した（各 JSON の `provenance_note`）。数値は実行したときのまま。
 
 `--lidar-tf` は `replay_localizer_launch.py` の新しい引数で、base_link→velodyne だけをその値で出す（#145 の launch を変える前に比べるため。既定の空なら従来どおりブランチの `static_tf_launch.py`）。
 
@@ -292,7 +370,12 @@ scripts/regression/ndt_replay_compare.py --bag $B-hires --site campus-m8 --maps-
 読み取れること：
 
 - 新しい地図・#145 の TF・Hi-Res の点群の組み合わせが、fitness が最も小さい（旧の組み合わせに対して、240 秒で中央値 0.7 倍・p95 0.3 倍、全区間で中央値 0.5 倍・p95 0.3 倍）。閾値（6.0）を超えた回はなく、収束しなかった回もない。旧の組み合わせは同じ bag で閾値超えが 4〜6 回ある。各実行の結果は `ndt_replay/*.json`。
-- 地図・TF・点群のどれか一つだけを変えると悪くなる（旧地図に新しい点群で 4 倍、新しい地図に古い点群で 15 倍）。ロードマップの方針どおり、#144・#145・#153 は同じ PR でマージする必要がある。
+- 旧の組み合わせ（1行目）から変えた要素の数で見ると：
+  - **地図だけを変えた**（campus-m8・今の launch・元の点群）：fitness 中央値が 15 倍（0.0225 → 0.343）、p95 は 3.8 倍に悪化。閾値超えは 4 → 0 回、最大は 8.16 → 3.20 で、外れ値は減ったが全体の当てはまりは大きく悪い。
+  - **TF と点群の2つを変えた**（旧 campus・#145・Hi-Res）：中央値は約 4 倍（0.0225 → 0.0976）、p95 は 1.5 倍に悪化。一方で閾値超えは 4 → 0 回、最大は 8.16 → 0.71 になった。良し悪しは指標によって分かれる。
+  - TF だけ、点群だけを変えた組み合わせは回していない。
+- 地図だけを変えた行から、**#153 だけを先にマージすると当てはまりが大きく悪くなる**。#144・#145 だけを先に入れた場合（2行目）も、中央値と p95 は旧の組み合わせより悪い。3つをそろえた行だけが中央値・p95・最大・閾値超えのすべてで旧より良いので、ロードマップの方針どおり、#144・#145・#153 は一緒にマージする必要がある。
+- **各条件は1回ずつしか回しておらず、実行ごとのばらつきは評価していない**。同じ条件の 240 秒の結果（記録との差 xy の最大 1.081 m）が、その区間を含む全区間の結果（0.966 m）より大きいことから、実行ごとに結果が変わることは分かっている（決定的なら全区間の最大は区間の最大以上になる。原因は調べていない）。上の倍率は1回ずつの比較であり、小さい差（例えば p95 の 1.5 倍）は、ばらつきの範囲かもしれない。
 - 「記録との差」は旧地図での姿勢を新しい座標に写したものとの差で、地図の違いと TF の違い（LiDAR の位置が 6 cm 変わる）を含む。正しさの指標ではない。
 - fitness は TF を 10 cm ずらしても変わらなかった記録がある（[回帰チェック](../../regression-check.md)）。fitness が小さいことは地図と点群がよく重なることを示すが、位置が正しいことの証明ではない。
 
