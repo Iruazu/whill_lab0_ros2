@@ -218,6 +218,12 @@ class FailsafeNode(Node):
         self._pub = self.create_publisher(Twist, '/cmd_vel_safety', 10)
         self.create_timer(1.0 / PUBLISH_HZ, self._tick)
 
+        # Optional features append one note each; kept as a list so later
+        # options (#161 Layer D rescue) merge as one more append.
+        ready_notes = [
+            f'never-arrived inputs stop after {self._startup_grace_s}s'
+            if self._startup_grace_s > 0.0
+            else 'never-arrived inputs: warning only']
         self.get_logger().info(
             f'failsafe_node ready: fitness > {FITNESS_MAX} for '
             f'{FITNESS_WINDOW_S}s | pcl_pose silent > {PCL_POSE_TIMEOUT_S}s | '
@@ -226,10 +232,8 @@ class FailsafeNode(Node):
             f'±{math.degrees(FORWARD_SECTOR_HALF_ANGLE_RAD):.0f}° @ '
             f'{FORWARD_SECTOR_MIN_M}-{FORWARD_SECTOR_MAX_M} m, '
             f'hysteresis {FORWARD_CLEAR_HYSTERESIS_S}s | '
-            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz | '
-            + (f'never-arrived inputs stop after {self._startup_grace_s}s'
-               if self._startup_grace_s > 0.0
-               else 'never-arrived inputs: warning only'))
+            f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz'
+            + ''.join(f' | {n}' for n in ready_notes))
 
     def _now_s(self):
         return self.get_clock().now().nanoseconds * 1e-9
