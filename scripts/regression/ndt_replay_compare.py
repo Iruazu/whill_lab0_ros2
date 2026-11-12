@@ -29,6 +29,7 @@ import time
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
+REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 from replay_check import (FITNESS_KEY, Harness, bag_start_ns, pose_row,  # noqa: E402
                           spawn, spin_in_background, stop)
@@ -57,6 +58,28 @@ def recorded_poses(bag, start_s, duration_s):
         if lo <= t <= hi:
             msgs.append(deserialize_message(data, PoseWithCovarianceStamped))
     return msgs
+
+
+def shown_path(p):
+    # result.json is committed (docs/maps/<site>/ndt_replay/): paths inside the
+    # checkout are written repo-relative and others relative to ~, so the file
+    # does not carry one worktree's absolute path.
+    p = Path(p).expanduser().resolve()
+    for base, prefix in ((REPO, ''), (Path.home(), '~/')):
+        try:
+            return prefix + str(p.relative_to(base))
+        except ValueError:
+            pass
+    return str(p)
+
+
+def git_version():
+    # The replay harness and launch file are read from this checkout, so record
+    # which version ran; -dirty marks uncommitted changes in the checkout.
+    import subprocess
+    r = subprocess.run(['git', '-C', str(REPO), 'describe', '--always', '--dirty', '--abbrev=7'],
+                       capture_output=True, text=True)
+    return r.stdout.strip() or None
 
 
 def quat_to_R(q):
@@ -100,7 +123,8 @@ def main():
     ap.add_argument('--map-transform', type=Path,
                     help='4x4 T_new_old (text) applied to the recorded /pcl_pose')
     ap.add_argument('--start', type=float, default=73.0, help='seconds from bag start')
-    ap.add_argument('--duration', type=float, default=240.0)
+    ap.add_argument('--duration', type=float, default=240.0,
+                    help='seconds to replay; 0 = to the end of the bag')
     ap.add_argument('--out', required=True, type=Path)
     a = ap.parse_args()
     if a.out.exists():
@@ -197,8 +221,13 @@ def main():
                                  np.cos(got[near, 4] - ref[idx[near], 4])))
     res = {
         'site': a.site, 'lidar_tf': a.lidar_tf or 'branch static_tf_launch.py',
-        'map_transform': str(a.map_transform) if a.map_transform else None,
-        'window_s': [a.start, a.duration],
+        'bag': shown_path(a.bag),
+        'maps_root': shown_path(os.environ['WHILL_MAPS_ROOT']) if 'WHILL_MAPS_ROOT' in os.environ
+        else None,
+        'git': git_version(),
+        'map_transform': shown_path(a.map_transform) if a.map_transform else None,
+        # duration_s 0 = to the end of the bag.
+        'start_s': a.start, 'duration_s': a.duration,
         'poses': int(len(got)), 'recorded_poses': int(len(ref)),
         'max_gap_s': round(float(np.diff(got[:, 0]).max()), 3),
         'fitness_n': int(np.isfinite(fit).sum()),
