@@ -175,6 +175,8 @@ Web で目的地を選ぶか地図をタップして実行する。計画失敗�
 
 Web で配車を取り消し、車体の停止を確かめる。T3 → T2 → T1 の順に Ctrl-C。RViz と録画も止める（dispatch を止めても Nav2 の goal は取り消されない）。
 
+T3 の Ctrl-C で `rosapi_node` が `ExternalShutdownException` のトレースバックと `process has died [... exit code 1 ...]` を出す。上流 rosapi の終了処理の不具合で、プロセスは終わっており再起動も妨げない（#169）。これ以外のノードのトレースバックや、終了後に残るプロセスは異常として扱う。
+
 ```bash
 ss -ltnp | grep -E ':(8000|9090)\b'
 ```
