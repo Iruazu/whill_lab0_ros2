@@ -10,7 +10,7 @@
   - map_meta.json の出典（source_pgm）が、YAML の image と同じファイルか
   - origin が同じか。resolution が YAML の resolution × downscale_factor か
   - width / height と map.png の寸法が、元画像を factor で割った値か
-  - map.png の画素が、元画像を m7_make_web_map.py と同じ方法で縮小したものと一致するか
+  - map.png の画素が、元画像を m7_make_web_map.py と同じ方法で縮小したものとほぼ一致するか
     （寸法を変えずに地図を塗り直した場合は、これでしか気づけない）
   - negate と free_thresh が、app.js の FREE_THRESHOLD の前提と矛盾しないか
 
@@ -35,8 +35,9 @@ REPO = Path(__file__).resolve().parents[1]
 # 現用デモの地図。start_dispatch_demo.sh が nav_launch に map_variant:=v2 を渡す。
 DEFAULT_SITE = 'campus'
 DEFAULT_VARIANT = 'v2'
-# map_server の trinary の既定値。UNKNOWN の画素はこの値で書かれている。
-UNKNOWN_VALUE = 205
+# Pillow の版が違うと、BOX 縮小の丸めが1段ずれ得る。その差で正しい起動を止めないよう、
+# 差が 2 を超える画素だけを数える。塗り直しは 0 と 254 の差なので、これでも検出できる。
+PIXEL_TOLERANCE = 2
 
 
 class InputError(Exception):
@@ -49,6 +50,10 @@ def load_inputs(yaml_path, web_dir):
         meta = json.loads((web_dir / 'map_meta.json').read_text())
     except (OSError, ValueError, yaml.YAMLError) as e:
         raise InputError(f'読めません: {e}') from e
+    if not isinstance(nav, dict):
+        raise InputError(f'{yaml_path} が地図の YAML ではありません')
+    if not isinstance(meta, dict):
+        raise InputError(f'{web_dir / "map_meta.json"} が地図のメタ情報ではありません')
     for key in ('image', 'resolution', 'origin'):
         if key not in nav:
             raise InputError(f'{yaml_path} に {key} がありません')
@@ -65,8 +70,31 @@ def free_threshold_of(app_js):
     return int(m.group(1)) if m else None
 
 
+def resolve_source(source, maps_root):
+    """map_meta.json の source_pgm を実際のファイルの場所にする。"""
+    source = Path(source)
+    # m7_make_web_map.py はリポジトリ相対で書く。docs/maps/... なら、WHILL_MAPS_ROOT で
+    # 別の地図ディレクトリを使うときも比べられるよう、地図ディレクトリの中の相対として読む。
+    try:
+        return (maps_root / source.relative_to('docs/maps')).resolve()
+    except ValueError:
+        pass
+    # 地図をリポジトリの外に置くと ../../data/maps/... や絶対パスになる。そのまま解決する。
+    return (source if source.is_absolute() else REPO / source).resolve()
+
+
 def find_problems(yaml_path, web_dir, maps_root):
     """食い違いの説明の一覧と、注意の一覧を返す。"""
+    try:
+        return _find_problems(yaml_path, web_dir, maps_root)
+    except InputError:
+        raise
+    except (OSError, TypeError, ValueError, KeyError) as e:
+        # 壊れた画像や数値でない origin を、食い違い（終了コード 1）と区別する。
+        raise InputError(f'{type(e).__name__}: {e}') from e
+
+
+def _find_problems(yaml_path, web_dir, maps_root):
     nav, meta = load_inputs(yaml_path, web_dir)
     problems, notes = [], []
 
@@ -74,21 +102,10 @@ def find_problems(yaml_path, web_dir, maps_root):
     image = (yaml_path.parent / nav['image']).resolve()
     if not image.is_file():
         raise InputError(f'YAML の画像がありません: {image}')
-    # source_pgm はリポジトリ相対の docs/maps/... で書かれる。WHILL_MAPS_ROOT で別の地図
-    # ディレクトリを指すときも比べられるよう、地図ディレクトリの中の相対パスで比べる。
-    source = Path(meta['source_pgm'])
-    try:
-        source_in_maps = source.relative_to('docs/maps')
-    except ValueError:
-        source_in_maps = None
-    try:
-        image_in_maps = image.relative_to(maps_root.resolve())
-    except ValueError:
-        image_in_maps = None
-    source_resolved = (maps_root / source_in_maps).resolve() if source_in_maps else None
-    if source_resolved != image:
-        problems.append(f'Web の地図の出典が違います: map_meta.json は {source}、'
-                        f'YAML の画像は {image_in_maps or image}')
+    source = resolve_source(meta['source_pgm'], maps_root)
+    if source != image:
+        problems.append(f'Web の地図の出典が違います: map_meta.json は {meta["source_pgm"]}'
+                        f'（{source}）、YAML の画像は {image}')
 
     origin = [float(v) for v in nav['origin']]
     meta_origin = [float(v) for v in meta['origin']]
@@ -111,30 +128,27 @@ def find_problems(yaml_path, web_dir, maps_root):
         problems.append(f'map_meta.json の寸法が違います: {meta["width"]}x{meta["height"]}、'
                         f'元画像 {w}x{h} を {factor} で割ると {expected_size[0]}x{expected_size[1]}')
     png_path = web_dir / meta['image']
-    try:
-        png = Image.open(png_path)
-    except OSError as e:
-        raise InputError(f'Web の地図画像が読めません: {e}') from e
+    png = Image.open(png_path)
     if png.size != expected_size:
         problems.append(f'{png_path.name} の寸法が違います: {png.size[0]}x{png.size[1]}、'
                         f'期待 {expected_size[0]}x{expected_size[1]}')
     else:
-        # m7_make_web_map.py と同じ縮小。同じ PIL なら画素まで一致する（2026-11-12 に確認）。
-        expected = np.asarray(src.convert('L').resize(expected_size, Image.BOX), dtype=np.int16)
+        # m7_make_web_map.py と同じ順で、元の画像のまま縮小してからグレーにする。
+        expected = np.asarray(src.resize(expected_size, Image.BOX).convert('L'), dtype=np.int16)
         actual = np.asarray(png.convert('L'), dtype=np.int16)
-        differ = int(np.count_nonzero(expected != actual))
+        diff = np.abs(expected - actual)
+        differ = int(np.count_nonzero(diff > PIXEL_TOLERANCE))
         if differ:
             problems.append(f'{png_path.name} の画素が元画像と違います: {differ} 画素'
-                            f'（最大差 {int(np.abs(expected - actual).max())}）。'
-                            '地図を塗り直した後に作り直していない')
+                            f'（最大差 {int(diff.max())}）。地図を塗り直した後に作り直していない')
 
     # 割り切れないと、resize が縦横を factor ちょうどで縮めない。app.js は res_eff を
     # 縦横とも使うので、原点から遠い端ほどずれる。今の campus も縦が割り切れない。
     for name, n in (('幅', w), ('高さ', h)):
         if n % factor:
-            err = (n - (n // factor) * factor) * res
+            err = (n % factor) * res
             notes.append(f'元画像の{name} {n} が factor {factor} で割り切れません。'
-                         f'Web の座標は原点の反対の端で最大 {err:.2f} m ずれます')
+                         f'Web の座標は原点と反対の端で最大 {err:.2f} m ずれます')
 
     # app.js の FREE_THRESHOLD は、FREE=254・UNKNOWN=205・negate 0 の画像を前提にしている。
     if int(nav.get('negate', 0)) != 0:
@@ -148,11 +162,12 @@ def find_problems(yaml_path, web_dir, maps_root):
         nav_free_min = 255.0 * (1.0 - float(nav['free_thresh']))
         if threshold is None:
             problems.append('app.js に FREE_THRESHOLD が見つかりません')
-        elif threshold < nav_free_min or threshold <= UNKNOWN_VALUE:
-            # Web が Nav2 より広く FREE と見ると、Nav2 が拒む地点を選べてしまう。
+        elif threshold + 1 <= nav_free_min:
+            # app.js は 値 > FREE_THRESHOLD を FREE とする。Web が Nav2 より広く FREE と
+            # 見ると、Nav2 が拒む地点を選べてしまう。
             problems.append(f'app.js の FREE_THRESHOLD {threshold} が、Nav2 の FREE の下限 '
-                            f'{nav_free_min:.1f}（free_thresh {nav["free_thresh"]}）か '
-                            f'UNKNOWN {UNKNOWN_VALUE} 以下です')
+                            f'{nav_free_min:.1f}（free_thresh {nav["free_thresh"]}）より緩い'
+                            '（app.js は 値 > FREE_THRESHOLD を FREE とする）')
     return problems, notes
 
 
@@ -167,6 +182,8 @@ def main(argv=None):
     ap.add_argument('--yaml', type=Path, help='YAML を直接指定する（--site / --variant より優先）')
     ap.add_argument('--web-dir', type=Path, default=REPO / 'src' / 'whill_dispatch' / 'web',
                     help='map.png と map_meta.json の置き場。実機では install 側も確かめられる')
+    # 起動のたびに同じ注意が出ると読まれなくなる。起動前検査では出さない。
+    ap.add_argument('--quiet-notes', action='store_true', help='注意（失敗ではないもの）を表示しない')
     args = ap.parse_args(argv)
 
     name = f'occupancy_{args.variant}.yaml' if args.variant else 'occupancy.yaml'
@@ -176,14 +193,20 @@ def main(argv=None):
     except InputError as e:
         print(f'地図の同期: 確かめられません: {e}', file=sys.stderr)
         return 2
-    for note in notes:
-        print(f'注意: {note}')
+    if not args.quiet_notes:
+        for note in notes:
+            print(f'注意: {note}')
     if problems:
         print(f'地図の同期: 食い違いがあります（{yaml_path} と {args.web_dir}）', file=sys.stderr)
         for p in problems:
             print(f'  - {p}', file=sys.stderr)
-        print('  直す: python3 scripts/m7_make_web_map.py --yaml '
-              f'{yaml_path} --out-dir {args.web_dir}', file=sys.stderr)
+        # 作り直すのは常に src 側。install 側だけ直すと、copy の install では src が古いまま残る。
+        print('  直す:\n'
+              f'    cd {REPO}\n'
+              f'    python3 scripts/m7_make_web_map.py --yaml {yaml_path.resolve()} '
+              '--out-dir src/whill_dispatch/web\n'
+              '    colcon build --symlink-install --packages-select whill_dispatch',
+              file=sys.stderr)
         return 1
     print(f'地図の同期: ok（{yaml_path} と {args.web_dir}）')
     return 0

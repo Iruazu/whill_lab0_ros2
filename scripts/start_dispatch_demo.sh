@@ -181,7 +181,7 @@ PY
     local web_dir
     web_dir="$(ros2 pkg prefix whill_dispatch)/share/whill_dispatch/web" || fail 'whill_dispatchが見つかりません'
     python3 "$REPO_ROOT/scripts/check_map_sync.py" --maps-root "$maps_root" --site "$SITE" \
-        --variant v2 --web-dir "$web_dir" || fail 'Webの背景地図がNav2の地図と揃っていません（上の表示を参照）'
+        --variant v2 --web-dir "$web_dir" --quiet-notes || fail 'Webの背景地図がNav2の地図と揃っていません（上の表示を参照）'
     python3 - <<'PY'
 import socket
 for port in (8000, 9090):

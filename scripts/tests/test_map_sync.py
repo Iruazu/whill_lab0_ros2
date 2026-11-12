@@ -47,7 +47,9 @@ class SyntheticMapTests(unittest.TestCase):
         subprocess.run([sys.executable, str(SCRIPTS / 'm7_make_web_map.py'), '--yaml', str(self.yaml),
                         '--out-dir', str(self.web), '--factor', str(FACTOR)],
                        check=True, capture_output=True)
-        # m7_make_web_map.py はリポジトリ相対で書く。この一時ディレクトリでの相対に直す。
+        # m7_make_web_map.py はリポジトリ相対で書く。一時ディレクトリは docs/maps/... 形式に
+        # 直して、WHILL_MAPS_ROOT で別の地図ディレクトリを使う場合として確かめる。
+        self.generated_source = json.loads((self.web / 'map_meta.json').read_text())['source_pgm']
         self.edit_meta(source_pgm='docs/maps/site/map.pgm')
 
     def edit_meta(self, **changes):
@@ -106,8 +108,39 @@ class SyntheticMapTests(unittest.TestCase):
     def test_free_threshold_looser_than_nav2(self):
         app = self.web / 'app.js'
         app.write_text(app.read_text().replace('const FREE_THRESHOLD = 230;',
-                                               'const FREE_THRESHOLD = 200;'))
-        self.assert_one_problem('FREE_THRESHOLD 200')
+                                               'const FREE_THRESHOLD = 204;'))
+        self.assert_one_problem('FREE_THRESHOLD 204')
+        self.assertIn('より緩い', self.problems()[0][0])
+
+    def test_free_threshold_equal_to_nav2_lower_bound_passes(self):
+        # app.js は 値 > 205 を FREE とする。Nav2 の FREE（206 以上）と同じ範囲。
+        app = self.web / 'app.js'
+        app.write_text(app.read_text().replace('const FREE_THRESHOLD = 230;',
+                                               'const FREE_THRESHOLD = 205;'))
+        self.assertEqual(self.problems()[0], [])
+
+    def test_map_outside_repo_uses_generated_source(self):
+        # 地図をリポジトリの外に置くと、source_pgm は ../../... の相対になる。
+        self.assertFalse(self.generated_source.startswith('docs/maps'), self.generated_source)
+        self.edit_meta(source_pgm=self.generated_source)
+        self.assertEqual(self.problems()[0], [])
+
+    def test_small_rounding_difference_is_tolerated(self):
+        # Pillow の版の違いで BOX 縮小の丸めが1段ずれる場合を模す。
+        png = self.web / 'map.png'
+        pixels = np.asarray(Image.open(png)).astype(np.int16)
+        Image.fromarray(np.clip(pixels + 1, 0, 255).astype(np.uint8)).save(png)
+        self.assertEqual(self.problems()[0], [])
+
+    def test_broken_inputs_are_input_errors(self):
+        for broken in ('', 'origin: [a, b, c]\nimage: map.pgm\nresolution: 0.05\n'):
+            self.yaml.write_text(broken)
+            with self.assertRaises(check_map_sync.InputError):
+                self.problems()
+        self.edit_yaml()
+        self.pgm.write_bytes(b'not an image')
+        with self.assertRaises(check_map_sync.InputError):
+            self.problems()
 
     def test_cli_exit_codes(self):
         cmd = [sys.executable, str(SCRIPTS / 'check_map_sync.py'), '--maps-root', str(self.maps),
@@ -119,6 +152,18 @@ class SyntheticMapTests(unittest.TestCase):
         self.assertEqual(bad.returncode, 1, bad.stdout)
         self.assertIn('食い違いがあります', bad.stderr)
         self.assertIn('m7_make_web_map.py --yaml', bad.stderr)
+        # install 側を検査しても、作り直す先は src 側。
+        self.assertIn('--out-dir src/whill_dispatch/web', bad.stderr)
+        self.assertIn('colcon build', bad.stderr)
+        self.edit_yaml()
+        self.assertIn('注意:', subprocess.run(cmd, capture_output=True, text=True).stdout)
+        quiet = subprocess.run(cmd + ['--quiet-notes'], capture_output=True, text=True)
+        self.assertEqual(quiet.returncode, 0, quiet.stderr)
+        self.assertNotIn('注意:', quiet.stdout)
+        self.yaml.write_text('')
+        empty = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(empty.returncode, 2, empty.stderr)
+        self.assertNotIn('Traceback', empty.stderr)
         missing = subprocess.run(cmd + ['--variant', 'nothing'], capture_output=True, text=True)
         self.assertEqual(missing.returncode, 2, missing.stderr)
 
