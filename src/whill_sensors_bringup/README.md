@@ -24,6 +24,6 @@ VLP-16は有線UDP接続。DDS用XMLのNIC名と実際の有線設定を別々�
 | --- | --- | --- |
 | imu_link | 0.38, -0.03, 0.47 | -0.0713, -0.1415, 0 |
 | velodyne | 0.484136, 0.381548, 0.793704 | -0.035342, 0.156983, -0.005527 |
-| camera_link | 0.54, 0.382, 0.79 | 0, 0, 0 |
+| camera_link | 0.47, 0.378, 0.73 | 0, 0, 0 |
 
-親はすべて `base_link`。カメラは概算、LiDARは旧校正由来の値を含む。根拠と履歴は [外部パラメータ記録](../../docs/m3-extrinsics-from-noetic.md) と [校正台帳](../../docs/calibration-ledger.md) を参照。
+親はすべて `base_link`。カメラは2026-10-28の巻尺実測（屋外静止確認 #149 は未了）、LiDARは旧校正由来の値を含む。根拠と履歴は [外部パラメータ記録](../../docs/m3-extrinsics-from-noetic.md) と [校正台帳](../../docs/calibration-ledger.md) を参照。

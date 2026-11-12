@@ -276,13 +276,25 @@ M5-R 山越え記録。本番マップ候補として正式採用。
 - マウント管理: `imu_live_check.py` + `frame_audit.py` で走行前後の再現性を機械判定
 
 ### base_link → camera_link
-- 未更新 (M4R-2 の仮置き RPY=0)。M6-R でチェスボード校正予定
-- 影響範囲: RealSense を使う下流タスク (現在なし)
+| 成分 | 値 | 根拠 |
+|------|-----|------|
+| x    | +0.47 m  | 後輪車軸→LiDAR 回転軸 0.42 m (巻尺) + ホルダ奥行きの半分 ~0.05 m − 前面→camera_link ~0.004 m (データシート / `_d435.urdf.xacro`) |
+| y    | +0.378 m | 車体中心→LiDAR 軸 0.36 m (巻尺) + 左 IR 原点の筐体中心からのずれ +0.0175 m (`d435_cam_depth_py`) |
+| z    | +0.73 m  | レンズ中心 (巻尺)。静止物 bag の深度点群で物体最大高の誤差 +0.3〜+0.8 cm |
+| roll / pitch / yaw | 0 | 水平・前向き取付の申告。床面フィットで ~1° 上向きの疑いあり |
+
+- 測定日: 2026-10-28 (巻尺 + データシート)
+- 状態: 実測済み。**実機静止確認は未了（#149）**
+- 依存関係: x, y は LiDAR の巻尺値 (x 0.42, y 0.36) から導出。#149 などで LiDAR の x, y が変われば camera_link も同じだけ動かす
+- 反映先: `src/whill_sensors_bringup/launch/static_tf_launch.py` の `static_tf_camera`
+- 旧値: (0.54, 0.382, 0.79, RPY 0)。M4R-2 の概算を #61 で IMU とともにスライドしたもの。深度の物体高が常に +6 cm 高く出た
+- 影響範囲: RealSense を使う下流タスク (現用ナビゲーションでは未使用)
 
 ## 更新履歴
 
 | Date       | Change                                      | Commit |
 |------------|---------------------------------------------|--------|
+| 2026-10-28 | base_link → camera_link を実測値 (0.47, 0.378, 0.73, RPY 0) に更新 (#146) | (this commit) |
 | 2026-07-10 | **M5-R 完了**: `docs/maps/campus/` README + metadata + tilt 1.81° 記録 + 校正プロトコル改善案 (§本節「校正プロトコル改善案」) | (this commit) |
 | 2026-07-10 | 占有格子に relative z-slice + anchor-free-radius 導入 (tilt/starved 問題を解消) | `7a9924a` |
 | 2026-07-10 | 占有格子に trajectory-anchor free マーキング導入 | `a180c8b` |
