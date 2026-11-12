@@ -33,14 +33,21 @@ QoS:
 from __future__ import annotations
 
 import copy
+import signal
 
 import rclpy
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
+from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import Imu
 
 INPUT_TOPIC = '/imu/data_raw'
 OUTPUT_TOPIC = '/imu/data_rep145'
+# 終了要求に気づくまでの上限 (main() の説明を参照)。launch は SIGINT から
+# SIGTERM まで 5 秒待つので、0.1 秒なら十分に短い。空のコールバックが
+# 10 Hz で走るだけで、100 Hz の IMU 処理に比べて負荷は無視できる。
+SHUTDOWN_POLL_S = 0.1
 
 
 class ImuSignCorrector(Node):
@@ -54,6 +61,10 @@ class ImuSignCorrector(Node):
         self._sub = self.create_subscription(
             Imu, INPUT_TOPIC, self._on_imu, qos,
         )
+        # 何もしないタイマー。spin を定期的に C の wait から戻し、Python の
+        # シグナルハンドラを走らせるためだけにある (main() の説明を参照)。
+        # これが無いと、IMU が止まっているときに SIGINT で終われない。
+        self.create_timer(SHUTDOWN_POLL_S, lambda: None)
         self.get_logger().info(
             f'republishing {INPUT_TOPIC} -> {OUTPUT_TOPIC} '
             'with linear_acceleration negated (REP-145 specific force).',
@@ -71,15 +82,57 @@ class ImuSignCorrector(Node):
         self._pub.publish(out)
 
 
+def _raise_keyboard_interrupt(*_) -> None:
+    raise KeyboardInterrupt()
+
+
 def main(args: list[str] | None = None) -> None:
-    rclpy.init(args=args)
-    node = ImuSignCorrector()
+    # 終了処理 (Issue #169)。
+    #
+    # rclpy 既定のシグナルハンドラ (Humble) は、別スレッドで context を
+    # shutdown する。そのため主スレッドの spin と後始末が、そのスレッドと
+    # 競合する。2026-11-12 に SIGINT / SIGTERM を各 150 回送って、次を再現した:
+    #   - spin から ExternalShutdownException、または wait set 生成時の
+    #     RCLError (context is not valid) が上がり、トレースバックで exit 1
+    #   - 後始末の try_shutdown が「rcl_shutdown already called」で失敗
+    #   - destroy_node と shutdown の競合とみられる SIGSEGV (約 2%)
+    # 例外を捕まえるだけでは後の2つが残る。
+    #
+    # そこで failsafe_node / dispatch_node と同じく rclpy のハンドラを外し、
+    # SIGINT / SIGTERM で KeyboardInterrupt を上げる。shutdown するのは
+    # 主スレッドだけになり、競合が無くなる。Python のハンドラは spin が
+    # C の wait から戻ったときにしか走らないので、SHUTDOWN_POLL_S の
+    # タイマーで定期的に戻す。
+    rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
+    signal.signal(signal.SIGINT, _raise_keyboard_interrupt)
+    signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
+
+    executor = None
+    node = None
     try:
-        rclpy.spin(node)
+        # executor はノード (準備完了ログ) より先に明示的に作る。rclpy.spin()
+        # に任せると spin の入口で executor を作るので、起動直後のシグナルが
+        # その生成を途中で断ち、未完成の executor の __del__ が「Exception
+        # ignored」のトレースバックを出す (2026-11-12、200 回中 約 35%)。
+        executor = SingleThreadedExecutor()
+        # ノード生成も try の中に置く。起動直後の Ctrl-C でも後始末を通す。
+        node = ImuSignCorrector()
+        executor.add_node(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
-        node.destroy_node()
+        # 後始末の途中で2回目のシグナルが来てもトレースバックを出さない。
+        # launch は SIGINT の後に SIGTERM を送ることがある。
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        # 後始末は executor -> node -> context の順。
+        if executor is not None:
+            executor.shutdown()
+        if node is not None:
+            node.destroy_node()
+        # shutdown は主スレッドしか呼ばないので1回だけになる。try_ を使うのは、
+        # rclpy.init の直後に失敗した場合なども同じ経路で抜けるため。
         rclpy.try_shutdown()
 
 
