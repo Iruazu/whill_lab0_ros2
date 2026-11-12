@@ -52,7 +52,11 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('site', default_value='campus'),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('lidar_tf', default_value=''),
+        DeclareLaunchArgument(
+            'lidar_tf', default_value='',
+            description='"x y z roll pitch yaw" [m, deg]: publish only this base_link->velodyne '
+                        'instead of static_tf_launch.py (candidate TF comparison, #155). '
+                        'Empty = the branch TF chain (regression check)'),
         # From the branch under test, not the bag's /tf_static, so a TF change shows up.
         IncludeLaunchDescription(PythonLaunchDescriptionSource(static_tf),
                                  launch_arguments={'use_sim_time': 'true'}.items(),
