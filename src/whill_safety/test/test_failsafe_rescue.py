@@ -7,7 +7,9 @@ no extra subscription. With the option on, while Layer D is the ONLY active
 layer, failsafe publishes the validated reverse/rotate teleop command itself
 on /cmd_vel_safety, and a zero as soon as any condition fails.
 
-Time is injected by replacing FailsafeNode._now_s; no ROS traffic.
+Time is injected by replacing FailsafeNode._now_s (ROS time) and
+FailsafeNode._steady_s (teleop freshness) with one fake clock; no ROS
+traffic.
 """
 import math
 from pathlib import Path
@@ -79,6 +81,7 @@ def make_node(monkeypatch):
     def _make(**params):
         clock = _Clock(T0)
         monkeypatch.setattr(FailsafeNode, '_now_s', lambda self: clock.t)
+        monkeypatch.setattr(FailsafeNode, '_steady_s', lambda self: clock.t)
         args = ['--ros-args']
         for k, v in params.items():
             args += ['-p', f'{k}:={v}']
@@ -130,6 +133,9 @@ def _teleop(node, clock, t, vx, wz=0.0):
     (_twist(0.0, 0.61), False),       # faster turn than allowed
     (_twist(-0.1, 0.0, linear_y=0.1), False),
     (_twist(-0.1, 0.0, angular_x=0.1), False),
+    (_twist(0.0, 0.0, linear_z=0.1), False),
+    (_twist(0.0, 0.0, angular_y=0.1), False),
+    (_twist(-0.0, -0.0), True),       # negative zero is not forward
     (_twist(math.nan, 0.0), False),
     (_twist(-0.1, math.inf), False),
 ])
@@ -144,7 +150,8 @@ def test_relay_only_for_layer_d_alone():
     for other in ('A:reinit', 'B:fitness', 'B:pcl_pose_silent',
                   'C:perception_silent',
                   # #159 layers must also keep the zero once merged.
-                  'B:pcl_pose_never_arrived', 'C:perception_never_arrived'):
+                  'B:pcl_pose_never_arrived', 'C:perception_never_arrived',
+                  'D:scan_never_arrived'):
         assert not rescue_relay_allowed((RESCUE_LAYER, other), **fresh)
         assert not rescue_relay_allowed((other,), **fresh)
 
@@ -156,6 +163,9 @@ def test_relay_needs_fresh_rescue_shaped_command():
     assert not rescue_relay_allowed(d, cmd_ok=True, cmd_age_s=None,
                                     timeout_s=0.3)
     assert not rescue_relay_allowed(d, cmd_ok=True, cmd_age_s=0.31,
+                                    timeout_s=0.3)
+    # Clock stepped back: a negative age must not count as fresh.
+    assert not rescue_relay_allowed(d, cmd_ok=True, cmd_age_s=-0.01,
                                     timeout_s=0.3)
 
 
@@ -307,3 +317,46 @@ def test_no_relay_without_layer_d(make_node):
 def test_rejects_invalid_rescue_params(make_node, name, bad):
     with pytest.raises(ValueError):
         make_node(layer_d_rescue_enabled=True, **{name: bad})
+
+
+def test_clock_step_back_does_not_keep_relaying(make_node):
+    node, clock, pub = make_node(layer_d_rescue_enabled=True)
+    _teleop(node, clock, T0 + 5.0, -0.2)
+    _block_d(node, clock, T0 + 4.0)         # clock jumped back 1 s
+    _tick(node, clock, T0 + 4.0)
+    assert pub.take() == [ZERO]
+
+
+def test_slow_teleop_alternates_relay_and_zero(make_node):
+    # 2 Hz teleop (heavy Wi-Fi jitter): each command is fresh for 0.3 s and
+    # then stale for 0.2 s, so the output alternates. Safe-side stutter,
+    # never a silent gap while Layer D holds.
+    node, clock, pub = make_node(layer_d_rescue_enabled=True)
+    outs = []
+    t = T0 + 1.0
+    for k in range(40):                     # 2 s of 20 Hz ticks
+        if k % 10 == 0:
+            _teleop(node, clock, t, -0.2)
+        _block_d(node, clock, t)
+        _tick(node, clock, t)
+        sent = pub.take()
+        assert len(sent) >= 1               # never silent while stopped
+        outs.append(sent[-1])
+        t += TICK
+    assert (-0.2, 0.0) in outs and ZERO in outs
+    assert set(outs) <= {(-0.2, 0.0), ZERO}
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_timing_check_only_when_enabled(make_node, monkeypatch, enabled):
+    # At 10 Hz (C3 makes publish_hz a parameter) 0.3 + 0.1 + 0.1 is not
+    # < 0.5. The default configuration must still start; only enabling the
+    # rescue is refused.
+    import whill_safety.failsafe_node as fs
+    monkeypatch.setattr(fs, 'PUBLISH_HZ', 10.0)
+    if enabled:
+        with pytest.raises(ValueError):
+            make_node(layer_d_rescue_enabled=True)
+    else:
+        node, _, _ = make_node()
+        assert node._rescue_enabled is False

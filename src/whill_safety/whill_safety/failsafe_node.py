@@ -46,6 +46,7 @@ import math
 import signal
 
 import rclpy
+from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.signals import SignalHandlerOptions
@@ -105,7 +106,13 @@ RESCUE_LAYER = 'D:forward_blocked'
 # pins the two together). A relayed command may outlive the operator's last
 # teleop message by up to rescue_cmd_timeout_s + one tick; that must stay
 # shorter than what twist_mux itself would honour for teleop.
+# This is a copy, not a read of the yaml: if twist_mux is ever started with
+# another config (or the teleop timeout in twist_mux.yaml changes), change
+# this value with it.
 TWIST_MUX_TELEOP_TIMEOUT_S = 0.5
+# Rescue relay WARN logs: one line per change is useful, but a 2 Hz flapping
+# teleop (Wi-Fi jitter) would otherwise flood /rosout.
+RESCUE_LOG_THROTTLE_S = 1.0
 # Head-room on top of timeout + tick for DDS / executor jitter.
 RESCUE_TIMING_MARGIN_S = 0.1
 # 0.3 s: the Web UI streams at 10 Hz, so two lost commands are tolerated.
@@ -155,7 +162,9 @@ def rescue_command_ok(cmd, max_reverse_mps, max_wz):
 
 def rescue_cmd_valid(cmd_ok, cmd_age_s, timeout_s):
     """The latest teleop command is fresh and rescue-shaped."""
-    return cmd_ok and cmd_age_s is not None and cmd_age_s <= timeout_s
+    # A negative age (clock stepped back) is not "fresh": refuse it.
+    return (cmd_ok and cmd_age_s is not None
+            and 0.0 <= cmd_age_s <= timeout_s)
 
 
 def rescue_relay_allowed(active, cmd_ok, cmd_age_s, timeout_s):
@@ -262,12 +271,22 @@ class FailsafeNode(Node):
             'rescue_max_reverse_mps', RESCUE_MAX_REVERSE_MPS).value)
         self._rescue_max_wz = float(self.declare_parameter(
             'rescue_max_wz', RESCUE_MAX_WZ).value)
-        # Refuse values that would silently widen the bypass.
-        check_rescue_timing(self._rescue_timeout_s, self._publish_hz)
-        for name, v in (('rescue_max_reverse_mps', self._rescue_max_reverse),
-                        ('rescue_max_wz', self._rescue_max_wz)):
-            if not math.isfinite(v) or v < 0.0:
-                raise ValueError(f'{name}={v!r} must be a finite value >= 0')
+        if self._rescue_enabled:
+            # Refuse values that would silently widen the bypass. Only when
+            # enabled: the default configuration must start whatever
+            # publish_hz is (C3 makes it a parameter; at <= 10 Hz the timing
+            # check fails by design, and that must not stop the failsafe).
+            check_rescue_timing(self._rescue_timeout_s, self._publish_hz)
+            for name, v in (
+                    ('rescue_max_reverse_mps', self._rescue_max_reverse),
+                    ('rescue_max_wz', self._rescue_max_wz)):
+                if not math.isfinite(v) or v < 0.0:
+                    raise ValueError(
+                        f'{name}={v!r} must be a finite value >= 0')
+        # Teleop freshness is measured on a steady clock: the teleop stream
+        # is live operator input, and ROS time can step back (bag --clock
+        # loop, use_sim_time), which would make a stale command look fresh.
+        self._steady = Clock(clock_type=ClockType.STEADY_TIME)
         self._rescue_cmd = Twist()
         self._rescue_cmd_ok = False
         self._rescue_cmd_time = None
@@ -287,7 +306,7 @@ class FailsafeNode(Node):
 
     def _on_teleop(self, msg):
         self._rescue_cmd = msg
-        self._rescue_cmd_time = self._now_s()
+        self._rescue_cmd_time = self._steady_s()
         self._rescue_cmd_ok = rescue_command_ok(
             msg, self._rescue_max_reverse, self._rescue_max_wz)
         # A non-rescue command (e.g. forward) while relaying: zero at once
@@ -297,16 +316,20 @@ class FailsafeNode(Node):
         if self._relaying and not self._rescue_cmd_ok:
             self._end_relay('teleop command not reverse/rotate')
 
-    def _rescue_cmd_age(self, now):
+    def _steady_s(self):
+        return self._steady.now().nanoseconds * 1e-9
+
+    def _rescue_cmd_age(self):
         return None if self._rescue_cmd_time is None \
-            else now - self._rescue_cmd_time
+            else self._steady_s() - self._rescue_cmd_time
 
     def _end_relay(self, why):
         self._relaying = False
-        self.get_logger().warn(f'failsafe RESCUE ended — {why}')
+        self.get_logger().warn(f'failsafe RESCUE ended — {why}',
+                               throttle_duration_sec=RESCUE_LOG_THROTTLE_S)
         self._pub.publish(Twist())
 
-    def _rescue_output(self, active, now):
+    def _rescue_output(self, active):
         """Twist to publish on /cmd_vel_safety this tick, or None (silent).
 
         Rescue disabled: zero while any layer is active, else silent, i.e.
@@ -314,20 +337,22 @@ class FailsafeNode(Node):
         """
         if not self._rescue_enabled:
             return Twist() if active else None
-        age = self._rescue_cmd_age(now)
+        age = self._rescue_cmd_age()
         if active:
             if rescue_relay_allowed(active, self._rescue_cmd_ok, age,
                                     self._rescue_timeout_s):
                 if not self._relaying:
                     self.get_logger().warn(
                         'failsafe RESCUE relay — Layer D only, teleop '
-                        'reverse/rotate relayed on /cmd_vel_safety')
+                        'reverse/rotate relayed on /cmd_vel_safety',
+                        throttle_duration_sec=RESCUE_LOG_THROTTLE_S)
                 self._relaying = True
                 return self._rescue_cmd
             if self._relaying:
                 self._relaying = False
                 self.get_logger().warn(
-                    f'failsafe RESCUE ended — {list(active)}')
+                    f'failsafe RESCUE ended — {list(active)}',
+                    throttle_duration_sec=RESCUE_LOG_THROTTLE_S)
             return Twist()
         if self._relaying:
             # Layer D cleared mid-relay. Keep relaying until the teleop goes
@@ -476,9 +501,12 @@ class FailsafeNode(Node):
                 self.get_logger().warn(
                     f'failsafe ENGAGED — {list(active)}')
             else:
-                self.get_logger().info('failsafe RELEASED')
+                # While relaying, the safety topic is not silent yet.
+                self.get_logger().info(
+                    'failsafe RELEASED'
+                    + (' (rescue relay continuing)' if self._relaying else ''))
             self._active_prev = active
-        out = self._rescue_output(active, now)
+        out = self._rescue_output(active)
         if out is not None:
             self._pub.publish(out)
 

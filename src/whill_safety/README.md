@@ -44,10 +44,10 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 | パラメータ | 既定 | 内容 |
 | --- | --- | --- |
 | `layer_d_rescue_enabled` | false | 救援の有効化 |
-| `rescue_cmd_timeout_s` | 0.3 | teleop指令の鮮度。`rescue_cmd_timeout_s + 1/20Hz + 0.1秒` がtwist_muxのteleopタイムアウト0.5秒未満でないと起動しない |
+| `rescue_cmd_timeout_s` | 0.3 | teleop指令の鮮度。`rescue_cmd_timeout_s + 1/20Hz + 0.1秒` がtwist_muxのteleopタイムアウト0.5秒未満でないと起動しない（有効時のみ確かめる） |
 | `rescue_max_reverse_mps` | 0.2 | 救援と見なす後退速度の上限 |
 | `rescue_max_wz` | 0.6 | 救援と見なす回転速度の上限 |
 
-後方とその場回転の掃引範囲（1m未満）は監視しない。指を離してから最大約0.35秒は中継が続く。設計の比較と残る危険はADR-0013。実機では未検証。中継中の状態はログ（`RESCUE relay` / `RESCUE ended`）だけに出る。C3の `/failsafe/state` を取り込むときにそこへ載せる。
+後方とその場回転の掃引範囲（1m未満）は監視しない。UIの離しのゼロは中継されるので通常はすぐ止まる。ゼロが届かないと、最後の指令から約0.35秒（名目値。executorの遅れで伸びる）中継が続く。鮮度はsteady clockで測る。設計の比較と残る危険はADR-0013。実機では未検証。中継中の状態はログ（`RESCUE relay` / `RESCUE ended`）だけに出る。C3の `/failsafe/state` を取り込むときにそこへ載せる。
 
 preflightは `scripts/m6r_preflight.sh`。check 4は各入力の受信を、failsafeと同じ型とQoSで確かめる。

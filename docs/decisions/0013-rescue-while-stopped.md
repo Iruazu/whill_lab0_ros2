@@ -37,21 +37,23 @@ Collision Monitor（C3、`feat/avoidance-c3`、main には未マージ）は smo
 
 Layer D が中継中に解けたとき: teleop が条件2・3を満たす間は中継を続け、満たさなくなったらゼロを1回出してから止める。すぐ黙ると、twist_mux の safety 枠に最後の中継指令が 0.5 秒残り、その間に来る操作者の離しのゼロ（teleop 枠で、safety より下）が落ちるため。
 
-時間の条件: `rescue_cmd_timeout_s + 1/publish_hz + 余裕 0.1 秒 < twist_mux の teleop タイムアウト 0.5 秒` を起動時に確かめ、満たさなければ起動しない。中継は最後の teleop から最大でこの時間だけ続くので、twist_mux が teleop 自体を受け付ける時間より短く保つ。
+時間の条件: `rescue_cmd_timeout_s + 1/publish_hz + 余裕 0.1 秒 < twist_mux の teleop タイムアウト 0.5 秒` を、救援を有効にしたときだけ起動時に確かめ、満たさなければ起動しない（既定の構成は publish_hz によらず起動する）。中継は最後の teleop から最大でこの時間だけ続くので、twist_mux が teleop 自体を受け付ける時間より短く保つ。
 
-この方式なら safety 枠は作動中ずっと生きているので、Nav2（優先度 10）も前進の teleop（50）も、構成上 `/cmd_vel` に出られない。
+この方式なら safety 枠は作動中ずっと生きているので、Nav2（優先度 10）も前進の teleop（50）も、構成上 `/cmd_vel` に出られない。ただしこれは tick の遅れが safety のタイムアウト 0.5 秒未満のときに限る。それを超える failsafe の停止（executor が止まる、プロセスが落ちる）は、main の今のゼロ出力と同じ既存の危険（ADR-0007 の単一障害点）で、本 ADR で増えも減りもしない。
+
+teleop の鮮度は steady clock で測る。ROS 時刻は bag の `--clock` のループや use_sim_time で戻ることがあり、負の経過時間を新しい指令と見なさないため（`0 <= 経過 <= rescue_cmd_timeout_s`）。
 
 実装: `src/whill_safety/whill_safety/failsafe_node.py`（`rescue_command_ok()`、`rescue_relay_allowed()`、`check_rescue_timing()`、`_rescue_output()`）。launch 引数 `failsafe_layer_d_rescue`（`m6r_bringup_launch.py`、`safety_launch.py`、既定 false）。ログに `RESCUE relay` / `RESCUE ended — <理由>` を出す。C3 の `/failsafe/state` は main に無いので、C3 の取り込み時に中継中の状態をそこへ載せる。
 
 ## 検証（実機なし、2026-11-12）
 
-- 単体テスト `src/whill_safety/test/test_failsafe_rescue.py`（27件）: 指令の判定、Layer D 単独のときだけ中継すること（#159 の層も含む）、中継の内容が teleop と同じこと、前進・鮮度切れ・他の層でゼロになること、Layer D が解けた後の中継と最後のゼロ1回、tick を含む時間の条件、既定で購読しないこと、不正なパラメータの拒否。`config/twist_mux.yaml` を読み、teleop のタイムアウト・優先度の順・safety のタイムアウトが tick より長いことも固定する
+- 単体テスト `src/whill_safety/test/test_failsafe_rescue.py`（34件）: 指令の判定、Layer D 単独のときだけ中継すること（#159 の層も含む）、中継の内容が teleop と同じこと、前進・鮮度切れ・他の層でゼロになること、Layer D が解けた後の中継と最後のゼロ1回、tick を含む時間の条件、既定で購読しないこと、不正なパラメータの拒否。`config/twist_mux.yaml` を読み、teleop のタイムアウト・優先度の順・safety のタイムアウトが tick より長いことも固定する
 - 本物の failsafe_node と twist_mux（`safety_launch.py`、domain 159、localhost）に、前方 1.5 m を塞ぐ `/scan`、Nav2 の代わりの `/cmd_vel_nav` 前進 0.3 m/s（20 Hz）、teleop（10 Hz）を流し、`/cmd_vel` を記録した
   - 既定（false）: 塞いでいる間は、後退・回転・前進のどれも `/cmd_vel` はゼロだけ
   - 有効（true）、塞いだまま: 後退は −0.2、回転は 0.4 rad/s が出た。前進に切り替えると前の回転が2回出てからゼロだけになり、前進は1回も出なかった。指を離すと後退 −0.2 が6回（約 0.3 秒）出てからゼロだけになり、Nav2 の前進は出なかった
   - 有効、後退中に塞ぎを外す: 後退は途切れずに続き、指を離すと後退5回・ゼロ1回の後、約 0.5 秒で Nav2 の前進 0.3 に戻った（Layer D が解けているので正常）
   - どちらの試行でも、開始直後（最初の `/scan` より前）に Nav2 の前進 0.3 が2回出た。救援とは無関係な、この試験の立ち上げ順によるもの
-- 再現できていないもの: failsafe の executor の遅れ（案 A の不採用理由）を人為的に起こす試験はしていない。案 E は safety 枠が切れないことを構成で保つので、遅れは中継の継続時間とゼロへの切替の遅れにだけ効く
+- 再現できていないもの: failsafe の executor の遅れ（案 A の不採用理由）を人為的に起こす試験はしていない。0.5 秒未満の遅れは、中継の継続時間とゼロへの切替を遅らせるだけ。0.5 秒以上の停止は safety 枠が切れ、既存の単一障害点と同じになる
 
 ## 採用しなかった案
 
@@ -69,13 +71,13 @@ Layer D が中継中に解けたとき: teleop が条件2・3を満たす間は�
 
 - 前方を塞がれた停止から、Web の手動救出で後退・回転して離れられる（有効化した場合）
 - 前進は今どおり止まる。A・B・C の停止は今どおり teleop も止める
-- Nav2 と前進の teleop は、failsafe の処理遅れがあっても safety 枠に阻まれる
+- Nav2 と前進の teleop は、tick の遅れが safety のタイムアウト 0.5 秒未満であれば safety 枠に阻まれる。それを超える停止は main のゼロ出力と同じ既存の危険（ADR-0007 の単一障害点）
 
 残る危険（安全の根拠ではなく、受け入れるかどうかを決める項目）:
 
 - **その場回転の掃引**: 回転すると車体の外形が回転半径の内側を掃く。この範囲（1 m 未満）は Patchwork++ の `min_range: 1.0` により `/scan` に元々点が無く、Layer D も見ていない。回転中にすぐ横の人や物に当たる危険は残る
 - **後方の無監視**: Layer D は前方だけを見る。後退中に後ろの人や物に当たる危険は、並走者の監視に頼る（Layer D が作動していないときの teleop と同じ）
-- **離した後の残り**: 中継は最後の teleop から最大 `rescue_cmd_timeout_s` + 1 tick（既定 0.35 秒）続く。実測で、指を離した後に後退 −0.2 が 6 回（約 0.3 秒）出た。smoother が後退を 0.1 m/s に制限するので、余分な移動は数 cm
+- **離した後の残り**: 通常は UI が離したときにゼロを1回送り、それも中継されるので、すぐ止まる。ゼロが届かない場合（試験では teleop を黙らせただけ）、中継は最後の teleop から `rescue_cmd_timeout_s` + 1 tick（既定 0.35 秒）続く。これは名目値で、executor の遅れの分だけ伸びる。試験では後退 −0.2 が 6 回（約 0.3 秒）出た。smoother が後退を 0.1 m/s に制限するので、名目値なら余分な移動は数 cm
 - **救援の可否が failsafe の受信に依存する**: failsafe が `/cmd_vel_teleop` を受け損ねるとゼロになる（安全側）
 - **通信の揺らぎ**: Web → rosbridge → dispatch の経路で 0.3 秒を超える遅れ・欠落があると、中継とゼロが交互になり、救援がぎくしゃくする（安全側）
 
