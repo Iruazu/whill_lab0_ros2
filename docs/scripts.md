@@ -68,6 +68,8 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `gen_auto_free_mask.py` | 自動free mask生成 |
 | `compose_occupancy.py` | レイヤとマスクの合成 |
 | `pipeline_v2_verify.py` | v2成果物の検証 |
+| `map_transfer_masks.py` | 旧地図の手塗り（マスクと final.pgm への直接の塗り）を、作り直した地図の格子へ写した候補を作る。確定はしない |
+| `map_route_check.py` | 配車地点が FREE にあり、車体の幅でつながるかを確かめる（Nav2 は動かさない） |
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |

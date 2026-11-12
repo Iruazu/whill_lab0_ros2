@@ -129,3 +129,97 @@ scripts/imu_investigation/summarize_glim_runs.py ~/bags/m5r-bench-data/2026-07-1
 目視（`start_side_view.png`）：始点を通る幅 2 m の帯を横から見ると、旧地図は地面が約 1.4 m 離れた2層に割れている（往路と復路の高さのずれ）。新しい地図は1層で、ゴーストが無い。下段は新しい地図の上面図。
 
 確かめていないこと：壁などで測る B1（CloudCompare）、offline_viewer での全体の目視、実物との寸法の一致。
+
+## 旧地図からの座標変換
+
+両地図は同じ bag から作ったので、GLIM の軌跡の同じ時刻の点は同じ場所を指す。21300 組の対応から剛体変換 T_new_old を最小二乗で求めた（`scripts/map_align.py`、結果は `align_from_campus/`）。
+
+| 項目 | 値 |
+| --- | --- |
+| 並進 x / y / z | −0.005 / +0.029 / −1.241 m |
+| yaw | −0.104° |
+| z 軸の傾き | 1.27°（旧地図の傾きを打ち消す分） |
+| 変換後の残差（水平） | 中央値 0.081 m、p95 0.266 m、最大 0.387 m |
+| 変換後の残差（3次元） | 中央値 0.81 m、p95 1.86 m（旧地図の高さのゆがみは剛体では吸収できない） |
+| 点群の ICP との差 | 水平 0.02 m、z −0.34 m、回転 0.27° |
+
+水平の差は数 cm〜数十 cm なので、2次元の地図（格子・手塗り・waypoint）は、この変換で旧地図と重ねられる。ただし p95 で 0.27 m の局所差が残る。
+
+```bash
+scripts/map_align.py --old-traj docs/maps/campus/traj_lidar.txt --new-traj docs/maps/campus-m8/traj_lidar.txt \
+  --old-pcd ~/whill_lab0_ros2/docs/maps/campus/static.pcd --new-pcd docs/maps/campus-m8/static.pcd \
+  --waypoints docs/maps/campus/waypoints.yaml --out docs/maps/campus-m8/align_from_campus
+```
+
+## 3. 占有格子と手塗りの候補（#154）
+
+**手塗りは確定していない。** ここにあるのは、旧地図の塗りを機械的に写した候補と、その候補で合成した地図だけ。確定はユーザーが行う。
+
+### 作ったもの
+
+- `v2/` の機械レイヤ（`occupied_step.png` など）：`pcd_to_occupancy_v2.py` を新しい PCD で実行。格子は旧 campus v2 と同じ（origin [−128.25, −90.35]、6640×6295、0.05 m）にした。旧地図の塗りと GIMP で同じ画素に重ねられ、Web の背景の meta とも形が揃う。
+- `v2/candidates/`：旧地図の塗りを T_new_old で写した候補。最近傍で写すだけで、形は変えない（v2 の Rule 1）。
+
+  | ファイル | 中身 | 旧のセル数 → 写したセル数 |
+  | --- | --- | --- |
+  | `candidate_roadway_mask.png` | 旧 `roadway_mask.png`（走行可能域の白リスト） | 1,793,532 → 1,793,532 |
+  | `candidate_free_mask.png` | 旧 `free_mask.png`（塩の消去） | 351,895 → 351,895 |
+  | `candidate_keepout_mask.png` | 旧 `keepout_mask.png` | 0 → 0 |
+  | `candidate_direct_free.png` | `final.pgm` に直接塗った拡幅（30dbfb1、0c903bc の正門前、54ce32b・e741e9a の x −66〜−42 など）。どのマスクにも入っていないので、`final.pgm` と、同じマスクで合成し直した結果の差から取り出した | 419,092 → 419,090 |
+  | `candidate_roadway_merged.png`, `candidate_free_merged.png` | 上の roadway / free に直接の拡幅を足したもの（合成の入力。直接の拡幅は roadway と free の両方に入れないと FREE にならない） | — |
+  | `candidate_review_overlay.png` | 候補の合成結果に色を重ねた確認用（青=roadway、黄=free、緑=直接の拡幅） | — |
+  | `candidate_transfer.json` | 変換と各セル数の記録 | — |
+
+  旧 `final.pgm` の直接の塗りは、FREE を増やしただけ（FREE を減らした・障害物を足したセルは 0）。そのうち 4,357 セルは機械の障害物を FREE にしていた。合成し直した結果は、b36b204 時点の `final.pgm` と 1 セルも違わないことを確かめた。
+- `v2/candidate_final.pgm`、`occupancy_candidate.yaml`：候補のマスクで合成した地図。`nav_launch.py site:=campus-m8 map_variant:=candidate` で読める。`occupancy.yaml`（variant 無指定）は、確定するまで置かない。
+
+### 候補の合成の結果
+
+| 項目 | 値 |
+| --- | --- |
+| 機械の障害物 | 401,771 セル（旧 v2 は 435,489） |
+| 候補の free で消えた障害物 | 8,336 セル（旧の人手の塗りだけ 126、自動だけ 5,650、両方 2,560）。`v2/erased_by_free.png`（Git 管理外。合成のたびに作られる） |
+| 最終の OCC / FREE / UNKNOWN | 0.94% / 4.94% / 94.11% |
+| 配車4地点が FREE か | 4点とも FREE（新しい座標、下の waypoint 節） |
+| 4地点が車体の幅でつながるか | つながる（FREE を 0.35 m 削った後の同じ連結成分。`scripts/map_route_check.py`） |
+| 参考：手塗りなし（機械だけ） | 4点が別々の成分（1714 成分）、正門前は FREE の外。塗りが要ることの確認 |
+
+```bash
+scripts/map_route_check.py docs/maps/campus-m8/occupancy_candidate.yaml docs/maps/campus-m8/waypoints.yaml
+```
+
+これは「全体の経路が計画できる」の代わりの必要条件で、Nav2 の planner は動かしていない（コストの膨張、smoother、controller は見ていない）。
+
+### ユーザーが確かめること
+
+1. **障害物を消していないか**：`v2/erased_by_free.png` の 8,336 セル。旧地図で塩として消した場所でも、新しい点群では本物の縁石・柱かもしれない。特に旧の人手の塗りで消えたもの（黄と白）。
+2. **塗りの縁がずれていないか**：地図間の局所差は水平 p95 0.27 m。縁石・壁ぎわの roadway の縁が、新しい `occupied_step.png` / `occupied_structure.png` の外側に出ていないか。`candidate_review_overlay.png` を GIMP で機械レイヤと重ねて見る。
+3. **直接の拡幅（緑）**：旧地図で場当たり的に足した帯（seimon 付近、x −66〜−42 の北側など）を、正式にマスクとして残すか。残すなら roadway と free の両方に入れる。
+4. 確定したら、確定版を `v2/roadway_mask.png`、`v2/free_mask.png`、`v2/keepout_mask.png` として置き、`gen_auto_free_mask.py` と `compose_occupancy.py` で `v2/final.pgm` を作る（手順は [v2 塗り手順](../v2-paint-guide.md)。パスを campus-m8 に読み替える）。その後 `occupancy.yaml` と Web の背景（`scripts/m7_make_web_map.py`）を作る。
+
+### 再現
+
+```bash
+D=docs/maps/campus-m8; OV=docs/maps/campus/v2
+scripts/pcd_to_occupancy_v2.py --input-pcd $D/static.pcd --input-yaml docs/maps/campus/occupancy_cleaned.yaml \
+  --traj $D/traj_lidar.txt --output-dir $D/v2 --cache-npz $D/.v2_cache.npz
+# 旧地図の直接の塗りを取り出すため、旧マスクで合成し直す
+scripts/gen_auto_free_mask.py --layers-yaml $OV/v2_layers.yaml --roadway-mask $OV/roadway_mask.png \
+  --output-free-mask-auto /tmp/old/free_mask_auto.png --output-salt-csv /tmp/old/salt.csv
+scripts/compose_occupancy.py --layers-yaml $OV/v2_layers.yaml --roadway-mask $OV/roadway_mask.png \
+  --free-mask $OV/free_mask.png --free-mask-auto /tmp/old/free_mask_auto.png --keepout-mask $OV/keepout_mask.png \
+  --output-pgm /tmp/old/final_recomposed.pgm
+scripts/map_transfer_masks.py --old-layers-yaml $OV/v2_layers.yaml --new-layers-yaml $D/v2/v2_layers.yaml \
+  --transform $D/align_from_campus/T_new_old.txt \
+  --mask roadway_mask=$OV/roadway_mask.png --mask free_mask=$OV/free_mask.png --mask keepout_mask=$OV/keepout_mask.png \
+  --old-final $OV/final.pgm --old-recomposed /tmp/old/final_recomposed.pgm \
+  --out-dir $D/v2/candidates --force
+# 上の map_transfer_masks.py が merged（roadway ∪ 直接の拡幅、free ∪ 直接の拡幅）も書く
+scripts/gen_auto_free_mask.py --layers-yaml $D/v2/v2_layers.yaml --roadway-mask $D/v2/candidates/candidate_roadway_merged.png \
+  --output-free-mask-auto /tmp/new/free_mask_auto.png --output-salt-csv /tmp/new/salt.csv
+scripts/compose_occupancy.py --layers-yaml $D/v2/v2_layers.yaml \
+  --roadway-mask $D/v2/candidates/candidate_roadway_merged.png --free-mask $D/v2/candidates/candidate_free_merged.png \
+  --free-mask-auto /tmp/new/free_mask_auto.png --keepout-mask $D/v2/candidates/candidate_keepout_mask.png \
+  --output-pgm $D/v2/candidate_final.pgm
+# 確認用の重ね絵：同じ map_transfer_masks.py を --new-final $D/v2/candidate_final.pgm を足してもう一度
+```

@@ -1,0 +1,96 @@
+{
+  "pairs": 21300,
+  "old_poses": 21300,
+  "new_poses": 21300,
+  "T_xyz_m": [
+    -0.0054,
+    0.0287,
+    -1.2412
+  ],
+  "yaw_deg": -0.1039,
+  "z_axis_tilt_deg": 1.2719,
+  "residual_3d_m": {
+    "p50": 0.81,
+    "p95": 1.86,
+    "max": 2.677
+  },
+  "residual_xy_m": {
+    "p50": 0.081,
+    "p95": 0.266,
+    "max": 0.387
+  },
+  "icp": {
+    "fitness_traj_T_0p3m": 0.3228,
+    "rmse_traj_T_0p3m": 0.1896,
+    "fitness_icp_0p5m": 0.484,
+    "rmse_icp_0p5m": 0.2713,
+    "icp_minus_traj_xyz_m": [
+      0.022,
+      0.005,
+      -0.338
+    ],
+    "icp_minus_traj_rot_deg": 0.2743
+  },
+  "waypoints": [
+    {
+      "name": "kounoken",
+      "old_xy": [
+        0.0,
+        0.0
+      ],
+      "new_xy": [
+        -0.012,
+        0.065
+      ],
+      "shift_m": 0.066,
+      "nearest_old_pose_m": 0.23,
+      "local_residual_xy_m": 0.06,
+      "new_yaw": -0.0018
+    },
+    {
+      "name": "bldg7",
+      "old_xy": [
+        -38.42,
+        -0.47
+      ],
+      "new_xy": [
+        -38.439,
+        -0.302
+      ],
+      "shift_m": 0.169,
+      "nearest_old_pose_m": 0.54,
+      "local_residual_xy_m": 0.084,
+      "new_yaw": -0.0018
+    },
+    {
+      "name": "seimon",
+      "old_xy": [
+        -87.72,
+        -7.72
+      ],
+      "new_xy": [
+        -87.763,
+        -7.409
+      ],
+      "shift_m": 0.314,
+      "nearest_old_pose_m": 7.15,
+      "local_residual_xy_m": 0.232,
+      "new_yaw": -0.0018
+    },
+    {
+      "name": "bldg3",
+      "old_xy": [
+        67.77,
+        2.37
+      ],
+      "new_xy": [
+        67.769,
+        2.272
+      ],
+      "shift_m": 0.098,
+      "nearest_old_pose_m": 0.19,
+      "local_residual_xy_m": 0.017,
+      "new_yaw": -0.0018
+    }
+  ]
+}
