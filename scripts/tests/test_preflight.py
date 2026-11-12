@@ -167,7 +167,7 @@ class PreflightTests(FakeHost, unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn('missing file', result.stdout)
 
-    def test_missing_imu_alias_fails_before_any_ros_check(self):
+    def test_missing_imu_alias_fails_before_param_checks(self):
         self.plug(WHILL_AND_IMU, {'whill': 'ttyUSB0'})
         result = self.run_preflight()
         self.assertEqual(result.returncode, 1, result.stdout)
@@ -228,6 +228,37 @@ class DeviceAliasTests(FakeHost, unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertNotIn('リポジトリと違います', result.stdout)
         self.assertNotIn('規則が入っていません', result.stdout)
+
+    def test_last_rule_without_trailing_newline_is_read(self):
+        rules = self.root / 'rules'
+        rules.write_text(RULES.read_text().rstrip('\n'))
+        self.plug(WHILL_AND_IMU, {'whill': 'ttyUSB0'})
+        result = self.run_check(WHILL_UDEV_RULES=str(rules))
+        self.assertEqual(result.returncode, 1, result.stdout)
+        # IMU は最終行の規則。読み落とすと /dev/imu を確かめずに通ってしまう。
+        self.assertIn('/dev/imu', result.stdout)
+
+    def test_dangling_alias_is_distinguished_from_missing(self):
+        # ttyACM0 が消えた後にリンクだけ残った状態。別名が無い場合と原因の候補が違う。
+        self.plug({'ttyUSB0': '067b:2303'}, {'whill': 'ttyUSB0', 'imu': 'ttyACM0'})
+        result = self.run_check()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn('/dev/imu    リンクはあるが指す先が無い: ttyACM0', result.stdout)
+        self.assertNotIn('/dev/imu    無し', result.stdout)
+
+    def test_unreadable_attributes_are_not_called_a_mismatch(self):
+        self.plug(WHILL_AND_IMU, {'whill': 'ttyUSB0', 'imu': 'ttyACM1'})
+        (self.dev / 'ttyACM1').write_text('')  # 偽の udevadm が知らない tty
+        result = self.run_check()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn('udevadm で属性を読めません', result.stdout)
+        self.assertNotIn('規則は', result.stdout)
+
+    def test_recovery_hints_include_evidence_commands(self):
+        self.plug(WHILL_AND_IMU, {'whill': 'ttyUSB0'})
+        result = self.run_check()
+        for hint in ('ls -l /run/udev/links/', 'journalctl -k --since', 'systemctl is-active ModemManager'):
+            self.assertIn(hint, result.stdout)
 
 
 class NicTests(unittest.TestCase):

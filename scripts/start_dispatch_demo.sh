@@ -154,9 +154,9 @@ check_requirements() {
     for command in ros2 setsid flock timeout python3; do
         command -v "$command" >/dev/null || fail "必要なコマンドがありません: $command"
     done
-    for device in /dev/whill /dev/imu; do
-        [[ -c "$device" && -r "$device" && -w "$device" ]] || fail "デバイスが未接続かアクセス権がありません: $device"
-    done
+    # 別名が無いのか、機器が無いのか、権限が無いのかで直し方が違う。理由と戻し方まで
+    # 表示する検査を使う（#141）。ここで止まると preflight の check 0b まで進まない。
+    "$REPO_ROOT/scripts/check_device_aliases.sh" || fail 'デバイスの別名が使えません（上の表示を参照）'
     maps_root="${WHILL_MAPS_ROOT:-$REPO_ROOT/docs/maps}"
     for device in "$maps_root/$SITE/static.pcd" "$maps_root/$SITE/occupancy_v2.yaml" "$maps_root/$SITE/waypoints.yaml" \
                   "$HOME/.whill_dispatch_tls/dispatch.crt" "$HOME/.whill_dispatch_tls/dispatch.key"; do
