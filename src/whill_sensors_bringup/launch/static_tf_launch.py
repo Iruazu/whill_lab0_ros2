@@ -58,10 +58,14 @@ def generate_launch_description():
                    'base_link', 'imu_link'),
 
         # base_link -> velodyne (台帳 §2.1、#145)
-        # x, y は巻尺 2 回 (旧 URDF と一致)。z / roll / pitch は Hi-Res の
-        # 校正表 (sensors_launch の velodyne_calibration、#144) で投影した点群
-        # の床面フィット。yaw は床面からは観測できないので、noetic
-        # extrinsic_R 由来の -0.317° を残す。
+        # x, y は巻尺 2 回。z / roll / pitch は Hi-Res の校正表
+        # (sensors_launch の velodyne_calibration、#144) で投影した点群の
+        # 床面フィット (2026-10-28 計画書の値)。2026-11-12 の再フィットでは
+        # z 0.771、roll -0.2°、pitch 0.3〜0.4° で、roll の符号と pitch が
+        # 一致しない (台帳 §2.1)。値の確定は #149。
+        # yaw は未測定: 床面からは観測できず、-0.317° は noetic の LiDAR 対
+        # IMU の yaw の流用。IMU 自体を 2026-07-08 に 90° 付け直して yaw 0 を
+        # 目視で決めているので、base_link に対する測定値ではない (0 と同等)。
         #   roll = +0.24°、pitch = +0.97°、yaw = -0.317°
         # 旧値 (0.484, 0.382, 0.794, pitch +9.0°) は IMU TF に noetic の
         # LiDAR<->IMU extrinsic を足したもの。+9° は「IMU が約 -8° 傾き、
