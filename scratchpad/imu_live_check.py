@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# calibration-ledger §0.2 / §0.5 の 5 秒静止 IMU チェック。
+# calibration-ledger §0 (走行前後の IMU 静止確認) の 5 秒静止 IMU チェック。
 # /imu/data_rep145 を 500 サンプル (100 Hz × 5 s) 拾って平均を出し、
 # ledger の期待値と tolerance で PASS/FAIL する。
 #

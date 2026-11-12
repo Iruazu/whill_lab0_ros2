@@ -26,8 +26,10 @@ IMU のマウント（マジックテープ + 溝）は再固定で ±2〜3° �
 
 3. 許容外ならマウントが動いている。走行せず、物理的に再固定 → `scratchpad/frame_audit.py` で RPY を逆算 → §4.1 と launch を更新する。走行後だけ外れた場合は、その bag 用の T_lidar_imu を実測値から計算し直す。
 4. 起動地点の路面の傾きは IMU から分離できない（base_link を水平と仮定しているため）。水準器で前後・左右とも ±1° 以内の場所で行う。2026-07-10 の地図の傾き 1.81° はこの確認をしなかったことが一因と考えられる（`docs/maps/campus/README.md`）。
+   - 水準器が使えない場合の代替：走行予定経路上の 3〜5 か所で WHILL を止めて 5 秒ずつ静止サンプリングし、各地点の gravity ベクトルを世界座標で平均する。残差 RMS < 0.3° なら経路の路面はおおむね水平とみなす。大きければ最大勾配の方位が分かるので、その成分を §4.1 の RPY から差し引き、GLIM の T_lidar_imu の回転にも同じ補正を入れる。
+5. 参考：触らずに置いた IMU は 30 秒の静置で drift 0.03° 未満（2026-07-09、`scratchpad/imu_stability_check.py`。スクリプトはリポジトリに残っていない）。録画中に動くのは振動や接触による。
 
-DDS・governor・bag 録画の手順はこの台帳では扱わない。現行手順は `docs/runbook-live-demo.md`。
+DDS・governor・bag 録画の手順はこの台帳では扱わない。旧版の朝一チェックリスト（lo-only DDS、点群 90 %・IMU 95 % の件数基準、`large time gap` 0 件、WiFi・テザリングの外乱試験）は、DDS の前提が変わったので廃止した。現行手順は `docs/runbook-live-demo.md`。
 
 ## 1. footprint
 
@@ -46,16 +48,27 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 
 | 成分 | 値 | 測定日 | 方法 | 誤差 |
 | --- | --- | --- | --- | --- |
-| x | 0.42 m | 2026-10-28 | 巻尺 2 回（旧 URDF と一致） | 未評価。静止物の位置で x に +2〜+8 cm のずれがあり、テープの基準か TF かを #149 で切り分ける |
-| y | 0.36 m | 2026-10-28 | 巻尺 2 回（旧 URDF と一致） | 未評価 |
-| z | 0.777 m | 2026-10-28 | Hi-Res の校正表で投影した点群の床面フィット | 未評価。旧記録の巻尺 0.80 m とは 2.3 cm 差（巻尺で測った位置が光学中心か不明） |
-| roll | +0.24° | 2026-10-28 | 同上（床面フィット） | 路面の横断勾配を含む。#149 で道路の勾配と比べる |
-| pitch | +0.97° | 2026-10-28 | 同上（床面フィット） | 路面の勾配を含む |
-| yaw | −0.317° | 2026-07（noetic） | noetic `extrinsic_R` の分解（`docs/m3-extrinsics-from-noetic.md`） | 床面からは観測できない。未検証 |
+| x | 0.42 m | 2026-10-28 | 巻尺 2 回 | 未評価。静止物の位置で x に +2〜+8 cm のずれ（出典は下記）。テープの基準か TF かを #149 で切り分ける |
+| y | 0.36 m | 2026-10-28 | 巻尺 2 回 | 未評価 |
+| z | 0.777 m | 2026-10-28 | Hi-Res の校正表で投影した点群の床面フィット | 再フィットでは 0.771〜0.773 m（下記）。旧記録の巻尺 0.80 m とは 2〜3 cm 差（巻尺で測った位置が光学中心か不明） |
+| roll | +0.24° | 2026-10-28 | 同上（床面フィット） | **再フィットでは −0.20〜−0.23°（符号が逆）**。路面の横断勾配も含む |
+| pitch | +0.97° | 2026-10-28 | 同上（床面フィット） | **再フィットでは +0.30〜+0.40°**。路面の勾配も含む |
+| yaw | −0.3167°（−0.005527 rad） | — | noetic の LiDAR 対 IMU の yaw の流用（`docs/m3-extrinsics-from-noetic.md`） | **未測定（旧値の流用、0 と同等）**。床面からは観測できない。IMU は 2026-07-08 に 90° 付け直し、yaw 0 は目視で決めたので、この値は base_link に対する測定ではない |
 
-- 状態：**実測済み**。屋外静止確認（#149）は未了。
-- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:73`（`static_tf_velodyne`。角度は `math.radians` で変換）。
-- 地図との関係：この TF は base_link 系の点群の位置を変える。旧地図（campus）とは NDT が合わなくなるので、地図の作り直し（#153）と同時にマージする。
+- 状態：x・y・z・roll・pitch は**実測済み**（ただし下記の再フィットと食い違う）、yaw は**未測定**。屋外静止確認（#149）は未了。
+- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:77`（`static_tf_velodyne`。角度は `math.radians` で変換）。
+- 出典（2026-10-28 の値）：`docs/plans/2026-10-28-avoidance-baseline.md` §1.1・§2.1・§4.2（ブランチ `feat/avoidance-baseline`、未マージ）の記載のみ。床面フィットを行ったスクリプトと引数は未特定（リポジトリにも同ブランチにも無い。同ブランチの `scripts/check_object_placement.py` は、この値を入力として使う側）。「旧 URDF と一致」の旧 URDF は未特定（`whill_model_cr2.urdf` の `base_link` は別概念で、velodyne の取付を持たない）。x の +2〜+8 cm のずれも同計画書 §4.2 の記載のみ。
+- 再フィット（2026-11-12、本台帳の作成時）：
+  - bag：`~/bags/sensor_check_20261028/` の `chk_empty_0m_160726`（物なし）、`chk_chair_1.5m_160152`、`chk_chair_3m_160533`、`chk_bottle_2m_160742`、`chk_bottle_5m_160929`。2026-10-28 15:5x〜16:10 の静止 bag（`~/bags/rec_sensor_check.sh` で記録）。撮影場所の記録はない。
+  - スクリプト：`floor_fit.py`（作業用、未コミット）。各 bag の `/velodyne_points`（VLP16db.yaml で計算済み）の先頭 100 フレーム（約 200 万点）を、`check_object_placement.py:to_hires()` と同じ式で Hi-Res の仰角に投影し直す。velodyne 系で水平距離 1〜8 m・z < −0.3 m の点を 0.25 m のセルに分け、各セルの最低点を床の候補（約 500 点）とする。RANSAC（1000 回、しきい値 3 cm、法線は鉛直から 15° 以内）のあと、インライア（約 290 点）に平面を当てはめる（SVD）。
+  - 結果（5 bag）：残差 RMS 11.4〜12.6 mm。Hi-Res では z 0.771〜0.773 m、roll −0.20〜−0.23°、pitch +0.30〜+0.40°。比較として VLP16db.yaml のままでは z 1.144〜1.147 m で、計画書の「1.15 m」は再現した。前方だけ（x 0.5〜8 m、|y| < 1.5 m）に絞ると、物なしの bag で z 0.794 m、roll −0.41°、pitch +0.59° になり、範囲の取り方で 2 cm・0.3° 程度変わる（床が完全な平面ではない）。
+  - 符号の確認：床の法線 n（velodyne 系）から、tf2 の RPY（R = Rz(yaw)·Ry(pitch)·Rx(roll)）で n = Rᵀ e_z = (−sin p, sin r cos p, cos r cos p) を解き、pitch = −asin(n_x)、roll = atan2(n_y, n_z) とした。その RPY と z でインライアを base_link に変換すると、床の傾きは 0.000° になる。この回転行列は、launch の値で `tf2_echo base_link velodyne` が出す行列と小数 3 桁で一致する（つまり同じ規約）。launch の値（roll +0.24°、pitch +0.97°、z 0.777）で同じ点を変換すると、物なしの bag で床が前後 −0.67°・左右 +0.47° 傾き、高さが +5.5 mm ずれる。旧 TF（pitch +8.995°）では前後 −8.70° 傾く。
+  - 結論：z と「VLP16db で 1.15 m」は再現した。**roll の符号と pitch の値は再現しない**。launch の値は計画書の値のまま変えていない。#149 の屋外静止確認で、どちらの値を採るかを決める。
+- 地図との関係：この TF は base_link 系の点群の位置を変える。旧地図（campus）とは NDT が合わなくなるので、地図の作り直し（#153）と同時にマージする。PR は #153 に依存する draft とする。
+- 下流の高さの判定との関係：pitch が +8.995° → +0.97° に変わるので、base_link 系での点の高さは、2 m 先で約 0.28 m、10 m 先で約 1.4 m 変わる。次の値は旧 TF・旧校正表のもとで調整しており、新しい TF で検証し直す必要がある（担当 Issue なし。§6）。
+  - `src/whill_navigation/config/pointcloud_to_laserscan.yaml:46-49` の高さの帯 0.05〜1.6 m（base_link 系。2026-07-15 の A/B で調整、ADR-0009）
+  - failsafe の Layer D（`/scan` を使う）と Layer C（Patchwork++ の no_ground を使う）のしきい値
+  - `src/whill_perception/config/patchworkpp.yaml:25` の sensor_height 0.79（新しい z は 0.777）
 - 旧値の誤り：旧 TF は IMU TF に noetic の LiDAR↔IMU extrinsic を足したもの。pitch +9° は「IMU が約 −8° 傾き、LiDAR はほぼ水平」という相対姿勢を、IMU を base_link と axis-aligned とみなして対 base_link の姿勢に流用した誤り（`docs/imu-coordinate-audit.md` §4.4 シナリオ B）。
 
 ### 2.2 校正ファイル（仰角表）
@@ -65,7 +78,7 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 | 機種 | VLP-16 Puck Hi-Res（上下 ±10°） | 2026-10-28 | 本体の銘板 | 確認済み |
 | 校正ファイル | `VLP16_hires_db.yaml`（velodyne_pointcloud 同梱） | 2026-10-28 | 床面フィット：VLP16db.yaml では高さ 1.15 m、Hi-Res で再計算すると 0.777 m | **実測済み**。屋外静止確認（#149）は未了 |
 
-- 反映先：`src/whill_sensors_bringup/launch/sensors_launch.py:151`（`velodyne_calibration` 引数、既定値は `:153`）。旧 `VLP16db.yaml`（±15°）は引数で選べる。
+- 反映先：`src/whill_sensors_bringup/launch/sensors_launch.py:151`（`velodyne_calibration` 引数、既定値は `:153`）。上位の `src/whill_localization/launch/odom_bringup_launch.py:102` と `src/whill_safety/launch/m6r_bringup_launch.py:275` でも同じ既定値で宣言して下へ渡す。旧 `VLP16db.yaml`（±15°）は引数で選べる。
 - 旧 bag（`/velodyne_points` だけのもの）の補正は `scripts/velodyne_reproject_bag.py`（#152）。GLIM の IMU 不良の主因がこのファイルの誤りだったことは `docs/reports/2026-11-02-glim-imu-root-cause.md`。
 
 ## 3. カメラ（RealSense D435）base_link → camera_link
@@ -78,7 +91,8 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 | roll / pitch / yaw | 0 | 2026-10-28 | 水平・前向き取付の申告 | 床面フィットで約 1° 上向きの疑い |
 
 - 状態：**実測済み**。実機静止確認は未了（#149）。
-- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:93`（`static_tf_camera`）。launch への反映は #146（ブランチ `fix/146-camera-tf`）で行う。このブランチ単体では launch は旧値のまま（§6）。
+- 依存関係：x, y は LiDAR の巻尺値（§2.1 の x 0.42、y 0.36）から導出している。#149 などで LiDAR の x, y が変われば、camera_link も同じだけ動かす。
+- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py` の `static_tf_camera`。launch への反映は #146（ブランチ `fix/146-camera-tf`）が行う。#146 がマージされるまで launch は旧値 (0.54, 0.382, 0.79) のまま（§6）。
 
 ## 4. IMU（RT 9 軸 USB IMU）
 
@@ -109,13 +123,14 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 
 ### 4.3 GLIM の T_lidar_imu（地図作成のみ。runtime は使わない）
 
-| モード | 並進 [m] | 回転 (qx, qy, qz, qw) | RPY | 由来 | 状態 |
-| --- | --- | --- | --- | --- | --- |
-| baseline（既定） | (−0.05, −0.4, −0.35) | (0.017399, −0.078447, 0.001369, 0.996765) | (+2°, −9°, 0°) | noetic | 旧値 |
-| audit（`GLIM_TLI_FROM_AUDIT=1`） | 同上 | (−0.035606, −0.066319, −0.002368, 0.997163) | (−4.09°, −7.61°, 0°) | 2026-07-10 の IMU 静止値から導出（LiDAR を pitch −0.5° と仮定。#144 以前の点群で推定） | 2026-07-10 の地図（campus）で目視 PASS |
+| モード | 並進 [m] | 回転 (qx, qy, qz, qw) | roll・pitch | yaw | 由来 | 状態 |
+| --- | --- | --- | --- | --- | --- | --- |
+| baseline（既定） | (−0.05, −0.4, −0.35) | (0.017399, −0.078447, 0.001369, 0.996765) | (+2°, −9°) | 0° | noetic | 旧値 |
+| audit（`GLIM_TLI_FROM_AUDIT=1`） | 同上 | (−0.035606, −0.066319, −0.002368, 0.997163) | (−4.09°, −7.61°) | **未測定（0 と仮定）** | 2026-07-10 の IMU 静止値から導出（LiDAR を pitch −0.5° と仮定。#144 以前の点群で推定） | 2026-07-10 の地図（campus）で目視 PASS |
 
 - 反映先：`scripts/m5r3_run_glim.sh:294-301`（baseline）、`:335-342`（audit）。
-- **新しい TF との食い違い**：§2.1 と §4.1 から計算した T_lidar_imu は、並進 (−0.033, −0.392, −0.306)、RPY (−4.33°, −9.08°, +0.36°)。audit 値との差は roll 0.24°、pitch 1.47°、yaw 0.36°、並進 (1.7, 0.9, 4.4) cm。audit 値は VLP16db.yaml で見た LiDAR の pitch（−0.5°）を前提にしている。#153 で使う値は #147 の結論とあわせて決める（§6）。
+- **新しい TF との食い違い**：§2.1 と §4.1 から計算した T_lidar_imu は、並進 (−0.033, −0.392, −0.306)、RPY (−4.33°, −9.08°, +0.36°)。audit 値との差は roll 0.24°、pitch 1.47°、yaw 0.36°、並進 (1.7, 0.9, 4.4) cm。#153 で使う値は #147 の結論とあわせて決める（§6）。
+- **campus 地図の bag の走行後の値が許容外**：2026-07-10 の本番 bag（`2026-07-10-campus-outer-final`）の走行後の静止確認は ax +1.331 / ay −0.577 / az +9.768 m/s²、逆算 roll −3.38°・pitch −7.75°（`docs/imu-coordinate-audit.md` §8.3）。走行前との差は ax −0.066・ay +0.122 m/s² で、§0 の許容 ±0.05 を超える。§0-3 の手順ではこの bag 用の T_lidar_imu を計算し直すべきだったが、していない（地図は走行前の値の audit で作成）。#153 で同じ bag から地図を作り直すときの入力とする。
 
 ## 5. D435 の深度の校正
 
@@ -126,7 +141,7 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 | 深度の誤差（校正前） | 4 m で約 +0.26 m 奥。床の高さが 2 m で −0.1 cm、3 m で −2.7 cm、4 m で −7.9 cm | 2026-10-28 | 静止物 bag で測定 |
 | On-Chip / Tare 校正 | — | — | **未測定**（#148） |
 
-- 手順：`docs/plans/2026-10-28-avoidance-baseline.md` §4.4（ブランチ `feat/avoidance-baseline`）。
+- 手順：`docs/plans/2026-10-28-avoidance-baseline.md` §4.4（ブランチ `feat/avoidance-baseline`、未マージ。main にはまだ無い）。
 - バックアップ（削除しない）：`~/rs_backup_938422070073/`（FW 更新前のフラッシュ全体、校正表 `calib_table_fw5.17.3.10_20261030_095735.bin`、`rs-enumerate-devices -c` の出力）。
 - 反映先：カメラ本体のフラッシュ（リポジトリの設定ファイルではない）。
 
@@ -138,10 +153,10 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 | --- | --- | --- | --- |
 | `src/whill_navigation/config/nav2_params.yaml:231`、`:282` | robot_radius 0.45 | §1 未測定 | #143（実測）→ #157（多角形） |
 | `src/whill_safety/whill_safety/failsafe_node.py:59` | 車幅 0.6 m の前提 | §1 未測定 | #143 → #157 |
-| `src/whill_sensors_bringup/launch/static_tf_launch.py:93` | camera_link (0.54, 0.382, 0.79) | §3 (0.47, 0.378, 0.73) | **食い違い**。#146 のマージで一致 |
-| `src/whill_sensors_bringup/README.md` の TF 表 | camera_link (0.54, 0.382, 0.79) | §3 | **食い違い**。#146 のマージで一致 |
-| `src/whill_perception/config/patchworkpp.yaml:25` | sensor_height 0.79 | §2.1 z 0.777 | **食い違い**（1.3 cm）。担当 Issue なし |
-| `src/whill_navigation/config/pointcloud_to_laserscan.yaml:48-49` | 高さの帯 0.05〜1.6 m（ADR-0009、旧 TF・旧校正表で調整） | §2 | 値は台帳の写しではないが、旧 TF 前提で調整した値。見直しの担当 Issue なし |
+| `src/whill_sensors_bringup/launch/static_tf_launch.py` の `static_tf_camera`、`src/whill_sensors_bringup/README.md` の TF 表 | camera_link | §3 (0.47, 0.378, 0.73) | #146 のマージ前は旧値 (0.54, 0.382, 0.79) で**食い違い**。マージ後は一致（この行を消す） |
+| `src/whill_perception/config/patchworkpp.yaml:25` | sensor_height 0.79 | §2.1 z 0.777 | **食い違い**（1.3 cm）。担当 Issue なし（起票案あり） |
+| `src/whill_navigation/config/pointcloud_to_laserscan.yaml:46-49` | 高さの帯 0.05〜1.6 m（base_link 系。ADR-0009、2026-07-15 に旧 TF・旧校正表で調整） | §2.1 | 台帳の写しではないが、旧 TF 前提の値。新しい TF で点の高さが 2 m 先で約 0.28 m 変わるので再検証が要る。担当 Issue なし（起票案あり） |
+| failsafe の Layer D（`/scan`）・Layer C（no_ground） | しきい値 | §2.1 | 同上。再検証が要る。担当 Issue なし（起票案あり） |
 | `scripts/m5r_pcd_to_occupancy.py:486` | `--lidar-mount-height` 既定 0.79 | §2.1 z 0.777 | **食い違い**（旧スクリプト。現用は v2 か要確認） |
 | `scripts/m5r3_run_glim.sh:294-301`、`:335-342` | T_lidar_imu baseline / audit | §4.3 | **食い違い**（pitch 1.47° ほか）。#147 → #153 |
 | `scripts/m5r4_run_gril_calib.sh:150` | imu_sensor_height 0.47 | §4.1 z 0.47 | 一致 |
@@ -153,22 +168,22 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。現行�
 
 旧値はここに残す。経緯の詳細は各コミットと参照先の文書。
 
-| 日付 | 項目 | 旧値 → 新値 | 理由 | コミット / Issue |
-| --- | --- | --- | --- | --- |
-| 2026-10-28 | LiDAR 校正ファイル | VLP16db.yaml → VLP16_hires_db.yaml | 実機は Puck Hi-Res | #144 |
-| 2026-10-28 | base_link→velodyne | (0.484136, 0.381548, 0.793704) / RPY (−0.035342, +0.156983, −0.005527) rad → (0.42, 0.36, 0.777) / RPY (0.24°, 0.97°, −0.317°) | 巻尺 + 床面フィット。旧値は IMU TF + noetic extrinsic | #145 |
-| 2026-10-28 | base_link→camera_link | (0.54, 0.382, 0.79) → (0.47, 0.378, 0.73)、RPY 0 | 巻尺 + データシート。旧値は M4R-2 の概算を #61 で IMU と一緒にずらしたもの | #146 |
-| 2026-07-10 | GLIM audit T_lidar_imu | RPY 07-09 audit → (−4.09°, −7.61°, 0°) | 07-10 朝の IMU 静止値に追随 | `39bf794` |
-| 2026-07-10 | base_link→imu_link | roll −3.52° / pitch −7.76° → −4.09° / −8.11° | 一晩で締結が緩んだ分（再固定はしていない） | `9cc4be2` |
-| 2026-07-09 | GLIM audit T_lidar_imu | 追加（環境変数で切替） | IMU 監査の反映 | `494ea77` |
-| 2026-07-09 | base_link→imu_link | 2 回目の再固定 | マジックテープの微スライド | `aed1e4d` |
-| 2026-07-09 | base_link→imu_link | 1 回目の再固定 | 同上 | `171b01d` |
-| 2026-07-09 | base_link→imu_link | roll 0 → −5.77° | 静止 gravity 監査で roll を発見 | `80af31f` |
-| 2026-07-08 | imu_link | IMU を物理的に 90° 回して axis-aligned に付け直し、yaw 0 | GLIM の T_lidar_imu を 90° 込みにすると発散したため | #61 後の作業 |
-| 2026-06-24 | base_link→imu_link 並進 | M4R-2 の値 → (0.38, −0.03, 0.47) | 巻尺（このとき LiDAR・カメラも同量ずらした） | `b2cb7df`（#61） |
-| 2026-06-20 | base_link→各センサ | identity → noetic 由来の値（M4R-2） | noetic の LiDAR↔IMU extrinsic を流用 | `78f6658`（#36）、`docs/m3-extrinsics-from-noetic.md` |
+| 測定日 | 変更日 | 項目 | 旧値 → 新値 | 理由・根拠 | コミット / Issue |
+| --- | --- | --- | --- | --- | --- |
+| 2026-10-28 | 2026-11-12 | LiDAR 校正ファイル | VLP16db.yaml → VLP16_hires_db.yaml | 実機は Puck Hi-Res（銘板） | #144 |
+| 2026-10-28 | 2026-11-12 | base_link→velodyne | (0.484136, 0.381548, 0.793704) / RPY (−0.035342, +0.156983, −0.005527) rad → (0.42, 0.36, 0.777) / RPY (0.24°, 0.97°, −0.3167°) | 巻尺 + 床面フィット（§2.1）。旧値は IMU TF + noetic extrinsic | #145 |
+| 2026-10-28 | 2026-11-12 | base_link→camera_link | (0.54, 0.382, 0.79) → (0.47, 0.378, 0.73)、RPY 0 | 巻尺 + データシート。旧値は M4R-2 の概算を #61 で IMU と一緒にずらしたもので、旧 z 0.79 では深度の物体高が常に約 +6 cm 高く出た | #146 |
+| 2026-07-10 | 2026-07-10 | GLIM audit T_lidar_imu | RPY (−3.52°, −7.26°, 0°)（07-09 audit、`docs/imu-coordinate-audit.md` §7.2）→ (−4.09°, −7.61°, 0°) | 07-10 朝の IMU 静止値に追随 | `39bf794` |
+| 2026-07-10 | 2026-07-10 | base_link→imu_link | roll −3.52° / pitch −7.76° → −4.09° / −8.11° | 一晩で締結が緩んだ分（再固定はしていない） | `9cc4be2` |
+| 2026-07-09 | 2026-07-09 | GLIM audit T_lidar_imu | 追加（環境変数で切替） | IMU 監査の反映 | `494ea77` |
+| 2026-07-09 | 2026-07-09 | base_link→imu_link | 2 回目の再固定 | マジックテープの微スライド。再固定ごとに ±2〜3° 動いた。触らなければ 30 秒で drift 0.03° 未満 | `aed1e4d` |
+| 2026-07-09 | 2026-07-09 | base_link→imu_link | 1 回目の再固定 | 同上 | `171b01d` |
+| 2026-07-09 | 2026-07-09 | base_link→imu_link | roll 0 → −5.77°（pitch は −8° のまま） | 07-08 の bag の静止 10 秒、1000 サンプルの gravity 逆算で pitch −7.66°・roll −5.77°（`docs/imu-coordinate-audit.md` §3） | `80af31f` |
+| 2026-07-08 | 2026-07-08 | imu_link | 90° 回して axis-aligned に付け直し、yaw 0・pitch −8° | GLIM の T_lidar_imu を 90° 込みにすると発散したため。pitch −8° は座面 −5° + 溝の傾きを写真解析した 7.5〜8° による | #61 後の作業 |
+| 2026-06-24 | 2026-06-24 | base_link→imu_link 並進 | M4R-2 の値 → (0.38, −0.03, 0.47) | 巻尺（このとき LiDAR・カメラも同量ずらした） | `b2cb7df`（#61） |
+| — | 2026-06-20 | base_link→各センサ | identity → noetic 由来の値（M4R-2） | noetic の LiDAR↔IMU extrinsic を流用 | `78f6658`（#36）、`docs/m3-extrinsics-from-noetic.md` |
 
-旧版の台帳にあった「走行日の朝一チェックリスト」（lo-only DDS 前提、2026-07-09）と 2026-07-10 の地図採用の記録は、それぞれ現行 runbook と `docs/maps/campus/README.md` に移っている。旧版は `git show 14208d0:docs/calibration-ledger.md` で読める。
+旧版の台帳にあった 2026-07-10 の地図採用の記録は `docs/maps/campus/README.md` にある。朝一チェックリストは §0 の注記のとおり廃止した。旧版は `git show 14208d0:docs/calibration-ledger.md` で読める。
 
 ## 8. 更新の手順
 
