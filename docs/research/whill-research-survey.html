@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHILL研究サーベイ — 研究の問いを探す</title>
+<style>
+:root{--bg:#f3f5f4;--paper:#fff;--ink:#20332f;--muted:#63746e;--green:#126452;--line:#dce5df}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;line-height:1.9}a{color:var(--green);text-underline-offset:4px}a:hover{color:#993d25}.layout{max-width:1440px;margin:auto;display:grid;grid-template-columns:255px minmax(0,1fr);gap:44px;padding:36px}aside{position:sticky;top:28px;align-self:start;max-height:calc(100vh - 56px);overflow:auto}.brand{font-weight:800;letter-spacing:.16em;font-size:13px;color:var(--green)}nav{display:grid;gap:8px;margin:24px 0}nav a{font-size:13px;text-decoration:none;padding:7px 10px;border-left:2px solid var(--line)}nav a:hover{background:#e4ede8;border-color:var(--green)}main{min-width:0}.hero{background:#153e33;color:#fff;border-radius:22px;padding:44px;margin-bottom:28px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#a8d5be}h1{font-size:clamp(28px,4vw,44px);line-height:1.4;margin:16px 0}h2{font-size:24px;line-height:1.5;margin:0 0 26px}h3{font-size:19px;line-height:1.6;margin-top:34px;padding-top:18px;border-top:1px solid var(--line)}.hero p{max-width:720px;color:#d5e6de}.tags{display:flex;flex-wrap:wrap;gap:8px}.tags span{font-size:12px;border:1px solid #548171;border-radius:30px;padding:4px 12px}.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0 36px}.overview a{display:block;text-decoration:none;background:white;padding:20px;border:1px solid var(--line);border-radius:14px}.overview b{display:block;font-size:16px}.overview span{color:var(--muted);font-size:13px}.content-section{background:var(--paper);padding:34px;border:1px solid var(--line);border-radius:18px;margin-bottom:24px}p,li{font-size:15px}li{margin:12px 0}ul{padding-left:23px}strong{font-weight:700}code{font-size:12px;background:#edf2ef;border-radius:4px;padding:2px 5px;overflow-wrap:anywhere}.table-wrap{overflow:auto;margin:22px 0}table{border-collapse:collapse;width:100%;min-width:620px;font-size:13px;line-height:1.75}th,td{text-align:left;vertical-align:top;padding:14px;border-bottom:1px solid var(--line)}th{background:#eaf1ed;font-weight:700}tbody tr:hover{background:#f6f9f7}.question{border:1px solid var(--line);border-radius:12px;margin:20px 0;overflow:hidden}.question summary{cursor:pointer;padding:20px;background:#eaf1ed;font-size:17px;font-weight:700;line-height:1.7}.question-body{padding:4px 22px 20px}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}button{cursor:pointer;background:white;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;font-size:12px}button:hover{background:#eaf1ed}.note{font-size:12px;color:var(--muted)}.foot{padding:24px;color:var(--muted);font-size:12px}#s8 td:first-child{white-space:nowrap;font-weight:700}a{overflow-wrap:anywhere}@media(max-width:950px){.layout{grid-template-columns:1fr;padding:18px;gap:16px}aside{position:static;max-height:none}nav{display:flex;overflow-x:auto;gap:6px;margin:12px 0}nav a{white-space:nowrap;border:1px solid var(--line);border-radius:6px}.hero{padding:28px}.content-section{padding:24px}.overview{grid-template-columns:1fr}.controls{margin:10px 0}}@media print{aside,.controls,.overview{display:none}.layout{display:block;padding:0}.hero{background:white;color:black;border-bottom:2px solid black;padding:10px}.hero p,.eyebrow{color:black}.content-section{border:0;padding:10px;break-inside:auto}.table-wrap{overflow:visible}table{min-width:0;font-size:10px}a{color:black}.question{break-inside:auto}body{background:white}h2,h3,summary{break-after:avoid}}
+</style></head><body><div class="layout"><aside><div class="brand">WHILL / RESEARCH NOTES</div><p class="note">2026.10.15 改訂<br>文献から研究の問いを考える</p><nav><a href="#s1">1. 調査方法と読み方</a><a href="#s2">2. 現在のWHILLを研究装置として捉える</a><a href="#s3">3. 先行研究が実際に扱っている問題</a><a href="#s4">4. 前回候補の見直し</a><a href="#s5">5. 今回導いた研究課題候補</a><a href="#s6">6. 比較と選定判断</a><a href="#s7">7. 発表までの進め方</a><a href="#s8">8. 文献と確認範囲</a><a href="#s9">9. 調査から言えることと残ること</a></nav><div class="controls"><button id="expand">候補をすべて開く</button><button id="collapse">候補を閉じる</button><button id="print">印刷 / PDF</button></div><p class="note">論文のリンクは別タブで開きます。<br>横長の表は左右にスクロールできます。</p></aside><main><header class="hero"><div class="eyebrow">LITERATURE → QUESTIONS → EXPERIMENTS</div><h1>WHILLを使って、<br>何を明らかにするか。</h1><p>自律移動の基盤から、研究上の問いへ。先行研究の到達点と検証範囲を確かめ、これから調べる価値のある条件を整理しました。</p><p><a href="whill-research-papers.html" style="color:#d5e6de;font-weight:bold">26件の研究をカードで眺める →</a></p><p><a href="whill-research-selected.html" style="color:#d5e6de">選んだ研究を詳しく比較する →</a></p><div class="tags"><span>25件の文献</span><span>5つの研究課題候補</span><span>2027年2月下旬発表</span><span>週2〜3日</span></div></header><div class="overview"><a href="#s3"><b>先行研究を読む</b><span>何が分かっていて、何を検証したのか</span></a><a href="#s5"><b>5つの問いを比較する</b><span>仮説・実験・得たい知識・反証条件</span></a><a href="#s6"><b>取り組み方を考える</b><span>必要な準備と年度末までの見通し</span></a></div><p class="note">探索的サーベイです。候補の新規性は未確定で、本文確認・要旨確認・プレプリントを文献表に明示しています。</p><section id="s1" class="content-section"><h2>1. 調査方法と読み方</h2><p>探索的サーベイであり、網羅性を保証するシステマティックレビューではない。一般Web検索から出版社、arXiv、著者・大学の公開資料へ進み、関連研究・実験・限界を確認した。IEEE Xplore等の全データベースを直接網羅検索したわけではない。検索エンジンの掲載日を論文出版年として採用せず、論文側の年・版を使った。</p>
+<p>検索の柱:</p>
+<ul>
+<li><code>robotic wheelchair shared control agency user autonomy</code></li>
+<li><code>wheelchair passenger pedestrian comfort social navigation</code></li>
+<li><code>robot navigation human ratings metrics evaluation</code></li>
+<li><code>LiDAR localization failure localizability uncertainty belief space</code></li>
+<li><code>wheelchair ride comfort terrain proprioception self supervised</code></li>
+<li><code>pure pursuit stability delay actuator dynamics</code></li>
+<li><code>robotic wheelchair docking task accomplishment deployment</code></li>
+<li>候補と重なる研究を探す追加検索: <code>wheelchair shared autonomy disagreement</code>、<code>passenger tolerance approaching pedestrians</code>、<code>localization confidence calibration</code>。</li>
+</ul>
+<p>選定基準は、①搭乗型モビリティに直接関わる、②その課題を扱うロボティクスの基礎研究、③候補の新規性を否定・限定し得る、のいずれか。製品紹介は研究の効果検証に数えない。レビューは分野の構図と文献探索に利用し、個別手法の有効性は原著に遡る。</p>
+<p>確認範囲を文献表で明示する。「本文」は公開本文の関連節を確認した意味で、全式の再導出・全引用の検証を意味しない。「要旨」は方法の存在確認に使い、具体的な実験設計や未解決性の断定には使わない。プレプリントを査読済み論文と同じ確度で扱わない。</p>
+<p>特に、<strong>ある論文が調べていないことと、分野全体で未解決なことは異なる。</strong> 以下の問いは、調査した文献から導く研究仮説である。採択前には最も近い論文の全文と引用・被引用研究をさらに絞って照合する。</p></section><section id="s2" class="content-section"><h2>2. 現在のWHILLを研究装置として捉える</h2><p>既存資料と設定を再確認した範囲では、CR2、VLP-16、IMU、車輪odom、NDT自己位置推定、Nav2、Web配車が成立している。2026-10-14には実機配車ジョブの成功記録がある。これは研究装置としての出発点であり、多条件での性能評価ではない。<a href="../reports/2026-10-14-dispatch-demo.md">実機記録</a>、<a href="../architecture-overview.md">構成</a>。</p>
+<div class="table-wrap"><table><thead><tr><th>利用できる基盤</th><th>研究上の意味</th><th>現時点の制約</th></tr></thead><tbody>
+<tr><td>実機自律走行、経路・速度の変更</td><td>同じ身体・環境で走行条件を操作できる</td><td>車体指令と実速度を分けて測定する必要</td></tr>
+<tr><td>点群、IMU、odom、localizer状態</td><td>環境・応答・推定の関係を記録できる</td><td>独立な位置真値は未整備</td></tr>
+<tr><td>Web・配車状態・手動入力</td><td>意思決定の粒度や情報提示を操作できる</td><td>連続的な共有制御は別途必要</td></tr>
+<tr><td>学内の既知経路・地図</td><td>日・場所を変えた反復評価が可能</td><td>同一経路だけの好成績では一般化を主張できない</td></tr>
+<tr><td>到着判定</td><td>地点到着とその後の活動を分けて観察できる</td><td>現設定はxy許容0.5m、yaw許容3.15radで精密接近ではない</td></tr>
+</tbody></table></div>
+<p>地図生成・costmap・failsafeの存在を新規研究と数えない。localizerの共分散には既存のfitness依存モデルがあるため、fitnessと共分散を独立な証拠として扱わない。実験前にソース・install・パラメータ・地図を固定する。</p>
+<p>ここまでの開発は発表で示せる成果である。ただし、研究テーマは「このシステムの残作業」から必ず選ぶ必要はない。WHILLは、人と自律移動の関係や推定・制御の限界を調べる実験装置にもなる。</p></section><section id="s3" class="content-section"><h2>3. 先行研究が実際に扱っている問題</h2><h3>3.1 人の操作をどの程度残すべきか</h3>
+<p>共有制御は既に長い研究の蓄積がある。Erdogan・Argallの制御方式・インタフェース比較 [自律性を高めるほど、使いやすくなるのか] は、性能、負担、好みを別々に評価している。Changら [好みが分からないときだけ、人に聞く] は経路の好みを学習し、不確かな場合に人へ問い合わせる。したがって「完全自律と手動の中間を作る」「迷ったら人に聞く」は、それだけでは新しい問いにならない。</p>
+<p>CoNav Chair [手動・自律・共有制御を同じ車いすで比べる] は21人の健常参加者による屋内走行で手動・自律・共有を比較する。ただし実施順は全員、手動→自律→共有で固定されている。自律条件の衝突数も多く、得られた好みを自律方式一般の優劣へ拡張できない。方式だけでなく、その実装品質と順序の影響を考える必要がある。</p>
+<p>Killeらの2026年プレプリント [人の動きのばらつきは、消すべき誤差か] は、人の軌跡のばらつきを抑える支援と残す支援を比較し、後者で主体感が高い結果を示す。ただし、対象は<strong>人が後ろから押す車いす</strong>であり、搭乗者が操縦する実験ではない。終点誤差に有意差がなかったことも、精度の同等性を証明したこととは異なる。</p>
+<p><strong>分野から得られる問い:</strong> 制御誤差の小ささと、人が「自分で移動している」と感じることは、どう両立するか。これ自体も研究済みの大きな問いであり、具体的な操作・状況・測定に絞る必要がある。</p>
+<h3>3.2 快適性・社会的な受容を何で測れるか</h3>
+<p>Moralesら [見通しの悪い角は、なぜ怖いのか] は視界と経路位置に関する不快感を地図化し、30人による評価を行った。ジャークが小さいことだけで快適性を代表できない。乗客と歩行者の快適性を両方扱うモデルも既にある [歩行者に優しい走り方は、乗客にも優しいか]。</p>
+<p>2024年のPMV研究 [人が近づくたびに、必ず避ける必要はあるか] は、近づく歩行者への許容が予測される通過距離や軌跡の曲がり方に関わると報告する。一方、提案経路計画の評価はシミュレーション中心で、提案方式に乗った人の感情を直接評価していないと述べる。これはその論文の検証範囲であり、分野全体の空白ではない。</p>
+<p>2026年のKalenbergら [歩行者ばかり優先する車いすを見直す] は、乗客・歩行者双方を考慮するsocial forceベースのcostmap層を提案し、シミュレーション、実環境、VR評価を報告している。要旨のみの確認なので、細かな実験条件は未確認。少なくとも「双方の快適性を扱うことが新しい」とは言えない。</p>
+<p>評価指針 [「人に優しい走行」をどう公平に評価するか] とSocNav3 [人の採点から、走行の評価指標を作る] は、成功・距離以外の評価や、人の評定を使う指標を扱う。後者では実・シミュレーション由来の軌跡を映像化して評価する。こうした評定を搭乗体験へ移せるかは、別に検証する必要がある。</p>
+<p>ただし媒体間比較も未開拓ではない。2026年のPR2との共移動実験 [VRのすれ違い実験は、現実の代わりになるか] は21人でVRと実環境を比較し、社会的な振る舞いの知覚に類似性を報告する。2016年の電動車いす研究 [車いすで机に寄る練習を、仮想空間でできるか] では、12人の利用者が移動・リーチ課題を行い、実環境とシミュレータで行動の一致がある一方、課題によって時間・誤操作に差があった。これらから導けるのは「常に一致しない」ではなく、役割・課題・媒体に依存する適用範囲を調べる必要性である。</p>
+<p><strong>分野から得られる問い:</strong> ロボットの評価指標は、誰の、どの体験を予測しているのか。見る人、乗る人、すれ違う人の評価を同じ値で代表できるか。</p>
+<h3>3.3 自己位置の「自信」は、行動の判断に使えるか</h3>
+<p>Schirmerら [短い道より「迷いにくい道」を選ぶ] は位置の不確かさを含むbelief spaceで経路を計画する。Nubertら [位置推定に失敗する前に、景色から気づく] は生点群から位置推定のしやすさを推定し、環境・センサをまたぐ検証を報告する。Park・Chung [怪しい地図照合を、信用しすぎない] はNDT由来の不確かさを推定・融合に使う。</p>
+<p>したがって「自己位置の不確かさを考慮する」「狭い場所ほど慎重に走る」は新規概念ではない。前回回答の「同じ誤差でも広い道と狭い道では意味が異なる」という例も、この既存研究の延長にある。</p>
+<p><strong>分野から得られる問い:</strong> 推定器の内部スコアや共分散は、環境が変わっても実際の誤差・タスク失敗を予測できるか。推定精度、確率の校正、行動上の必要精度は区別して調べる必要がある。</p>
+<h3>3.4 路面・車体・搭乗者の応答をどう結びつけるか</h3>
+<p>RCA [路面の見た目から「走ったときの揺れ」を学ぶ] は車体の内部計測を教師信号にし、画像から乗り心地に関わる走行コストを予測する。したがって「IMUで揺れを測って経路へ反映する」は、既に方法の先行例がある。</p>
+<p>電動車いすの振動計測 [同じ舗装でも、乗る人で振動が違う] もあり、測定点・走行条件・評価法の確認が必要。路面、速度、車体、座席、荷重は別の要因であり、同じ路面の振動値を普遍的な地図属性と考えてよいかは検証対象になる。</p>
+<p><strong>分野から得られる問い:</strong> 学習した走行コストのうち、場所の性質と車体・速度に依存する性質をどこまで分離できるか。ただし、速度や荷重の影響そのものを発見として扱わない。</p>
+<h3>3.5 到着・復帰・利用者の目的</h3>
+<p>Chenら [寄せる途中で目標が見えなくならないようにする] は視野制約と非ホロノミック制約を考慮した接近制御を扱う。Gargら [一部しか見えない机へ、クリックで寄せる] は部分的に見える机への接近を扱う。精密に寄せること、対象に対する姿勢を考えることにも先行研究がある。</p>
+<p>SWeeの展望論文 [病院で毎日使うと、走行以外の何が難しいか] は、目的地到着と目的達成の差、復旧、職員への引継ぎなどを整理する。ただし、要求・課題の提示とプロトタイプの報告であり、長期臨床運用の有効性を実証した論文として扱わない。</p>
+<p>利用者参加に関する2026年のレビュー [車いす研究は、本当に利用者と作られているか] は、対象期間2015〜2025年、選別した399件から23論文を採択し、参加が後期評価に偏ると報告する。この割合はその検索・採択条件における値であり、全車いす研究の割合ではない。</p>
+<p><strong>分野から得られる問い:</strong> 移動成功の定義は、利用者が次にしたい活動を含めるとどう変わるか。研究者が置いた成功条件の妥当性も研究対象になる。</p>
+<h3>3.6 制御の安定性・説明の提示</h3>
+<p>RPP [経路を追うだけの制御を、狭い場所でも使う] に続き、DWPP [指令どおり加速できない車体で、曲がり方を守る] は速度・加速度制約を指令生成に組み込む。遅れを含む追従安定性も古くから論じられている [小型ロボットに、先行車と同じ道を走らせる]。したがって、lookaheadやsmootherを調整して蛇行を減らすことは、現時点では開発・同定・既知手法の適用という位置づけが強い。</p>
+<p>説明可能な車いす支援についても、予測状態をARで見せる研究 [車いすが次にどう動くかをARで見せる] がある。停止理由の表示だけで独自性を主張できない。</p>
+<p>制御やUIを研究から除外するという意味ではない。既存の安定条件で説明できない現象、新しい制約下での保証、説明が判断を誤らせる条件など、追加で得る知識を明確にする必要がある。</p></section><section id="s4" class="content-section"><h2>4. 前回候補の見直し</h2><div class="table-wrap"><table><thead><tr><th>前回の候補</th><th>今回の位置づけ</th><th>研究として残すために必要なこと</th></tr></thead><tbody>
+<tr><td>滑らかな追従・蛇行対策</td><td>開発項目として有用。研究の第一候補から下げる</td><td>既存の遅れ・制約モデルが説明できない条件を特定</td></tr>
+<tr><td>信頼度に応じた減速</td><td>既知の不確かさ考慮の適用になりやすい</td><td>スコアの校正・移行可能性・失敗検出という問いへ限定</td></tr>
+<tr><td>理由を表示するUI</td><td>実装だけでは不足</td><td>理解、過信、介入判断を分離する実験が必要</td></tr>
+<tr><td>IMUによる快適経路</td><td>RCA等と重なる</td><td>既存モデルの適用限界や条件間の移行を検証</td></tr>
+<tr><td>歩行者への譲り方</td><td>既存研究が多い</td><td>役割や提示方法で評価が変わる仕組みを扱う</td></tr>
+<tr><td>共有制御</td><td>既存の研究領域そのもの</td><td>何を任せたいか、どこで意図が衝突するかを特定</td></tr>
+<tr><td>最後の数mの接近</td><td>dockingの先行研究と重なる</td><td>位置姿勢の精度と活動の成立の関係を明らかにする</td></tr>
+<tr><td>起動・復旧の統合</td><td>運用改善として有用</td><td>複数条件に通じる失敗・復旧モデルと検証が必要</td></tr>
+</tbody></table></div></section><section id="s5" class="content-section"><h2>5. 今回導いた研究課題候補</h2><p>以下の仮説・実験設計は本サーベイからの提案であり、先行研究が実証済みの内容ではない。新しい手法を作る前に、問いが既存研究で答えられていないか、必要なデータを得られるかを確認する。</p><details class="question" open><summary>Q1. 操作の「量」と意思決定の「重要さ」は主体感にどう影響するか</summary><div class="question-body"><p><strong>問い:</strong> 移動中に少しずつ操舵できることと、重要な分岐を自分で決められることは、利用者にとって同じ種類の制御権か。</p>
+<ul>
+<li>近接研究: 制御方式比較 [自律性を高めるほど、使いやすくなるのか, 手動・自律・共有制御を同じ車いすで比べる]、経路選好・問い合わせ [好みが分からないときだけ、人に聞く]、動作の自由と主体感 [人の動きのばらつきは、消すべき誤差か]。単なる手動/共有/自律の比較は避ける。</li>
+<li>仮説: 同程度の操作回数でも、本人に意味のある決定へ反映される介入は、単なる微修正より主体感を高める。一方で締切のある移動では委任が選ばれる可能性がある。</li>
+<li>実験: 行先までの経路が本人の事前選好に合う/合わない状況と、意思反映の粒度を組み合わせる。経路長、所要時間、操作要求量の差を記録・統制する。方式ごとの評定だけでなく、本人が望んだ選択が反映された割合を測る。</li>
+<li>得たい知識: 自律度を単一の操作割合で表すことの限界と、判断の意味に依存する主体感の関係。</li>
+<li>反証・縮小: 差が操作回数や遅延のみで説明されるなら「意味のある判断」の独立した効果は主張しない。</li>
+<li>未解決の確認: assistive robotics全般のshared autonomy、意図不一致、権限配分研究まで確認が必要。今回の範囲ではこの要因分離の新規性を確定していない。</li>
+<li>実施条件: 対象者・課題設計が主な負担。初年度は実験用の限定的な入力方式でもよい。学生のみなら、対象を学内モビリティの初学利用者とし、車いす利用当事者全般へ拡張しない。</li>
+</ul></div></details><details class="question" open><summary>Q2. 映像や軌跡による評価は、実際の搭乗体験を予測できるか</summary><div class="question-body"><p><strong>問い:</strong> 同じ自律移動方策の順位は、観察映像で評価したときと、WHILLに乗って経験したときに一致するか。どんな場面で一致しなくなるか。</p>
+<ul>
+<li>近接研究: 視界に依存する不快感 [見通しの悪い角は、なぜ怖いのか]、接近歩行者への許容 [人が近づくたびに、必ず避ける必要はあるか]、VRでの快適性 [歩行者ばかり優先する車いすを見直す]、人の軌跡評定 [人の採点から、走行の評価指標を作る]。</li>
+<li>仮説: 最小距離や所要時間が近い方策でも、曲がり角の視界、減速時期などによって、観察と搭乗の順位一致が変わる。</li>
+<li>実験: 方策を少数に固定し、同一方策群を映像条件と搭乗条件で評価する。最初は歩行者なしの曲がり角に絞れば追跡器開発を避けられる。提示順・習熟を調整し、視点、速度、軌跡を記録する。</li>
+<li>得たい知識: 評価媒体をまたぐ妥当性と、既存の代理指標が使える範囲。新しいプランナがなくても研究になる。</li>
+<li>主指標: 方策順位の一致、条件と媒体の交互作用、未使用シナリオでの予測性能。単に平均快適度が高い方式を探す実験にしない。</li>
+<li>反証・縮小: 十分狭い信頼区間で順位・効果が一致するなら、その条件で映像評価が有効だという境界知識になる。ただし有意差なしだけで同等と結論しない。</li>
+<li>未解決の確認: VRと実環境の相互作用比較 [VRのすれ違い実験は、現実の代わりになるか]、車いすでの移動・リーチ課題の比較 [車いすで机に寄る練習を、仮想空間でできるか] が既にあるため、「映像と実機の比較自体が初」とは言わない。搭乗型低速移動・遮蔽条件・評価指標の組合せへ限定する。</li>
+<li>実施条件: 新規制御の負担は小さめ。映像と実機の条件合わせ・参加者実験が中心。乗客と歩行者の役割差まで同時に増やさない。</li>
+</ul></div></details><details class="question" open><summary>Q3. 自己位置推定の信頼度は、場所・日・必要精度をまたいで使えるか</summary><div class="question-body"><p><strong>問い:</strong> ある区間で校正したNDTの信頼度は、別の構造や地図差分を持つ区間で、タスク上許容できない位置誤差を検出できるか。</p>
+<ul>
+<li>近接研究: belief-space計画 [短い道より「迷いにくい道」を選ぶ]、センサ・環境間でのlocalizability [位置推定に失敗する前に、景色から気づく]、NDT不確かさ [怪しい地図照合を、信用しすぎない]。新規性は「不確かさで減速」には置かない。</li>
+<li>仮説: 単一のfitness閾値は、自己相似形状・遮蔽・地図差分で誤差との関係が変わる。誤差の向きと通路余裕を含めると、許容誤差超過の予測が改善する可能性がある。</li>
+<li>実験: 位置の独立基準が取れる短い区間を準備。区間A/日Aで校正し、区間B/日Bに固定して適用。ランダムなフレーム分割は避ける。fitness、既存共分散、単純な幾何指標を比較する。</li>
+<li>得たい知識: どの環境変化で信頼度が校正を失うか、少量の再校正でどこまで回復するか。成果は誤差モデルの限界と条件付きの検出法。</li>
+<li>主指標: 許容誤差超過の見逃し・誤警報、確率を出すなら校正誤差/被覆率。単に位置RMSEを下げる研究と区別する。</li>
+<li>反証・縮小: 固定閾値で別条件でも十分予測できれば、複雑な監督器を加える根拠は弱い。失敗例がほぼ得られなければ検出性能は評価できない。</li>
+<li>未解決の確認: localization integrity、registration quality、uncertainty calibrationの既存研究との照合が必要。これらの概念自体は新しくない。</li>
+<li>実施条件: 独立な真値が最大の制約。自分のNDT/EKF出力を正解として使わない。整備できなければ候補から外す。</li>
+</ul></div></details><details class="question" open><summary>Q4. 到着誤差は、その後の活動の難しさをどこまで説明できるか</summary><div class="question-body"><p><strong>問い:</strong> 同じ位置誤差でも、机で作業する・人と会話するなど次の活動が違うと、望ましい到着姿勢や必要な再操作は変わるか。</p>
+<ul>
+<li>近接研究: 視野制約付きdocking [寄せる途中で目標が見えなくならないようにする]、机への接近 [一部しか見えない机へ、クリックで寄せる]、目的地と目的達成の区別 [病院で毎日使うと、走行以外の何が難しいか]。精密接近アルゴリズムの追加だけでは不足。</li>
+<li>仮説: 許容到着領域は一点を中心とする一律な距離・角度閾値でなく、活動と利用者によって異なる形になる。</li>
+<li>実験: 最初は机上の対象に手を伸ばす等の1活動に限定し、複数の到着位置・角度を設定。活動完了、追加の車体操作、所要時間、望む姿勢を観察する。</li>
+<li>得たい知識: ゴール許容領域の定義と、位置誤差指標の説明力。制御器より、何を到着成功とするべきかが中心。</li>
+<li>反証・縮小: 一般的な距離・角度だけで十分説明できるなら、活動依存モデルを追加する根拠は弱い。</li>
+<li>未解決の確認: wheelchair positioning、reachability、ergonomics、affordance研究を追加照合する必要がある。移動・リーチを合わせて評価する先行例 [車いすで机に寄る練習を、仮想空間でできるか] もあり、活動を含めること自体は新規でない。今回の範囲では新規性を判断しきれないため、条件付き候補。</li>
+<li>実施条件: 対象利用者に依存する。健常学生のリーチ範囲を障害当事者へ一般化しない。移乗を初期課題に含める必要はない。</li>
+</ul></div></details><details class="question" open><summary>Q5. 路面コストは走行条件が変わっても有効か</summary><div class="question-body"><p><strong>問い:</strong> 単一速度・単一荷重で作った振動コスト地図は、速度や荷重が変わったときにも経路の優劣を予測できるか。</p>
+<ul>
+<li>近接研究: 自己教師あり快適性予測 [路面の見た目から「走ったときの揺れ」を学ぶ]、電動車いすの振動評価 [同じ舗装でも、乗る人で振動が違う]。揺れをコストにすること自体は既知。</li>
+<li>仮説: 地形だけの固定コストより、速度等を条件に含むモデルの方が未計測条件へ移行しやすい。ただし既存の車体応答モデルで説明できる可能性が高い。</li>
+<li>実験: 限定した路面で速度×荷重を操作。学習に使わない路面・日・条件を残す。固定コスト、速度条件付きの単純モデル、既存物理モデルを比較する。</li>
+<li>得たい知識: コストの移行限界、最低限必要な校正条件。新しい学習器を作る前に単純モデルがどこまで説明するかを調べる。</li>
+<li>反証・縮小: 固定コストで順位が維持される、または既知の物理モデルで十分説明できるなら、新手法の必要性は弱い。</li>
+<li>未解決の確認: RCA本文と速度条件付きtraversability研究の比較が未完了。独自性は低〜未確定として扱う。</li>
+<li>実施条件: IMUの測定点・重力補正・サンプリングを固定する。車体の振動だけを測る場合、題名は「乗り心地」より「振動応答・予測」に限定する。</li>
+</ul></div></details></section><section id="s6" class="content-section"><h2>6. 比較と選定判断</h2><p>「研究として有望」と「実装しやすい」は別に評価する。以下は現設備と活動時間に対する見積もりであり、研究価値の順位ではない。</p>
+<div class="table-wrap"><table><thead><tr><th>問い</th><th>主な研究の型</th><th>期待する知識</th><th>最大の準備負担</th><th>2月までの条件付き見通し</th></tr></thead><tbody>
+<tr><td>Q1 意思決定と主体感</td><td>HRI・仮説検証</td><td>委任したい判断と残したい判断の関係</td><td>条件分離、参加者、入力方式</td><td>中。11月に実験設計を固定できること</td></tr>
+<tr><td>Q2 評価媒体と搭乗体験</td><td>評価方法・実証</td><td>代理評価が通用する境界</td><td>同条件の映像/搭乗実験</td><td>中〜高。限定場面なら既存走行を使える</td></tr>
+<tr><td>Q3 信頼度の移行</td><td>推定・信頼性</td><td>校正が崩れる条件と予測限界</td><td>独立真値、失敗事例</td><td>中。真値がなければ低</td></tr>
+<tr><td>Q4 活動に応じた到着</td><td>タスク表現・HRI</td><td>活動に適したゴール領域</td><td>対象利用者、隣接分野調査</td><td>中〜低。1活動へ絞る</td></tr>
+<tr><td>Q5 路面コストの移行</td><td>モデリング・実証</td><td>速度/荷重間の移行条件</td><td>計測、既存モデルとの差</td><td>中。ただし新規性の確認が先</td></tr>
+</tbody></table></div>
+<p>現時点で最初に深掘りする組合せは <strong>Q2とQ3</strong>。Q2は「人にとってよい移動をどう測るか」、Q3は「推定器の自信をいつ信じられるか」で、研究分野と必要な実験が異なる。これは二つを同時に研究する提案ではなく、研究の方向を選ぶための比較である。人の意思決定への関心が強ければQ1を同じ段階で比較する。</p>
+<p>B3発表で狙える最小の研究成果は、既存研究を再現し、重要な条件を一つ変え、予測される結果と違いが生じるか検証すること。その違いが何を意味し、どこまで適用できるかを説明する。単なる再実装でも、差が出ただけでも、新規性は成立しない。</p></section><section id="s7" class="content-section"><h2>7. 発表までの進め方</h2><ul>
+<li><strong>10月後半:</strong> Q1〜Q3のうち関心のある2領域について、最も近い原著を各2〜3本読む。各論文を「問い／操作した要因／測定／結論／限界／自分が変える条件」の1ページにする。指導教員と、研究室の専門・実験設備・参加者アクセスを照合する。</li>
+<li><strong>11月前半:</strong> 候補を1つに絞る。新規性より先に実装を始めず、既存研究との差分と代替説明を書き出す。測定可能性を短い予備実験で確認する。</li>
+<li><strong>11月後半〜12月:</strong> 比較条件・主要指標を固定。被験者内比較の順序、試行単位、必要精度、サンプル数を決める。人対象なら研究室の必要手続きをこの段階で進める。</li>
+<li><strong>1月:</strong> 本実験・解析。日・経路・参加者が違う条件で適用範囲を確認する。多数のフレームを独立サンプルとして水増ししない。</li>
+<li><strong>2月前半:</strong> 主張を結果に合わせて限定する。効果が出ない場合も信頼区間・操作成立・測定精度を見て解釈する。「差なし＝同等」や「失敗なし＝安全」は避ける。</li>
+<li><strong>2月下旬:</strong> 基盤構築、先行研究に対する問い、実験結果、残る課題をつなげて発表する。</li>
+</ul></section><section id="s8" class="content-section"><h2>8. 文献と確認範囲</h2><p>25件。年は公開資料の年。書誌・研究結果の確認範囲を以下に限定する。レビューや展望論文は実験原著と区別した。</p>
+<div class="table-wrap"><table><thead><tr><th>ID</th><th>文献・公開年</th><th>確認した資料と用途</th></tr></thead><tbody>
+<tr><td>自律性を高めるほど、使いやすくなるのか</td><td><a href="https://doi.org/10.1016/j.robot.2017.04.013" target="_blank" rel="noopener noreferrer">The effect of robotic wheelchair control paradigm and interface on user performance, effort and preference: An experimental assessment</a>, 2017</td><td>出版社要旨。制御方式比較の先行例</td></tr>
+<tr><td>好みが分からないときだけ、人に聞く</td><td><a href="https://openaccess.thecvf.com/content_ICCV_2017_workshops/w22/html/Chang_A_Shared_Autonomy_ICCV_2017_paper.html" target="_blank" rel="noopener noreferrer">A Shared Autonomy Approach for Wheelchair Navigation Based on Learned User Preferences</a>, ICCV Workshops 2017</td><td>CVF公開資料。経路選好・問い合わせの先行例。前回調査から継承</td></tr>
+<tr><td>手動・自律・共有制御を同じ車いすで比べる</td><td><a href="https://arxiv.org/html/2507.11716v1" target="_blank" rel="noopener noreferrer">CoNav Chair: Development and Evaluation of a Shared Control-based Wheelchair for the Built Environment</a>, 2025</td><td>公開本文の方法・実験・結果。プレプリント版</td></tr>
+<tr><td>人の動きのばらつきは、消すべき誤差か</td><td><a href="https://arxiv.org/html/2608.11417v1" target="_blank" rel="noopener noreferrer">Locomotion Variability and User Experience in Smart Wheelchair Human–Robot Interaction</a>, 2026</td><td>公開本文の制御条件・実験・結果。プレプリント</td></tr>
+<tr><td>見通しの悪い角は、なぜ怖いのか</td><td><a href="https://doi.org/10.1016/j.robot.2018.02.002" target="_blank" rel="noopener noreferrer">Passenger discomfort map for autonomous navigation in a robotic wheelchair</a>, RAS 2018</td><td>出版社要旨・公開導入・discussion抜粋。全文未確認</td></tr>
+<tr><td>歩行者に優しい走り方は、乗客にも優しいか</td><td><a href="https://doi.org/10.1016/j.robot.2016.09.010" target="_blank" rel="noopener noreferrer">Social robotic wheelchair centered on passenger and pedestrian comfort</a>, RAS 2017（2016オンライン公開）</td><td>出版社公開抜粋。双方の快適性モデルの先行例</td></tr>
+<tr><td>人が近づくたびに、必ず避ける必要はあるか</td><td><a href="https://www.mdpi.com/2076-3417/14/24/11622" target="_blank" rel="noopener noreferrer">Autonomous Navigation for Personal Mobility Vehicles Considering Passenger Tolerance to Approaching Pedestrians</a>, Applied Sciences 2024</td><td>出版社の検索取得本文、結論・限界。直接取得は429で失敗</td></tr>
+<tr><td>歩行者ばかり優先する車いすを見直す</td><td><a href="https://cris.fau.de/publications/365631043/" target="_blank" rel="noopener noreferrer">Social Force-Based Proxemics for Mutual and Comfortable Navigation of an Intelligent Wheelchair</a>, ARSO 2026</td><td>著者大学の書誌・要旨。全文未確認</td></tr>
+<tr><td>「人に優しい走行」をどう公平に評価するか</td><td><a href="https://doi.org/10.1145/3700599" target="_blank" rel="noopener noreferrer">Principles and Guidelines for Evaluating Social Robot Navigation Algorithms</a>, THRI 2024</td><td>著者公開版・機関資料。評価指針、前回調査から継承</td></tr>
+<tr><td>人の採点から、走行の評価指標を作る</td><td><a href="https://arxiv.org/html/2509.01251v1" target="_blank" rel="noopener noreferrer">Towards Data-Driven Metrics for Social Robot Navigation Benchmarking</a>, 2025</td><td>公開本文のデータ形式・評定収集・品質管理。プレプリント版</td></tr>
+<tr><td>短い道より「迷いにくい道」を選ぶ</td><td><a href="https://www.ipb.uni-bonn.de/pdfs/schirmer17iros.pdf" target="_blank" rel="noopener noreferrer">Efficient Path Planning in Belief Space for Safe Navigation</a>, IROS 2017</td><td>著者公開PDF、方法概要・実験節</td></tr>
+<tr><td>位置推定に失敗する前に、景色から気づく</td><td><a href="https://arxiv.org/abs/2203.05698" target="_blank" rel="noopener noreferrer">Learning-based Localizability Estimation for Robust LiDAR Localization</a>, 2022</td><td>著者要旨。詳細な再現条件は未確認</td></tr>
+<tr><td>怪しい地図照合を、信用しすぎない</td><td><a href="https://doi.org/10.1002/rob.22392" target="_blank" rel="noopener noreferrer">Uncertainty-aware LiDAR-based localization for outdoor mobile robots</a>, JFR 2024</td><td>出版社公開資料。前回調査から継承</td></tr>
+<tr><td>路面の見た目から「走ったときの揺れ」を学ぶ</td><td><a href="https://arxiv.org/abs/2207.14460" target="_blank" rel="noopener noreferrer">RCA: Ride Comfort-Aware Visual Navigation via Self-Supervised Learning</a>, 2022</td><td>著者要旨。PDFは容量制限で取得失敗。CMUのFirst-Person題の修論と混同しない</td></tr>
+<tr><td>同じ舗装でも、乗る人で振動が違う</td><td><a href="https://repository.essex.ac.uk/37509/" target="_blank" rel="noopener noreferrer">Investigation of Vibration and User Comfort for Powered Wheelchairs</a>, 2022</td><td>大学公開の論文PDF。振動計測の先行例</td></tr>
+<tr><td>寄せる途中で目標が見えなくならないようにする</td><td><a href="https://arxiv.org/abs/2107.13365" target="_blank" rel="noopener noreferrer">Virtual Landmark-Based Control of Docking Support for Assistive Mobility Devices</a>, TMECH 2021</td><td>著者要旨・書誌。制約付き接近の存在確認</td></tr>
+<tr><td>一部しか見えない机へ、クリックで寄せる</td><td><a href="https://doi.org/10.1016/j.robot.2025.105087" target="_blank" rel="noopener noreferrer">A system for docking robotic wheelchair to partially visible table of unknown pose using human input and robotic wheelchair motion</a>, RAS 2025</td><td>前回取得の出版社要旨。今回DOI再取得は失敗、詳細な限界は未確認</td></tr>
+<tr><td>病院で毎日使うと、走行以外の何が難しいか</td><td><a href="https://www.weisongshi.org/papers/guo26-SWee.pdf" target="_blank" rel="noopener noreferrer">Autonomous Wheelchairs Deployment in Healthcare Facilities: Requirements and Challenges</a>, Delaware Journal of Public Health 2026</td><td>著者公開PDF、要求・復旧・課題の節。展望論文</td></tr>
+<tr><td>車いす研究は、本当に利用者と作られているか</td><td><a href="https://arxiv.org/pdf/2603.26543" target="_blank" rel="noopener noreferrer">User Involvement in Robotic Wheelchair Development: A Decade of Limited Progress</a>, 2026</td><td>公開PDFの選定方法・結果。ナラティブレビュー、プレプリント</td></tr>
+<tr><td>経路を追うだけの制御を、狭い場所でも使う</td><td><a href="https://arxiv.org/abs/2305.20026" target="_blank" rel="noopener noreferrer">Regulated Pure Pursuit for Robot Path Tracking</a>, Autonomous Robots 2023</td><td>著者要旨・書誌。前回調査から継承</td></tr>
+<tr><td>指令どおり加速できない車体で、曲がり方を守る</td><td><a href="https://arxiv.org/html/2601.15006v1" target="_blank" rel="noopener noreferrer">DWPP: Dynamic Window Pure Pursuit Considering Velocity and Acceleration Constraints</a>, 2026</td><td>公開本文。プレプリント版。現用Humbleでの導入可否とは別問題</td></tr>
+<tr><td>小型ロボットに、先行車と同じ道を走らせる</td><td><a href="https://www-robotics.jpl.nasa.gov/media/documents/ICRALeaderFollower2002.pdf" target="_blank" rel="noopener noreferrer">Algorithms and Sensors for Small Robot Path Following</a>, ICRA 2002</td><td>著者公開PDFのPure Pursuit節。1995年Ollero・Herediaの遅れ安定性研究を引用。1995原著自体は未取得</td></tr>
+<tr><td>車いすが次にどう動くかをARで見せる</td><td><a href="https://www.microsoft.com/en-us/research/publication/head-mounted-augmented-reality-for-explainable-robotic-wheelchair-assistance/" target="_blank" rel="noopener noreferrer">Head-Mounted Augmented Reality for Explainable Robotic Wheelchair Assistance</a>, IROS 2018</td><td>著者所属機関の要旨。ARによる説明提示の先行例</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>VRのすれ違い実験は、現実の代わりになるか</th><th><a href="https://arxiv.org/html/2607.09261v1" target="_blank" rel="noopener noreferrer">Validating Virtual Reality for Studying Multimodal Human-Robot Interaction in Socially Aware Robot Navigation</a>, 2026</th><th>著者公開本文。VRと実環境の比較を扱う近接研究、プレプリント</th></tr></thead><tbody>
+<tr><td>車いすで机に寄る練習を、仮想空間でできるか</td><td><a href="https://doi.org/10.1186/s12984-016-0112-2" target="_blank" rel="noopener noreferrer">Powered wheelchair simulator development: implementing combined navigation-reaching tasks with a 3D hand motion controller</a>, JNER 2016</td><td>出版社公開本文。移動とリーチを組み合わせた実環境/シミュレータ比較</td></tr>
+</tbody></table></div>
+<p>追加の探索資料: <a href="https://arxiv.org/html/2509.22271v1" target="_blank" rel="noopener noreferrer">Human Autonomy and Sense of Agency in Human-Robot Interaction: A Systematic Literature Review</a>, 2025プレプリント。主体性と主体感の測定を整理する入口として使えるが、車いすに限定した知見とは扱わない。</p></section><section id="s9" class="content-section"><h2>9. 調査から言えることと残ること</h2><p>研究領域を広く見渡すと、共有制御・快適性・信頼性・到着支援は既に研究の蓄積がある。「WHILLへ実装する」という差分だけでは弱い。今回の候補は、既存の評価・モデル・成功条件がどこまで通用するかを問う形にした。</p>
+<p>次の判断に必要なのは、全候補の機能実装ではなく、関心のある領域の最隣接研究との直接比較である。特にQ4の人間工学、Q5の速度条件付き地形学習は今回の確認が薄く、新規性を高く評価していない。Q1〜Q3も新規性の保証はなく、研究計画へ進めるための候補として提示する。</p></section><footer class="foot">WHILL研究サーベイ · 2026-10-15改訂 · 外部ライブラリ不要の単体HTML</footer></main></div><script>
+const all=()=>document.querySelectorAll('details.question');document.querySelector('#expand').onclick=()=>all().forEach(d=>d.open=true);document.querySelector('#collapse').onclick=()=>all().forEach(d=>d.open=false);document.querySelector('#print').onclick=()=>{all().forEach(d=>d.open=true);window.print()};
+</script></body></html>
