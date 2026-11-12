@@ -267,6 +267,12 @@ def generate_launch_description():
                         'runtime stack, and past USB 2.1 enumeration issues '
                         'make an accidental start expensive. Flip true for '
                         'camera-specific tests.'),
+        DeclareLaunchArgument(
+            'failsafe_startup_grace_sec',
+            default_value='0.0',
+            description='Forwarded to safety_launch (Issue #159). 0.0 = '
+                        'never-arrived inputs are only logged; > 0 = they '
+                        'stop the chair after this many seconds.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
@@ -287,5 +293,9 @@ def generate_launch_description():
         # /cmd_vel_safety fires only when a failsafe layer trips.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(safety_launch),
-            launch_arguments={'use_sim_time': use_sim_time}.items()),
+            launch_arguments={
+                'use_sim_time': use_sim_time,
+                'failsafe_startup_grace_sec':
+                    LaunchConfiguration('failsafe_startup_grace_sec'),
+            }.items()),
     ])
