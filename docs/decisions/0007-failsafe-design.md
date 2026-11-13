@@ -551,6 +551,11 @@ priority 50 は **safety(100) の下、navigation(10) の上**。この順序自
   出している間は、手動操縦指令があっても twist_mux が safety を通す。つまり
   **手動操縦中でも Layer D の前方歩行者停止は生きたまま**で、オペレータが人へ
   向けて操作しても止まる。teleop 側で何も実装しなくても「自動的に成立」する
+  - 追記 (2026-11-12、提案): [ADR-0013](0013-rescue-while-stopped.md)（proposed）が
+    この不変条件を改める案を出している。採択して `layer_d_rescue_enabled` を
+    有効にすると、Layer D 単独の停止中に限り、前進を含まない teleop 指令を
+    failsafe が `/cmd_vel_safety` に中継する。前進は今どおり止まる。採択は
+    ユーザーが行い、それまで既定は無効
 - teleop > navigation: 救出時、配車ジョブが ACTIVE でも手動が勝つ。ジョブを
   先にキャンセルする必要がない。救出後は手動 OFF + 目的地再選択で配車再開
 

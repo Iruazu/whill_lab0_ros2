@@ -6,7 +6,7 @@ VLP-16、RT USB 9軸IMU、任意のRealSense D435と静的TFを起動する。
 
 `sensors_launch.py` はVelodyneの3ノード（driver / transform / laserscan）、`imu_launch.py`、静的TFを含む。上流の `velodyne-all-nodes-VLP16-launch.py` は校正ファイルを `VLP16db.yaml` に固定しているため include せず、同じ構成を直接起動する。校正ファイルは `velodyne_calibration` 引数で選び、既定は実機（Puck Hi-Res）に合う `VLP16_hires_db.yaml`（#144）。`realsense:=true` の場合だけカメラを追加する。Velodyne側のscanは `/scan_raw` にremapされ、Nav2が使用する `/scan` と区別する。
 
-IMUはlifecycleのconfigure / activateをlaunchで行う。`imu_sign_corrector` は `/imu/data_raw` の加速度3軸を反転し `/imu/data_rep145` に再配信する。EKFは補正後を使う。
+IMUはlifecycleのconfigure / activateをlaunchで行う。`imu_sign_corrector` は `/imu/data_raw` の加速度3軸を反転し `/imu/data_rep145` に再配信する。EKFは補正後を使う。SIGINT / SIGTERMでは、トレースバック無しにexit 0で終わる（`test/test_imu_sign_corrector_shutdown.py`、#169）。
 
 統合bringup / odom bringupに内包されるため、実機デモで個別に追加起動しない。センサ単体試験だけで `ros2 launch whill_sensors_bringup sensors_launch.py` を使う。
 

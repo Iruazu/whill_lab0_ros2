@@ -264,6 +264,13 @@ def generate_launch_description():
                         'scripts/m6r_smoke_test.sh is the usual bag-'
                         'replay entry point).'),
         DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
+                        'proposed). true = while only Layer D stops the '
+                        'chair, failsafe relays teleop reverse/rotate on '
+                        '/cmd_vel_safety.'),
+        DeclareLaunchArgument(
             'realsense',
             default_value='false',
             description='Forward to sensors_launch to start the D435. Off '
@@ -278,6 +285,12 @@ def generate_launch_description():
                         'elevation table. Default VLP16_hires_db.yaml '
                         '(#144). The map must have been built from '
                         'clouds with the same table.'),
+        DeclareLaunchArgument(
+            'failsafe_startup_grace_sec',
+            default_value='0.0',
+            description='Forwarded to safety_launch (Issue #159). 0.0 = '
+                        'never-arrived inputs are only logged; > 0 = they '
+                        'stop the chair after this many seconds.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
@@ -300,5 +313,11 @@ def generate_launch_description():
         # /cmd_vel_safety fires only when a failsafe layer trips.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(safety_launch),
-            launch_arguments={'use_sim_time': use_sim_time}.items()),
+            launch_arguments={
+                'use_sim_time': use_sim_time,
+                'failsafe_layer_d_rescue':
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
+                'failsafe_startup_grace_sec':
+                    LaunchConfiguration('failsafe_startup_grace_sec'),
+            }.items()),
     ])

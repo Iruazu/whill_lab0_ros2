@@ -27,4 +27,13 @@ install(
   RENAME imu_sign_corrector
 )
 
+if(BUILD_TESTING)
+  # 終了処理の回帰テスト (Issue #169)。ノードを別プロセスで起動してシグナルを
+  # 送るだけで、センサも launch も要らない。
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(test_imu_sign_corrector_shutdown
+    test/test_imu_sign_corrector_shutdown.py
+    TIMEOUT 120)
+endif()
+
 ament_package()
