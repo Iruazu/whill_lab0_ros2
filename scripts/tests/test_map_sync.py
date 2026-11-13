@@ -1,4 +1,4 @@
-"""check_map_sync.py を、小さな合成地図と現用の campus 地図で検証する。実機は使わない。
+"""check_map_sync.py を、小さな合成地図と現用の campus-m8・fallback の campus 地図で検証する。実機は使わない。
 
 合成地図は m7_make_web_map.py で背景を作り、そこから1箇所ずつ壊して検出を確かめる。
 本物の地図と背景は書き換えない。
@@ -169,14 +169,50 @@ class SyntheticMapTests(unittest.TestCase):
 
 
 class CurrentMapTests(unittest.TestCase):
-    def test_campus_v2_and_web_background_are_in_sync(self):
-        maps = REPO / 'docs' / 'maps'
-        yaml_path = maps / 'campus' / 'occupancy_v2.yaml'
-        if not (maps / 'campus' / 'v2' / 'final.pgm').is_file():
-            self.skipTest('campus の地図画像が無い')
-        problems, _ = check_map_sync.find_problems(
-            yaml_path, REPO / 'src' / 'whill_dispatch' / 'web', maps)
+    MAPS = REPO / 'docs' / 'maps'
+    WEB = REPO / 'src' / 'whill_dispatch' / 'web'
+
+    def test_default_site_and_variant(self):
+        # start_dispatch_demo.sh・nav_launch.py と同じ対応であること（2026-11-13、#190）。
+        self.assertEqual(check_map_sync.DEFAULT_SITE, 'campus-m8')
+        self.assertEqual(check_map_sync.DEMO_VARIANT_BY_SITE['campus-m8'], 'candidate')
+        self.assertEqual(check_map_sync.DEMO_VARIANT_BY_SITE['campus'], 'v2')
+
+    def test_default_cli_checks_campus_m8_candidate(self):
+        if not (self.MAPS / 'campus-m8' / 'v2' / 'candidate_final.pgm').is_file():
+            self.skipTest('campus-m8 の地図画像が無い')
+        ok = subprocess.run([sys.executable, str(SCRIPTS / 'check_map_sync.py'), '--quiet-notes'],
+                            capture_output=True, text=True)
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        self.assertIn(str(Path('campus-m8') / 'occupancy_candidate.yaml'), ok.stdout)
+
+    def test_campus_m8_candidate_and_web_background_are_in_sync(self):
+        yaml_path = self.MAPS / 'campus-m8' / 'occupancy_candidate.yaml'
+        if not (self.MAPS / 'campus-m8' / 'v2' / 'candidate_final.pgm').is_file():
+            self.skipTest('campus-m8 の地図画像が無い')
+        problems, _ = check_map_sync.find_problems(yaml_path, self.WEB, self.MAPS)
         self.assertEqual(problems, [])
+
+    def test_fallback_campus_needs_its_own_web_background(self):
+        # Web の背景は 1 組だけ。fallback の campus で起動するときに、campus-m8 の背景の
+        # まま通ってしまわないこと、runbook の作り直しの手順で揃うことを確かめる。
+        yaml_path = self.MAPS / 'campus' / 'occupancy_v2.yaml'
+        if not (self.MAPS / 'campus' / 'v2' / 'final.pgm').is_file():
+            self.skipTest('campus の地図画像が無い')
+        stale, _ = check_map_sync.find_problems(yaml_path, self.WEB, self.MAPS)
+        self.assertTrue(any('出典が違います' in p for p in stale), stale)
+        # 同じ格子なので、出典と画素以外（origin・解像度・寸法）は食い違わない。
+        self.assertFalse(any('origin' in p or '寸法' in p or 'resolution' in p for p in stale), stale)
+        with tempfile.TemporaryDirectory() as directory:
+            web = Path(directory)
+            shutil.copy(self.WEB / 'app.js', web / 'app.js')
+            subprocess.run([sys.executable, str(SCRIPTS / 'm7_make_web_map.py'), '--yaml', str(yaml_path),
+                            '--out-dir', str(web)], check=True, capture_output=True)
+            ok = subprocess.run([sys.executable, str(SCRIPTS / 'check_map_sync.py'), '--site', 'campus',
+                                 '--web-dir', str(web), '--quiet-notes'],
+                                capture_output=True, text=True)
+            self.assertEqual(ok.returncode, 0, ok.stderr)
+            self.assertIn(str(Path('campus') / 'occupancy_v2.yaml'), ok.stdout)
 
 
 if __name__ == '__main__':

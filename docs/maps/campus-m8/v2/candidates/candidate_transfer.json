@@ -1,0 +1,58 @@
+{
+  "transform_se2": {
+    "x": -0.005368841870694752,
+    "y": 0.02866439512857255,
+    "yaw_deg": -0.10391066539857997
+  },
+  "old_grid": [
+    6640,
+    6295,
+    0.05,
+    [
+      -128.25,
+      -90.35
+    ]
+  ],
+  "new_grid": [
+    6640,
+    6295,
+    0.05,
+    [
+      -128.25,
+      -90.35
+    ]
+  ],
+  "outputs": {
+    "candidate_roadway_mask.png": {
+      "old_cells": 1793532,
+      "new_cells": 1793532
+    },
+    "candidate_free_mask.png": {
+      "old_cells": 351895,
+      "new_cells": 351895
+    },
+    "candidate_keepout_mask.png": {
+      "old_cells": 0,
+      "new_cells": 0
+    },
+    "candidate_direct_free.png": {
+      "old_cells": 419092,
+      "new_cells": 419090
+    },
+    "candidate_roadway_merged.png": {
+      "old_cells": -1,
+      "new_cells": 2197128
+    },
+    "candidate_free_merged.png": {
+      "old_cells": -1,
+      "new_cells": 740268
+    },
+    "candidate_review_overlay.png": "full resolution; colours: {\"candidate_roadway_mask.png\": [0, 160, 255], \"candidate_free_mask.png\": [255, 220, 0], \"candidate_keepout_mask.png\": [255, 0, 255], \"candidate_direct_free.png\": [0, 255, 0], \"candidate_direct_occ.png\": [255, 0, 0]}"
+  },
+  "old_direct_edits_cells": {
+    "free_added": 419092,
+    "free_removed": 0,
+    "occ_added": 0,
+    "occ_to_free": 4357
+  }
+}

@@ -13,16 +13,19 @@ The RealSense subtree below `camera_link` is published by the
 `realsense2_camera` driver itself; only the three top-level
 `base_link -> sensor_*` transforms are emitted here.
 
-M4R-2: replaced the original identity placeholders with measurement-
-based extrinsics. `base_link` is provisionally defined as the rear-axle
-midpoint projected to the ground plane (x = rear axle, y = chassis
-centerline, z = ground). The derivation and the values below — together
-with the noetic-inherited LiDAR<->IMU extrinsic that anchors them — are
-documented in `docs/m3-extrinsics-from-noetic.md`. Re-check this
-definition against the URDF / Nav2 footprint / saved-map origin when
-M5-R wires up the map pipeline; the chassis mount has not changed since
-the noetic era so the noetic extrinsic is reused as-is.
+`base_link` is the rear-axle midpoint projected to the ground plane
+(x = rear axle, y = chassis centerline, z = ground). Every value below is
+owned by `docs/calibration-ledger.md` (value, date, method, uncertainty,
+status); change the ledger and this file together. The comments here only
+name the ledger section and say why a number looks the way it does; the
+derivations live in the ledger.
+
+The three transforms are measured independently against `base_link`.
+Until #145 the velodyne TF was the IMU TF plus the noetic LiDAR<->IMU
+extrinsic; it no longer depends on the IMU TF.
 """
+
+import math
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -44,86 +47,45 @@ def _static_tf(name, x, y, z, roll, pitch, yaw, parent, child):
 
 def generate_launch_description():
     return LaunchDescription([
-        # base_link -> imu_link
-        # IMU は座面クッション下、椅子の左右中央付近にマウントされている (RT
-        # 9 軸 USB IMU)。base_link (後輪車軸中点・地面高さ) を基準とする実測値:
-        #   x = +0.38 m  (後輪車軸線から前方 38 cm、PR #61)
-        #   y = -0.03 m  (車体中心から右 3 cm、PR #61)
-        #   z = +0.47 m  (地面から 47 cm、PR #61)
-        #
-        # 姿勢 (2026-07-08 セッションでの経過):
-        #  1. 元 PR #61 は「IMU の +x が前進方向」と記載していたが、目視確認で
-        #     実際は IMU の +y が前進方向 (90° yaw ズレ) であることが判明。
-        #  2. GLIM の T_lidar_imu を 90° yaw 込みで再計算して config に反映
-        #     したところ、GLIM が 6 秒で発散した (2 回試行、詳細は
-        #     scripts/m5r3_run_glim.sh のコメント)。GLIM/imu_sign_corrector
-        #     が axis-aligned 想定で組まれている疑い。
-        #  3. マジックテープ固定を活かし IMU を物理的に反時計回りに 90° 回転
-        #     させて axis-aligned に付け直し。これで noetic T_lidar_imu が
-        #     本来の想定条件で機能し、GLIM の drift 大幅改善見込み。
-        #
-        # 再マウント後の姿勢:
-        #   IMU の +x 軸 = base_link +x (前進方向)
-        #   IMU の +y 軸 = base_link +y (左)
-        #   IMU の +z 軸 = base_link +z (上)
-        # つまり yaw = 0。ただし座面 (-5°) + マウント溝の追加傾きは物理的に
-        # 残るため、IMU 全体は「後方低・前方高」に約 8° 傾いたまま
-        # (Gemini + Claude 写真解析で 7.5-8°)。IMU +x が前方に向いた今、
-        # この傾きは純粋に pitch = -8° として表される (tf2 の R_y(-8°) が
-        # +x を斜め上に向ける、gravity 検算で確認)。
-        #
-        # 2026-07-09 audit (docs/imu-coordinate-audit.md §3): 2026-07-08
-        # campus-outer bag 冒頭 10 秒 (WHILL 停止) の /imu/data_rep145 を
-        # 1000 サンプル取得し gravity 逆算した結果:
-        #   pitch 実測 = -7.66°  (元の -8° 設定と 0.34° 差、実質一致)
-        #   roll  実測 = -5.77°  (元の 0° 設定と 5.77° 差 → audit で判明)
-        # roll の未検出は、マウント溝が「後方低・前方高」だけでなく「右側低・
-        # 左側高」も併せ持っていたことを示す (溝が横方向にも斜めに切ってある)。
-        #
-        # 2026-07-09 10:41-10:52 現地再測定: GRIL-Calib 校正 bag 撮影直前に
-        # IMU 目視 → マジックテープに微スライドが疑われ、手押しで再固定を
-        # 2 回試行。各固定で pitch/roll が ± 2-3° 動くことが判明 (溝の
-        # 再現性が低い)。ただし 30 秒静置テスト (scratchpad/
-        # imu_stability_check.py) で「触らなければ 0.03° 未満の drift」を
-        # 確認 → 5 分録画中は動かない見込み。
-        #
-        # 2026-07-10 朝の再測定 (走行前 sanity check):
-        # 走行日を跨いだ状態で scratchpad/imu_live_check.py を 3 連続実行。
-        # 各軸ばらつき 0.003 m/s² 未満で完全に安定した実測平均:
-        #   ax = +1.397  ay = -0.699  az = +9.782
-        # frame_audit.py で逆算 (roundtrip Δ=0 で厳密):
-        #   pitch = -8.11°  (-0.1415 rad)
-        #   roll  = -4.09°  (-0.0713 rad)
-        # 昨日値 (-3.52° / -7.76°) との差は roll -0.57°、pitch -0.35° で
-        # 溝の ± 2-3° 再固定バラツキ範囲。物理再固定はしていない (触らずに
-        # 一晩置いただけ) が、締結の応力緩和で微沈み込みしたものと解釈。
-        # 走行はこの新値の commit と紐づく。
+        # base_link -> imu_link (台帳 §4.1)
+        # 並進は PR #61 の巻尺、姿勢は 2026-07-10 朝の静止 gravity 逆算。
+        # 2026-07-08 に IMU を axis-aligned に付け直したので yaw = 0。
+        # roll / pitch が大きいのは座面とマウント溝の傾きによる。溝への
+        # 再固定で ±2-3° 動くため、走行前後の静止確認 (台帳 §0) で再現性を見る。
         _static_tf('static_tf_imu',
                    0.38, -0.03, 0.47,
                    -0.0713, -0.1415, 0.0,   # roll=-4.09°, pitch=-8.11°, yaw=0 (2026-07-10 morning)
                    'base_link', 'imu_link'),
 
-        # base_link -> velodyne
-        # noetic 引き継ぎの LiDAR<->IMU 外部パラメータを base_link に合成。
-        # 並進: imu_link (base_link 系で 0.38, -0.03, 0.47) に、noetic
-        # `extrinsic_T` (IMU 系で表した LiDAR 原点 = 0.104136, 0.411548,
-        # 0.323704) を足す。IMU と base_link が axis-aligned 前提で単純加算
-        # で済む。LiDAR は IMU と物理的に同じ機構に共締めされており動いていない
-        # ため、IMU 再測定 (#61) では LiDAR↔IMU の相対は変えず、IMU の base_link
-        # 系移動分だけスライドさせる。LiDAR は椅子の左 (+y, +0.382 m) かつ
-        # IMU より上 (+z, +0.324 m)。
-        #
-        # 回転: noetic `extrinsic_R` (3x3, LiDAR -> IMU) を Rz(yaw)*Ry(pitch)
-        # *Rx(roll) 固定軸表現に分解した値を使う。分解式と数値の検算は
-        # docs/m3-extrinsics-from-noetic.md の追補節を参照。
-        #   roll  = -0.035342 rad  (-2.025 deg)
-        #   pitch = +0.156983 rad  (+8.995 deg)
-        #   yaw   = -0.005527 rad  (-0.317 deg)
-        # IMU と base_link が axis-aligned 前提のため、imu_R_lidar をそのまま
-        # base_link -> velodyne の回転として使える。
+        # base_link -> velodyne (台帳 §2.1、#145)
+        # x, y は巻尺 2 回。z / roll / pitch は Hi-Res の校正表
+        # (sensors_launch の velodyne_calibration、#144) で投影した点群の
+        # 床面フィット。LiDAR は「廊下の決めた場所で水平器で 0° に合わせて
+        # テープで固定する」復帰手順で毎回同じ状態に戻す運用 (台帳 §2.1)。
+        # 2026-11-13 にその手順を行った後、同じ場所で 180° 回した 2 本の
+        # 平均 (床の勾配を打ち消す) を走行の前後で 2 組取って決めた値
+        # (台帳 §2.1 C)。2 組の差は z 3 mm・0.05° 以内で、走行しても動かない。
+        # 水平器は重力基準なので、合わせた場所の床の勾配はこの値に含まれる。
+        # 復帰手順を別の場所でやると値が変わるので、やり直したら測り直す。
+        # 計画書の値 (0.777, +0.24°, +0.97°) は別の時期に合わせた取り付けの
+        # 値で、今の取り付けとは pitch が 0.5° 違ったので置き換えた。
+        # 人が座ると車体が沈んで床に対する pitch が約 -0.75° 変わるが、
+        # それは base_link の姿勢の変化で、この TF は変えない。
+        # yaw は未測定: 床面からは観測できず、-0.317° は noetic の LiDAR 対
+        # IMU の yaw の流用。IMU 自体を 2026-07-08 に 90° 付け直して yaw 0 を
+        # 目視で決めているので、base_link に対する測定値ではない (0 と同等)。
+        #   roll = -0.05°、pitch = +0.40°、yaw = -0.317°
+        # 旧値 (0.484, 0.382, 0.794, pitch +9.0°) は IMU TF に noetic の
+        # LiDAR<->IMU extrinsic を足したもの。+9° は「IMU が約 -8° 傾き、
+        # LiDAR はほぼ水平」という両者の相対姿勢で、IMU を base_link と
+        # axis-aligned とみなしてそれを LiDAR の対 base_link 姿勢に流用した
+        # のが誤り (docs/imu-coordinate-audit.md §4.4 シナリオ B)。
+        # 値を変えると base_link 系の点群が動き、旧地図と NDT が合わなく
+        # なるので、地図の作り直し (#153) と同時にマージする。
         _static_tf('static_tf_velodyne',
-                   0.484136, 0.381548, 0.793704,
-                   -0.035342, 0.156983, -0.005527,
+                   0.42, 0.36, 0.771,
+                   math.radians(-0.05), math.radians(0.40),
+                   math.radians(-0.317),
                    'base_link', 'velodyne'),
 
         # base_link -> camera_link (2026-10-28 実測、#146)

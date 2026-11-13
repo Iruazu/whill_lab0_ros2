@@ -1,5 +1,7 @@
 # `campus` (M5-R 本番マップ)
 
+2026-11-13 から既定の site は [`campus-m8`](../campus-m8/README.md)（#190）。この地図は fallback として残し、`site:=campus`（Nav2 は `map_variant:=v2`）で選ぶ。戻す手順は [runbook](../../runbook-live-demo.md)「旧地図（campus）に戻す」。以下の記述は M5-R〜M8 の記録で、ファイルは変えていない。
+
 ## 現用ファイル（2026-10-14照合）
 
 実機デモは `occupancy_v2.yaml` の `image: v2/final.pgm` を使用する。localizerは `static.pcd`、dispatchは `waypoints.yaml`。Web背景は別途生成される。現在の手順は [runbook](../../runbook-live-demo.md)。
@@ -109,7 +111,7 @@ z_span 総 9.79 m のうち  平面成分 (tilt) 7.10 m (72.5%)
 
 Tilt の真の原因は 2 候補:
 - **仮説 A**: IMU audit を実施した WHILL 静止位置 (start pose 付近) の
-  路面が実際に 1.81° 傾いていた。ledger §7.10 の "base_link 水平性は
+  路面が実際に 1.81° 傾いていた。docs/imu-coordinate-audit.md §7.10 の "base_link 水平性は
   水準器で確認したい" が未処理だったツケ
 - **仮説 B**: GLIM の初期 gravity alignment が瞬間 IMU 値だけで走り、
   ズレが残った

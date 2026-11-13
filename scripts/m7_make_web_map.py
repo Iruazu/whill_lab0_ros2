@@ -30,8 +30,15 @@ occupancy_cleaned.pgm を描画してしまい、iPad の背景地図が丸ご�
 画像を別々に既定させる設計が原因なので、既定を「yaml に従う」に変更した。
 --pgm は意図的に別画像を重ねたい場合の明示 override としてのみ残す。
 
+既定の --yaml は、既定の site（campus-m8）で nav_launch が読む
+docs/maps/campus-m8/occupancy_candidate.yaml（2026-11-13、#190）。Web の背景は
+1 組しか置けないので、fallback の旧 campus で配車するときは
+--yaml docs/maps/campus/occupancy_v2.yaml で作り直し、whill_dispatch をビルドする
+（check_map_sync.py が食い違いを止める）。
+
 Usage:
-    python3 scripts/m7_make_web_map.py --yaml docs/maps/campus/occupancy_v2.yaml
+    python3 scripts/m7_make_web_map.py --out-dir src/whill_dispatch/web
+    python3 scripts/m7_make_web_map.py --yaml docs/maps/campus/occupancy_v2.yaml   # fallback
     python3 scripts/m7_make_web_map.py --factor 8
     python3 scripts/m7_make_web_map.py \\
         --yaml docs/maps/campus/occupancy_cleaned.yaml \\
@@ -62,8 +69,11 @@ def main():
              'metadata and pixels from the same map — see header).')
     ap.add_argument(
         '--yaml',
+        # 既定の site・variant と同じ地図にする。旧既定（campus の
+        # occupancy_cleaned.yaml）は 07-22 から使っておらず、引数なしで実行すると
+        # 背景だけが古い地図に戻る（check_map_sync.py の検出対象）ため変えた。
         default=os.path.join(
-            _REPO_ROOT, 'docs', 'maps', 'campus', 'occupancy_cleaned.yaml'))
+            _REPO_ROOT, 'docs', 'maps', 'campus-m8', 'occupancy_candidate.yaml'))
     ap.add_argument(
         '--out-dir',
         default=os.path.join(_REPO_ROOT, 'src', 'whill_dispatch', 'web'))

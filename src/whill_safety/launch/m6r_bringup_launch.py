@@ -58,7 +58,7 @@ extra at the sensor / odom / localizer layer duplicates those nodes.
 To operate (SINGLE terminal — do not open a second bringup terminal):
 
     ros2 launch whill_safety m6r_bringup_launch.py \\
-        site:=campus
+        site:=campus-m8
 
 Then in RViz, use "2D Pose Estimate" to publish `/initialpose`. The
 localizer converges in a few seconds, `map -> odom` starts flowing,
@@ -107,7 +107,13 @@ _DEFAULT_MAPS_ROOT_REL = os.path.join('docs', 'maps')
 # (工農研横). `campus-outdoor-corrected` is the M6R-1 smoke map (7号館
 # 発進地点) and would reject every scan on a chair started at 工農研横.
 # Keep the smoke map available via explicit `site:=campus-outdoor-corrected`.
-_DEFAULT_SITE = 'campus'
+# 2026-11-13: 既定を campus-m8 に変えた（ユーザー判断、#190）。理由：#186 の
+# LiDAR の TF と Hi-Res 校正で、07-24 の bag の NDT 再生の fitness が旧 campus
+# より小さく（docs/maps/campus-m8/README.md 4 節）、#186 は main に入った。
+# 発進点は旧 campus と同じ工農研横（原点のずれ 0.07 m）。旧 `campus` は
+# `site:=campus` で選べる fallback として残す。屋外の受入（#156）はこの既定で行う。
+# static.pcd は Git 管理外なので、checkout に正本を複製しないと起動時に止まる。
+_DEFAULT_SITE = 'campus-m8'
 
 
 def _repo_root_from_pkg_share(pkg_share):
@@ -152,7 +158,12 @@ def _generate_localizer_launch(context):
             f'  Set {_MAPS_ROOT_ENV}=<path> to override the maps registry '
             f'root, or run:\n'
             f'    ls {maps_root}\n'
-            f'  to see the available sites.'
+            f'  to see the available sites.\n'
+            # static.pcd は Git 管理外なので、既定の campus-m8 は checkout の後に
+            # 正本を複製するまで必ずここで止まる。手順の場所をその場で示す。
+            f'  static.pcd は Git 管理外。campus-m8 なら '
+            f'docs/maps/campus-m8/README.md 2 節「static.pcd の置き場」の手順で '
+            f'正本を複製する（旧地図は site:=campus）。'
         )
 
     with open(template_path) as f:
@@ -237,6 +248,10 @@ def generate_launch_description():
         'launch',
         'safety_launch.py',
     )
+    # Same default as sensors_launch.py (#144); forwarded via odom_bringup.
+    hires_calibration = os.path.join(
+        get_package_share_directory('velodyne_pointcloud'),
+        'params', 'VLP16_hires_db.yaml')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
 
@@ -260,6 +275,13 @@ def generate_launch_description():
                         'scripts/m6r_smoke_test.sh is the usual bag-'
                         'replay entry point).'),
         DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
+                        'proposed). true = while only Layer D stops the '
+                        'chair, failsafe relays teleop reverse/rotate on '
+                        '/cmd_vel_safety.'),
+        DeclareLaunchArgument(
             'realsense',
             default_value='false',
             description='Forward to sensors_launch to start the D435. Off '
@@ -267,6 +289,13 @@ def generate_launch_description():
                         'runtime stack, and past USB 2.1 enumeration issues '
                         'make an accidental start expensive. Flip true for '
                         'camera-specific tests.'),
+        DeclareLaunchArgument(
+            'velodyne_calibration',
+            default_value=hires_calibration,
+            description='Forwarded to sensors_launch.py: Velodyne '
+                        'elevation table. Default VLP16_hires_db.yaml '
+                        '(#144). The map must have been built from '
+                        'clouds with the same table.'),
         DeclareLaunchArgument(
             'failsafe_startup_grace_sec',
             default_value='0.0',
@@ -280,6 +309,8 @@ def generate_launch_description():
             launch_arguments={
                 'use_sim_time': use_sim_time,
                 'realsense': LaunchConfiguration('realsense'),
+                'velodyne_calibration':
+                    LaunchConfiguration('velodyne_calibration'),
             }.items()),
 
         # M6-R scan-to-map localizer. Wrapped in an OpaqueFunction so the
@@ -295,6 +326,8 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(safety_launch),
             launch_arguments={
                 'use_sim_time': use_sim_time,
+                'failsafe_layer_d_rescue':
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
                 'failsafe_startup_grace_sec':
                     LaunchConfiguration('failsafe_startup_grace_sec'),
             }.items()),

@@ -29,6 +29,21 @@ RealSense (opt-in) additionally publishes:
 
 TF is rooted at `base_link`. See README.md for the diagram.
 
+Velodyne calibration (#144): the unit is a VLP-16 **Puck Hi-Res**
+(±10° vertical FOV, confirmed on the nameplate), but upstream
+`velodyne-all-nodes-VLP16-launch.py` hard-codes `VLP16db.yaml` (±15°) for
+the transform node and exposes no argument to change it. With the wrong
+table every ring elevation is wrong and every height downstream (NDT,
+Patchwork++, /scan, failsafe, GLIM) is distorted. We therefore start the
+same three nodes here (same upstream param yamls, same
+shutdown-on-driver-exit handler) and override only `calibration` via the
+`velodyne_calibration` argument. Default is `VLP16_hires_db.yaml`; pass
+`velodyne_calibration:=<share>/params/VLP16db.yaml` only to reproduce the
+pre-#144 clouds (e.g. running against a map built before #144). Old
+bags holding only `/velodyne_points` are corrected offline by
+`scripts/velodyne_reproject_bag.py`, not by this argument. Values and provenance:
+docs/calibration-ledger.md §2.
+
 `/scan` remap note: upstream `velodyne-all-nodes-VLP16-launch.py` spins up
 a `velodyne_laserscan_node` that publishes the full ring collapsed to 2D
 on `/scan`. That output has no height filter, so it picks up ground
@@ -53,15 +68,16 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    GroupAction,
+    EmitEvent,
     IncludeLaunchDescription,
+    RegisterEventHandler,
 )
 from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-# SetRemap lives under launch_ros.actions in humble (not launch.actions).
-# Importing from launch.actions raises ImportError at launch time.
-from launch_ros.actions import SetRemap
+from launch_ros.actions import Node
 
 
 def _include(pkg_share, *path_parts):
@@ -70,8 +86,53 @@ def _include(pkg_share, *path_parts):
     )
 
 
+def _velodyne_actions():
+    """Mirror upstream velodyne-all-nodes-VLP16-launch.py with a selectable
+    calibration table (#144). Upstream's param yamls are reused unchanged so
+    only `calibration` differs from the upstream behaviour."""
+    driver_share = get_package_share_directory('velodyne_driver')
+    pointcloud_share = get_package_share_directory('velodyne_pointcloud')
+    laserscan_share = get_package_share_directory('velodyne_laserscan')
+
+    driver = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        output='both',
+        parameters=[os.path.join(
+            driver_share, 'config', 'VLP16-velodyne_driver_node-params.yaml')])
+    transform = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_transform_node',
+        output='both',
+        # The later dict wins over the yaml's bare `VLP16db.yaml`. The node
+        # opens that path as given (transform.cpp), so it must be absolute —
+        # upstream's launch overrides it for the same reason.
+        parameters=[
+            os.path.join(pointcloud_share, 'config',
+                         'VLP16-velodyne_transform_node-params.yaml'),
+            {'calibration': LaunchConfiguration('velodyne_calibration')},
+        ])
+    laserscan = Node(
+        package='velodyne_laserscan',
+        executable='velodyne_laserscan_node',
+        output='both',
+        parameters=[os.path.join(
+            laserscan_share, 'config',
+            'default-velodyne_laserscan_node-params.yaml')],
+        # /scan belongs to nav_launch's pointcloud_to_laserscan (see the
+        # module docstring); keep this unfiltered ring on /scan_raw.
+        remappings=[('/scan', '/scan_raw')])
+    # Upstream shuts the whole launch down when the driver dies. Keep that:
+    # a stack that silently runs without LiDAR would leave the localizer and
+    # failsafe on stale data.
+    on_driver_exit = RegisterEventHandler(OnProcessExit(
+        target_action=driver,
+        on_exit=[EmitEvent(event=Shutdown())]))
+    return [driver, transform, laserscan, on_driver_exit]
+
+
 def generate_launch_description():
-    velodyne_share = get_package_share_directory('velodyne')
+    pointcloud_share = get_package_share_directory('velodyne_pointcloud')
     realsense_share = get_package_share_directory('realsense2_camera')
     bringup_share = get_package_share_directory('whill_sensors_bringup')
 
@@ -86,12 +147,17 @@ def generate_launch_description():
                         'another process holds the device. Flip true only '
                         'for camera-specific smoke tests.'),
 
-        # GroupAction scopes SetRemap to just the velodyne include so the
-        # /scan → /scan_raw rename does not affect anything else.
-        GroupAction([
-            SetRemap(src='/scan', dst='/scan_raw'),
-            _include(velodyne_share, 'launch', 'velodyne-all-nodes-VLP16-launch.py'),
-        ]),
+        DeclareLaunchArgument(
+            'velodyne_calibration',
+            default_value=os.path.join(
+                pointcloud_share, 'params', 'VLP16_hires_db.yaml'),
+            description='Elevation table for velodyne_transform_node. The '
+                        'unit is a VLP-16 Puck Hi-Res (+-10 deg), so the '
+                        'default is VLP16_hires_db.yaml (#144). Pass '
+                        '<velodyne_pointcloud share>/params/VLP16db.yaml '
+                        'only to reproduce the pre-#144 (+-15 deg) clouds.'),
+
+        *_velodyne_actions(),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(realsense_share, 'launch', 'rs_launch.py')),

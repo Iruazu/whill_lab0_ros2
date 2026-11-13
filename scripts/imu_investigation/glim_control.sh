@@ -27,11 +27,16 @@ for spec in sys.argv[2:]:
 PY
 source /opt/ros/humble/setup.bash
 source "$HOME/whill_lab0_ros2/install/setup.bash"
-export ROS_DOMAIN_ID=135 ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# GLIM_DOMAIN_ID: use_sim_time makes GLIM subscribe /clock, so two runs (or
+# another session's replay) on one domain could feed each other's clock.
+export ROS_DOMAIN_ID=${GLIM_DOMAIN_ID:-135} ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 unset CYCLONEDDS_URI
 # stdin: KeyboardHandler touches the TTY before opening the bag (a TTY run hung, #135).
 rc=0
-timeout --signal=INT --kill-after=10s 300s ros2 run glim_ros glim_rosbag "$BAG" \
+# GLIM_TIMEOUT: 300 s fits the 300 s control segments of #147. The full 07-10
+# map bag (2162 s, #153) took 692 s on this GPU in July, so it needs a longer
+# limit; the timeout only guards against a hang, it is not a time budget.
+timeout --signal=INT --kill-after=10s "${GLIM_TIMEOUT:-300s}" ros2 run glim_ros glim_rosbag "$BAG" \
   --ros-args -p use_sim_time:=true -p config_path:="$OUT/config/" \
   -p dump_path:="$OUT/glim/" -p auto_quit:=true </dev/null >"$OUT/glim.log" 2>&1 || rc=$?
 echo "$rc" >"$OUT/exit-code.txt"

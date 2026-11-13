@@ -22,14 +22,19 @@ is expected to be running in parallel and supplies the
 `map -> odom -> base_link` TF chain, `failsafe_node`, and `twist_mux`;
 this launch adds nothing to those.
 
-  ros2 launch whill_safety   m6r_bringup_launch.py site:=campus     # terminal A
-  ros2 launch whill_navigation nav_launch.py       site:=campus     # terminal B
+  ros2 launch whill_safety   m6r_bringup_launch.py site:=campus-m8  # terminal A
+  ros2 launch whill_navigation nav_launch.py       site:=campus-m8  # terminal B
 
 Site selection: pass `site:=<name>`. Resolves to `docs/maps/<site>/
-occupancy.yaml` at launch time and injects it into map_server. Matches the
-M6R-2 convention where `site:=campus` loads `docs/maps/campus/static.pcd`,
-so the same value picks the pgm/yaml for Nav2 and the pcd for the
-localizer.
+occupancy[_<variant>].yaml` at launch time and injects it into map_server.
+Matches the M6R-2 convention where `site:=campus-m8` loads
+`docs/maps/campus-m8/static.pcd`, so the same value picks the pgm/yaml for
+Nav2 and the pcd for the localizer.
+
+既定の site は campus-m8（2026-11-13、#190）。map_variant が空なら site ごとの
+既定（_DEFAULT_VARIANT_BY_SITE）を使い、campus-m8 は occupancy_candidate.yaml
+（v2/candidate_final.pgm）を読む。旧 campus は fallback で、
+`site:=campus map_variant:=v2` で選ぶ。
 
 cmd_vel routing (matches ADR-0007 M6R-3 lite twist_mux, PR #79):
 
@@ -96,6 +101,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
+    LogInfo,
     OpaqueFunction,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -106,9 +112,19 @@ from launch_ros.actions import Node
 _MAPS_ROOT_ENV = 'WHILL_MAPS_ROOT'
 _DEFAULT_MAPS_ROOT_REL = os.path.join('docs', 'maps')
 # Match m6r_bringup_launch.py (whill_safety) which defaults site to
-# 'campus' for the M5-R production map. Consistent site names across
+# 'campus-m8' (2026-11-13、#190). Consistent site names across
 # launches let a single `site:=<name>` argument fan out to both.
-_DEFAULT_SITE = 'campus'
+_DEFAULT_SITE = 'campus-m8'
+# map_variant が空のときの site ごとの既定。campus-m8 には variant なしの
+# occupancy.yaml を置いていない（手塗りが確定するまで置かない、
+# docs/maps/campus-m8/README.md 3 節）ので、空のまま occupancy.yaml を探すと
+# 既定の site で必ず起動に失敗する。候補の地図を明示的に既定とし、
+# 手塗りを確定して occupancy.yaml を置いたら、ここの対応を消す。
+# 引数の既定値（'' のまま）を site に依存させないのは、site:=campus の
+# fallback で従来どおり空 = occupancy.yaml の意味を保つため。
+_DEFAULT_VARIANT_BY_SITE = {
+    'campus-m8': 'candidate',
+}
 
 
 def _repo_root_from_pkg_share(pkg_share):
@@ -129,7 +145,9 @@ def _resolve_map_yaml(context):
     CONFIGURE failure with a stale-looking log line; failing early here
     gives a direct message with the resolved path.
 
-    `map_variant` is empty by default (loads `occupancy.yaml`). Passing
+    `map_variant` is empty by default: the site's entry in
+    _DEFAULT_VARIANT_BY_SITE if any (campus-m8 → candidate), otherwise
+    `occupancy.yaml`. Passing
     e.g. `map_variant:=cleaned` loads `occupancy_cleaned.yaml` — the
     Task #13 salt-cleaned map produced by
     `scripts/clean_isolated_occupancy.py` (2026-07-16 field baked-salt
@@ -138,6 +156,8 @@ def _resolve_map_yaml(context):
     """
     site = LaunchConfiguration('site').perform(context)
     map_variant = LaunchConfiguration('map_variant').perform(context)
+    if not map_variant:
+        map_variant = _DEFAULT_VARIANT_BY_SITE.get(site, '')
 
     pkg_share = get_package_share_directory('whill_navigation')
     maps_root = os.environ.get(_MAPS_ROOT_ENV)
@@ -149,7 +169,8 @@ def _resolve_map_yaml(context):
 
     if not os.path.isfile(map_yaml):
         raise RuntimeError(
-            f'nav_launch: occupancy.yaml not found for site={site!r}.\n'
+            f'nav_launch: occupancy yaml not found for site={site!r} '
+            f'map_variant={map_variant!r}.\n'
             f'  Looked at: {map_yaml}\n'
             f'  Set {_MAPS_ROOT_ENV}=<path> to override the maps registry '
             f'root, or run:\n'
@@ -229,6 +250,10 @@ def _resolve_map_yaml(context):
         'launch', 'ground_removal_launch.py')
 
     return [
+        # 既定の variant が site で変わるので、どの地図を読んだかを起動ログに残す
+        # （campus-m8 と fallback の campus を取り違えていないかを端末で確かめる）。
+        LogInfo(msg=f'nav_launch: site={site} map_variant={map_variant!r} '
+                    f'map_yaml={map_yaml}'),
         # Patchwork++ ground removal (ADR-0011). Sits between the LiDAR
         # driver and p2ls so the slice below sees terrain-relative
         # obstacles instead of a raw base_link-flat cut. Publishes
@@ -338,7 +363,10 @@ def generate_launch_description():
             'map_variant',
             default_value='',
             description='Which occupancy yaml to load. Empty (default) '
-                        'loads occupancy.yaml — the original M5-R map. '
+                        'uses the per-site default: campus-m8 → '
+                        'occupancy_candidate.yaml (v2/candidate_final.pgm); '
+                        'other sites → occupancy.yaml. For the fallback '
+                        'site:=campus pass map_variant:=v2. '
                         '`map_variant:=cleaned` loads '
                         'occupancy_cleaned.yaml, the Task #13 '
                         'salt-cleaned version produced by '

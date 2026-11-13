@@ -304,7 +304,9 @@ map_server:
     use_sim_time: false
     # yaml_filename is injected at launch from nav_launch.py so this file
     # stays host-portable. nav_launch resolves docs/maps/<site>/occupancy.yaml
-    # from the `site` launch argument (default: campus).
+    # from the `site` launch argument (default: campus-m8。既定の variant は
+    # site ごとに nav_launch.py が決める。campus-m8 は candidate。旧 campus は
+    # fallback で、`site:=campus map_variant:=v2`).
     yaml_filename: ""
 
 planner_server:

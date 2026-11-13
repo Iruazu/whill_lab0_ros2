@@ -6,7 +6,7 @@
 
 `m6r_bringup_launch.py` は odom bringup（センサ・WHILL・EKF）、NDT localizer、`safety_launch.py`（failsafe・twist_mux）を含む。内包するlaunchを別途起動しない。Nav2 / dispatch は別ターミナルで併用する。
 
-`site:=campus` は `docs/maps/campus/static.pcd` を読む。`WHILL_MAPS_ROOT` で親ディレクトリを変更できる。PCDはGit対象外。RealSenseは既定false。
+既定の `site:=campus-m8` は `docs/maps/campus-m8/static.pcd` を読む（2026-11-13、#190）。旧地図の fallback は `site:=campus`（`docs/maps/campus/static.pcd`）。`WHILL_MAPS_ROOT` で親ディレクトリを変更できる。PCDはGit対象外で、campus-m8 は正本を複製して sha256 を確かめる（`docs/maps/campus-m8/README.md` 2 節）。RealSenseは既定false。
 
 ## Localizer
 
@@ -57,5 +57,18 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 | `/cmd_vel_nav` | 10 | 0.5秒 |
 
 設定は `config/twist_mux.yaml`。最高優先度の有効入力が勝ち、出力は `/cmd_vel`。後段にNav2のvelocity_smootherがあるため、ゼロ指令も平滑化される。物理E-stopとの統合や全周監視をこのパッケージが完成済みとは扱わない。
+
+### 停止中の救援（#161、ADR-0013 提案、既定は無効）
+
+既定では、どの層の作動中もteleopは通らない（safetyが優先）。パラメータ `layer_d_rescue_enabled`（launch引数 `failsafe_layer_d_rescue`）をtrueにすると、作動しているのがLayer Dだけのとき、0.3秒以内に届いた前進を含まない `/cmd_vel_teleop`（後退0.2m/s以内、回転0.6rad/s以内、他の成分0）を、failsafeが `/cmd_vel_safety` にそのまま中継する。条件を外れたら（前進・範囲外・途絶、A / B / C や未着入力の作動）その時点でゼロを出す。safety枠は作動中ずっと生きているので、Nav2と前進のteleopは `/cmd_vel` に出られない。中継中にLayer Dが解けたら、teleopが途絶えるまで中継を続け、ゼロを1回出してから止める。有効時だけ `/cmd_vel_teleop` を購読する。
+
+| パラメータ | 既定 | 内容 |
+| --- | --- | --- |
+| `layer_d_rescue_enabled` | false | 救援の有効化 |
+| `rescue_cmd_timeout_s` | 0.3 | teleop指令の鮮度。`rescue_cmd_timeout_s + 1/20Hz + 0.1秒` がtwist_muxのteleopタイムアウト0.5秒未満でないと起動しない（有効時のみ確かめる） |
+| `rescue_max_reverse_mps` | 0.2 | 救援と見なす後退速度の上限 |
+| `rescue_max_wz` | 0.6 | 救援と見なす回転速度の上限 |
+
+後方とその場回転の掃引範囲（1m未満）は監視しない。UIの離しのゼロは中継されるので通常はすぐ止まる。ゼロが届かないと、最後の指令から約0.35秒（名目値。executorの遅れで伸びる）中継が続く。鮮度はsteady clockで測る。設計の比較と残る危険はADR-0013。実機では未検証。中継中の状態はログ（`RESCUE relay` / `RESCUE ended`）だけに出る。C3の `/failsafe/state` を取り込むときにそこへ載せる。
 
 preflightは `scripts/m6r_preflight.sh`。check 4は各入力の受信を、failsafeと同じ型とQoSで確かめる。
