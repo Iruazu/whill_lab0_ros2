@@ -1,5 +1,7 @@
 # `campus` (M5-R 本番マップ)
 
+2026-11-13 から既定の site は [`campus-m8`](../campus-m8/README.md)（#190）。この地図は fallback として残し、`site:=campus`（Nav2 は `map_variant:=v2`）で選ぶ。戻す手順は [runbook](../../runbook-live-demo.md)「旧地図（campus）に戻す」。以下の記述は M5-R〜M8 の記録で、ファイルは変えていない。
+
 ## 現用ファイル（2026-10-14照合）
 
 実機デモは `occupancy_v2.yaml` の `image: v2/final.pgm` を使用する。localizerは `static.pcd`、dispatchは `waypoints.yaml`。Web背景は別途生成される。現在の手順は [runbook](../../runbook-live-demo.md)。

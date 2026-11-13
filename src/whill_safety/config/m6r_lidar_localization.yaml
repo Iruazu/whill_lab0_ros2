@@ -9,8 +9,10 @@
 # what ADR-0006 pins for the demo.
 #
 # map_path is intentionally left empty. It is filled in at launch time by
-# m6r_bringup_launch.py from the `site` argument (default 'campus' —
-# the 2026-07-10 M5-R production map used for M6R-2 acceptance), so this
+# m6r_bringup_launch.py from the `site` argument (既定は 2026-11-13 から
+# 'campus-m8'。07-10 の campus 地図を #186 の LiDAR の TF・Hi-Res 校正の前提で
+# 作り直したもの。M6R-2 の受入に使った旧 'campus' は fallback として
+# `site:=campus` で選べる。NDT の設定は両地図で同じ値を使う), so this
 # file stays site-agnostic and lives with the launch rather than
 # duplicating one copy per map. To change NDT tuning: edit here (not
 # per-site). To change map: pass `site:=<name>` to the launch.
