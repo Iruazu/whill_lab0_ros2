@@ -167,6 +167,57 @@ initialize_navigation() {
     wait_active /bt_navigator
     wait_active /velocity_smoother
 }
+# static.pcd は Git 管理外なので、checkout ごとに正本を複製する。無いときは起動前に止め、
+# 複製のコマンドをその場で出す（launch のエラーまで進むと、bringup だけ落ちて分かりにくい）。
+# 正本の場所と sha256 は docs/maps/<site>/metadata.yaml の dufomap_output / static_pcd_sha256。
+# sha256 を照合するのは、取り違えた複製（作り直した別の static.pcd、旧地図の PCD など）で
+# 走ると、#156 の受入結果がどの地図の結果か曖昧になるのを防ぐため。GPU の GLIM は非決定的で、
+# 作り直すと同じ地図にならないので、点数やサイズではなく sha256 で比べる。
+check_static_pcd() {
+    local maps_root=$1 site=$2
+    python3 - "$maps_root/$site" "$REPO_ROOT" <<'PY'
+import hashlib, os, pathlib, sys
+import yaml
+site_dir, repo = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+pcd, meta_path = site_dir / 'static.pcd', site_dir / 'metadata.yaml'
+meta = {}
+if meta_path.is_file():
+    try:
+        meta = yaml.safe_load(meta_path.read_text()) or {}
+    except yaml.YAMLError as e:
+        sys.exit(f'metadata.yaml が読めません: {meta_path}: {e}')
+expected = str(meta.get('static_pcd_sha256') or '').strip().lower()
+source = meta.get('dufomap_output')
+# WHILL_MAPS_ROOT で別の地図ディレクトリを使うと README が無いことがある。手順はリポジトリ側を指す。
+readme = site_dir / 'README.md'
+if not readme.is_file():
+    readme = repo / 'docs' / 'maps' / site_dir.name / 'README.md'
+if not pcd.is_file():
+    lines = [f'static.pcd がありません: {pcd}',
+             '  static.pcd は Git 管理外。正本を複製する（作り直さない）:']
+    if source:
+        lines.append(f'    cp {os.path.expanduser(source)} {pcd}')
+        if expected:
+            lines.append(f'    echo "{expected}  {pcd}" | sha256sum -c')
+    else:
+        lines.append('    （metadata.yaml に正本の場所 dufomap_output がありません）')
+    lines.append(f'  手順: {readme}（runbook 1 節も参照）')
+    sys.exit('\n'.join(lines))
+if expected:
+    h = hashlib.sha256()
+    with pcd.open('rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            h.update(block)
+    if h.hexdigest() != expected:
+        lines = [f'static.pcd の sha256 が metadata.yaml と違います: {pcd}',
+                 f'  期待: {expected}', f'  実際: {h.hexdigest()}',
+                 '  別の地図の複製か、作り直したものです。この static.pcd では起動しません。']
+        if source:
+            lines.append(f'  正本から複製し直す: cp {os.path.expanduser(source)} {pcd}')
+        lines.append(f'  手順: {readme}')
+        sys.exit('\n'.join(lines))
+PY
+}
 check_requirements() {
     local command device maps_root
     for command in ros2 setsid flock timeout python3; do
@@ -176,7 +227,8 @@ check_requirements() {
     # 表示する検査を使う（#141）。ここで止まると preflight の check 0b まで進まない。
     "$REPO_ROOT/scripts/check_device_aliases.sh" || fail 'デバイスの別名が使えません（上の表示を参照）'
     maps_root="${WHILL_MAPS_ROOT:-$REPO_ROOT/docs/maps}"
-    for device in "$maps_root/$SITE/static.pcd" "$maps_root/$SITE/occupancy_$MAP_VARIANT.yaml" "$maps_root/$SITE/waypoints.yaml" \
+    check_static_pcd "$maps_root" "$SITE" || fail 'static.pcd を使えません（上の表示を参照）'
+    for device in "$maps_root/$SITE/occupancy_$MAP_VARIANT.yaml" "$maps_root/$SITE/waypoints.yaml" \
                   "$HOME/.whill_dispatch_tls/dispatch.crt" "$HOME/.whill_dispatch_tls/dispatch.key"; do
         [[ -r "$device" ]] || fail "必要なファイルがありません: $device"
     done

@@ -57,7 +57,7 @@ pgrep -af 'ros2 launch|dispatch_node|mock_navigate_to_pose|m7_https_server|http.
 ```
 
 - `check_device_aliases.sh` は `/dev/whill` `/dev/imu` の有無、リンク先の VID:PID（`udev/99-whill-stack.rules` と照合）、読み書きを確かめる。番号は固定でない。別名だけ無いときは、記録を残すコマンドと戻すコマンド（`sudo udevadm trigger --action=change --name-match=/dev/ttyACM0` など）を表示する（#141）
-- `static.pcd` は Git 管理外。campus-m8 の正本は `~/bags/m5r-bench-data/2026-07-10-campus-outer-final/dufomap-m8-hires-noise-local/static.pcd`。無ければ次で複製し、上の `sha256sum -c` が `OK` になることを確かめる（`FAILED` なら使わない）。作り直すと同じ地図にならないので、作り直さない（[campus-m8 の README](maps/campus-m8/README.md) 2 節）
+- `static.pcd` は Git 管理外。campus-m8 の正本は `~/bags/m5r-bench-data/2026-07-10-campus-outer-final/dufomap-m8-hires-noise-local/static.pcd`。無ければ次で複製し、上の `sha256sum -c` が `OK` になることを確かめる（`FAILED` なら使わない）。作り直すと同じ地図にならないので、作り直さない（[campus-m8 の README](maps/campus-m8/README.md) 2 節）。`start_dispatch_demo.sh` は起動前に、static.pcd が無ければ下の複製コマンドを表示して止まり、`metadata.yaml` に `static_pcd_sha256` があれば照合して、違えば止まる
 
   ```bash
   cd ~/whill_lab0_ros2

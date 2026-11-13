@@ -235,6 +235,10 @@ def main():
     # 既定はデモの既定（campus-m8）ではなく campus。baseline.json は旧 campus の座標の
     # /pcl_pose との差で決めた値で、campus-m8 では差が地図間の変換の分だけ大きくなり
     # 必ず失敗する（docs/maps/campus-m8/README.md 4 節「確かめていないこと」）。
+    # campus のままでも、#186 で LiDAR の TF（pitch +9.00° → +0.40° など）が変わったので、
+    # localizer の項目は基準を超える見込み。#156 の bag で基準を取り直すまでは
+    # --only failsafe を使う。failsafe は記録した /scan などを流すだけで TF を使わない
+    # （baseline.json の site_note、docs/regression-check.md）。
     ap.add_argument('--site', default='campus')
     ap.add_argument('--baseline', required=True, type=Path)
     ap.add_argument('--out', required=True, type=Path)

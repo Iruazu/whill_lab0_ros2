@@ -1,4 +1,5 @@
 """ROS・車体を起動せず、引数と所有プロセスの終了を検証する。"""
+import hashlib
 from pathlib import Path
 import shlex
 import subprocess
@@ -57,6 +58,55 @@ class LauncherTests(unittest.TestCase):
                      ('--domain', 'text'), ('--site',), ('--bad',)]:
             with self.subTest(args=args):
                 self.assertNotEqual(self.run_cli('--dry-run', *args).returncode, 0)
+
+    def check_static_pcd(self, maps_root, site):
+        # check_static_pcd だけを呼ぶ。ROS・機器の検査（check_requirements の他の部分）は通らない。
+        code = f'''source {shlex.quote(str(SCRIPT))}
+check_static_pcd {shlex.quote(str(maps_root))} {shlex.quote(site)}
+'''
+        return subprocess.run(['bash', '-c', code], text=True, capture_output=True, timeout=10)
+
+    def make_site(self, root, pcd=None, sha=None, source=None):
+        site = Path(root) / 'site'
+        site.mkdir()
+        meta = {}
+        if sha is not None:
+            meta['static_pcd_sha256'] = sha
+        if source is not None:
+            meta['dufomap_output'] = source
+        (site / 'metadata.yaml').write_text(''.join(f'{k}: "{v}"\n' for k, v in meta.items()))
+        if pcd is not None:
+            (site / 'static.pcd').write_bytes(pcd)
+        return site
+
+    def test_static_pcd_missing_prints_copy_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            site = self.make_site(directory, sha='ab' * 32, source='/master/static.pcd')
+            result = self.check_static_pcd(directory, 'site')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(f'cp /master/static.pcd {site / "static.pcd"}', result.stderr)
+            self.assertIn('sha256sum -c', result.stderr)
+            self.assertIn('README.md', result.stderr)
+
+    def test_static_pcd_sha256_mismatch_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.make_site(directory, pcd=b'other map', sha=hashlib.sha256(b'map').hexdigest(),
+                           source='/master/static.pcd')
+            result = self.check_static_pcd(directory, 'site')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('sha256 が metadata.yaml と違います', result.stderr)
+            self.assertIn(hashlib.sha256(b'other map').hexdigest(), result.stderr)
+
+    def test_static_pcd_sha256_match_and_unrecorded_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.make_site(directory, pcd=b'map', sha=hashlib.sha256(b'map').hexdigest())
+            result = self.check_static_pcd(directory, 'site')
+            self.assertEqual(result.returncode, 0, result.stderr)
+        # 旧 campus のように sha256 の記録が無い site は、ファイルの有無だけを見る。
+        with tempfile.TemporaryDirectory() as directory:
+            self.make_site(directory, pcd=b'map')
+            result = self.check_static_pcd(directory, 'site')
+            self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_child_failure_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:

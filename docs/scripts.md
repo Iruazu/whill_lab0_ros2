@@ -81,6 +81,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節） |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
-| `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数と終了処理のテスト（ROS・車体は起動しない） |
+| `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数・static.pcd の有無と sha256 の検査・終了処理のテスト（ROS・車体は起動しない） |
+| `tests/test_default_site_consistency.py` | 既定の site と variant が 3 つの launch・起動スクリプト・`check_map_sync.py` で揃っているかのテスト（ROS は使わない） |
 
 地図生成は成果物を書き換える。現用地図を再生成する前に入力・出力先・mask を確認する。
