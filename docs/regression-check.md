@@ -39,6 +39,19 @@ main を常にデモができる状態に保つための、マージ前の確認
 - **NDT の fitness**：TF を 10 cm ずらしても変わらなかったので、閾値にしていない。
 - **地図と入力点群そのものの正しさ**：記録された姿勢と同じであることを見ているだけで、記録が正しいとは限らない。
 
+## 今の基準の状態（2026-11-13）
+
+**再生の localizer の項目は、今の main では失敗する見込み。** `baseline.json` は 2026-11-02（main 81f3ec7）に、旧い LiDAR の TF（base_link→velodyne 0.484, 0.382, 0.794 m、roll −2.03°、pitch +9.00°）で測った。#186 で TF は 0.42, 0.36, 0.771 m、roll −0.05°、pitch +0.40° に変わり、localizer の再生はブランチの `static_tf_launch.py` を使う。参考に、旧 campus・新しい TF・Hi-Res に補正した bag を `ndt_replay_compare.py` で回すと、記録との xy の差の中央値は 0.063 m で、閾値（0.02 m）を超えた（[campus-m8 の README](maps/campus-m8/README.md) 4 節の実行 a）。補正していない基準 bag と新しい TF の組み合わせは測っていない。
+
+さらに、デモの既定 site は campus-m8 になったが、再生は旧 campus のまま（基準 bag の `/pcl_pose` が旧地図の座標で、`replay_check.py` は地図間の変換をしない）。campus-m8 の基準は、屋外の受入（#156）の走行の bag で取る。それまで `demo_regression.sh --level replay` は main で失敗する。
+
+failsafe の項目は TF に依存しない。bag に記録した `/scan`・`/pcl_pose`・`/alignment_status` を `failsafe_node` に流すだけで、`failsafe_node.py` は TF を参照しない（`/scan` は記録時に作られたもの）。基準を取り直すまでは、failsafe だけを確かめる：
+
+```bash
+cd ~/whill_lab0_ros2
+scripts/demo_regression.sh --level replay --only failsafe
+```
+
 ## 基準を更新するとき
 
 意図して結果が変わる変更では、再生が失敗するのが正常。例えば LiDAR の校正と TF の修正、地図の作り直し（#144、#145、#153）では、記録された姿勢との差が大きくなる。

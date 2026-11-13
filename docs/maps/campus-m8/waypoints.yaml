@@ -1,0 +1,39 @@
+# campus-m8 の配車地点（候補、#155）。現地での確認は未実施。
+#
+# 旧 campus/waypoints.yaml の各点を、両地図の GLIM 軌跡（同じ bag、同じ時刻）から
+# 求めた剛体変換 T_new_old（align_from_campus/T_new_old.txt、yaw -0.104°、
+# 並進 xy (-0.005, +0.029) m）で写したもの。scripts/map_align.py の出力
+# align_from_campus/waypoints_transformed.yaml の new_xy を小数第2位で切り捨て。
+#
+# 写した後のずれの目安（local_residual_xy_m：その点に最も近い旧軌跡の点で、
+# 剛体変換で吸収しきれない両地図の局所差）:
+#   kounoken 0.06 m / bldg7 0.08 m / seimon 0.23 m（最寄りの軌跡から 7.2 m 離れている）/ bldg3 0.02 m
+# 旧地図は点群の校正が誤っていたので、どちらが正しいかは地図だけでは決まらない。
+# 屋外（#156）で椅子を地点に置き、/pcl_pose と照合して確定する。
+#
+# 画素 (v2/candidate_final.pgm、6640x6295、旧 campus v2 と同じ格子) → map:
+#   x = -128.25 + (col + 0.5) * 0.05
+#   y = -90.35  + (6295 - row - 0.5) * 0.05
+# yaw は旧と同じく未測量で、地図間の回転 (-0.0018 rad) は 0 に丸めた。
+frame_id: map
+waypoints:
+  - name: kounoken
+    label: 工農研横
+    x: -0.01             # 旧 (0.00, 0.00)。新しい地図の原点も発進点付近
+    y: 0.06
+    yaw: 0.0
+  - name: bldg7
+    label: 7号館前
+    x: -38.43            # 旧 (-38.42, -0.47)
+    y: -0.30
+    yaw: 0.0
+  - name: seimon
+    label: 正門前
+    x: -87.76            # 旧 (-87.72, -7.72)。旧地図では直接の手塗りで FREE にした地点
+    y: -7.40
+    yaw: 0.0
+  - name: bldg3
+    label: 3号館前
+    x: 67.76             # 旧 (67.77, 2.37)
+    y: 2.27
+    yaw: 0.0

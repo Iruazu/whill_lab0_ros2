@@ -26,7 +26,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 
 | ファイル | 用途・注意 |
 | --- | --- |
-| `start_dispatch_demo.sh` | 実機bringup・Nav2・TLS配車Web・RVizの統合起動。--dry-run / --preflight対応 |
+| `start_dispatch_demo.sh` | 実機bringup・Nav2・TLS配車Web・RVizの統合起動。既定は site campus-m8 / variant candidate（旧地図は --site campus）。--dry-run / --preflight対応。Ctrl-C・SIGTERM・端末の終了（HUP）のどれでも、起動したlaunchとノードをsessionごと止めて残りを表示する（#194）。残ったときは起動時に表示するsession IDで `pgrep -a -s <sid,...>`、分からなければ `pgrep -af -- 'ros2 launch\|--ros-args'` で探してSIGTERM（後者は別ターミナルのbag再生などのノードも出るのでPIDを確かめる） |
 | `m6r_preflight.sh` | check 0〜5の走行前検査 |
 | `m6r_smoke_test.sh` | bag再生でlocalizer等を検証する入口 |
 | `m6r_record_calib_bag.sh` | 校正用bagの記録 |
@@ -49,6 +49,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m5r3_fix_imu_bag.py` | オフライン用IMU bag補正 |
 | `m5r3_run_glim.sh` | GLIMのオフライン実行 |
 | `velodyne_reproject_bag.py` | 誤った校正で記録した点群を、ring を使って正しい校正へ補正した bag を作る（入力は読むだけ） |
+| `velodyne_reproject_verify.sh`, `velodyne_compare_clouds.py` | 上の補正を、パケットのある bag でドライバ（velodyne_transform_node）の出力と点ごとに比べる（[手順](maps/campus-m8/README.md)） |
 | `lidar_floor_fit.py` | 静止 bag の床面から base_link→velodyne の z・roll・pitch を求める（校正台帳 §2.1 の出典） |
 | `imu_investigation/` | GLIM の IMU 調査（#147）の対照実験と解析。[報告](reports/2026-11-02-glim-imu-root-cause.md) |
 | `m5r3_export_merged_ply.py` | 結合点群の出力 |
@@ -56,6 +57,8 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m5r_run_dufomap.sh`, `m5r_run_dufomap_core.py` | DUFOMap処理 |
 | `m5r_dufomap_diff.py` | 動的除去の差分解析 |
 | `m5r3_loop_error.py`, `m5r3_b1_numeric.py` | 地図のループ・高さずれ解析 |
+| `map_tilt_metrics.py` | 地図の傾き（軌跡の平面、始点・終点の地面）と点数。campus の 1.81° と同じ式 |
+| `map_align.py` | 同じ bag から作った2つの地図の座標変換を、軌跡の同時刻の点から求める。waypoint の写像と局所差も出す |
 | `m5r4_run_gril_calib.sh` | LiDAR / IMU校正 |
 
 ## 占有格子・v2マスク
@@ -69,17 +72,20 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `gen_auto_free_mask.py` | 自動free mask生成 |
 | `compose_occupancy.py` | レイヤとマスクの合成 |
 | `pipeline_v2_verify.py` | v2成果物の検証 |
+| `map_transfer_masks.py` | 旧地図の手塗り（マスクと final.pgm への直接の塗り）を、作り直した地図の格子へ写した候補を作る。確定はしない |
+| `map_route_check.py` | 配車地点が FREE にあり、車体の幅でつながるかを確かめる（Nav2 は動かさない） |
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
 | `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
-| `regression/` | 回帰チェックの基準と bag 再生の検査 |
+| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節） |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
 | `tests/test_check_object_placement.py` | `check_object_placement.py` の計算（校正表の判定・投影し直し・物の誤差・床の勾配）と、TF の既定値が launch・台帳と一致することのテスト（ROS 不要。ROS があれば bag の補正ツールとの一致も確かめる） |
 | `tests/test_record_avoidance_bag.py` | `record_avoidance_bag.sh` の録画前の確認と記録後の確認のテスト（偽の ros2・ip。実機不要） |
-| `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数と終了処理のテスト（ROS・車体は起動しない） |
+| `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数・static.pcd の有無と sha256 の検査・終了処理のテスト（ROS・車体は起動しない） |
+| `tests/test_default_site_consistency.py` | 既定の site と variant が 3 つの launch・起動スクリプト・`check_map_sync.py` で揃っているかのテスト（ROS は使わない） |
 
 地図生成は成果物を書き換える。現用地図を再生成する前に入力・出力先・mask を確認する。

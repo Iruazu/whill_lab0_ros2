@@ -1,0 +1,44 @@
+- name: kounoken
+  old_xy:
+  - 0.0
+  - 0.0
+  new_xy:
+  - -0.012
+  - 0.065
+  shift_m: 0.066
+  nearest_old_pose_m: 0.23
+  local_residual_xy_m: 0.06
+  new_yaw: -0.0018
+- name: bldg7
+  old_xy:
+  - -38.42
+  - -0.47
+  new_xy:
+  - -38.439
+  - -0.302
+  shift_m: 0.169
+  nearest_old_pose_m: 0.54
+  local_residual_xy_m: 0.084
+  new_yaw: -0.0018
+- name: seimon
+  old_xy:
+  - -87.72
+  - -7.72
+  new_xy:
+  - -87.763
+  - -7.409
+  shift_m: 0.314
+  nearest_old_pose_m: 7.15
+  local_residual_xy_m: 0.232
+  new_yaw: -0.0018
+- name: bldg3
+  old_xy:
+  - 67.77
+  - 2.37
+  new_xy:
+  - 67.769
+  - 2.272
+  shift_m: 0.098
+  nearest_old_pose_m: 0.19
+  local_residual_xy_m: 0.017
+  new_yaw: -0.0018

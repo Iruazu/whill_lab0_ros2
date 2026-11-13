@@ -32,9 +32,18 @@ import yaml
 Image.MAX_IMAGE_PIXELS = None
 
 REPO = Path(__file__).resolve().parents[1]
-# 現用デモの地図。start_dispatch_demo.sh が nav_launch に map_variant:=v2 を渡す。
-DEFAULT_SITE = 'campus'
+# 現用デモの地図。2026-11-13 に campus-m8 を既定にした（#190）。--variant を省くと、
+# site ごとに start_dispatch_demo.sh が nav_launch へ渡す map_variant と同じものを使う。
+# campus-m8 は手塗りの確定前で occupancy.yaml が無く、候補の candidate を読む。
+# 旧 campus（fallback）と、表に無い site は従来どおり v2。対応を変えるときは
+# start_dispatch_demo.sh の demo_variant_for と nav_launch.py の
+# _DEFAULT_VARIANT_BY_SITE も揃える。
+DEFAULT_SITE = 'campus-m8'
 DEFAULT_VARIANT = 'v2'
+DEMO_VARIANT_BY_SITE = {
+    'campus-m8': 'candidate',
+    'campus': 'v2',
+}
 # Pillow の版が違うと、BOX 縮小の丸めが1段ずれ得る。その差で正しい起動を止めないよう、
 # 差が 2 を超える画素だけを数える。塗り直しは 0 と 254 の差なので、これでも検出できる。
 PIXEL_TOLERANCE = 2
@@ -175,8 +184,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--site', default=DEFAULT_SITE)
-    ap.add_argument('--variant', default=DEFAULT_VARIANT,
-                    help='nav_launch の map_variant。空なら occupancy.yaml')
+    ap.add_argument('--variant', default=None,
+                    help='nav_launch の map_variant。空なら occupancy.yaml。省略すると '
+                         'site ごとのデモの variant（campus-m8: candidate、それ以外は v2）')
     ap.add_argument('--maps-root', type=Path,
                     default=Path(os.environ.get('WHILL_MAPS_ROOT', REPO / 'docs' / 'maps')))
     ap.add_argument('--yaml', type=Path, help='YAML を直接指定する（--site / --variant より優先）')
@@ -186,7 +196,9 @@ def main(argv=None):
     ap.add_argument('--quiet-notes', action='store_true', help='注意（失敗ではないもの）を表示しない')
     args = ap.parse_args(argv)
 
-    name = f'occupancy_{args.variant}.yaml' if args.variant else 'occupancy.yaml'
+    variant = (args.variant if args.variant is not None
+               else DEMO_VARIANT_BY_SITE.get(args.site, DEFAULT_VARIANT))
+    name = f'occupancy_{variant}.yaml' if variant else 'occupancy.yaml'
     yaml_path = args.yaml or args.maps_root / args.site / name
     try:
         problems, notes = find_problems(yaml_path, args.web_dir, args.maps_root)

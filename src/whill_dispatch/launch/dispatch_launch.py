@@ -15,9 +15,11 @@ Nav2 (platform-pivot §3.5). It composes:
 
 Expected to run ALONGSIDE (not instead of) the real stack at demo time:
 
-  ros2 launch whill_safety     m6r_bringup_launch.py site:=campus   # A
-  ros2 launch whill_navigation nav_launch.py site:=campus map_variant:=cleaned  # B
-  ros2 launch whill_dispatch   dispatch_launch.py use_mock:=false   # C
+  ros2 launch whill_safety     m6r_bringup_launch.py site:=campus-m8   # A
+  ros2 launch whill_navigation nav_launch.py site:=campus-m8 map_variant:=candidate  # B
+  ros2 launch whill_dispatch   dispatch_launch.py site:=campus-m8 use_mock:=false   # C
+
+旧地図（fallback）は 3 つとも site:=campus にし、B は map_variant:=v2。
 
 dispatch adds no TF and no /cmd_vel*, so it does not conflict with the
 mutual-exclusion tree of the bringup launches; it only opens ports 9090 /
@@ -54,7 +56,11 @@ _MAPS_ROOT_ENV = 'WHILL_MAPS_ROOT'
 _DEFAULT_MAPS_ROOT_REL = os.path.join('docs', 'maps')
 # Match m6r_bringup_launch.py / nav_launch.py so one site:= value fans out
 # to the pcd (localizer), the pgm (Nav2) and now waypoints.yaml (dispatch).
-_DEFAULT_SITE = 'campus'
+# 2026-11-13 に campus-m8 へ変えた（#190）。campus-m8/waypoints.yaml は旧 campus の
+# 4 地点を T_new_old で写したもので、名前（kounoken / bldg7 / seimon / bldg3）と
+# label は旧と同じ。Web の UI は名前を直書きせず dispatch_node の配信を使うので、
+# site を変えても UI 側の変更は要らない。旧 campus は site:=campus で選ぶ。
+_DEFAULT_SITE = 'campus-m8'
 
 
 def _repo_root_from_pkg_share(pkg_share):
