@@ -30,6 +30,8 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m6r_preflight.sh` | check 0〜5の走行前検査 |
 | `m6r_smoke_test.sh` | bag再生でlocalizer等を検証する入口 |
 | `m6r_record_calib_bag.sh` | 校正用bagの記録 |
+| `record_avoidance_bag.sh` | 屋外試験の bag を mcap で `~/bags/<run>/` に記録する。`--profile static`（#149 静止確認、D435 必須）/ `drive`（#156 受け入れ・比較、既定）。RMW・DDS XML・NIC・governor・入力トピックを録画前に確かめる |
+| `check_object_placement.py` | 静止確認の bag で、置いた物と床が base_link のどこに出るかを LiDAR と深度で求める（#149、[計画書](plans/2026-10-28-avoidance-baseline.md) §4.2）。TF の既定値は校正台帳 §2.1 |
 | `move_bags.py` | `docs/` の bag を `~/bags/` へ移す。既定は確認だけ（[置き場](bags.md)） |
 | `m7_make_tls_cert.sh` | 配車Webの証明書作成。接続先IPを指定 |
 | `m7_https_server.py` | dispatch launchが使うHTTPS配信 |
@@ -76,6 +78,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `regression/` | 回帰チェックの基準と bag 再生の検査 |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
+| `tests/test_check_object_placement.py` | `check_object_placement.py` の計算（校正表の判定・投影し直し・物の誤差・床の勾配）と、TF の既定値が launch・台帳と一致することのテスト（ROS 不要） |
 | `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数と終了処理のテスト（ROS・車体は起動しない） |
 
 地図生成は成果物を書き換える。現用地図を再生成する前に入力・出力先・mask を確認する。
