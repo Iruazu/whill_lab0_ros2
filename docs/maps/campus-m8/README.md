@@ -1,12 +1,16 @@
-# `campus-m8`（M8-2 で作り直す campus 地図）
+# `campus-m8`（M8-2 で作り直した campus 地図）
 
-M8-2（#152〜#155）で、07-10 の地図用 bag から作り直す campus 地図。旧 `campus` は残し、別の site として置く。**採用は未定**。実機・屋外での確認（#156）と、ユーザーによる手塗りの確定（#154）が済むまで、デモは旧 `campus` を使う。
+M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus 地図。旧 `campus` は残し、別の site として置く。
+
+**2026-11-13 から既定の site**（ユーザー判断、#190）。3 つの launch・`start_dispatch_demo.sh`・`check_map_sync.py`・Web の背景の既定は campus-m8 で、Nav2 は手塗りの候補（`map_variant:=candidate`、3 節）を読む。旧 `campus` は fallback として `site:=campus`（Nav2 は `map_variant:=v2`）で選べる（[runbook](../../runbook-live-demo.md)「旧地図（campus）に戻す」）。屋外の受入（#156）は既定にするための条件から外し、既定にした後の検証として行う。手塗りの確定（#154）もまだ。
+
+経緯：この README の当初の版（2026-11-12）は「採用は未定。#156 と #154 が済むまで、デモは旧 `campus` を使う」としていた。2026-11-13 に、#186（LiDAR の TF と校正台帳）を main に入れて基準にすること、campus-m8 を #190 のマージで既定にすること、#156 はマージの後に検証することをユーザーが決めた。main には戻し先として `m8-pre-calib-20261113` のタグがある。
 
 旧地図との違いは、点群の校正を正しくしたこと（Hi-Res の実機に VLP16db.yaml を使っていた。#144）と、GLIM の設定（#147 の結論）。経路と元の記録は同じ。
 
 この地図は #145 の新しい LiDAR の TF と Hi-Res の校正（#144）を前提にする。#144・#145 の前の launch（VLP16db.yaml、#145 の前の TF）のまま使うと NDT の当てはまりが旧地図より悪い（4 節）。
 
-**禁止：#144 と #145 が main にマージされるまで、この地図で自律走行しない**（`site:=campus-m8`、`map_variant:=candidate` を含む）。#144・#145 の前の launch の点群と TF では、この地図に対する NDT の当てはまりが旧地図の 15 倍悪い（4 節）。#156 の屋外受入も、#144・#145 を入れた構成で行う。
+**前提：#144 と #145（#186）を入れた構成で使う。** #144・#145 の前の launch の点群と TF では、この地図に対する NDT の当てはまりが旧地図の 15 倍悪い（4 節）。当初の版はこの理由で「#144 と #145 が main にマージされるまで、この地図で自律走行しない」としていた。#186 は 2026-11-13 に main に入り（TF 0.42, 0.36, 0.771 m、roll −0.05°、pitch +0.40°、yaw −0.3167°）、この条件は満たされた。#186 より前の版（タグ `m8-pre-calib-20261113` など）の launch とこの地図を組み合わせない。#156 の屋外受入も、#186 を入れた構成で行う。
 
 ### TF・校正が変わったときに作り直しが要るか
 
@@ -20,8 +24,9 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直す campus 地�
 | --- | --- | --- |
 | 1. 元 bag の点群を Hi-Res に補正 | #152 | 済（オフライン検証まで） |
 | 2. GLIM → DUFOMap で static.pcd | #153 | 済（オフラインの品質指標まで。屋外の確認は未） |
-| 3. 占有格子と手塗りの候補 | #154 | 候補まで。**手塗りの確定はユーザー** |
-| 4. waypoint とローカライザの再生確認 | #155 | 再生まで。**屋外の受入（#156）は未** |
+| 3. 占有格子と手塗りの候補 | #154 | 候補まで。**手塗りの確定はユーザー**。既定の Nav2 の地図は候補（`candidate`） |
+| 4. waypoint とローカライザの再生確認 | #155 | 再生まで。**屋外の受入（#156）は未**（既定にした後の検証） |
+| 5. 既定の site にする | #190 | 済（2026-11-13）。旧 `campus` は fallback |
 
 | ファイル | 中身 | Git |
 | --- | --- | --- |
@@ -31,7 +36,7 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直す campus 地�
 | `metadata.yaml` | 出典と設定 | 管理 |
 | `align_from_campus/` | 旧 campus からの座標変換と waypoint の写像 | 管理 |
 | `v2/` | v2 の機械レイヤ、`candidates/`（手塗りの候補）、`candidate_final.pgm` | 管理 |
-| `occupancy_candidate.yaml` | `map_variant:=candidate` で読む候補の地図 | 管理 |
+| `occupancy_candidate.yaml` | `map_variant:=candidate` で読む候補の地図。既定の site で variant を省いたときもこれ | 管理 |
 | `waypoints.yaml` | 配車地点（候補） | 管理 |
 | `start_side_view.png` | 始点付近の横からの図（旧と新） | 管理 |
 
@@ -227,7 +232,7 @@ scripts/map_align.py --old-traj docs/maps/campus/traj_lidar.txt --new-traj docs/
   cd ~/whill_lab0_ros2   # このブランチの checkout
   git show b36b204:docs/maps/campus/v2/final.pgm | cmp - /tmp/old/final_recomposed.pgm && echo "b36b204 と同一"
   ```
-- `v2/candidate_final.pgm`、`occupancy_candidate.yaml`：候補のマスクで合成した地図。`nav_launch.py site:=campus-m8 map_variant:=candidate` で読める。`occupancy.yaml`（variant 無指定）は、確定するまで置かない。
+- `v2/candidate_final.pgm`、`occupancy_candidate.yaml`：候補のマスクで合成した地図。`nav_launch.py site:=campus-m8 map_variant:=candidate` で読める。`occupancy.yaml`（variant 無指定）は、確定するまで置かない。2026-11-13 に既定の site にしたので、variant を省いたときも nav_launch はこの候補を読む（`_DEFAULT_VARIANT_BY_SITE`）。確定して `occupancy.yaml` を置いたら、その対応と `start_dispatch_demo.sh`・`check_map_sync.py` の対応を消す。
 
 ### 候補の合成の結果
 
@@ -297,7 +302,7 @@ scripts/compose_occupancy.py --layers-yaml $D/v2/v2_layers.yaml \
 
 - 「局所差の目安」は、その点に最も近い旧軌跡の点で、剛体変換で吸収しきれなかった両地図の差（`align_from_campus/align.json`）。seimon は最寄りの軌跡から 7.2 m 離れているので目安の信頼性が低い。
 - **初期位置**：運用では発進点（kounoken、map の原点付近）で RViz の 2D Pose Estimate を打つ。新しい地図でも原点は発進点付近（ずれ 0.07 m、yaw −0.10°）で、手順は変わらない。`m6r_smoke_test.sh` の初期位置 (0, 0, 0) もそのまま使える。
-- **配車の Web 背景**：`src/whill_dispatch/web/map_meta.json` の origin（[−128.25, −90.35]）と、格子との関係（0.05 m の格子を 8 分の 1 に縮めた 0.4 m、830×786）は、新しい格子にもそのまま当てはまる（旧 v2 と同じ格子にしたため）。解像度そのものは Web が 0.4 m、地図が 0.05 m で、同じではない。`map.png` は地図を確定した後に `scripts/m7_make_web_map.py` で作り直す。この PR では変えていない。
+- **配車の Web 背景**：`src/whill_dispatch/web/map_meta.json` の origin（[−128.25, −90.35]）と、格子との関係（0.05 m の格子を 8 分の 1 に縮めた 0.4 m、830×786）は、新しい格子にもそのまま当てはまる（旧 v2 と同じ格子にしたため）。解像度そのものは Web が 0.4 m、地図が 0.05 m で、同じではない。当初は「地図を確定した後に作り直す」としていたが、2026-11-13 に既定の site にしたので、候補の `occupancy_candidate.yaml` から `scripts/m7_make_web_map.py` で作り直した（`source_pgm` は `docs/maps/campus-m8/v2/candidate_final.pgm`、`scripts/check_map_sync.py` は ok）。手塗りを確定したら、もう一度作り直す。
 - 地点の名前の変更（#170）はこの作業に含まない。
 
 ### NDT の再生
@@ -435,4 +440,4 @@ python3 scripts/regression/ndt_replay_compare.py --bag $B-hires --site campus-m8
 
 - 新しい地図での実走行と、各地点に椅子を置いたときの `/pcl_pose` との一致（#156）。
 - Nav2 の経路計画と走行（再生では Nav2 を動かしていない）。
-- 回帰チェックの基準（`scripts/regression/baseline.json`）の更新。基準は旧地図で記録した姿勢との差なので、地図を変えると失敗するのが正常。採用を決めた後に測り直す。
+- 回帰チェックの基準（`scripts/regression/baseline.json`）の更新。基準は旧地図で記録した姿勢との差なので、地図を変えると失敗するのが正常。2026-11-13 に既定の site を変えたときも、回帰チェックは site・基準とも旧 campus のまま残した（数値は変えていない。`baseline.json` の `site_note`）。上の 2026-11-13 の再比較は Hi-Res に補正した bag と T_new_old を使う別の測り方で、そのまま閾値にはできない。campus-m8 の基準は #156 の走行の bag で決め直す。

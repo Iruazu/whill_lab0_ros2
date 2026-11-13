@@ -14,11 +14,28 @@ class LauncherTests(unittest.TestCase):
                               capture_output=True, timeout=5)
 
     def test_default_commands(self):
+        # 既定は campus-m8 の候補の地図（2026-11-13、#190）。3 つの launch に同じ site を渡す。
         result = self.run_cli('--dry-run')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('map_variant:=v2 speed:=normal', result.stdout)
-        self.assertIn('use_mock:=false use_tls:=true', result.stdout)
+        self.assertIn('m6r_bringup_launch.py site:=campus-m8\n', result.stdout)
+        self.assertIn('nav_launch.py site:=campus-m8 map_variant:=candidate speed:=normal',
+                      result.stdout)
+        self.assertIn('dispatch_launch.py site:=campus-m8 use_mock:=false use_tls:=true',
+                      result.stdout)
         self.assertIn('rviz2', result.stdout)
+
+    def test_fallback_campus_uses_v2(self):
+        result = self.run_cli('--dry-run', '--site', 'campus')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('m6r_bringup_launch.py site:=campus\n', result.stdout)
+        self.assertIn('nav_launch.py site:=campus map_variant:=v2 speed:=normal', result.stdout)
+        self.assertIn('dispatch_launch.py site:=campus use_mock:=false', result.stdout)
+        self.assertNotIn('campus-m8', result.stdout)
+
+    def test_variant_override(self):
+        result = self.run_cli('--dry-run', '--variant', 'v2')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('nav_launch.py site:=campus-m8 map_variant:=v2', result.stdout)
 
     def test_custom_environment_and_preflight(self):
         result = self.run_cli('--dry-run', '--domain', '021', '--preflight')
@@ -35,6 +52,7 @@ class LauncherTests(unittest.TestCase):
 
     def test_invalid_arguments(self):
         for args in [('--speed', 'invalid'), ('--site', '../campus'),
+                     ('--variant', '../v2'), ('--variant',),
                      ('--domain', '233'), ('--domain', '-1'),
                      ('--domain', 'text'), ('--site',), ('--bad',)]:
             with self.subTest(args=args):

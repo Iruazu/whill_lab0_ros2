@@ -1,5 +1,6 @@
 {
   "comment": "docs/regression-check.md を参照。値を変えるときは PR に理由を書く。",
+  "site_note": "2026-11-13 にデモの既定 site は campus-m8 になったが、この基準は旧 campus のまま（数値は変えていない）。基準 bag の /pcl_pose が旧 campus の座標で記録されており、replay_check.py は地図間の変換をせずに比べるため、campus-m8 では記録との差が大きくなるのが正常。campus-m8 の 2026-11-13 の再生（docs/maps/campus-m8/ndt_replay/2026-11-13/）は ndt_replay_compare.py で Hi-Res に補正した bag と T_new_old を使った別の測り方で、この閾値の代わりにはならない。campus-m8 の基準は屋外の受入（#156）の後に、その走行の bag で決め直す。",
   "bag": "~/bags/m7-bench-data/2026-07-24-live-campus/rosbag2_2026_07_24-19_05_26",
   "site": "campus",
   "measured_on": "2026-11-02, main 81f3ec7",

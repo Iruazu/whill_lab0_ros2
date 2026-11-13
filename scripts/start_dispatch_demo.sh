@@ -4,7 +4,10 @@
 set -eo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SITE=campus
+# 既定は campus-m8（2026-11-13、#190）。旧 campus は --site campus で選ぶ fallback。
+SITE=campus-m8
+# 空なら site から決める（demo_variant_for）。
+MAP_VARIANT=
 SPEED=normal
 DOMAIN_ID=0
 WITH_RVIZ=true
@@ -17,7 +20,8 @@ LOG_DIR=
 usage() {
     cat <<'EOF'
 使用法: scripts/start_dispatch_demo.sh [オプション]
-  --site NAME       地図site（既定: campus）
+  --site NAME       地図site（既定: campus-m8。旧地図は campus）
+  --variant NAME    Nav2の map_variant（既定: campus-m8 は candidate、それ以外は v2）
   --speed PRESET    slow / normal / fast（既定: normal）
   --domain ID       ROS_DOMAIN_ID（既定: 0）
   --no-rviz         RVizを起動しない
@@ -29,16 +33,28 @@ usage() {
 初期位置をRVizで設定し、別ターミナルで --preflight を実行する。
 走行goalは自動投入しない。Ctrl-Cでこのスクリプトのプロセスを終了する。
 AP・CPU・lo multicast・証明書の準備はrunbookを参照。
+--site campus で起動するときは、Webの背景地図を旧地図で作り直してから
+whill_dispatchをビルドする（runbook。作り直さないと地図の同期検査で止まる）。
 EOF
 }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+# デモで nav_launch に渡す map_variant。campus-m8 は手塗りの確定前で occupancy.yaml が
+# 無く、候補の occupancy_candidate.yaml を使う。旧 campus と他の site は従来どおり v2。
+# check_map_sync.py の DEMO_VARIANT_BY_SITE と同じ対応にする。
+demo_variant_for() {
+    case "$1" in
+        campus-m8) printf 'candidate' ;;
+        *) printf 'v2' ;;
+    esac
+}
 parse_args() {
     while (($#)); do
         case "$1" in
-            --site|--speed|--domain)
+            --site|--variant|--speed|--domain)
                 (($# >= 2)) || fail "$1 に値が必要です"
                 case "$1" in
                     --site) SITE=$2 ;;
+                    --variant) MAP_VARIANT=$2 ;;
                     --speed) SPEED=$2 ;;
                     --domain) DOMAIN_ID=$2 ;;
                 esac
@@ -51,6 +67,8 @@ parse_args() {
         esac
     done
     [[ "$SITE" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || fail 'site名が不正です'
+    [[ -n "$MAP_VARIANT" ]] || MAP_VARIANT=$(demo_variant_for "$SITE")
+    [[ "$MAP_VARIANT" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || fail 'variant名が不正です'
     case "$SPEED" in slow|normal|fast) ;; *) fail 'speedはslow / normal / fastです' ;; esac
     [[ "$DOMAIN_ID" =~ ^[0-9]{1,3}$ ]] || fail 'domainは0〜232の整数です'
     DOMAIN_ID=$((10#$DOMAIN_ID))
@@ -158,12 +176,12 @@ check_requirements() {
     # 表示する検査を使う（#141）。ここで止まると preflight の check 0b まで進まない。
     "$REPO_ROOT/scripts/check_device_aliases.sh" || fail 'デバイスの別名が使えません（上の表示を参照）'
     maps_root="${WHILL_MAPS_ROOT:-$REPO_ROOT/docs/maps}"
-    for device in "$maps_root/$SITE/static.pcd" "$maps_root/$SITE/occupancy_v2.yaml" "$maps_root/$SITE/waypoints.yaml" \
+    for device in "$maps_root/$SITE/static.pcd" "$maps_root/$SITE/occupancy_$MAP_VARIANT.yaml" "$maps_root/$SITE/waypoints.yaml" \
                   "$HOME/.whill_dispatch_tls/dispatch.crt" "$HOME/.whill_dispatch_tls/dispatch.key"; do
         [[ -r "$device" ]] || fail "必要なファイルがありません: $device"
     done
     # XMLのNICと実機が一致しないままloだけで起動するのを防ぐ。
-    python3 - "${CYCLONEDDS_URI#file://}" "$maps_root/$SITE/occupancy_v2.yaml" <<'PY'
+    python3 - "${CYCLONEDDS_URI#file://}" "$maps_root/$SITE/occupancy_$MAP_VARIANT.yaml" <<'PY'
 import pathlib, sys, xml.etree.ElementTree as ET
 import yaml
 for elem in ET.parse(sys.argv[1]).getroot().iter():
@@ -181,7 +199,7 @@ PY
     local web_dir
     web_dir="$(ros2 pkg prefix whill_dispatch)/share/whill_dispatch/web" || fail 'whill_dispatchが見つかりません'
     python3 "$REPO_ROOT/scripts/check_map_sync.py" --maps-root "$maps_root" --site "$SITE" \
-        --variant v2 --web-dir "$web_dir" --quiet-notes || fail 'Webの背景地図がNav2の地図と揃っていません（上の表示を参照）'
+        --variant "$MAP_VARIANT" --web-dir "$web_dir" --quiet-notes || fail 'Webの背景地図がNav2の地図と揃っていません（上の表示を参照）'
     python3 - <<'PY'
 import socket
 for port in (8000, 9090):
@@ -210,7 +228,7 @@ main() {
             printf 'timeout 180 %s/scripts/m6r_preflight.sh\n' "$REPO_ROOT"
         else
             printf 'ros2 launch whill_safety m6r_bringup_launch.py site:=%s\n' "$SITE"
-            printf 'ros2 launch whill_navigation nav_launch.py site:=%s map_variant:=v2 speed:=%s\n' "$SITE" "$SPEED"
+            printf 'ros2 launch whill_navigation nav_launch.py site:=%s map_variant:=%s speed:=%s\n' "$SITE" "$MAP_VARIANT" "$SPEED"
             printf 'ros2 launch whill_dispatch dispatch_launch.py site:=%s use_mock:=false use_tls:=true\n' "$SITE"
             $WITH_RVIZ && printf 'rviz2\n'
         fi
@@ -228,7 +246,7 @@ main() {
     trap 'exit 130' INT
     trap 'exit 143' TERM
     start_process bringup ros2 launch whill_safety m6r_bringup_launch.py "site:=$SITE"
-    start_process nav2 ros2 launch whill_navigation nav_launch.py "site:=$SITE" map_variant:=v2 "speed:=$SPEED"
+    start_process nav2 ros2 launch whill_navigation nav_launch.py "site:=$SITE" "map_variant:=$MAP_VARIANT" "speed:=$SPEED"
     initialize_navigation
     start_process dispatch ros2 launch whill_dispatch dispatch_launch.py "site:=$SITE" use_mock:=false use_tls:=true
     printf '\n起動コマンドを開始しました。Web: https://localhost:8000/\n'

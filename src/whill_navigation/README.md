@@ -6,7 +6,7 @@ Nav2 と障害物前処理を起動する。実機手順は [runbook](../../docs
 
 `nav_launch.py` は Patchwork++、pointcloud_to_laserscan、map_server、planner、controller、behavior、bt_navigator、velocity_smoother、lifecycle manager を起動する。車体・EKF・localizer・failsafe・twist_mux は別の統合 bringup が担当する。
 
-地図は `site` と `map_variant` で選択する。既定siteはcampus、variantが空だと `occupancy.yaml`。デモでは `map_variant:=v2` を明示する。`WHILL_MAPS_ROOT` で地図の親ディレクトリを変更できる。
+地図は `site` と `map_variant` で選択する。既定siteは `campus-m8`（2026-11-13、#190）。variantが空だと site ごとの既定を使う：`campus-m8` は `occupancy_candidate.yaml`（`v2/candidate_final.pgm`。手塗りの確定前なので `occupancy.yaml` は無い）、それ以外は `occupancy.yaml`。対応は `nav_launch.py` の `_DEFAULT_VARIANT_BY_SITE`。読んだ yaml は起動ログの `nav_launch: site=... map_yaml=...` に出る。デモでは `map_variant:=candidate` を明示する。旧地図の fallback は `site:=campus map_variant:=v2`。`WHILL_MAPS_ROOT` で地図の親ディレクトリを変更できる。
 
 ## 現用設定
 

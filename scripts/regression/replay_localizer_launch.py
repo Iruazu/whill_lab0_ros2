@@ -50,6 +50,10 @@ def generate_launch_description():
                              'launch', 'static_tf_launch.py')
     override = PythonExpression(["'", LaunchConfiguration('lidar_tf'), "'.strip() != ''"])
     return LaunchDescription([
+        # デモの既定（m6r_bringup の campus-m8、2026-11-13）とは揃えず、campus のまま。
+        # 回帰チェック（replay_check.py）の基準 bag は旧 campus で走った記録で、比べる
+        # /pcl_pose も旧 campus の座標にある。campus-m8 で比べるには座標変換と Hi-Res に
+        # 補正した bag が要り、それは ndt_replay_compare.py（--site 必須）が扱う。
         DeclareLaunchArgument('site', default_value='campus'),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument(

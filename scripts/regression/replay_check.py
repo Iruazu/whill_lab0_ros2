@@ -232,6 +232,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--bag', required=True)
+    # 既定はデモの既定（campus-m8）ではなく campus。baseline.json は旧 campus の座標の
+    # /pcl_pose との差で決めた値で、campus-m8 では差が地図間の変換の分だけ大きくなり
+    # 必ず失敗する（docs/maps/campus-m8/README.md 4 節「確かめていないこと」）。
     ap.add_argument('--site', default='campus')
     ap.add_argument('--baseline', required=True, type=Path)
     ap.add_argument('--out', required=True, type=Path)

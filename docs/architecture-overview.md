@@ -21,7 +21,7 @@ flowchart TD
   P --> S["LaserScan /scan"]
   S --> C["Nav2 local costmap"]
   M["保存済み static.pcd"] --> N
-  G["occupancy_v2.yaml"] --> V["Nav2 NavFn + RPP"]
+  G["occupancy_candidate.yaml（campus-m8）"] --> V["Nav2 NavFn + RPP"]
   C --> V
   W["WHILL /whill/odom"] --> E["EKF /odometry/filtered"]
   I["IMU /imu/data_rep145"] --> E
@@ -63,4 +63,4 @@ RPP の `use_collision_detection` は true。カスタム BT は Spin / BackUp �
 
 ## 地図作成と運用の分離
 
-地図作成は bag → GLIM → DUFOMap → 占有格子 / v2 マスク合成。運用は `static.pcd` と `occupancy_v2.yaml`、配車地点を読む。GLIM を実機 localizer として起動しない。
+地図作成は bag → GLIM → DUFOMap → 占有格子 / v2 マスク合成。運用は `static.pcd` と占有格子の yaml（既定の site `campus-m8` は `occupancy_candidate.yaml`、fallback の `campus` は `occupancy_v2.yaml`）、配車地点を読む。GLIM を実機 localizer として起動しない。

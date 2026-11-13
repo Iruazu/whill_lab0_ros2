@@ -26,7 +26,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 
 | ファイル | 用途・注意 |
 | --- | --- |
-| `start_dispatch_demo.sh` | 実機bringup・Nav2・TLS配車Web・RVizの統合起動。--dry-run / --preflight対応 |
+| `start_dispatch_demo.sh` | 実機bringup・Nav2・TLS配車Web・RVizの統合起動。既定は site campus-m8 / variant candidate（旧地図は --site campus）。--dry-run / --preflight対応 |
 | `m6r_preflight.sh` | check 0〜5の走行前検査 |
 | `m6r_smoke_test.sh` | bag再生でlocalizer等を検証する入口 |
 | `m6r_record_calib_bag.sh` | 校正用bagの記録 |

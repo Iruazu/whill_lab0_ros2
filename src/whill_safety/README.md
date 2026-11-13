@@ -6,7 +6,7 @@
 
 `m6r_bringup_launch.py` は odom bringup（センサ・WHILL・EKF）、NDT localizer、`safety_launch.py`（failsafe・twist_mux）を含む。内包するlaunchを別途起動しない。Nav2 / dispatch は別ターミナルで併用する。
 
-`site:=campus` は `docs/maps/campus/static.pcd` を読む。`WHILL_MAPS_ROOT` で親ディレクトリを変更できる。PCDはGit対象外。RealSenseは既定false。
+既定の `site:=campus-m8` は `docs/maps/campus-m8/static.pcd` を読む（2026-11-13、#190）。旧地図の fallback は `site:=campus`（`docs/maps/campus/static.pcd`）。`WHILL_MAPS_ROOT` で親ディレクトリを変更できる。PCDはGit対象外で、campus-m8 は正本を複製して sha256 を確かめる（`docs/maps/campus-m8/README.md` 2 節）。RealSenseは既定false。
 
 ## Localizer
 
