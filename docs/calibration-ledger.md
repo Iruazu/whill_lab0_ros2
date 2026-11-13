@@ -67,7 +67,7 @@ z・roll・pitch の候補：
 - 状態：x・y・z・roll・pitch は**実測済み**（z・roll・pitch は 2026-11-13 のテープ固定後の実機静止確認で確定）。yaw は**未測定**。屋外静止確認（#149、コーンと低い物の距離）は未了。
 - #149 の手順は `docs/plans/2026-10-28-avoidance-baseline.md` §4.2。記録は `scripts/record_avoidance_bag.sh --profile static`、解析は `scripts/check_object_placement.py`（LiDAR の TF の既定値はこの表の値で、launch との一致は `scripts/tests/test_check_object_placement.py` が確かめる）。x の切り分け（テープの基準か TF か）もこの解析で行う。
 - **取り付けと復帰手順（重要）**：LiDAR の取り付けはケーブルの接触や運搬で動きうるので、ユーザーは「屋内廊下の決めた場所で、LiDAR の上にスマホを置いて水平器で 0° に合わせ、下部をテープで固定して横の回転を止める」という復帰手順で毎回同じ状態に戻す運用にしている（2026-11-13 に明文化）。水平器は重力に対する水平なので、合わせた場所の床の勾配と乗員の有無が base_link に対する角度に乗る。したがってこの手順は **同じ場所・同じ向き・無人** で行うことが条件で、そのときの床の勾配は上の採用値に既に含まれている。この手順の再現性（合わせ直し → 測定を複数回）は**未測定**。B → C の pitch 差 0.47° は、別の時期・別の場所で合わせた 2 回の差で、手順の再現性そのものではない。復帰手順を行った後、または固定が緩んだ疑いがあるときは、下記 C の手順（静止 12 秒 × 180° 2 本、約 2 分）で測り直し、採用値と 0.2° 以上ずれたら launch と台帳を更新する。
-- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:77`（`static_tf_velodyne`。角度は `math.radians` で変換）。
+- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:85`（`static_tf_velodyne`。角度は `math.radians` で変換）。
 - 出典（2026-10-28 の値）：`docs/plans/2026-10-28-avoidance-baseline.md` §1.1・§2.1・§4.2 の記載のみ（計画書は 2026-11-13 に main へ移した）。床面フィットを行ったスクリプトと引数は未特定（リポジトリにも同ブランチにも無い。`scripts/check_object_placement.py` は、TF の値を入力として使う側）。「旧 URDF と一致」の旧 URDF は未特定（`whill_model_cr2.urdf` の `base_link` は別概念で、velodyne の取付を持たない）。x の +2〜+8 cm のずれも同計画書 §4.2 の記載のみ。
 - 再フィット（2026-11-12）：
   - bag：`~/bags/sensor_check_20261028/` の静止 bag 5 本（下の表）。2026-10-28 15:5x〜16:10 に `~/bags/rec_sensor_check.sh` で記録。撮影場所の記録はない。`docs/bags-manifest.tsv` には載っていない。
@@ -152,7 +152,7 @@ z・roll・pitch の候補：
 
 - 状態：**実測済み**（2026-10-28、巻尺 + データシート）。実機静止確認は未了（#149）。
 - 依存関係：x・y は LiDAR の巻尺値 0.42/0.36（§2.1）から導出している。#149 などで LiDAR の x, y が変われば、camera_link も同じだけ動かす。
-- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:92`（`static_tf_camera`、#146 で反映済み）、`src/whill_sensors_bringup/README.md` の TF 表。
+- 反映先：`src/whill_sensors_bringup/launch/static_tf_launch.py:100`（`static_tf_camera`、#146 で反映済み）、`src/whill_sensors_bringup/README.md` の TF 表。
 - 影響範囲：RealSense を使う下流タスク（現用ナビゲーションでは未使用）。
 
 ## 4. IMU（RT 9 軸 USB IMU）

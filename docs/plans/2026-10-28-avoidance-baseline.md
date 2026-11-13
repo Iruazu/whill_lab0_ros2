@@ -135,7 +135,11 @@ twist_mux の優先度とタイムアウト、smoother の加減速、localizer 
 
 ### 4.2 屋外での静止確認（C1）
 
-> 注記（2026-11-13）：main には `avoidance` 引数が無い。起動は main の `m6r_bringup_launch.py realsense:=true` で行い、worktree の overlay と `WHILL_MAPS_ROOT` は要らない。保存先は `~/bags/<run>/<タグ>_<時刻>/`（`--run` で指定、[bag の置き場](../bags.md)）。`check_object_placement.py` の LiDAR の TF の既定値は[校正台帳](../calibration-ledger.md) §2.1 の値で、記録時の校正表（VLP16db / Hi-Res）は自動で判定する。データ源は `lidar` と `depth` の2つ（旧版の `lidar_current`・`lidar_hires` の区別は、main の点群が既に Hi-Res なので無くした）。
+> 注記（2026-11-13）：main には `avoidance` 引数が無い。起動は main の `m6r_bringup_launch.py realsense:=true` で行い、worktree の overlay と `WHILL_MAPS_ROOT` は要らない。保存先は `~/bags/<run>/<タグ>_<時刻>/`（`--run` で指定、[bag の置き場](../bags.md)）。`check_object_placement.py` の LiDAR の TF の既定値は[校正台帳](../calibration-ledger.md) §2.1 の値で、記録時の校正表（VLP16db / Hi-Res）は自動で判定する。データ源は `lidar` と `depth` の2つ（旧版の `lidar_current`・`lidar_hires` の区別は、main の点群が既に Hi-Res なので無くした）。2026-11-13 のテープ固定より前の bag は取付が違うので `--lidar-tf 0.42 0.36 0.777 0.24 0.97 -0.317` を渡す（台帳 §2.1 の「計画書」行）。
+>
+> 注記（2026-11-13、横断勾配）：下の「横断勾配（床面の roll）」は、base_link で当てはめた床からは求まらない。車輪が路面に載っているので、平らな路面なら勾配があっても base_link の床は水平に出る。`check_object_placement.py` の `slope_x_deg`・`slope_y_deg` は「TF の残差 + 路面の非平面性 + 荷重の沈み」を表す。重力に対する横断勾配は、static bag に記録される `/imu/data_rep145` の静止時の重力の向きから求める（台帳 §0 と同じ考え方。IMU の取付角は台帳 §4.1）。
+>
+> 注記（2026-11-13、x の切り分け）：下の「x の誤差の切り分け」で両方のセンサの x を比べるには、側面が鉛直な物（箱など）を使う。コーンは高さで手前の面の x が変わり、LiDAR（ring の高さだけ）と深度（足元まで）で見ている高さが違うので、形の差が x の差に混ざる。コーンは notes.csv の `shape` を `cone` にする（`check_object_placement.py` は ring の高さごとに LiDAR と深度の x を比べ、テープとの dx は合否に使わない）。何も置かない bag は `object` を `empty` にし、2本目以降は1本目との差（途中のずれ）の確認に使う。
 
 - **場所**：試験区間のアスファルト上。椅子は車線の向きに合わせて止める（横断勾配が roll として見えるようにするため）。
 - **置く物**：コーン（高さを記録する）を中心線上の 1.5／2／2.5／3／3.5／4／5 m に順に置く。低い物（高さ約20 cm）を 1.5／2／3 m に置く。何も置かない基準を最初と最後に1本ずつ撮る。

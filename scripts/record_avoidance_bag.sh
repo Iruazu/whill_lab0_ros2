@@ -30,13 +30,15 @@ usage() {
   --profile static|drive  static: センサだけ（#149 静止確認） / drive: 走行一式（既定、#156）
   --run NAME              1 回の試験をまとめるディレクトリ名（既定: <YYYY-MM-DD>-<profile>）
   --duration SEC          指定秒数で自動停止（省略時は Ctrl-C で停止）
+環境変数 RECORD_INPUT_TIMEOUT_S: 入力トピックの待ち時間（既定 8 秒）
   -h, --help              この説明を表示
 
 保存先: ${WHILL_BAGS_ROOT:-~/bags}/<run>/<タグ>_<HHMMSS>/（mcap）。bag はリポジトリに置かない。
 static: m6r_bringup_launch.py realsense:=true を起動しておく（D435 の深度・カラーが必須）。
 drive : m6r_bringup + nav_launch を起動しておく。D435 は任意（無ければ警告して続ける）。
 static の各 bag の後に、<run>/notes.csv に追記する行の雛形を表示する
-（列は check_object_placement.py の bag,object,x_m,height_m）。
+（列は check_object_placement.py の bag,object,x_m,height_m,shape,expect,...。
+何も置かない bag は object=empty で x_m・height_m を空にする）。
 EOF
 }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -79,15 +81,19 @@ XML="${XML#file://}"
 NIC_MSG=$(python3 "${REPO_ROOT}/scripts/check_dds_nic.py" "$XML" 2>&1) \
     || fail "DDS の NIC が合わない: ${NIC_MSG}"
 # (3) governor: 再起動で powersave に戻り、点群の取りこぼしが増える。
-GOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
+# WHILL_GOVERNOR_FILE はテスト用（scripts/tests/test_record_avoidance_bag.py）。/sys は偽装できない。
+GOV=$(cat "${WHILL_GOVERNOR_FILE:-/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor}" 2>/dev/null || echo unknown)
 [[ "$GOV" == performance ]] || fail "CPU governor=${GOV}。sudo cpupower frequency-set -g performance"
 # (4) ros2 と記録に要るプラグイン。
 command -v ros2 >/dev/null || fail 'ros2 が PATH にない。setup.bash を source する'
 ros2 pkg prefix rosbag2_storage_mcap >/dev/null 2>&1 \
     || fail 'rosbag2_storage_mcap が無い。sudo apt install ros-humble-rosbag2-storage-mcap'
 # カラーは圧縮で記録する。プラグインが無いと /compressed が出ず、黙ってカラーが欠ける。
-ros2 pkg prefix compressed_image_transport >/dev/null 2>&1 \
-    || fail 'compressed_image_transport が無い。sudo apt install ros-humble-compressed-image-transport'
+# static はカメラが目的の一部なので止める。drive ではカメラ自体が任意なので警告に留める。
+if ! ros2 pkg prefix compressed_image_transport >/dev/null 2>&1; then
+    MSG='compressed_image_transport が無い。sudo apt install ros-humble-compressed-image-transport'
+    if [[ "$PROFILE" == static ]]; then fail "$MSG"; else warn "${MSG}（カラーは記録されない）"; fi
+fi
 
 SENSOR_TOPICS=(
     /tf /tf_static /rosout
@@ -114,6 +120,9 @@ DRIVE_TOPICS=(
 # RELIABLE の配信にも合うが、/tf_static は transient_local でないと受け取れない。
 REQUIRED=(
     '/velodyne_packets|velodyne_msgs/msg/VelodyneScan|--qos-profile sensor_data'
+    # 解析（check_object_placement.py）が読むのは点群のほう。packets だけ出て
+    # transform node が落ちていると、解析できない bag になる。
+    '/velodyne_points|sensor_msgs/msg/PointCloud2|--qos-profile sensor_data'
     '/imu/data_rep145|sensor_msgs/msg/Imu|--qos-profile sensor_data'
     '/tf_static|tf2_msgs/msg/TFMessage|--qos-reliability reliable --qos-durability transient_local'
 )
@@ -127,7 +136,8 @@ if [[ "$PROFILE" == drive ]]; then
     REQUIRED+=('/odometry/filtered|nav_msgs/msg/Odometry|--qos-profile sensor_data')
 fi
 
-TIMEOUT_S=${RECORD_INPUT_TIMEOUT_S:-6}
+# check_failsafe_inputs.sh の既定（8 秒）と揃える。DDS の発見に数秒かかることがある。
+TIMEOUT_S=${RECORD_INPUT_TIMEOUT_S:-8}
 probe() {  # probe <topic|type|qos>。届けば 0。
     local topic type qos
     IFS='|' read -r topic type qos <<<"$1"
@@ -167,8 +177,9 @@ echo "==> 記録開始: ${OUT}（profile=${PROFILE}）"
 # 圧縮は掛けない: 画像は既に圧縮済みで、zstd は記録中の CPU を食う。
 CMD=(ros2 bag record -s mcap --include-hidden-topics -o "$OUT" "${TOPICS[@]}")
 if [[ -n "$DURATION" ]]; then
-    # SIGINT で止めると rosbag2 がキャッシュを書き切ってから終了する。
-    timeout -s INT "$DURATION" "${CMD[@]}" || true
+    # SIGINT で止めると rosbag2 がキャッシュを書き切ってから終了する。書き切れずに
+    # 固まったときだけ 10 秒後に KILL する（端末が戻らないまま現地で待たないため）。
+    timeout -s INT -k 10 "$DURATION" "${CMD[@]}" || true
 else
     "${CMD[@]}" || true
 fi
@@ -176,24 +187,29 @@ fi
 # --- 記録後の確認 -----------------------------------------------------------
 echo '==> 記録内容'
 INFO=$(ros2 bag info "$OUT" 2>&1) || fail "ros2 bag info が失敗した: ${OUT}"
-printf '%s\n' "$INFO" | grep -E 'Duration|Bag size|Topic:' \
-    | sed -E 's/\| Serialization Format: cdr//'
-DUR=$(printf '%s\n' "$INFO" | sed -nE 's/^Duration:\s+([0-9.]+)s.*/\1/p' | head -1)
-VEL=$(printf '%s\n' "$INFO" | grep -E 'Topic: /velodyne_points ' | sed -nE 's/.*Count:\s*([0-9]+).*/\1/p')
+# set -euo pipefail のもとで grep の不一致（点群が 1 通も無い等）は非 0 になり、警告と
+# notes.csv の案内を出す前に黙って終わってしまう。ここから先の抽出は不一致を許す。
+{ printf '%s\n' "$INFO" | grep -E 'Duration|Bag size|Topic:' \
+    | sed -E 's/\| Serialization Format: cdr//'; } || true
+DUR=$(printf '%s\n' "$INFO" | sed -nE 's/^Duration:\s+([0-9.]+)s.*/\1/p' | head -1) || true
+VEL=$({ printf '%s\n' "$INFO" | grep -E 'Topic: /velodyne_points ' \
+    | sed -nE 's/.*Count:\s*([0-9]+).*/\1/p'; } || true)
 if [[ -n "$DUR" && -n "$VEL" ]]; then
     # 点群は 10 Hz。半分未満なら取りこぼしが多く、捨てて撮り直す（m6r_record_calib_bag.sh と同じ基準）。
     if awk -v a="$VEL" -v d="$DUR" 'BEGIN{exit !(a < d * 10 * 0.5)}'; then
         warn "/velodyne_points が ${VEL} 通（${DUR} 秒、期待 約$(awk -v d="$DUR" 'BEGIN{printf "%.0f", d*10}')）。撮り直す"
     fi
 else
-    warn "/velodyne_points の件数を読めない。ros2 bag info ${OUT} で確かめる"
+    warn "/velodyne_points が記録されていないか、件数を読めない。ros2 bag info ${OUT} で確かめ、撮り直す"
 fi
 
 if [[ "$PROFILE" == static ]]; then
     NOTES="${RUN_DIR}/notes.csv"
-    [[ -e "$NOTES" ]] || echo 'bag,object,x_m,height_m,y_m,half_width_m' > "$NOTES"
+    [[ -e "$NOTES" ]] || echo 'bag,object,x_m,height_m,shape,expect,y_m,half_width_m' > "$NOTES"
     echo
-    echo "==> ${NOTES} に次の行を追記する（x_m はテープの値、height_m は物の高さ、空の基準は object=empty）:"
-    echo "    ${NAME},<object>,<x_m>,<height_m>"
+    echo "==> ${NOTES} に次の行を追記する（列の意味は check_object_placement.py の冒頭）:"
+    echo "    物:   ${NAME},<object>,<x_m テープの値>,<height_m 物の高さ>,<box|cone>,"
+    echo "    空:   ${NAME},empty,,,,"
+    echo "    空の bag は最初と最後に撮る。最初の 1 本を --empty にし、残りは途中のずれの確認に使う。"
     echo "    解析: scripts/check_object_placement.py --bag-root ${RUN_DIR} --notes ${NOTES} --empty <空のbag> --out ${RUN_DIR}/check"
 fi
