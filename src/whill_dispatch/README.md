@@ -31,7 +31,7 @@ campusの地点名は `kounoken`、`bldg7`、`seimon`、`bldg3`。座標の正�
 
 Web背景は `web/map.png` / `web/map_meta.json`。現用metaは `docs/maps/campus/v2/final.pgm` を出典として記録し、縮小率8、解像度0.4m/pixel。再生成は `scripts/m7_make_web_map.py --yaml docs/maps/campus/occupancy_v2.yaml --out-dir src/whill_dispatch/web`。
 
-WebのFREE判定は縮小画像上の補助判定。dispatchは地図の占有状態を再検査しない。最終的な経路計画はNav2が行う。画像と地図の同期は自動ではない。
+WebのFREE判定は縮小画像上の補助判定。dispatchは地図の占有状態を再検査しない。最終的な経路計画はNav2が行う。画像と地図の同期は自動ではない。食い違いは `scripts/check_map_sync.py` が検出する（出典・origin・解像度・寸法・画素、negate と FREE_THRESHOLD の前提）。`demo_regression.sh` と `start_dispatch_demo.sh` の起動前検査が実行する。元画像の高さ6295が8で割り切れないため、Webの座標は縦方向に原点からの距離に比例してずれる。原点側の端で0、地点のあるy≈0付近で約0.10m、反対の端で最大0.35m。Webの1画素（0.4m）より小さいので、直すのはバックログ扱い。検査は注意として表示し、起動前検査では表示しない。画素の比較は、Pillowの版による丸めの差で止まらないよう、差が2を超える画素だけを数える。
 
 ## 手動救出
 
@@ -44,6 +44,8 @@ teleop入力が切れるとNav2入力に戻り得る。進行中の配車を取�
 ## 制約と検証
 
 認証、永続キュー、複数車両管理は未実装。この構成は `whill_console` gatewayのトークンを使用しない。未知の地点名などはwarnで拒否され、Webへの詳細エラー返信は限定的。
+
+終了時、`rosapi_node` は `ExternalShutdownException` のトレースバックを出し exit code 1 で終わる。上流 rosapi（apt の 2.0.7、GitHub の ros2 ブランチも 2026-11-12 時点で同じ）の `main()` が `KeyboardInterrupt` しか捕まえないため。rosapi は上流の `rosbridge_websocket_launch.xml` が必ず起動し、launch の引数や順序では避けられない。プロセスは終わり、続けての再起動も妨げない（2026-11-12、launch 経由の SIGINT を2回で確認）。rosapi を起動しない構成（XML を読まず rosbridge_websocket を直接起動）は可能だが、Web UI が rosapi を使わないことの実機確認が要るので見送っている（#169）。
 
 `m7_ws_smoke.py` はジョブ投入・取消を含むため、読み取り専用の接続確認ではない。実機の接続診断に無条件で実行せず、模擬actionを使う検証環境で使用する。
 

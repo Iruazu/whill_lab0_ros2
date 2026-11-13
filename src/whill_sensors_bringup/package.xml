@@ -16,7 +16,11 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
-  <exec_depend>velodyne</exec_depend>
+  <!-- sensors_launch.py は上流の VLP16 launch を include せず、3 ノードを
+       直接起動して校正ファイルを選べるようにしている (#144)。 -->
+  <exec_depend>velodyne_driver</exec_depend>
+  <exec_depend>velodyne_pointcloud</exec_depend>
+  <exec_depend>velodyne_laserscan</exec_depend>
   <exec_depend>realsense2_camera</exec_depend>
   <exec_depend>rt_usb_9axisimu_driver</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
@@ -26,6 +30,8 @@
   <!-- imu_sign_corrector (Issue #56) の依存 -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

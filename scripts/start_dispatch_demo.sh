@@ -154,9 +154,9 @@ check_requirements() {
     for command in ros2 setsid flock timeout python3; do
         command -v "$command" >/dev/null || fail "必要なコマンドがありません: $command"
     done
-    for device in /dev/whill /dev/imu; do
-        [[ -c "$device" && -r "$device" && -w "$device" ]] || fail "デバイスが未接続かアクセス権がありません: $device"
-    done
+    # 別名が無いのか、機器が無いのか、権限が無いのかで直し方が違う。理由と戻し方まで
+    # 表示する検査を使う（#141）。ここで止まると preflight の check 0b まで進まない。
+    "$REPO_ROOT/scripts/check_device_aliases.sh" || fail 'デバイスの別名が使えません（上の表示を参照）'
     maps_root="${WHILL_MAPS_ROOT:-$REPO_ROOT/docs/maps}"
     for device in "$maps_root/$SITE/static.pcd" "$maps_root/$SITE/occupancy_v2.yaml" "$maps_root/$SITE/waypoints.yaml" \
                   "$HOME/.whill_dispatch_tls/dispatch.crt" "$HOME/.whill_dispatch_tls/dispatch.key"; do
@@ -176,6 +176,12 @@ image = pathlib.Path(yaml.safe_load(path.read_text())['image'])
 if not (path.parent / image).is_file():
     sys.exit(f'地図画像がありません: {path.parent / image}')
 PY
+    # Webの背景地図はNav2の地図と別の成果物で、手で再生成している（#171）。ずれたままだと、
+    # タップした地点とNav2のゴールが食い違う。配信されるのはinstall側のweb/なので、そちらを見る。
+    local web_dir
+    web_dir="$(ros2 pkg prefix whill_dispatch)/share/whill_dispatch/web" || fail 'whill_dispatchが見つかりません'
+    python3 "$REPO_ROOT/scripts/check_map_sync.py" --maps-root "$maps_root" --site "$SITE" \
+        --variant v2 --web-dir "$web_dir" --quiet-notes || fail 'Webの背景地図がNav2の地図と揃っていません（上の表示を参照）'
     python3 - <<'PY'
 import socket
 for port in (8000, 9090):

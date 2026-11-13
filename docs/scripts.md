@@ -34,6 +34,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m7_make_tls_cert.sh` | 配車Webの証明書作成。接続先IPを指定 |
 | `m7_https_server.py` | dispatch launchが使うHTTPS配信 |
 | `m7_make_web_map.py` | YAMLの画像からWeb背景とmetaを生成 |
+| `check_map_sync.py` | Web背景とmetaがNav2の地図YAMLと揃っているかを確かめる（demo_regression・起動前検査が実行） |
 | `mock_navigate_to_pose.py` | 模擬Nav2 action。実機bringupを再現しない |
 | `m7_ws_smoke.py` | rosbridge経由の投入・取消を含むE2E検証。実機での受動診断には使わない |
 | `m4r3_ekf_bench.py` | bagによるEKFの解析 |
@@ -47,6 +48,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `m5r3_run_glim.sh` | GLIMのオフライン実行 |
 | `velodyne_reproject_bag.py` | 誤った校正で記録した点群を、ring を使って正しい校正へ補正した bag を作る（入力は読むだけ） |
 | `velodyne_reproject_verify.sh`, `velodyne_compare_clouds.py` | 上の補正を、パケットのある bag でドライバ（velodyne_transform_node）の出力と点ごとに比べる（[手順](maps/campus-m8/README.md)） |
+| `lidar_floor_fit.py` | 静止 bag の床面から base_link→velodyne の z・roll・pitch を求める（校正台帳 §2.1 の出典） |
 | `imu_investigation/` | GLIM の IMU 調査（#147）の対照実験と解析。[報告](reports/2026-11-02-glim-imu-root-cause.md) |
 | `m5r3_export_merged_ply.py` | 結合点群の出力 |
 | `m5r_glim_to_pcd.py` | GLIM結果のPCD化 |
@@ -73,6 +75,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
+| `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
 | `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節） |

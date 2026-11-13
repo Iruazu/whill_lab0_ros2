@@ -39,7 +39,7 @@ flowchart TD
   Q -->|/whill/controller/cmd_vel| H["WHILL driver /dev/whill"]
 ```
 
-Web の背景画像は `src/whill_dispatch/web/map.png` と `map_meta.json`。Nav2 の地図を変更しても自動再生成されない。global costmap は static / inflation、local costmap は static / obstacle / inflation。
+Web の背景画像は `src/whill_dispatch/web/map.png` と `map_meta.json`。Nav2 の地図を変更しても自動再生成されない。食い違いは `scripts/check_map_sync.py` が検出する。global costmap は static / inflation、local costmap は static / obstacle / inflation。
 
 ## TF とオドメトリ
 

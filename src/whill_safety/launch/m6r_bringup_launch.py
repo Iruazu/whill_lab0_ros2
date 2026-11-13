@@ -237,6 +237,10 @@ def generate_launch_description():
         'launch',
         'safety_launch.py',
     )
+    # Same default as sensors_launch.py (#144); forwarded via odom_bringup.
+    hires_calibration = os.path.join(
+        get_package_share_directory('velodyne_pointcloud'),
+        'params', 'VLP16_hires_db.yaml')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
 
@@ -260,6 +264,13 @@ def generate_launch_description():
                         'scripts/m6r_smoke_test.sh is the usual bag-'
                         'replay entry point).'),
         DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
+                        'proposed). true = while only Layer D stops the '
+                        'chair, failsafe relays teleop reverse/rotate on '
+                        '/cmd_vel_safety.'),
+        DeclareLaunchArgument(
             'realsense',
             default_value='false',
             description='Forward to sensors_launch to start the D435. Off '
@@ -267,6 +278,19 @@ def generate_launch_description():
                         'runtime stack, and past USB 2.1 enumeration issues '
                         'make an accidental start expensive. Flip true for '
                         'camera-specific tests.'),
+        DeclareLaunchArgument(
+            'velodyne_calibration',
+            default_value=hires_calibration,
+            description='Forwarded to sensors_launch.py: Velodyne '
+                        'elevation table. Default VLP16_hires_db.yaml '
+                        '(#144). The map must have been built from '
+                        'clouds with the same table.'),
+        DeclareLaunchArgument(
+            'failsafe_startup_grace_sec',
+            default_value='0.0',
+            description='Forwarded to safety_launch (Issue #159). 0.0 = '
+                        'never-arrived inputs are only logged; > 0 = they '
+                        'stop the chair after this many seconds.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
@@ -274,6 +298,8 @@ def generate_launch_description():
             launch_arguments={
                 'use_sim_time': use_sim_time,
                 'realsense': LaunchConfiguration('realsense'),
+                'velodyne_calibration':
+                    LaunchConfiguration('velodyne_calibration'),
             }.items()),
 
         # M6-R scan-to-map localizer. Wrapped in an OpaqueFunction so the
@@ -287,5 +313,11 @@ def generate_launch_description():
         # /cmd_vel_safety fires only when a failsafe layer trips.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(safety_launch),
-            launch_arguments={'use_sim_time': use_sim_time}.items()),
+            launch_arguments={
+                'use_sim_time': use_sim_time,
+                'failsafe_layer_d_rescue':
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
+                'failsafe_startup_grace_sec':
+                    LaunchConfiguration('failsafe_startup_grace_sec'),
+            }.items()),
     ])

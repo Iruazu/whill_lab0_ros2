@@ -33,6 +33,29 @@ import_repos() {
   vcs import "${WS_ROOT}/src" < "${REPOS_FILE}"
 }
 
+ignore_patchwork_subpackages() {
+  # Patchwork++ ships three CMake subdirectories (ros/, cpp/, python/), each
+  # with its own CMakeLists.txt, so colcon discovers all three as packages.
+  # None of them should be built here:
+  #   - cpp/    is the BSD-2-Clause core we DO use, but whill_perception
+  #             consumes it via add_subdirectory(), never as a colcon package
+  #   - ros/    declares GPL-3.0 in its package.xml; the permissive-only
+  #             policy (ADR-0011) keeps it out of the tree's build entirely
+  #   - python/ is the pip binding, unused here
+  # Doing this in the script rather than leaving it as a manual step in
+  # whill_lab.repos: a forgotten `touch` only shows up as a confusing build
+  # error (or a GPL package silently built) on someone else's clone.
+  local base="${WS_ROOT}/src/third_party/patchwork_plusplus"
+  if [[ ! -d "${base}" ]]; then
+    return 0
+  fi
+  for sub in ros cpp python; do
+    if [[ -d "${base}/${sub}" ]]; then
+      touch "${base}/${sub}/COLCON_IGNORE"
+    fi
+  done
+}
+
 resolve_deps() {
   # rosdep needs HTTP_PROXY / HTTPS_PROXY when on a proxied network — sudo -E
   # in case rosdep needs to apt-install missing deps.
@@ -42,11 +65,22 @@ resolve_deps() {
 
 main() {
   require_tools
-  echo "[1/2] vcs import"
+  echo "[1/3] vcs import"
   import_repos
-  echo "[2/2] rosdep install"
+  echo "[2/3] mark non-colcon upstream subdirectories"
+  ignore_patchwork_subpackages
+  echo "[3/3] rosdep install"
   resolve_deps
-  echo "Done. Build with:  colcon build --packages-up-to whill --symlink-install"
+  cat <<'EOF'
+Done. Build the on-vehicle stack with:
+
+  colcon build --symlink-install --packages-up-to \
+    whill_sensors_bringup whill_localization whill_navigation \
+    whill_perception whill_safety whill_dispatch
+
+(`--packages-up-to whill` builds only the upstream WHILL driver metapackage —
+ none of this repo's own packages.)
+EOF
 }
 
 main "$@"

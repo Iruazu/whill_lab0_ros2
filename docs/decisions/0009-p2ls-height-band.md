@@ -63,6 +63,8 @@ Phase B 実測)。
 SetRemap('/scan' → '/scan_raw')` で velodyne 側の出力を rename。p2ls が
 出す `/scan` のみが obstacle_layer に到達する経路に整流する (`2f26d0b`)。
 
+（追記 2026-11-12、#144）sensors_launch.py は上流 launch を include せず Velodyne の3ノードを直接起動するようになったため、同じ rename は `velodyne_laserscan_node` の `remappings` で行っている。判断の内容は変わらない。
+
 ## 代替案
 
 ### 代替 A: `min_height` を下げて 5 cm 級の低段差を捉える

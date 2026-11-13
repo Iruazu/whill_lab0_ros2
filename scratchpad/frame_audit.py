@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# calibration-ledger §更新プロトコル で参照される frame_audit ツール。
+# calibration-ledger §0・§8 (更新の手順) で参照される frame_audit ツール。
 #
 # 静止 IMU の /imu/data_rep145 実測 (ax, ay, az) から base_link -> imu_link
 # の RPY (yaw=0 前提) と quaternion を逆算する。static_tf_launch.py に

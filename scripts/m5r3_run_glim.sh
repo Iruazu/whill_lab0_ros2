@@ -323,8 +323,7 @@ PY
     #     was (pitch -7.76°, roll -3.52°) on 07-09
     # Therefore R_lidar_imu ≈ RPY(-4.09°, -7.61°, 0°). Delta from 07-09 audit
     # is ~0.5° per axis (the natural mount stress-relaxation observed
-    # overnight; documented in docs/calibration-ledger.md and static_tf
-    # comment block).
+    # overnight; documented in docs/calibration-ledger.md §4.1 and §7).
     if [[ "${GLIM_TLI_FROM_AUDIT:-0}" == "1" ]]; then
       python3 - "${local_cfg}/config_sensors.json" <<'PY'
 import re, sys

@@ -15,7 +15,7 @@
 | [未解決事項と制約](repository-maintenance.md) | 残課題と実装の制約 |
 | [M8 ロードマップ](plans/2026-10-30-roadmap-m8.md) | 課題の順番。課題の正本は GitHub Issues |
 | [地図一覧](maps/README.md) | 地図成果物の規約 |
-| [校正台帳](calibration-ledger.md) | 校正履歴。現用値はコードと照合する |
+| [校正台帳](calibration-ledger.md) | 車体とセンサの実測値の正本（値・測定方法・状態・反映先） |
 | [設計判断](decisions/README.md) | ADR |
 
 ## パッケージ
@@ -25,6 +25,16 @@
 ## 実機検証記録
 
 - [2026-10-14 統合起動・配車成功](reports/2026-10-14-dispatch-demo.md)
+
+## 研究テーマの検討
+
+- [研究の系譜と未解決性を確かめる（HTML、2026-10-16）](research/whill-research-evidence.html)：信頼性・診断・適応・学習制御の14文献。到達点、仮定、比較条件、専門性を整理。
+
+- [選んだ5件の到達点と残る問いを読む（HTML）](research/whill-research-selected.html)：研究名で比較。実験の到達点・未検証事項・後続研究・拡張仮説と判断メモ。
+
+- [26件の研究をカードで読む（HTML）](research/whill-research-papers.html)：具体的な問い・方法・成果・限界。分野の絞り込みと「気になる」選択。
+
+- [WHILLを実験基盤とする研究課題のサーベイ（2026-10-15改訂）](research/2026-10-15-whill-research-topics.md)：先行研究25件の到達点・検証範囲、既存案の再評価、研究上の問い5案と実験設計。
 
 ## 過去の記録
 

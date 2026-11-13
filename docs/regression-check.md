@@ -14,7 +14,7 @@ main を常にデモができる状態に保つための、マージ前の確認
 
 ## 確かめていること
 
-**静的**：`scripts/run_tests.sh`、`start_dispatch_demo.sh --dry-run`、3つの launch の `--show-args`。
+**静的**：`scripts/run_tests.sh`、地図と Web の背景の同期（`scripts/check_map_sync.py`。このブランチの `docs/maps` と `src/whill_dispatch/web` を照合）、`start_dispatch_demo.sh --dry-run`、3つの launch の `--show-args`。
 
 **再生**：基準 bag（2026-07-24 の走行。`~/bags/m7-bench-data/` にある。[置き場](bags.md)）を、このブランチのコードに流す。閾値は `scripts/regression/baseline.json`。
 
