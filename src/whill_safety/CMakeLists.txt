@@ -24,10 +24,12 @@ install(
 )
 
 if(BUILD_TESTING)
-  # failsafe_node の救援判定を、時刻を差し替えて確かめる。rclpy の context は
-  # 要るが、ROS グラフの通信も待ち時間も要らない。
+  # failsafe_node の判定（救援・未着入力）を、時刻を差し替えて確かめる。
+  # rclpy の context は要るが、ROS グラフの通信も待ち時間も要らない。
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_failsafe_rescue test/test_failsafe_rescue.py)
+  ament_add_pytest_test(test_failsafe_never_arrived
+    test/test_failsafe_never_arrived.py)
 endif()
 
 ament_package()

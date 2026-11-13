@@ -38,6 +38,15 @@ def generate_launch_description():
                         'reverse/rotate /cmd_vel_teleop command on '
                         '/cmd_vel_safety. Default off until the user '
                         'adopts ADR-0013.'),
+        DeclareLaunchArgument(
+            'failsafe_startup_grace_sec',
+            default_value='0.0',
+            description='failsafe_node startup_grace_sec (Issue #159). '
+                        '0.0 = an input that never arrives is only logged '
+                        '(DEAD INPUT). > 0 = after this many seconds, each '
+                        'B/C/D input that has received nothing stops the '
+                        'chair until its first message. Default off until '
+                        'the user approves the change.'),
 
         Node(
             package='whill_safety',
@@ -51,6 +60,11 @@ def generate_launch_description():
                 'layer_d_rescue_enabled': ParameterValue(
                     LaunchConfiguration('failsafe_layer_d_rescue'),
                     value_type=bool),
+                # value_type=float: a value typed as "10" would otherwise
+                # reach the node as an integer and fail its double check.
+                'startup_grace_sec': ParameterValue(
+                    LaunchConfiguration('failsafe_startup_grace_sec'),
+                    value_type=float),
             }],
         ),
         Node(

@@ -23,7 +23,28 @@ localizerの受理閾値 `score_threshold: 6.0` と、failsafeのfitness閾値1.
 | C | `/velodyne_points_no_ground` | 初回受信後の途絶>2秒 |
 | D | `/scan` | 前方±30°、1〜2mの有限点が1点以上。最後の検知から0.5秒保持 |
 
-Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始10秒後に未受信入力をエラー通知するが、ログを出すだけで起動禁止を保証するものではない。pose / perception の途絶監視は初回受信で開始する。
+Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始10秒後に未受信入力をエラー通知するが、ログを出すだけで起動禁止を保証するものではない。pose / perception の途絶監視は初回受信で開始する。Dには初回受信後の途絶監視が無い。
+
+### 最初から届かない入力（#159、既定は無効）
+
+パラメータ `startup_grace_sec`（launch引数 `failsafe_startup_grace_sec`、`m6r_bringup_launch.py` と `safety_launch.py` にある）で扱いを選ぶ。failsafeの変更なので、既定を変えるにはユーザーの承認が要る。
+
+| 値 | 動作 |
+| --- | --- |
+| `0.0`（既定） | 従来どおり。10秒後の `DEAD INPUT` ログだけで、止めない |
+| `> 0` | 開始からこの秒数までに1件も届かないB / C / D入力（`/pcl_pose`、`/velodyne_points_no_ground`、`/scan`）ごとに、`B:pcl_pose_never_arrived`・`C:perception_never_arrived`・`D:scan_never_arrived` として停止する。他の層と同じく `/cmd_vel_safety` にゼロを20Hzで出す。初回受信でその入力の停止は解け、以後はB / Cは既存の途絶監視に移る。**Dは例外**で、初回受信後の `/scan` 途絶を監視する仕組みが無い（既存の欠陥。`D:scan_silent` の追加を別issueで扱う） |
+
+負の値やNaNは起動時に拒否する。このときfailsafe_nodeは起動直後に終了するが、twist_muxは動き続けるので、safetyの無い状態（fail-open）になる。preflightのcheck 2（`/failsafe_node` の存在）で検出される。failsafeが落ちたらlaunch全体を止める `on_exit=Shutdown` は、挙動の変更なので承認待ちの選択肢として残す（未実装）。
+
+`use_sim_time` では最初の `/clock` から数える。既存の `DEAD INPUT` 判定は `_start_time=0` のまま数えるので、bag再生では最初のtickで出る（既存の動作。変えていない）。
+
+選択肢と影響：
+
+- **警告のみ（現状）**：起動順に影響しない。D435が起動しない場合などに、未監視のまま走れてしまう。
+- **猶予後に停止、初回受信で解除（実装済み）**：入力がそろうまで走れない。m6r_bringupは単独でも起動するので、Nav2（`/scan`、`/velodyne_points_no_ground` の出所）の起動前と初期位置の指定前（`/pcl_pose`）は停止が出続ける。この間は手動救出（teleop）もtwist_muxで止まる。そろえば自動で解ける。preflightの手かざし試験（check 5）は、この停止でも `/cmd_vel_safety` が出るので通ってしまう。入力の受信を見るcheck 4が先に通っていることが前提になる。
+- **停止してラッチ（未実装）**：一度作動したら再起動まで解けない。起動の遅いノードで毎回再起動が要るので採らなかった。
+
+推奨は `10.0`（`DEAD INPUT` の通知と同じ）での有効化。停止と解除が起動手順のとおりに起こることを実機で確かめてから既定を変える。C3（`feat/avoidance-c3`）の `extra_perception_topics` を取り込むときは、同じ判定に加える。
 
 作動中は `/cmd_vel_safety` にゼロ指令を20Hzで出す。無発報は正常の証明ではなく、未受信や未起動も切り分ける。
 

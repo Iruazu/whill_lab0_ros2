@@ -7,7 +7,8 @@
 # (rely on operator to eyeball a log line) let this slip through.
 #
 # This script FAILS LOUD (exit 1) if the DDS XML does not match the LiDAR
-# NIC, if failsafe_node is not up, if the whill driver has no live serial
+# NIC, if /dev/whill or /dev/imu is missing or points to the wrong device,
+# if failsafe_node is not up, if the whill driver has no live serial
 # (/whill/odom silent), if an input of the failsafe layers is not arriving,
 # or if a live-fire hand test shows /cmd_vel_safety not publishing at the
 # expected 20 Hz.
@@ -57,6 +58,18 @@ if ! timeout 10 ros2 topic list >/dev/null 2>&1; then
     exit 1
 fi
 echo "PASS"
+
+# ---- 0b. udev device aliases ---------------------------------------
+# 2026-10-30、ttyACM0 が在るのに /dev/imu が無かった (#141)。IMU の launch は /dev/imu
+# を開くので、別名が無いと IMU が止まり EKF が崩れる。check 3 は WHILL 側しか見ないため、
+# ROS より手前で両方の別名を確かめる。
+echo "0b. device aliases (/dev/whill /dev/imu) ..."
+if ! "$(dirname "${BASH_SOURCE[0]}")/check_device_aliases.sh"; then
+    echo "   FAIL — fix the device aliases above and restart the bringup terminal."
+    echo "   Do NOT drive."
+    exit 1
+fi
+echo "   PASS"
 
 # ---- 1. controller_server: use_collision_detection: true -----------
 echo -n "1. use_collision_detection ... "
