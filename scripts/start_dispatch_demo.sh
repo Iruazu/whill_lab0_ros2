@@ -88,28 +88,111 @@ load_environment() {
 start_process() {
     local name=$1
     shift
-    # launchの子ノードも同じgroupへ入れ、親だけ残る・子だけ残る状態を避ける。
-    setsid "$@" >"$LOG_DIR/$name.log" 2>&1 9>&- &
+    # launchごとに新しいsession（pgid=sid=pid）を作り、子ノードもそこへ入れる。端末の
+    # Ctrl-C・HUPがlaunchへ直接届かず、止める順序をcleanupだけが決められる。
+    # bashはjob control無しの非同期コマンドでSIGINT/SIGQUITを無視に設定し、それがexec後も
+    # 残る。ros2 launchはその状態だとSIGINTで何もせず、SIGTERMで親だけ落ちて子が孤児化
+    # する（#194で再現）。env --default-signalで既定に戻し、launch自身の終了処理を使う。
+    # PIPEも戻すのは、cleanupで無視にした後に起動しても無視が継承されないようにするため。
+    # 前提: このsubshellはprocess groupの先頭でない（set -mを使わない）。先頭だとsetsidが
+    # forkし、$!とsession IDがずれる。
+    setsid env --default-signal=INT,QUIT,PIPE "$@" >"$LOG_DIR/$name.log" 2>&1 9>&- &
     PIDS+=("$!")
     NAMES+=("$name")
-    printf '起動: %s（log: %s/%s.log）\n' "$name" "$LOG_DIR" "$name"
+    # session IDを出しておくと、スクリプトが消えた後でも pgrep -a -s で残りを特定できる。
+    say '起動: %s（session %s, log: %s/%s.log）\n' "$name" "$!" "$LOG_DIR" "$name"
 }
-stop_group() {
-    local pid=$1 deadline=$((SECONDS + 8))
-    kill -INT -- "-$pid" 2>/dev/null || true
-    while kill -0 -- "-$pid" 2>/dev/null && ((SECONDS < deadline)); do sleep 0.2; done
-    if kill -0 -- "-$pid" 2>/dev/null; then
-        kill -TERM -- "-$pid" 2>/dev/null || true
-        sleep 1
-        kill -KILL -- "-$pid" 2>/dev/null || true
+# 端末が閉じた後の書き込みはEIOで失敗する。set -eのcleanupがそこで中断し、launchを
+# 止めないまま抜けた（#194）。表示の失敗は終了処理を妨げない。
+# shellcheck disable=SC2059  # 書式は呼び出し側の固定文字列だけを渡す。
+say() { printf "$@" 2>/dev/null || true; }
+# sessionに残るプロセスを SCAN_PIDS / SCAN_LINES（"pid args"）へ入れる。
+# $(pgrep ...) は使わない。コマンド置換のsubshellはcleanupのINT trapを持たず、二度目の
+# Ctrl-Cで空のまま終わる。空を「残り無し」と読むと、早すぎるTERMや誤った完了表示になる。
+# pgrepの終了コードは0=有り・1=無し。それ以外（中断など）は取り直し、続けば非0を返す。
+SCAN_PIDS=()
+SCAN_LINES=()
+scan_sessions() {  # scan_sessions <sid[,sid...]>
+    local rc=3 attempt line file="${LOG_DIR:-/tmp}/session-scan.txt"
+    for attempt in 1 2 3 4 5; do
+        # 「無し」の1でset -eに落とされないよう、終了コードは||で受ける。
+        pgrep -a -s "$1" >"$file" 2>/dev/null && rc=0 || rc=$?
+        if ((rc == 0 || rc == 1)); then
+            SCAN_LINES=()
+            mapfile -t SCAN_LINES <"$file" || return 3
+            SCAN_PIDS=()
+            for line in "${SCAN_LINES[@]}"; do SCAN_PIDS+=("${line%% *}"); done
+            return 0
+        fi
+    done
+    return "$rc"
+}
+# 数えられないときは「残っている」とみなす。止める側を続けるほうが安全なため。
+session_alive() { scan_sessions "$1" || return 0; ((${#SCAN_PIDS[@]})); }
+pgid_of() {  # pgid_of <pid>: PGIDへ入れる。/proc/<pid>/stat の ")" 以降の3番目。
+    local stat fields
+    read -r stat <"/proc/$1/stat" 2>/dev/null || return 1
+    read -r -a fields <<<"${stat##*) }"
+    PGID=${fields[2]}
+}
+signal_session() {  # signal_session <SIG> <sid>
+    local pid
+    kill "-$1" -- "-$2" 2>/dev/null || true
+    scan_sessions "$2" || return 0
+    for pid in "${SCAN_PIDS[@]}"; do
+        # INTはgroup宛てで既に届いている。launchも子へ転送するので、二重に送ると
+        # 終了処理中のノードを割り込ませる。groupを抜けたものにだけ個別に送る。
+        if [[ "$1" == INT ]] && pgid_of "$pid" && [[ "$PGID" == "$2" ]]; then continue; fi
+        kill "-$1" "$pid" 2>/dev/null || true
+    done
+}
+stop_group() {  # stop_group <sid> [INTの猶予秒]
+    local pid=$1 deadline=$((SECONDS + ${2:-8}))
+    signal_session INT "$pid"
+    while session_alive "$pid" && ((SECONDS < deadline)); do sleep 0.2; done
+    if session_alive "$pid"; then
+        signal_session TERM "$pid"
+        deadline=$((SECONDS + 3))
+        while session_alive "$pid" && ((SECONDS < deadline)); do sleep 0.2; done
+        signal_session KILL "$pid"
     fi
     wait "$pid" 2>/dev/null || true
 }
+started_sessions() { printf -v SIDS '%s,' "${PIDS[@]}"; SIDS=${SIDS%,}; }
+# 個別のstop_groupが時間切れや中断で漏らしたものを最後にもう一度探し、名前を出して止める。
+sweep_leftovers() {
+    local i
+    ((${#PIDS[@]})) || return 0
+    started_sessions
+    if ! scan_sessions "$SIDS"; then
+        say 'ERROR: 残りのプロセスを確認できません（pgrep -a -s %s）\n' "$SIDS" >&2
+        return 1
+    fi
+    ((${#SCAN_LINES[@]})) || return 0
+    say '残っているプロセスを停止します:\n'
+    say '  %s\n' "${SCAN_LINES[@]}"
+    # 一度INTを受けて残ったものなので、INTの猶予は短くする。
+    for ((i=0; i<${#PIDS[@]}; i++)); do stop_group "${PIDS[i]}" 2; done
+    if ! scan_sessions "$SIDS" || ((${#SCAN_LINES[@]})); then
+        say 'ERROR: 停止できないプロセスがあります（pgrep -a -s %s）:\n' "$SIDS" >&2
+        say '  %s\n' "${SCAN_LINES[@]}" >&2
+        return 1
+    fi
+}
 cleanup() {
     local result=$? i
-    trap - EXIT INT TERM
+    # 終了処理の途中で落ちるとbringupだけ残る。二度目のCtrl-Cや端末の終了で中断させない。
+    # sleepなど前景の子はCtrl-Cで終わるが、ループは続く。INT/TERM/HUPを無視（trap ''）に
+    # しないのは、無視が後に起こすtimeout配下の子へ継承され、timeoutのTERMが効かなくなるため。
+    # PIPEは無視する。| tee の tee がCtrl-Cで先に終わると最初の表示でSIGPIPEになり、
+    # stop_groupの前にbashが落ちる。ここで起こす子はファイルへ書くだけなので継承は害が無い。
+    trap - EXIT
+    trap 'say "\n終了処理中です。完了まで待ってください。\n"' INT
+    trap ':' TERM HUP
+    trap '' PIPE
+    set +e
     if ((${#PIDS[@]})); then
-        printf '\nデモを終了します。車体の停止も確認してください。\n'
+        say '\nデモを終了します。車体の停止も確認してください。\n'
         # 追加ジョブを止めてからNav2へ取消を送る。取消返信は実車停止の証明ではない。
         for ((i=${#PIDS[@]}-1; i>=0; i--)); do
             if [[ "${NAMES[i]}" == dispatch ]]; then stop_group "${PIDS[i]}"; fi
@@ -121,8 +204,30 @@ cleanup() {
         for ((i=${#PIDS[@]}-1; i>=0; i--)); do
             [[ "${NAMES[i]}" == dispatch ]] || stop_group "${PIDS[i]}"
         done
+        started_sessions
+        if sweep_leftovers; then
+            say '終了しました。残りの確認: pgrep -a -s %s\n' "$SIDS"
+        else
+            result=1
+            say '止め方: 上のPIDを確かめて kill -TERM <PID>。全体は pgrep -af -- '"'"'ros2 launch|--ros-args'"'"'\n' >&2
+        fi
     fi
     exit "$result"
+}
+# 確認手順（#194）: 起動後にCtrl-C、または端末を閉じてから、起動時に表示したsessionで
+#   pgrep -a -s <sid,sid,...>
+# が何も出さないこと（sessionが分からなければ pgrep -af -- 'ros2 launch|--ros-args'。
+# 別ターミナルのbag再生などのノードも出るので、PIDを確かめてから止める）。
+# scripts/tests/test_dispatch_demo_launcher.py が無害なプロセスで同じ経路を試す。
+install_traps() {
+    # 端末を閉じた・SSHが切れた場合もHUPでcleanupへ入る。trapの無いHUPではbashがEXIT
+    # trapを実行せずに終わり、launchがsystemd --userの下に残った（#194）。
+    # PIPEはhandlerにする（無視ではない）。handlerはexec後の子へ継承されない。
+    trap cleanup EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    trap 'exit 129' HUP
+    trap 'exit 141' PIPE
 }
 check_children() {
     local i
@@ -220,7 +325,7 @@ PY
 }
 check_requirements() {
     local command device maps_root
-    for command in ros2 setsid flock timeout python3; do
+    for command in ros2 setsid flock timeout python3 pgrep; do
         command -v "$command" >/dev/null || fail "必要なコマンドがありません: $command"
     done
     # 別名が無いのか、機器が無いのか、権限が無いのかで直し方が違う。理由と戻し方まで
@@ -294,9 +399,7 @@ main() {
     flock -n 9 || fail '統合起動スクリプトが既に動いています'
     check_requirements
     LOG_DIR=$(mktemp -d "$REPO_ROOT/log/dispatch-demo-$(date +%Y%m%d-%H%M%S)-XXXXXX")
-    trap cleanup EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
+    install_traps
     start_process bringup ros2 launch whill_safety m6r_bringup_launch.py "site:=$SITE"
     start_process nav2 ros2 launch whill_navigation nav_launch.py "site:=$SITE" "map_variant:=$MAP_VARIANT" "speed:=$SPEED"
     initialize_navigation

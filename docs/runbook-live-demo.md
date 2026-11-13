@@ -34,6 +34,7 @@ scripts/start_dispatch_demo.sh
 - ログは `log/dispatch-demo-<日時>-<識別子>/`
 - 起動成功は入力受信・自己位置収束・Web 接続の保証ではない。preflight が失敗してもスタックは止まらないので、配車せずに原因を調べる
 - Ctrl-C で dispatch → Nav2 goal 取消 → Nav2 → bringup の順に止まる。車体の停止は現物で確かめる
+- 端末を閉じた・SSH が切れた・二度目の Ctrl-C でも終了処理は最後まで走り、起動した launch とノードを INT → TERM → KILL で止めて残りを表示する（#194）。起動時に表示する session ID で `pgrep -a -s <sid,...>` を実行し、それでも残っていたら表示された PID に `kill -TERM` を送る。session ID が分からなければ `pgrep -af -- 'ros2 launch|--ros-args'` を使う。別ターミナルの bag 再生などのノードも表示されるので、PID を確かめてから止める
 - AP 切替・sudo 設定・証明書生成・初期位置・走行 goal は自動実行しない
 - 統合起動中に 4〜7 節の launch を重ねて起動しない
 
