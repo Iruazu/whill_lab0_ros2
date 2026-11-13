@@ -45,6 +45,8 @@ teleop入力が切れるとNav2入力に戻り得る。進行中の配車を取�
 
 認証、永続キュー、複数車両管理は未実装。この構成は `whill_console` gatewayのトークンを使用しない。未知の地点名などはwarnで拒否され、Webへの詳細エラー返信は限定的。
 
+終了時、`rosapi_node` は `ExternalShutdownException` のトレースバックを出し exit code 1 で終わる。上流 rosapi（apt の 2.0.7、GitHub の ros2 ブランチも 2026-11-12 時点で同じ）の `main()` が `KeyboardInterrupt` しか捕まえないため。rosapi は上流の `rosbridge_websocket_launch.xml` が必ず起動し、launch の引数や順序では避けられない。プロセスは終わり、続けての再起動も妨げない（2026-11-12、launch 経由の SIGINT を2回で確認）。rosapi を起動しない構成（XML を読まず rosbridge_websocket を直接起動）は可能だが、Web UI が rosapi を使わないことの実機確認が要るので見送っている（#169）。
+
 `m7_ws_smoke.py` はジョブ投入・取消を含むため、読み取り専用の接続確認ではない。実機の接続診断に無条件で実行せず、模擬actionを使う検証環境で使用する。
 
 launch変更時は `ros2 launch whill_dispatch dispatch_launch.py --show-args`。現在の制約は [整備課題](../../docs/repository-maintenance.md) を参照。
