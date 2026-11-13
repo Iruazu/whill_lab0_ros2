@@ -260,6 +260,13 @@ def generate_launch_description():
                         'scripts/m6r_smoke_test.sh is the usual bag-'
                         'replay entry point).'),
         DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='Forwarded to safety_launch (Issue #161, ADR-0013 '
+                        'proposed). true = while only Layer D stops the '
+                        'chair, failsafe relays teleop reverse/rotate on '
+                        '/cmd_vel_safety.'),
+        DeclareLaunchArgument(
             'realsense',
             default_value='false',
             description='Forward to sensors_launch to start the D435. Off '
@@ -295,6 +302,8 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(safety_launch),
             launch_arguments={
                 'use_sim_time': use_sim_time,
+                'failsafe_layer_d_rescue':
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
                 'failsafe_startup_grace_sec':
                     LaunchConfiguration('failsafe_startup_grace_sec'),
             }.items()),

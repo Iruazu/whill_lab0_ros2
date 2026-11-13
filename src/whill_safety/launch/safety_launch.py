@@ -30,6 +30,15 @@ def generate_launch_description():
             description='Forwarded to failsafe_node and twist_mux. '
                         'Only relevant for bag replay via --clock.'),
         DeclareLaunchArgument(
+            'failsafe_layer_d_rescue',
+            default_value='false',
+            description='failsafe_node layer_d_rescue_enabled (Issue #161, '
+                        'ADR-0013 proposed). true = while Layer D is the '
+                        'only active layer, failsafe relays a fresh '
+                        'reverse/rotate /cmd_vel_teleop command on '
+                        '/cmd_vel_safety. Default off until the user '
+                        'adopts ADR-0013.'),
+        DeclareLaunchArgument(
             'failsafe_startup_grace_sec',
             default_value='0.0',
             description='failsafe_node startup_grace_sec (Issue #159). '
@@ -46,6 +55,11 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'use_sim_time': use_sim_time,
+                # value_type=bool: the launch string must arrive as a bool,
+                # not as the string 'true' that would fail the type check.
+                'layer_d_rescue_enabled': ParameterValue(
+                    LaunchConfiguration('failsafe_layer_d_rescue'),
+                    value_type=bool),
                 # value_type=float: a value typed as "10" would otherwise
                 # reach the node as an integer and fail its double check.
                 'startup_grace_sec': ParameterValue(
