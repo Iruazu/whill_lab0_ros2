@@ -163,6 +163,7 @@ while :; do check_children; sleep 1; done
             self.fail(f'起動中にスクリプトが終了した: {err}')
         sids = pids.read_text().split()
         self.addCleanup(self.kill_sessions, sids)
+        self.assertEqual(len(sids), 2, sids)
         return proc, sids
 
     @staticmethod
@@ -174,6 +175,8 @@ while :; do check_children; sleep 1; done
     def session_members(sids):
         result = subprocess.run(['pgrep', '-s', ','.join(sids)], text=True,
                                 capture_output=True)
+        # 0=有り・1=無し。それ以外は数えられていないので、空を「残り無し」と読まない。
+        assert result.returncode in (0, 1), result.stderr
         return result.stdout.split()
 
     def kill_sessions(self, sids):
@@ -208,8 +211,16 @@ while :; do check_children; sleep 1; done
         with tempfile.TemporaryDirectory() as directory, open('/dev/full', 'w') as full:
             proc, sids = self.start(directory, stdout=full)
             proc.send_signal(signal.SIGHUP)
-            _, err = proc.communicate(timeout=40)
-            self.assertEqual(self.session_members(sids), [], err)
+            self.assert_clean_exit(proc, sids, 129)
+
+    def test_closed_pipe_stdout_does_not_abort_cleanup(self):
+        # `| tee demo.log` の tee が Ctrl-C で先に終わった状況。最初の表示が SIGPIPE になる。
+        with tempfile.TemporaryDirectory() as directory:
+            proc, sids = self.start(directory)
+            proc.stdout.close()
+            proc.stdout = None
+            self.ctrl_c(proc)
+            self.assert_clean_exit(proc, sids, 130)
 
     def test_second_interrupt_does_not_abort_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -219,7 +230,7 @@ while :; do check_children; sleep 1; done
             self.ctrl_c(proc)
             self.assert_clean_exit(proc, sids, 130)
 
-    def test_sweep_stops_process_that_left_group(self):
+    def test_stop_group_reaches_process_that_left_group(self):
         # process group を抜けて SIGINT も無視する孫は、group 宛ての kill では届かず、
         # 親が先に終わると旧実装は「group が空」と判断して残した。
         with tempfile.TemporaryDirectory() as directory:
@@ -252,6 +263,45 @@ cleanup
             self.addCleanup(self.kill_sessions, [sid])
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(self.session_members([sid]), [])
+
+    def run_with_worker(self, directory, body):
+        worker = Path(directory) / 'worker.py'
+        worker.write_text(WORKER % {'delay': 0})
+        code = f'''source {shlex.quote(str(SCRIPT))}
+LOG_DIR={shlex.quote(directory)}
+exec 9>/dev/null
+start_process worker python3 {shlex.quote(str(worker))}
+for attempt in {{1..50}}; do
+    if grep -q ready "$LOG_DIR/worker.log"; then break; fi
+    sleep .1
+done
+echo "sid ${{PIDS[0]}}"
+{body}
+'''
+        result = subprocess.run(['bash', '-c', code], text=True,
+                                capture_output=True, timeout=30)
+        sid = result.stdout.split('sid ', 1)[1].split()[0]
+        self.addCleanup(self.kill_sessions, [sid])
+        return result, sid
+
+    def test_sweep_reports_and_stops_leftover(self):
+        # stop_group を通らずに残ったものを、名前を出して止める。
+        with tempfile.TemporaryDirectory() as directory:
+            result, sid = self.run_with_worker(directory, 'sweep_leftovers; echo "rc=$?"')
+            self.assertIn('残っているプロセスを停止します', result.stdout)
+            self.assertIn('worker.py', result.stdout)
+            self.assertIn('rc=0', result.stdout)
+            self.assertEqual(self.session_members([sid]), [])
+
+    def test_cleanup_fails_when_leftover_cannot_be_stopped(self):
+        # 止められなかったときは非0で終わり、「終了しました」を出さない。
+        with tempfile.TemporaryDirectory() as directory:
+            result, sid = self.run_with_worker(directory, 'stop_group() { :; }\ncleanup')
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn('停止できないプロセスがあります', result.stderr)
+            self.assertIn(f'pgrep -a -s {sid}', result.stderr)
+            self.assertNotIn('終了しました', result.stdout)
+            self.assertNotEqual(self.session_members([sid]), [])
 
 
 if __name__ == '__main__':
