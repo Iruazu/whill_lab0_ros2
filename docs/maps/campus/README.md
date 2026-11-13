@@ -109,7 +109,7 @@ z_span 総 9.79 m のうち  平面成分 (tilt) 7.10 m (72.5%)
 
 Tilt の真の原因は 2 候補:
 - **仮説 A**: IMU audit を実施した WHILL 静止位置 (start pose 付近) の
-  路面が実際に 1.81° 傾いていた。ledger §7.10 の "base_link 水平性は
+  路面が実際に 1.81° 傾いていた。docs/imu-coordinate-audit.md §7.10 の "base_link 水平性は
   水準器で確認したい" が未処理だったツケ
 - **仮説 B**: GLIM の初期 gravity alignment が瞬間 IMU 値だけで走り、
   ズレが残った

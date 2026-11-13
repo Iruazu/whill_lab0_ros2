@@ -67,6 +67,11 @@ def generate_launch_description():
     sensors_share = get_package_share_directory('whill_sensors_bringup')
     whill_share = get_package_share_directory('whill_bringup')
     loc_share = get_package_share_directory('whill_localization')
+    # Same default as sensors_launch.py (#144). Declared here too so the
+    # choice is visible and forwarded explicitly from the top-level launch.
+    hires_calibration = os.path.join(
+        get_package_share_directory('velodyne_pointcloud'),
+        'params', 'VLP16_hires_db.yaml')
 
     sensors_launch = os.path.join(sensors_share, 'launch', 'sensors_launch.py')
     whill_params = os.path.join(whill_share, 'config', 'params.yaml')
@@ -93,11 +98,20 @@ def generate_launch_description():
             description='Forwarded to sensors_launch.py to start the D435 '
                         'driver. Off by default — see sensors_launch.py '
                         'docstring for rationale.'),
+        DeclareLaunchArgument(
+            'velodyne_calibration',
+            default_value=hires_calibration,
+            description='Forwarded to sensors_launch.py: Velodyne '
+                        'elevation table. Default VLP16_hires_db.yaml '
+                        '(the unit is a Puck Hi-Res, #144); VLP16db.yaml '
+                        'only to reproduce pre-#144 clouds.'),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(sensors_launch),
             launch_arguments={
                 'realsense': LaunchConfiguration('realsense'),
+                'velodyne_calibration':
+                    LaunchConfiguration('velodyne_calibration'),
             }.items()),
 
         # Direct Node instead of including whill_launch.py: the include has no
