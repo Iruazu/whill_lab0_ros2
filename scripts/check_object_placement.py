@@ -32,7 +32,9 @@ notes.csv の列: bag,object,x_m,height_m[,shape,expect,y_m,half_width_m]
   x_m      物の手前の面の base_link x（後輪車軸の中点からテープで測る）
   height_m 物の本当の高さ
   shape    box（側面が鉛直。既定）か cone。cone は高さで手前の面の x が変わるので、
-           テープとの dx を合否に使わず、LiDAR と深度の x は同じ高さで比べる
+           テープとの dx を合否に使わず、LiDAR と深度の x は同じ高さで比べる。
+           LiDAR の高さは、先端より下の最上 ring の予測の高さと比べた dz_ring で判定する
+           （z_max は先端より ring の間隔ぶん低く出るため。ring_dz の説明）
   expect   その物が見えるはずのデータ源（lidar;depth / lidar / depth / none）。空なら
            LiDAR は ring の幾何から（低い物は近距離で見えない）、深度は
            --depth-expect-max 以内なら見えるはずとする
@@ -83,6 +85,11 @@ CALIB_SPAN_SPLIT_DEG = 25.0
 # Hi-Res の ring の仰角（VLP16_hires_db.yaml、ring 昇順）。点群は Hi-Res にそろえてから使う。
 HIRES_ELEV_DEG = -10.0 + (4.0 / 3.0) * np.arange(16)
 BG_RADIUS_M = 0.07
+# 「LiDAR で見えるはず」とする ring は、物の上端より 5 cm 以上下に当たるものに限る。
+# 上端すれすれの 1 本は、コーンの細い先端や箱の角をかすめるだけで、persistent の
+# 20 % や点数 5 の条件を満たさないことがある。それを見えるはずと数えると、
+# --require-detected が正常な bag を落とす。
+LIDAR_VISIBLE_MARGIN_M = 0.05
 # 深度の床のにじみ。物の足元の床の点が背景との差（7 cm）を抜けて物に混ざり、
 # z_min や x_front を床へ引っぱるので、物の箱から除く。3〜5 cm の間の 4 cm にした
 # （低い物は約 20 cm なので、物の下側を削っても高さと前端の判定には響かない）。
@@ -137,10 +144,14 @@ def tf_differs(a, b):
     return None
 
 
-def mount_warning(bag_date, lidar_tf):
-    """bag の記録日と使う TF から、取付の食い違いの警告を返す。問題なければ None。"""
-    if tuple(lidar_tf) != LEDGER_LIDAR_TF or bag_date is None:
-        # 利用者が TF を明示したなら、その判断を尊重する。
+def mount_warning(bag_date, explicit):
+    """bag の記録日から、取付の食い違いの警告を返す。問題なければ None。
+
+    explicit は --lidar-tf を明示したか。明示したなら、値が台帳の採用値と同じでも
+    利用者が取付を確かめたうえでの指定とみなし、警告しない（値の比較で決めると、
+    固定後の値を意図して渡した人にも警告が出続ける）。
+    """
+    if explicit or bag_date is None:
         return None
     pre = ' '.join(f'{v:g}' for v in PRE_TAPE_LIDAR_TF)
     if bag_date < TAPE_DOWN_DATE:
@@ -316,7 +327,7 @@ def build_sources(bag, args, state):
                 state['tables'] = hires_tables()
             tables = state['tables']
         lidar_tf = tf_from_args(args.lidar_tf)
-        warn = mount_warning(date, args.lidar_tf)
+        warn = mount_warning(date, args.lidar_tf_explicit)
         if warn:
             print(f'{name}: {warn}', file=sys.stderr)
             state.setdefault('warnings', []).append(f'{name}: {warn}')
@@ -470,6 +481,34 @@ def lidar_ring_heights(x0, y0, lidar_tf):
     return out
 
 
+def ring_dz(P, x0, y0, h, lidar_tf):
+    """LiDAR の物の点の最上 ring の高さを、その ring の予測の高さと比べる。
+
+    LiDAR は ring の高さでしか物を見ないので、z_max は上端 h ではなく「h より下で
+    当たる最上の ring」の高さになる。コーンは先端が細く、上端との差は ring の間隔
+    （3 m で約 7 cm、5 m で約 11 cm）まで開き、TF が正しくても dz が −tol を超える。
+    そこで ring の番号で光線を特定し、その ring が観測した x で通るはずの高さ
+    （lidar_ring_heights）と観測した高さの差 dz_ring を出す。TF の z・pitch の誤差は
+    そのまま dz_ring に出る。予測の最上 ring（expected_top_ring）も残し、観測の最上 ring
+    と違えば、先端をかすめた ring が残ったか、上の ring が届かなかったと分かる。
+    """
+    rings = P[:, 3].astype(int)
+    top = int(rings.max())
+    Q = P[rings == top]
+    x_obs = float(np.median(Q[:, 0]))
+    z_obs = float(np.median(Q[:, 2]))
+    z_pred = lidar_ring_heights(x_obs, y0, lidar_tf)[top]
+    at_x0 = lidar_ring_heights(x0, y0, lidar_tf)
+    below = [i for i, z in enumerate(at_x0) if z is not None and BG_RADIUS_M < z < h]
+    out = {'top_ring': top, 'top_ring_z': round(z_obs, 3),
+           'expected_top_ring': max(below) if below else None,
+           'expected_top_ring_z': round(at_x0[max(below)], 3) if below else None}
+    if z_pred is not None:
+        out['top_ring_z_pred'] = round(z_pred, 3)
+        out['dz_ring'] = round(z_obs - z_pred, 3)
+    return out
+
+
 def expected_sources(row, lidar_tf, depth_max):
     """その物が見えるはずのデータ源の集合。notes.csv の expect 列があればそれに従う。"""
     exp = (row.get('expect') or '').strip()
@@ -480,7 +519,9 @@ def expected_sources(row, lidar_tf, depth_max):
     out = set()
     # 背景との差で BG_RADIUS_M 以内の点は消えるので、それより上で物に当たる ring が
     # 要る。手前の面に当たる ring が無ければ、LiDAR では見えないのが正常（低い物の死角）。
-    if any(z is not None and BG_RADIUS_M < z < h for z in lidar_ring_heights(x0, y0, lidar_tf)):
+    # 上端側は LIDAR_VISIBLE_MARGIN_M の余裕を取る（かすめるだけの ring を数えない）。
+    if any(z is not None and BG_RADIUS_M < z < h - LIDAR_VISIBLE_MARGIN_M
+           for z in lidar_ring_heights(x0, y0, lidar_tf)):
         out.add('lidar')
     if x0 <= depth_max:
         out.add('depth')
@@ -598,7 +639,9 @@ def accept_failures(results, accept, tol):
     """--accept のデータ源で、検出したのに誤差が tol を超えた物の一覧。
 
     cone は高さで手前の面の x が変わり、テープ（床での手前の面）と比べた dx は形の差を
-    含むので、dz だけで判定する。
+    含むので、高さだけで判定する。高さは、深度では dz（先端まで見える）、LiDAR では
+    dz_ring（ring_dz の説明のとおり、z_max は先端より ring の間隔ぶん低く出るため）。
+    box は dx と dz の両方で判定する。
     """
     failed = []
     for res in results:
@@ -606,7 +649,11 @@ def accept_failures(results, accept, tol):
             rec = res.get(k)
             if not rec or not rec.get('detected'):
                 continue
-            err = abs(rec['dz']) if res.get('shape') == 'cone' else max(abs(rec['dx']), abs(rec['dz']))
+            if res.get('shape') == 'cone':
+                # dz_ring が無い（予測の光線が物に届かない）ときは dz で判定し、甘くしない。
+                err = abs(rec.get('dz_ring', rec['dz']) if k == 'lidar' else rec['dz'])
+            else:
+                err = max(abs(rec['dx']), abs(rec['dz']))
             if err > tol:
                 failed.append(f"{res['bag']}:{k}")
     return failed
@@ -631,7 +678,8 @@ def parse_args(argv=None):
     ap.add_argument('--notes', required=True)
     ap.add_argument('--empty', required=True, help='背景にする何も置かない bag の名前')
     ap.add_argument('--out', required=True)
-    ap.add_argument('--lidar-tf', nargs=6, type=float, default=LEDGER_LIDAR_TF,
+    # 既定は None にして、明示したか（取付の警告を出さないか）を区別する。値は parse 後に埋める。
+    ap.add_argument('--lidar-tf', nargs=6, type=float, default=None,
                     metavar=('X', 'Y', 'Z', 'ROLL', 'PITCH', 'YAW'),
                     help='base_link->velodyne（m と度）。既定は校正台帳 §2.1 の採用値。'
                          '2026-11-13 のテープ固定より前の bag は 0.42 0.36 0.777 0.24 0.97 -0.317')
@@ -650,7 +698,11 @@ def parse_args(argv=None):
     # #149 で決める値なので、決まったら引数で渡す。
     ap.add_argument('--depth-expect-max', type=float, default=3.0,
                     help='expect 列が空のとき、深度で見えるはずとする最大の x_m [m]')
-    return ap.parse_args(argv)
+    args = ap.parse_args(argv)
+    args.lidar_tf_explicit = args.lidar_tf is not None
+    if args.lidar_tf is None:
+        args.lidar_tf = LEDGER_LIDAR_TF
+    return args
 
 
 def main():
@@ -689,6 +741,11 @@ def main():
                 continue
             rec, P = object_metrics(frames, trees[k], row, floors[k]['plane'],
                                     drop_floor_like=(k == 'depth'))
+            if k == 'lidar' and P is not None:
+                # 形にかかわらず出しておく（box でも TF の高さの誤差の目安になる）。合否に
+                # 使うのは cone だけ。
+                rec.update(ring_dz(P, float(row['x_m']), float(row.get('y_m') or 0.0),
+                                   float(row['height_m']), lidar_tf))
             res[k] = rec
             if P is not None:
                 pts[k] = P

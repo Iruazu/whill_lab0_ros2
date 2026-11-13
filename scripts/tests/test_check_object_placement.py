@@ -125,13 +125,23 @@ class TfTests(unittest.TestCase):
 
 class MountAndTfEdgeTests(unittest.TestCase):
     def test_mount_warning_by_date(self):
-        d = cop.LEDGER_LIDAR_TF
         self.assertIn('--lidar-tf 0.42 0.36 0.777 0.24 0.97 -0.317',
-                      cop.mount_warning(datetime.date(2026, 10, 28), d))
-        self.assertIn('混在', cop.mount_warning(datetime.date(2026, 11, 13), d))
-        self.assertIsNone(cop.mount_warning(datetime.date(2026, 11, 20), d))
+                      cop.mount_warning(datetime.date(2026, 10, 28), False))
+        self.assertIn('混在', cop.mount_warning(datetime.date(2026, 11, 13), False))
+        self.assertIsNone(cop.mount_warning(datetime.date(2026, 11, 20), False))
         # TF を明示したら、古い bag でも警告しない（利用者の判断を優先）。
-        self.assertIsNone(cop.mount_warning(datetime.date(2026, 10, 28), cop.PRE_TAPE_LIDAR_TF))
+        self.assertIsNone(cop.mount_warning(datetime.date(2026, 10, 28), True))
+
+    def test_explicit_ledger_value_counts_as_explicit(self):
+        # 台帳の採用値と同じ値でも、明示したなら警告しない（暗黙の既定のときだけ警告）。
+        base = ['--bag-root', 'r', '--notes', 'n', '--empty', 'e', '--out', 'o']
+        a = cop.parse_args(base)
+        self.assertFalse(a.lidar_tf_explicit)
+        self.assertEqual(tuple(a.lidar_tf), cop.LEDGER_LIDAR_TF)
+        b = cop.parse_args(base + ['--lidar-tf', *map(str, cop.LEDGER_LIDAR_TF)])
+        self.assertTrue(b.lidar_tf_explicit)
+        self.assertEqual(tuple(b.lidar_tf), cop.LEDGER_LIDAR_TF)
+        self.assertIsNone(cop.mount_warning(datetime.date(2026, 10, 28), b.lidar_tf_explicit))
 
     def test_missing_edges(self):
         tf = {('base_link', 'camera_link'): None, ('camera_link', 'camera_depth_frame'): None}
@@ -317,6 +327,76 @@ class CompareTests(unittest.TestCase):
             {'bag': 'a', 'object': 'low', 'source': 'depth', 'expected': True}])
 
 
+def cast_cone(x0, h, r0, lidar_tf, z_shift=0.0, n_az=41, step=0.001):
+    """Hi-Res の ring の光線を円錐（手前の足元 x0、中心 y=0）に当て、当たった点を返す。
+
+    点は lidar_tf で base_link に置いた光線の上で求め、z_shift だけ高さをずらす
+    （TF の z の誤差の模擬）。列は x, y, z, ring。
+    """
+    R, t = lidar_tf
+    cx = x0 + r0
+    target = R.T @ (np.array([cx, 0.0, 0.0]) - t)
+    az0 = math.atan2(target[1], target[0])
+    s = np.arange(0.5, 10.0, step)
+    pts = []
+    for ring, e in enumerate(np.radians(cop.HIRES_ELEV_DEG)):
+        for az in az0 + np.radians(np.linspace(-4, 4, n_az)):
+            d = R @ np.array([math.cos(e) * math.cos(az), math.cos(e) * math.sin(az), math.sin(e)])
+            Q = t + s[:, None] * d
+            r = r0 * (1 - Q[:, 2] / h)
+            inside = (Q[:, 2] > 0) & (Q[:, 2] < h) & (np.hypot(Q[:, 0] - cx, Q[:, 1]) < r)
+            if inside.any():
+                q = Q[np.argmax(inside)]
+                pts.append((q[0], q[1], q[2] + z_shift, ring))
+    return np.array(pts)
+
+
+class ConeRingTests(unittest.TestCase):
+    """コーンの LiDAR の高さを ring の予測と比べる（z_max は先端より ring の間隔ぶん低い）。"""
+
+    def setUp(self):
+        self.tf = cop.tf_from_args(cop.LEDGER_LIDAR_TF)
+        self.far = _Tree(np.array([[50.0, 50.0, 50.0]]))  # 背景で何も消さない
+
+    def metrics(self, x0, z_shift=0.0):
+        h, r0 = 0.7, 0.15
+        P = cast_cone(x0, h, r0, self.tf, z_shift)
+        row = {'x_m': str(x0), 'height_m': str(h), 'shape': 'cone'}
+        rec, Q = cop.object_metrics([P] * 5, self.far, row)
+        self.assertTrue(rec['detected'])
+        rec.update(cop.ring_dz(Q, x0, 0.0, h, self.tf))
+        return rec
+
+    def test_correct_tf_passes_at_3_4_5_m(self):
+        for x0 in (3.0, 4.0, 5.0):
+            with self.subTest(x0=x0):
+                rec = self.metrics(x0)
+                # z_max は先端（0.7 m）より下の最上 ring なので、素の dz は必ず負。
+                # どれだけ負になるかは、その距離で最上 ring が先端の何 cm 下に当たるか次第。
+                self.assertLess(rec['dz'], 0.0)
+                self.assertLess(abs(rec['dz_ring']), 0.01)
+                self.assertEqual(rec['top_ring'], rec['expected_top_ring'])
+                res = [{'bag': 'b', 'shape': 'cone', 'lidar': rec}]
+                self.assertEqual(cop.accept_failures(res, ['lidar'], 0.05), [])
+
+    def test_raw_dz_would_fail_with_correct_tf(self):
+        # 4 m では最上 ring が先端の約 8 cm 下に当たる（この合成のコーン）。dz で判定すると
+        # 正しい TF でも --tol 5 cm を外れる。ring の予測と比べればずれは 0。
+        rec = self.metrics(4.0)
+        self.assertLess(rec['dz'], -0.05)
+        res = [{'bag': 'b', 'shape': 'box', 'lidar': dict(rec, dx=0.0)}]
+        self.assertEqual(cop.accept_failures(res, ['lidar'], 0.05), ['b:lidar'])
+
+    def test_tf_height_error_shows_in_dz_ring(self):
+        # 取付の高さが 6 cm 違う（点が 6 cm 高く出る）と、dz_ring に出て --accept で落ちる。
+        for x0 in (3.0, 5.0):
+            with self.subTest(x0=x0):
+                rec = self.metrics(x0, z_shift=0.06)
+                self.assertAlmostEqual(rec['dz_ring'], 0.06, delta=0.01)
+                res = [{'bag': 'b', 'shape': 'cone', 'lidar': rec}]
+                self.assertEqual(cop.accept_failures(res, ['lidar'], 0.05), ['b:lidar'])
+
+
 class ExpectedTests(unittest.TestCase):
     def setUp(self):
         self.tf = cop.tf_from_args(cop.LEDGER_LIDAR_TF)
@@ -336,6 +416,15 @@ class ExpectedTests(unittest.TestCase):
         self.assertEqual(cop.expected_sources(dict(low, x_m='5.0'), self.tf, 3.0), {'lidar'})
         self.assertEqual(cop.expected_sources({'x_m': '2.0', 'height_m': '0.7'}, self.tf, 3.0),
                          {'lidar', 'depth'})
+
+    def test_grazing_ring_not_counted(self):
+        # 物の上端から 5 cm 以内にしか当たらない ring は「見えるはず」に数えない。
+        x0 = 4.0
+        hs = [z for z in cop.lidar_ring_heights(x0, 0.0, self.tf) if z > cop.BG_RADIUS_M]
+        z = min(hs)  # BG_RADIUS_M より上で最も低い ring
+        row = {'x_m': str(x0)}
+        self.assertNotIn('lidar', cop.expected_sources(dict(row, height_m=str(z + 0.02)), self.tf, 3.0))
+        self.assertIn('lidar', cop.expected_sources(dict(row, height_m=str(z + 0.06)), self.tf, 3.0))
 
     def test_expect_column_overrides(self):
         row = {'x_m': '2.0', 'height_m': '0.21'}
@@ -406,6 +495,7 @@ class ArgsTests(unittest.TestCase):
     def test_defaults(self):
         a = cop.parse_args(['--bag-root', 'r', '--notes', 'n', '--empty', 'e', '--out', 'o'])
         self.assertEqual(tuple(a.lidar_tf), cop.LEDGER_LIDAR_TF)
+        self.assertFalse(a.lidar_tf_explicit)
         self.assertEqual(a.calibration, 'auto')
         self.assertEqual(a.tol, 0.05)
         self.assertEqual(a.require_detected, [])
