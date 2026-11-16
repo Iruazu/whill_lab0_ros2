@@ -51,6 +51,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `velodyne_reproject_bag.py` | 誤った校正で記録した点群を、ring を使って正しい校正へ補正した bag を作る（入力は読むだけ） |
 | `velodyne_reproject_verify.sh`, `velodyne_compare_clouds.py` | 上の補正を、パケットのある bag でドライバ（velodyne_transform_node）の出力と点ごとに比べる（[手順](maps/campus-m8/README.md)） |
 | `lidar_floor_fit.py` | 静止 bag の床面から base_link→velodyne の z・roll・pitch を求める（校正台帳 §2.1 の出典） |
+| `lidar_yaw_from_drive.py` | 走行 bag の NDT の姿勢（記録の `/pcl_pose` か `ndt_replay_compare.py` の `poses_full.txt`）から、進んだ向きと車体の向きの差で base_link→velodyne の yaw を求める（#149、[方法](lidar-yaw-measurement.md)）。`--stops` で停止の組を使う |
 | `imu_investigation/` | GLIM の IMU 調査（#147）の対照実験と解析。[報告](reports/2026-11-02-glim-imu-root-cause.md) |
 | `m5r3_export_merged_ply.py` | 結合点群の出力 |
 | `m5r_glim_to_pcd.py` | GLIM結果のPCD化 |
@@ -81,10 +82,11 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
-| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節）。`patchwork_height_compare.py` は Patchwork++ の設定値違いを同じフレームで比べる（[whill_perception](../src/whill_perception/README.md)） |
+| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節）。姿勢は `poses.txt`（yaw のみ）と `poses_full.txt`（四元数）に残す。`patchwork_height_compare.py` は Patchwork++ の設定値違いを同じフレームで比べる（[whill_perception](../src/whill_perception/README.md)） |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
 | `tests/test_check_object_placement.py` | `check_object_placement.py` の計算（校正表の判定・投影し直し・物の誤差・床の勾配）と、TF の既定値が launch・台帳と一致することのテスト（ROS 不要。ROS があれば bag の補正ツールとの一致も確かめる） |
+| `tests/test_lidar_yaw_from_drive.py` | `lidar_yaw_from_drive.py` の符号・蛇行と前後の揺れへの頑健さ・後退・停止の組を、合成の走行で確かめるテスト（ROS 不要） |
 | `tests/test_record_avoidance_bag.py` | `record_avoidance_bag.sh` の録画前の確認と記録後の確認のテスト（偽の ros2・ip。実機不要） |
 | `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数・static.pcd の有無と sha256 の検査・終了処理のテスト（ROS・車体は起動しない） |
 | `tests/test_default_site_consistency.py` | 既定の site と variant が 3 つの launch・起動スクリプト・`check_map_sync.py` で揃っているかのテスト（ROS は使わない） |
