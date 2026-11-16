@@ -27,6 +27,11 @@ Layers (per ADR-0007 §Demo-scope reduction):
      the "obstacle on path" condition drops entirely. Layer D provides
      the stop-for-obstacle behaviour independently of Nav2 planning.
      See ADR-0007 §Layer D for the geometry rationale.
+     D:scan_silent (Issue #193, parameter scan_silent_sec, default 0.5):
+     /scan silent for scan_silent_sec after its first message. Without
+     it a dead LiDAR / driver / pointcloud_to_laserscan froze Layer D at
+     its last decision and the chair kept moving. Releases after scans
+     have been back for FORWARD_CLEAR_HYSTERESIS_S.
 
 Optional (parameter layer_d_rescue_enabled, default false, Issue #161,
 ADR-0013 proposed): while Layer D is the ONLY active layer, a fresh
@@ -106,16 +111,33 @@ STARTUP_DEAD_INPUT_TIMEOUT_S = 10.0
 # above; the first-message-arm layers stay unarmed and nothing stops. With
 # startup_grace_sec > 0, such an input becomes an active layer of its own
 # ("<layer>:<name>_never_arrived") once the grace expires, and clears on
-# its first message, after which the normal silence check takes over --
-# for B and C only. Layer D has NO silence check after its first /scan
-# (pre-existing gap, tracked separately as D:scan_silent); once /scan has
-# arrived once, a later /scan outage is not caught by this option either.
+# its first message, after which the normal silence check takes over
+# (B:pcl_pose_silent, C:perception_silent, and since #193 D:scan_silent).
 # 0.0 (the default) disables it, i.e. the pre-#159 behaviour: warning only.
 # Changing the default needs the user's approval (failsafe change), so the
 # default stays off and the option is documented in the package README.
 STARTUP_GRACE_S_DEFAULT = 0.0
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
+# Issue #193: Layer D の /scan 途絶監視（D:scan_silent）。
+# 0.5 s の判断理由:
+#  - /scan は 10 Hz。2026-07-22〜31 の走行 bag 11 本（/scan 21,206 通）の
+#    記録時刻の間隔は中央値 0.101 s、最大 0.213 s（/velodyne_points も同時に
+#    約 40 s 途切れた 2 か所を除く。これは LiDAR 側か記録側の途絶で、止まるのが
+#    正しい）。0.5 s は 4 scan 連続の欠落で、計測した最大の 2 倍以上の余裕がある。
+#  - FORWARD_CLEAR_HYSTERESIS_S と同じ値にすると、最後の scan で前方が
+#    塞がっていた場合、D:forward_blocked が解ける時刻（最後の塞がり + 0.5 s）
+#    に D:scan_silent が入れ替わりで作動し、停止が途切れない（判定は >=）。
+#  - 0.3 m/s で 0.5 s + 1 tick は約 0.17 m。Layer D の扇形の手前端 1.0 m より
+#    十分短い。
+# 0.0 で無効（#193 以前の動作）。上流（Patchwork++、LiDAR）ごと止まった場合は
+# C:perception_silent（2 s）も作動するので、これが効くのは
+# pointcloud_to_laserscan だけが止まった場合と、途絶から 2 s までの間。
+SCAN_SILENT_S_DEFAULT = 0.5
+# 解除のヒステリシス。受信が戻ってからこの時間、途絶が再発しなければ解く。
+# Layer D の解除（5 連続の空き scan）と同じ考え方で、断続的に届く /scan
+# （例: 0.6 s おき）で作動と解除を繰り返さないようにする。
+SCAN_SILENT_RELEASE_S = FORWARD_CLEAR_HYSTERESIS_S
 # Issue #161 / ADR-0013 (proposed) — teleop rescue while Layer D stops.
 # Default off: changing the stop behaviour needs the user's approval.
 RESCUE_LAYER = 'D:forward_blocked'
@@ -155,6 +177,31 @@ def never_arrived_layers(now, anchor, grace_s, last_times):
     if grace_s <= 0.0 or anchor is None or now - anchor < grace_s:
         return []
     return [label for label, last in last_times.items() if last is None]
+
+
+def silence_step(now, last_time, silent_s, release_s, latched, ok_since):
+    """One tick of a post-first-message silence monitor (Issue #193).
+
+    Returns (latched, ok_since). latched True means the layer is active.
+    - silent_s <= 0 disables it; last_time None (nothing received yet) keeps
+      it inert, so the never-arrived case stays with #159's option.
+    - active while now - last_time >= silent_s.
+    - once active, it stays active until the input has been back (not
+      silent) for release_s; ok_since is when that started.
+    A clock that steps back (bag --clock loop) only delays the release:
+    ok_since is pulled back to now instead of waiting out the old value.
+    """
+    if silent_s <= 0.0 or last_time is None:
+        return False, None
+    if now - last_time >= silent_s:
+        return True, None
+    if not latched:
+        return False, None
+    if ok_since is None or now < ok_since:
+        ok_since = now
+    if now - ok_since >= release_s:
+        return False, None
+    return True, ok_since
 
 
 def _to_float(s):
@@ -245,6 +292,24 @@ class FailsafeNode(Node):
         self._last_perception_time = None
         self._last_scan_time = None
         self._forward_last_blocked_time = None
+        # Issue #193. ParameterValue(value_type=float) in safety_launch.py,
+        # as for startup_grace_sec.
+        self._scan_silent_s = float(self.declare_parameter(
+            'scan_silent_sec', SCAN_SILENT_S_DEFAULT).value)
+        if not math.isfinite(self._scan_silent_s) \
+                or self._scan_silent_s < 0.0:
+            # startup_grace_sec と同じく、負や NaN を「無効」と黙って読まない。
+            raise ValueError(
+                f'scan_silent_sec={self._scan_silent_s!r} must be a finite '
+                f'value >= 0 (0 disables the /scan silence stop)')
+        # 途絶監視が使う最終受信時刻。_last_scan_time と分けるのは、
+        # use_sim_time で /clock より前に届いた scan（時刻 0）を数えないため。
+        # 時刻 0 を最終受信にすると、最初の /clock で bag の時刻に跳んだ瞬間に
+        # 途絶と判定してしまう。_last_scan_time は DEAD INPUT と #159 の判定に
+        # 使うので、意味を変えない。
+        self._scan_rx_time = None
+        self._scan_silent = False
+        self._scan_ok_since = None
         self._active_prev = ()
         self._start_time = self._now_s()
         self._dead_input_warned = False
@@ -303,6 +368,9 @@ class FailsafeNode(Node):
         # （startup_grace_sec）は互いに独立なので、両方を並べて起動ログに出す。
         ready_notes = [
             self._rescue_note(),
+            f'scan silent > {self._scan_silent_s}s stops'
+            if self._scan_silent_s > 0.0
+            else 'scan silence: not monitored',
             f'never-arrived inputs stop after {self._startup_grace_s}s'
             if self._startup_grace_s > 0.0
             else 'never-arrived inputs: warning only']
@@ -476,6 +544,8 @@ class FailsafeNode(Node):
         # and the watchdog would not know whether Layer D armed via
         # "first sector block" or "first scan arrived". Track both.
         self._last_scan_time = self._now_s()
+        if self._last_scan_time > 0.0:
+            self._scan_rx_time = self._last_scan_time
         # Count /scan returns inside the forward safety sector. Short-
         # circuit as soon as the threshold is met — no reason to keep
         # counting once Layer D is going to fire; the callback runs at
@@ -523,6 +593,14 @@ class FailsafeNode(Node):
         if self._forward_last_blocked_time is not None \
                 and now - self._forward_last_blocked_time < FORWARD_CLEAR_HYSTERESIS_S:
             out.append('D:forward_blocked')
+        # Issue #193: /scan silent after its first message. The state is
+        # advanced in _tick (_update_scan_silent); this only reads it, so
+        # calling _active_layers() twice does not double-step the release.
+        # It is a separate label from D:forward_blocked, so the rescue relay
+        # (RESCUE_LAYER alone) is refused while it is active: with no /scan,
+        # Layer D cannot see what the rescue would reverse or turn into.
+        if self._scan_silent:
+            out.append('D:scan_silent')
         # Issue #159: inputs that never arrived. Appended last so the labels
         # of the pre-existing layers keep their order in the log.
         out.extend(never_arrived_layers(
@@ -532,6 +610,11 @@ class FailsafeNode(Node):
                 'D:scan_never_arrived': self._last_scan_time,
             }))
         return tuple(out)
+
+    def _update_scan_silent(self, now):
+        self._scan_silent, self._scan_ok_since = silence_step(
+            now, self._scan_rx_time, self._scan_silent_s,
+            SCAN_SILENT_RELEASE_S, self._scan_silent, self._scan_ok_since)
 
     def _tick(self):
         now = self._now_s()
@@ -563,6 +646,7 @@ class FailsafeNode(Node):
                     f'ARM. Do not drive.')
             self._dead_input_warned = True
 
+        self._update_scan_silent(now)
         active = self._active_layers()
         if active != self._active_prev:
             if active:

@@ -47,6 +47,14 @@ def generate_launch_description():
                         'B/C/D input that has received nothing stops the '
                         'chair until its first message. Default off until '
                         'the user approves the change.'),
+        DeclareLaunchArgument(
+            'failsafe_scan_silent_sec',
+            default_value='0.5',
+            description='failsafe_node scan_silent_sec (Issue #193). After '
+                        'the first /scan, /scan silent this long stops the '
+                        'chair as D:scan_silent until scans are back for '
+                        '0.5 s. 0.0 disables it (pre-#193: a dead /scan '
+                        'froze Layer D at its last decision).'),
 
         Node(
             package='whill_safety',
@@ -64,6 +72,9 @@ def generate_launch_description():
                 # reach the node as an integer and fail its double check.
                 'startup_grace_sec': ParameterValue(
                     LaunchConfiguration('failsafe_startup_grace_sec'),
+                    value_type=float),
+                'scan_silent_sec': ParameterValue(
+                    LaunchConfiguration('failsafe_scan_silent_sec'),
                     value_type=float),
             }],
         ),

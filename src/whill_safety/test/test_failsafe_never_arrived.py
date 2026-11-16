@@ -137,11 +137,13 @@ def test_input_that_arrived_in_time_never_trips_it(make_node):
     node._on_pcl_pose(PoseWithCovarianceStamped())
     node._on_perception(PointCloud2())
     node._on_scan(LaserScan())
-    # Keep the pose and perception fresh so only the #159 labels could fire.
+    # Keep every input fresh so only the #159 labels could fire (/scan too:
+    # since #193 a quiet /scan is D:scan_silent).
     for t in (T0 + 5.0, T0 + 30.0):
         clock.t = t
         node._on_pcl_pose(PoseWithCovarianceStamped())
         node._on_perception(PointCloud2())
+        node._on_scan(LaserScan())
         assert _step(node, clock, t) == ()
 
 
@@ -156,6 +158,7 @@ def test_late_silence_still_uses_the_existing_watchdog(make_node):
     t = T0 + 1.0 + PERCEPTION_TIMEOUT_S + 0.1
     clock.t = t
     node._on_pcl_pose(PoseWithCovarianceStamped())
+    node._on_scan(LaserScan())
     assert _step(node, clock, t) == ('C:perception_silent',)
 
 

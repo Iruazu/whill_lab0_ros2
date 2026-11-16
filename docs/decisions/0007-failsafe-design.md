@@ -599,3 +599,34 @@ mock では確認できない以下は実機に送る:
   §Decision の想定値どおりで、設計変更ではない
 - M9 の物理 E-stop / 遠隔停止は引き続き A 層の別チャネルとして追加する余地を残す
   (本 teleop は「救出のための能動操作」であって「緊急停止」ではない)
+
+## `/scan` 途絶の監視 `D:scan_silent`（#193、2026-11-16 追記）
+
+### 背景
+
+Layer D は `/scan` を受けるたびに `_last_scan_time` を更新するが、初回受信後に `/scan` が止まる（LiDAR の抜け、velodyne_driver や pointcloud_to_laserscan の停止）と、最後の判定のまま残り、車体は止まらなかった。#159 の `startup_grace_sec` は初回受信までが対象で、この穴は `D:scan_silent` として注記されていた。安全層の入力が途絶えたら止めるのが本 ADR の原則（B の `pcl_pose_silent`、C の `perception_silent` と同じ）。
+
+### 決定
+
+- パラメータ `scan_silent_sec`（既定 0.5 秒、launch 引数 `failsafe_scan_silent_sec`）。初回受信後、最終受信から `scan_silent_sec` 以上 `/scan` が届かないと、層 `D:scan_silent` が作動してゼロを 20 Hz で出す。`0.0` で無効、負や NaN は起動時に拒否する
+- 解除は受信の再開から 0.5 秒（`FORWARD_CLEAR_HYSTERESIS_S` と同じ）途絶が再発しなかったとき。断続的な `/scan` で作動と解除を繰り返さない
+- 最初の `/scan` より前は何もしない。そこは #159 の `D:scan_never_arrived` の担当で、両方が同時に出ることはない
+- `use_sim_time` で `/clock` より前に届いた scan（時刻 0）は途絶の基準にしない（最初の `/clock` で bag の時刻へ跳んだ瞬間に作動してしまうため）
+- 別の名前の層なので、ADR-0013 の救援（`D:forward_blocked` 単独のときだけ中継）は、`D:scan_silent` の作動中はゼロになる。`/scan` が無いと後退・回転の先を見ていないため
+
+0.5 秒の理由: `/scan` は 10 Hz。2026-07-22〜31 の走行 bag 11 本（`/scan` 21,206 通）の記録時刻の間隔は中央値 0.101 秒、最大 0.213 秒（`/velodyne_points` も同時に約 40 秒途切れた 2 か所を除く。LiDAR 側か記録側の途絶で、止まるのが正しい）。Layer D の保持 0.5 秒と同じ値なので、最後の scan で前方が塞がっていた場合も `D:forward_blocked` が解ける時刻に `D:scan_silent` が作動し、停止が途切れない（判定は `>=`）。0.3 m/s で 0.5 秒 + 1 tick は約 0.17 m で、扇形の手前端 1.0 m より短い。
+
+既定を有効にした理由: 起動の手順では作動しえない（最初の `/scan` まで何もしない）。`/scan` は `/velodyne_points_no_ground` から作るので、nav_launch の停止・再起動や LiDAR の停止では既存の `C:perception_silent`（2 秒）がもともと止める。新しく止まるのは pointcloud_to_laserscan だけが止まった場合と、途絶から 2 秒までの間だけ。failsafe の変更なので、PR のマージをユーザーの承認とする。
+
+他の入力の確認: C は初回受信後の途絶監視が既にある（2 秒、解除は即時のまま）。B の `/pcl_pose` も既にある（1 秒）。`/alignment_status` には無いが、`/pcl_pose` と同じ localizer ノードが出すので、ノードの停止は `/pcl_pose` 側で止まる。main の failsafe は深度を購読していない。C3 の `extra_perception_topics` を取り込むときに同じ監視を加える。
+
+### 検証（実機なし、2026-11-16）
+
+- 単体テスト `src/whill_safety/test/test_failsafe_scan_silent.py`（17 件）: 途絶で停止、再開で解除（ヒステリシス）、0.6 秒おきの断続受信で解けない、`D:forward_blocked` から隙間なく引き継ぐ、最初の `/scan` より前は作動しない、#159 の未着ラベルと重ならない、`/clock` 前の scan を数えない、`0.0` で従来どおり、救援の中継が止まる、不正な値の拒否。既存のテストのうち `/scan` を1回だけ送って時間を進めていた 5 件は、途絶と区別するため空き scan を送るように直した（判定の内容は変えていない）
+- 基準 bag（2026-07-24 19:05、843 秒）を `scripts/regression/replay_check.py --only failsafe` で再生: 作動 41 回、33.48 秒、走行中 0 回。`baseline.json` の範囲（34〜48 回、28〜38 秒、走行中 0 回）内で、以前の記録（40〜42 回、32.7〜33.6 秒）と変わらない。ログに `D:scan_silent` は 0 回。再生は 2 倍速で、bag の終わりでは `/clock` も止まるので、この試験は途絶そのものを起こしていない（途絶は単体テストで確かめた）
+
+### 実機確認項目（未実施、#156 の機会）
+
+- 通常の起動（m6r_bringup → nav_launch → dispatch_launch）で `D:scan_silent` が出ない
+- 走行中に pointcloud_to_laserscan を止めると約 0.5 秒で止まり、再起動で解ける
+- 長時間走行（CPU 負荷が高いとき）で `/scan` の間隔が 0.5 秒に近づかない

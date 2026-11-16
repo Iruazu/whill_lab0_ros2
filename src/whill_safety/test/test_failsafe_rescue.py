@@ -116,6 +116,17 @@ def _block_d(node, clock, t):
     node._on_scan(_blocked_scan())
 
 
+def _clear_d(node, clock, t):
+    # Layer D clears on clear scans, not on /scan going quiet: since #193 a
+    # quiet /scan (>= scan_silent_sec) is D:scan_silent, a stop of its own.
+    clock.t = t
+    s = LaserScan()
+    s.angle_min = 0.0
+    s.angle_increment = 0.01
+    s.ranges = [5.0]                     # outside the 1-2 m sector
+    node._on_scan(s)
+
+
 def _teleop(node, clock, t, vx, wz=0.0):
     clock.t = t
     node._on_teleop(_twist(vx, wz))
@@ -202,6 +213,7 @@ def test_default_zero_and_no_subscription(make_node):
     _block_d(node, clock, T0 + 1.0)
     _tick(node, clock, T0 + 1.0)
     assert pub.take() == [ZERO]
+    _clear_d(node, clock, T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01)
     _tick(node, clock, T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01)
     assert pub.take() == []                 # released: silent
 
@@ -270,6 +282,7 @@ def test_trailing_zero_after_layer_d_clears(make_node):
 
     # Layer D clears while the operator keeps backing: keep relaying.
     t = T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01
+    _clear_d(node, clock, t)
     _teleop(node, clock, t, -0.2)
     _tick(node, clock, t)
     assert node._active_layers() == ()
@@ -289,6 +302,7 @@ def test_trailing_zero_when_forward_after_layer_d_clears(make_node):
     _teleop(node, clock, T0 + 1.0, -0.2)
     _tick(node, clock, T0 + 1.0)
     t = T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01
+    _clear_d(node, clock, t)
     _teleop(node, clock, t, -0.2)
     _tick(node, clock, t)
     pub.take()
