@@ -1,0 +1,293 @@
+{
+  "params": {
+    "pcd": "docs/maps/campus-m8/static.pcd",
+    "traj": "docs/maps/campus-m8/traj_lidar.txt",
+    "layers_yaml": "docs/maps/campus-m8/v2/v2_layers.yaml",
+    "hand_mask": "docs/maps/campus-m8/v2/candidates/candidate_roadway_mask.png",
+    "waypoints": "docs/maps/campus-m8/waypoints.yaml",
+    "out_dir": "docs/maps/campus-m8/v2/experiments/202",
+    "work_dir": "~/bags/m8-experiments/202",
+    "resolution": null,
+    "chunk_points": 2000000,
+    "local_min_radius": 0.5,
+    "ground_band": 0.5,
+    "ground_percentile": 5.0,
+    "min_points": 1,
+    "hole_fill": 0.3,
+    "smooth_ksize": 5,
+    "window": 0.5,
+    "curb_dz_min": 0.08,
+    "curb_dz_max": 0.25,
+    "trend_window": 0.8,
+    "trend_dz_min": 0.05,
+    "curb_slope_min": 0.4,
+    "block_high_steps": true,
+    "barrier_dilate": 0.05,
+    "traj_stride": 1.0,
+    "seed_snap": 1.0,
+    "max_dist": 8.0,
+    "gap_radius": 0.25,
+    "close_radius": 0.6,
+    "open_radius": 0.2,
+    "fill_holes_area": 2.0,
+    "compose": true,
+    "hand_free_mask": "docs/maps/campus-m8/v2/candidates/candidate_free_merged.png",
+    "hand_roadway_merged": "docs/maps/campus-m8/v2/candidates/candidate_roadway_merged.png",
+    "keepout_mask": "docs/maps/campus-m8/v2/candidates/candidate_keepout_mask.png",
+    "pcd_resolved": "~/whill_lab0_ros2/docs/maps/campus-m8/static.pcd"
+  },
+  "metrics": {
+    "whole": {
+      "auto_cells": 3106791,
+      "hand_cells": 1793532,
+      "both_cells": 1533620,
+      "iou": 0.4555,
+      "precision": 0.4936,
+      "recall": 0.8551,
+      "recall_near_traj": 0.9355,
+      "hand_cells_near_traj": 1639378
+    },
+    "start_road": {
+      "auto_cells": 270561,
+      "hand_cells": 137608,
+      "both_cells": 130495,
+      "iou": 0.47,
+      "precision": 0.4823,
+      "recall": 0.9483,
+      "box_xy": [
+        -10.0,
+        70.0,
+        -15.0,
+        15.0
+      ]
+    },
+    "seimon": {
+      "auto_cells": 69980,
+      "hand_cells": 28777,
+      "both_cells": 28777,
+      "iou": 0.4112,
+      "precision": 0.4112,
+      "recall": 1.0,
+      "box_xy": [
+        -100.0,
+        -75.0,
+        -20.0,
+        5.0
+      ]
+    },
+    "north_road": {
+      "auto_cells": 405211,
+      "hand_cells": 303473,
+      "both_cells": 273798,
+      "iou": 0.6296,
+      "precision": 0.6757,
+      "recall": 0.9022,
+      "box_xy": [
+        -125.0,
+        75.0,
+        145.0,
+        175.0
+      ]
+    }
+  },
+  "routes": {
+    "A_auto": {
+      "map": "~/bags/m8-experiments/202/A_auto/final.yaml",
+      "radius_m": 0.35,
+      "free_cells": 3028723,
+      "eroded_free_components": 112,
+      "waypoints": [
+        {
+          "name": "kounoken",
+          "pixel": [
+            2564,
+            4486
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg7",
+          "pixel": [
+            1796,
+            4494
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "seimon",
+          "pixel": [
+            809,
+            4636
+          ],
+          "value": 254,
+          "free": true,
+          "component": 0,
+          "snap_m": null
+        },
+        {
+          "name": "bldg3",
+          "pixel": [
+            3920,
+            4442
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        }
+      ],
+      "all_connected": false,
+      "occ_free_unknown_pct": [
+        0.94,
+        7.25,
+        91.82
+      ]
+    },
+    "B_auto_handfree": {
+      "map": "~/bags/m8-experiments/202/B_auto_handfree/final.yaml",
+      "radius_m": 0.35,
+      "free_cells": 3034428,
+      "eroded_free_components": 108,
+      "waypoints": [
+        {
+          "name": "kounoken",
+          "pixel": [
+            2564,
+            4486
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg7",
+          "pixel": [
+            1796,
+            4494
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "seimon",
+          "pixel": [
+            809,
+            4636
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg3",
+          "pixel": [
+            3920,
+            4442
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        }
+      ],
+      "all_connected": true,
+      "occ_free_unknown_pct": [
+        0.93,
+        7.26,
+        91.81
+      ]
+    },
+    "C_union_handfree": {
+      "map": "~/bags/m8-experiments/202/C_union_handfree/final.yaml",
+      "radius_m": 0.35,
+      "free_cells": 3251688,
+      "eroded_free_components": 107,
+      "waypoints": [
+        {
+          "name": "kounoken",
+          "pixel": [
+            2564,
+            4486
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg7",
+          "pixel": [
+            1796,
+            4494
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "seimon",
+          "pixel": [
+            809,
+            4636
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg3",
+          "pixel": [
+            3920,
+            4442
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        }
+      ],
+      "all_connected": true,
+      "occ_free_unknown_pct": [
+        0.93,
+        7.78,
+        91.29
+      ]
+    }
+  },
+  "timing": {
+    "ground_s": 3.1,
+    "curb_s": 1.9,
+    "grow_s": 3.1,
+    "compose_s": 23.8,
+    "total_s": 41.4
+  },
+  "cells": {
+    "seen": 1650306,
+    "known": 18359158,
+    "curb": 1138806,
+    "high_step": 1893764,
+    "structure": 401771,
+    "roadway_auto": 3106791
+  },
+  "seeds": {
+    "passable": 1250,
+    "total": 1252
+  },
+  "review_png_bytes": {
+    "curbs_over_maxheight_q.png": 1320332,
+    "roadway_auto_vs_hand_q.png": 735919,
+    "start_crop_1to1.png": 272218
+  }
+}
