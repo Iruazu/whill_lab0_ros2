@@ -33,15 +33,28 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。旧版�
 
 ## 1. footprint
 
+公式仕様（WHILL Model CR2 製品ページ、C2 パンフレット、FDA 510(k) K261175、WHILL の ROS ドライバのソース。2026-11-16 調査）と実測を分けて書く。公式には**全長・全幅・全高・トレッド・車輪径**はあるが、**後輪車軸の位置（前後のオーバーハング）とホイールベースは公表されていない**（CR2 ページ「CAD データ：提供無」）。base_link（後輪車軸の中点）基準の footprint には、車軸位置と後付け物（LiDAR のマスト、カメラのホルダ）の実測が要る。
+
 | 項目 | 値 | 測定日 | 方法 | 誤差 | 状態 |
 | --- | --- | --- | --- | --- | --- |
-| Nav2 の外形 | 半径 0.45 m の円（中心 base_link） | — | 実測なし | 前端は x 約 0.75〜0.8 m と見られ、前の約 0.3 m がはみ出す | **未測定**（#143） |
-| 車幅 | 0.6 m（failsafe Layer D の扇形の前提） | — | 出典なし | — | **未測定**（#143） |
-| 前端・後端・最大幅・出っ張り | — | — | 巻尺で測る予定 | — | **未測定**（#143） |
+| 全幅（公式） | 0.554 m（CR2。C2 は座面幅で 0.554〜0.650 m） | — | WHILL Model CR2 製品ページ | — | **公式値** |
+| 全長（公式） | 0.985 m（CR2 / CR / C2 とも） | — | 同上。前端 + 後端の検算に使う | 何が前端・後端を決めるか（フットレスト、背もたれ）は未公表 | **公式値** |
+| 全高（公式） | 0.745〜0.945 m（CR2、背もたれ上げ）。C2 の 0.670〜0.730 m はコントローラ上端（背もたれ倒し） | — | 同上 | 定義が違うので比べない | **公式値** |
+| トレッド（後輪中心間） | 0.496 m | — | WHILL ROS ドライバ（`wheel_tread`、オドメトリの定数） | URDF は 0.52、ROS1 xacro は 0.49。運動学に使う 0.496 を採る | **公式コード** |
+| 後輪半径 | 0.1325 m（直径 10.4 in） | — | ROS ドライバ `wheel_radius`、FDA K261175 | — | **公式** |
+| 前輪（オムニ）径 | 0.257 m（10.11 in） | — | FDA K261175 | — | **公式** |
+| 最小回転半径 | 0.760 m | — | CR2 製品ページ | — | **公式値** |
+| 車軸 → 前端 | 0.72〜0.75 m | 2026-11-16 | 巻尺（屋外、#149 の際） | ±2 cm。WHILL の CR2 URDF（模式的な箱）は 0.79 m、ROS1 xacro は約 0.745 m | **実測済み** |
+| 車軸 → 後端 | 約 0.24〜0.26 m（全長 0.985 − 前端から推定） | — | 未測定。巻尺で確定する | URDF は 0.19 m | **未測定**（#143） |
+| 最大幅（後付け物込み） | — | — | 未測定。アームレスト、LiDAR のマスト、カメラのホルダを含めて巻尺 | 車体のみなら 0.554 m | **未測定**（#143） |
+| 出っ張り | — | — | 未測定。フットレスト前端・幅、ジョイスティックの位置と出幅 | — | **未測定**（#143） |
+| Nav2 の外形 | 半径 0.45 m の円（中心 base_link） | — | 実測なし | 前端 0.72〜0.75 m に対して前の約 0.3 m がはみ出す | **要変更**（#157） |
+| 車幅（failsafe Layer D の前提） | 0.6 m | — | 出典なし。公式 0.554 m + 余裕と読める | — | **要確認**（#157） |
 
 - 反映先：`src/whill_navigation/config/nav2_params.yaml:231`（local）、`:282`（global）の `robot_radius`。`src/whill_safety/whill_safety/failsafe_node.py:59`（車幅 0.6 m の前提）、`:72`（半角 30°）。
 - 多角形への変更と全系統での統一は #157。
-- #149 の屋外静止確認（手順は `docs/plans/2026-10-28-avoidance-baseline.md` §4.2）では、テープの0（後輪のハブ中心から床へ下ろした2点の中点＝base_link の原点）から車体前端までの距離を1回測る。解析は `scripts/check_object_placement.py`、記録は `scripts/record_avoidance_bag.sh --profile static`。
+- 出典：WHILL Model CR2 製品ページ <https://whill.inc/jp/model-cr2>、Model CR 製品ページ <https://whill.inc/jp/model-cr>、C2 パンフレット <https://www.whill.inc/product-literature/us/model-c2-brochure.pdf>、FDA 510(k) K261175 <https://www.accessdata.fda.gov/cdrh_docs/pdf26/K261175.pdf>、ROS2 ドライバ URDF <https://raw.githubusercontent.com/whill-labs/ros2_whill/humble/whill_description/urdf/whill_model_cr2.urdf>、ROS1 ドライバ `WHILL.h`（tread 0.496、wheel_radius 0.1325）。
+- #149 の屋外静止確認（2026-11-16）では、テープの 0（後輪のハブ中心付近、目分量）から車体前端まで 0.72〜0.75 m。LiDAR の x が 1 cm 以内で合ったので（§2.1 D）、テープの 0 と base_link の差は数 cm 以内と見る。
 
 ## 2. LiDAR（VLP-16 Puck Hi-Res）
 
