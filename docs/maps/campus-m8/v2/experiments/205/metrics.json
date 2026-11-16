@@ -1,0 +1,200 @@
+{
+ "gsi_road_area": {
+  "cells": 2030431,
+  "area_m2": 20304.3,
+  "cells_near_traj": 670967,
+  "center_cells": 26739,
+  "rejected_behind_edge_cells": 2513907
+ },
+ "ftCode_counts": {
+  "2201": 514,
+  "2203": 20,
+  "2221": 120,
+  "2223": 2,
+  "2411": 22,
+  "2701": 765,
+  "2703": 2,
+  "2711": 79,
+  "2714": 1
+ },
+ "auto_202": {
+  "whole": {
+   "mask_cells": 780972,
+   "ref_cells": 2030431,
+   "both_cells": 520704,
+   "iou": 0.2273,
+   "precision": 0.6667,
+   "recall": 0.2564
+  },
+  "near_traj_8m": {
+   "mask_cells": 780900,
+   "ref_cells": 670967,
+   "both_cells": 520694,
+   "iou": 0.5592,
+   "precision": 0.6668,
+   "recall": 0.776
+  },
+  "start_road": {
+   "mask_cells": 68106,
+   "ref_cells": 54767,
+   "both_cells": 47225,
+   "iou": 0.6243,
+   "precision": 0.6934,
+   "recall": 0.8623
+  },
+  "seimon": {
+   "mask_cells": 17545,
+   "ref_cells": 46255,
+   "both_cells": 17462,
+   "iou": 0.3768,
+   "precision": 0.9953,
+   "recall": 0.3775
+  },
+  "north_road": {
+   "mask_cells": 102020,
+   "ref_cells": 136594,
+   "both_cells": 87896,
+   "iou": 0.5832,
+   "precision": 0.8616,
+   "recall": 0.6435
+  },
+  "centerline_share_near_traj": 0.9011,
+  "centerline_cells_near_traj": 10583,
+  "edge_to_gsi_edge_m": {
+   "n": 23052,
+   "median": 1.0,
+   "p90": 3.848
+  }
+ },
+ "hand_candidate": {
+  "whole": {
+   "mask_cells": 453861,
+   "ref_cells": 2030431,
+   "both_cells": 423450,
+   "iou": 0.2055,
+   "precision": 0.933,
+   "recall": 0.2086
+  },
+  "near_traj_8m": {
+   "mask_cells": 414663,
+   "ref_cells": 670967,
+   "both_cells": 384273,
+   "iou": 0.5479,
+   "precision": 0.9267,
+   "recall": 0.5727
+  },
+  "start_road": {
+   "mask_cells": 34814,
+   "ref_cells": 54767,
+   "both_cells": 34814,
+   "iou": 0.6357,
+   "precision": 1.0,
+   "recall": 0.6357
+  },
+  "seimon": {
+   "mask_cells": 7261,
+   "ref_cells": 46255,
+   "both_cells": 7261,
+   "iou": 0.157,
+   "precision": 1.0,
+   "recall": 0.157
+  },
+  "north_road": {
+   "mask_cells": 76778,
+   "ref_cells": 136594,
+   "both_cells": 76636,
+   "iou": 0.5605,
+   "precision": 0.9982,
+   "recall": 0.561
+  },
+  "centerline_share_near_traj": 0.9458,
+  "centerline_cells_near_traj": 10583,
+  "edge_to_gsi_edge_m": {
+   "n": 19813,
+   "median": 1.2,
+   "p90": 2.319
+  }
+ },
+ "hand_merged": {
+  "whole": {
+   "mask_cells": 554759,
+   "ref_cells": 2030431,
+   "both_cells": 515481,
+   "iou": 0.2491,
+   "precision": 0.9292,
+   "recall": 0.2539
+  },
+  "near_traj_8m": {
+   "mask_cells": 506355,
+   "ref_cells": 670967,
+   "both_cells": 467176,
+   "iou": 0.6579,
+   "precision": 0.9226,
+   "recall": 0.6963
+  },
+  "start_road": {
+   "mask_cells": 44367,
+   "ref_cells": 54767,
+   "both_cells": 44367,
+   "iou": 0.8101,
+   "precision": 1.0,
+   "recall": 0.8101
+  },
+  "seimon": {
+   "mask_cells": 24853,
+   "ref_cells": 46255,
+   "both_cells": 24853,
+   "iou": 0.5373,
+   "precision": 1.0,
+   "recall": 0.5373
+  },
+  "north_road": {
+   "mask_cells": 82278,
+   "ref_cells": 136594,
+   "both_cells": 82114,
+   "iou": 0.6004,
+   "precision": 0.998,
+   "recall": 0.6012
+  },
+  "centerline_share_near_traj": 0.9631,
+  "centerline_cells_near_traj": 10583,
+  "edge_to_gsi_edge_m": {
+   "n": 19580,
+   "median": 0.8,
+   "p90": 1.836
+  }
+ },
+ "elapsed_s": 22.8,
+ "png": {
+  "ortho_struct_q.png": "rgb",
+  "gsi_roads_vs_auto_q.png": "rgb",
+  "gsi_roads_vs_hand_q.png": "rgb",
+  "start_crop_1to1.png": "rgb"
+ },
+ "params": {
+  "cmd": "report",
+  "layers_yaml": "docs/maps/campus-m8/v2/v2_layers.yaml",
+  "traj": "docs/maps/campus-m8/traj_lidar.txt",
+  "waypoints": "docs/maps/campus-m8/waypoints.yaml",
+  "georef_yaml": "docs/maps/campus-m8/georef.yaml",
+  "raw_dir": "~/bags/m8-experiments/205/raw",
+  "ortho_zoom": 18,
+  "vector_zoom": 16,
+  "auto_mask": "docs/maps/campus-m8/v2/experiments/202/roadway_auto.png",
+  "hand_mask": "docs/maps/campus-m8/v2/candidates/candidate_roadway_mask.png",
+  "hand_merged_mask": "docs/maps/campus-m8/v2/candidates/candidate_roadway_merged.png",
+  "metric_scale": 2,
+  "gap_m": 0.3,
+  "max_half_width_m": 10.0,
+  "near_m": 8.0,
+  "crop": [
+   -10.0,
+   70.0,
+   -15.0,
+   15.0
+  ],
+  "png_limit": 3000000,
+  "out_dir": "docs/maps/campus-m8/v2/experiments/205",
+  "metrics_json": "docs/maps/campus-m8/v2/experiments/205/metrics.json"
+ }
+}

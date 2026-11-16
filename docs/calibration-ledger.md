@@ -67,7 +67,7 @@ DDS・governor・bag 録画の手順はこの台帳では扱わない。旧版�
 | z | 0.771 m | 2026-11-13 | テープ固定後の実機静止確認。180° 回した 2 本の平均 × 2 組（下記 C） | 2 組の差 6 mm。1 向きの値は床のうねりで ±2 cm 動く |
 | roll | −0.05° | 2026-11-13 | 同上 | 2 組の差 0.05°。手法のゆらぎ ±0.02° |
 | pitch | +0.40° | 2026-11-13 | 同上 | 2 組の差 0.02°。**人が座ると車体が沈んで対床 pitch が約 −0.75° 変わる**（下記 B、1 回のみ） |
-| yaw | −0.3167°（−0.005527 rad） | — | noetic の LiDAR 対 IMU の yaw の流用（`docs/m3-extrinsics-from-noetic.md`） | **未測定（旧値の流用、0 と同等）**。床面からは観測できない。IMU は 2026-07-08 に 90° 付け直し、yaw 0 は目視で決めたので、この値は base_link に対する測定ではない |
+| yaw | −0.3167°（−0.005527 rad） | — | noetic の LiDAR 対 IMU の yaw の流用（`docs/m3-extrinsics-from-noetic.md`）。測り方は [`docs/lidar-yaw-measurement.md`](lidar-yaw-measurement.md)（走行の向きと NDT の向きの差、`scripts/lidar_yaw_from_drive.py`）。試行（2026-11-16）：テープ固定**前**の 07-24 の走行 bag で 約 +1.0°（記録の旧 TF・旧地図で +1.02°、今の TF・campus-m8 の再生で +1.16°、95 % 区間 +0.7〜+1.4°。TF の yaw を +3° ずらした再生でも値が変わらず、方法の感度は十分）。ただし今の取り付けの値ではない。今の取り付けでは、11-16 のコーンの並びを「テープ ∥ 車体の x」と仮定すると約 −1.0° だが、テープの平行は未確認 | **未測定（旧値の流用、0 と同等）**。床面からは観測できない。IMU は 2026-07-08 に 90° 付け直し、yaw 0 は目視で決めたので、この値は base_link に対する測定ではない。2 つの試行は約 2° 食い違い、原因（テープの平行か取り付けの変化か）は未特定。屋外 2 回目（#156）で今の取り付けを走行（停止の組）と走りで引いた線上のコーンの両方で測る（手順は同文書 §5） |
 
 z・roll・pitch の候補：
 
@@ -147,11 +147,12 @@ z・roll・pitch の候補：
     - 路面：前方 4〜7 m の床は base_link の高さ +0.4〜+2.1 cm、σ 1〜4 mm（平らなアスファルト）。床面の傾き slope_x +0.38° / slope_y −0.24°（路面の勾配込み）。左右 1〜4 m は +11〜+21 cm 高い面（縁石・歩道）。9〜10 m に安全のためのコーン 2 本。
   - 結果（深度 D435、§3 にも記載）：コーンの半径を引いた残差は 1.5 / 2.0 / 2.5 m で +5.2 / +6.5 / +5.5 cm（LiDAR より 5〜6 cm 奥に出る）、3 m で +18 cm、4 m で +19 cm、5 m で +49 cm。**±5 cm で使える距離は約 2.5 m**（深度の bias 約 +5 cm を含めると 2 m）。床は 2 m で −0.9 cm、σ は 2 m 0.6 cm → 5 m 1.2 cm → 8 m 4.9 cm。
   - 未了：低い物（高さ 20 cm 前後）での「障害物の最低高さ」、側面が垂直な箱、yaw。
+  - yaw の参考：コーン 7 本の中心の y は x に対して +1.19 cm/m（LiDAR）・+0.72 cm/m（深度）の傾きで、テープは base_link 系で +0.68° ± 0.07°（LiDAR）・+0.41° ± 0.13°（深度）左に回って見える。テープは目分量で引いたので yaw の測定にはしない（[`docs/lidar-yaw-measurement.md`](lidar-yaw-measurement.md) §4）。
 - 地図との関係：この TF は base_link 系の点群の位置を変える。旧地図（campus）とは NDT が合わなくなるので、地図の作り直し（#153）と同時にマージする。PR は #153 に依存する draft とする。
 - 下流の高さの判定との関係：pitch が +8.995° → +0.97° に変わるので、base_link 系での点の高さは、2 m 先で約 0.28 m、10 m 先で約 1.4 m 変わる。次の値は旧 TF・旧校正表のもとで調整しており、新しい TF で検証し直す必要がある（担当 Issue なし。§6）。
   - `src/whill_navigation/config/pointcloud_to_laserscan.yaml:46-49` の高さの帯 0.05〜1.6 m（base_link 系。2026-07-15 の A/B で調整、ADR-0009）
   - failsafe の Layer D（`/scan` を使う）と Layer C（Patchwork++ の no_ground を使う）のしきい値
-  - `src/whill_perception/config/patchworkpp.yaml:25` の sensor_height 0.79（新しい z は 0.771）
+  - `src/whill_perception/config/patchworkpp.yaml` の sensor_height（0.79 → 0.771 に揃えた。bag の再生で出力は変わらない。#192、§6）
 - 旧値の誤り：旧 TF は IMU TF に noetic の LiDAR↔IMU extrinsic を足したもの。pitch +9° は「IMU が約 −8° 傾き、LiDAR はほぼ水平」という相対姿勢を、IMU を base_link と axis-aligned とみなして対 base_link の姿勢に流用した誤り（`docs/imu-coordinate-audit.md` §4.4 シナリオ B）。
 
 ### 2.2 校正ファイル（仰角表）
@@ -237,7 +238,7 @@ z・roll・pitch の候補：
 | --- | --- | --- | --- |
 | `src/whill_navigation/config/nav2_params.yaml:231`、`:282` | robot_radius 0.45 | §1 未測定 | #143（実測）→ #157（多角形） |
 | `src/whill_safety/whill_safety/failsafe_node.py:59` | 車幅 0.6 m の前提 | §1 未測定 | #143 → #157 |
-| `src/whill_perception/config/patchworkpp.yaml:25` | sensor_height 0.79 | §2.1 z 0.771 | **食い違い**（1.9 cm）。担当 Issue なし（起票案あり） |
+| `src/whill_perception/config/patchworkpp.yaml:32` | sensor_height 0.771 | §2.1 z 0.771 | **一致**（#192 で 0.79 から変更、食い違いは解消）。`scripts/regression/patchwork_height_compare.py` で 0.79 と 0.771 を同じフレームに同時にかけ、no_ground は全フレームで 1 点も変わらなかった：2026-07-24 走行 bag（Hi-Res、73 秒から 180 秒）1774 フレーム、2026-11-16 屋外静止 bag の物なし 117・コーン 3 m 116 フレーム。平均は走行で ground 7862 / no_ground 11088 点、床の漏れ 10.6 %・物の保持 88.1 %（1〜8 m、入力の床平面基準）。コアが sensor_height を初期値としてしか使わず毎フレーム更新するため（0.55 にしても物なし bag で no_ground の平均の差 3 点）。未確認：着座（§2.1 B の pitch −0.75°）の bag での地面除去 |
 | `src/whill_navigation/config/pointcloud_to_laserscan.yaml:46-49` | 高さの帯 0.05〜1.6 m（base_link 系。ADR-0009、2026-07-15 に旧 TF・旧校正表で調整） | §2.1 | 台帳の写しではないが、旧 TF 前提の値。新しい TF で点の高さが 2 m 先で約 0.28 m 変わるので再検証が要る。担当 Issue なし（起票案あり） |
 | failsafe の Layer D（`/scan`）・Layer C（no_ground） | しきい値 | §2.1 | 同上。再検証が要る。担当 Issue なし（起票案あり） |
 | `scripts/m5r_pcd_to_occupancy.py:486` | `--lidar-mount-height` 既定 0.79 | §2.1 z 0.777 | **食い違い**（旧スクリプト。現用は v2 か要確認） |

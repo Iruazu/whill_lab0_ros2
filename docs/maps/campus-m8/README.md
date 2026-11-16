@@ -37,6 +37,8 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus �
 | `align_from_campus/` | 旧 campus からの座標変換と waypoint の写像 | 管理 |
 | `v2/` | v2 の機械レイヤ、`candidates/`（手塗りの候補）、`candidate_final.pgm` | 管理 |
 | `v2/experiments/202/`, `202b/`, `202c/` | 縁石からの自動抽出の試作（#202、3 節。202b は DUFOMap の元の点、202c は bag のスキャンを軌跡で重ねた密な面）。既定の地図には使わない | 管理（小さい画像と数値だけ） |
+| `georef.yaml`, `reference-gsi.md` | 国土地理院の建物に合わせた map → 平面直角座標系第IX系・緯度経度の変換と、GSI の道路との比較（#205） | 管理 |
+| `v2/experiments/205/` | 上の照合の重ね絵と数値 | 管理（小さい画像と数値だけ） |
 | `occupancy_candidate.yaml` | `map_variant:=candidate` で読む候補の地図。既定の site で variant を省いたときもこれ | 管理 |
 | `waypoints.yaml` | 配車地点（候補） | 管理 |
 | `start_side_view.png` | 始点付近の横からの図（旧と新） | 管理 |
@@ -374,6 +376,8 @@ B がつながるのは、手塗りの free（旧地図で seimon 前の塩を�
 2. 自動の結果は、手塗りを確定するとき（3 節「ユーザーが確かめること」の 2）の点検に使える。軌跡から 8 m 以内で手塗りだけの所（`roadway_auto_vs_hand_q.png` の青）は、手塗りが縁石・構造物を越えている候補になる。
 3. 置き換えを再び考えるなら、まず 10 cm の量子化を外す。GLIM の出力を DUFOMap にかける前の点、または DUFOMap を細かいボクセルで回した点から、同じスクリプト（`--pcd`）で作り直す。そのうえで、同じ3つの数（IoU、4地点、縁石の線の目視）で比べる。今の static.pcd のままパラメータを詰めても、IoU は 0.43〜0.49 の幅から出なかった。（2026-11-16 に試した。下の「DUFOMap の出力解像度を変えた再試行」）
 
+外部の参照（国土地理院の道路）との比較は [reference-gsi.md](reference-gsi.md)（#205）。自動の roadway の 3 分の 1 が GSI の道路の外にあり（precision 0.67）、手塗りは 93% が中にある。上の推奨と食い違わない。
+
 #### 置き場
 
 | ファイル | 中身 | Git |
@@ -690,7 +694,7 @@ GSI の道路の面と比べる（IoU / precision / recall。#205 と同じ区�
 | `v2/experiments/202c/intensity_gate/gsi_vs_{gate20,gate15,hand_candidate}_q.png` | 1/4。GSI の道路の面だけ = 薄い緑、マスクだけ = 赤、両方 = 灰、GSI の道路縁 = 水色、中心線 = 黄 | 管理 |
 | `v2/experiments/202c/intensity_gate/gsi_and_paved.json` | GSI に対する数値、舗装の面積、名前を付けた箱の割合 | 管理 |
 | `~/bags/m8-experiments/202c/intensity_gate/*/` | 合成した地図（A・B・C）と原寸の差分 | 管理外 |
-| `~/bags/m8-experiments/202c/gsi_ref/` | #205 のブランチから取り出した `map_georef_gsi.py`・`georef.yaml`・`metrics_205.json` と、GSI の道路の面のキャッシュ（`gsi_road_area_k2.npz`） | 管理外 |
+| `~/bags/m8-experiments/202c/gsi_ref/` | GSI の道路の面のキャッシュ（`gsi_road_area_k2.npz`）。記録の数値を出したときの #205 の写し（`map_georef_gsi.py`・`georef.yaml`。main と同一）と `metrics_205.json` も置いてある | 管理外 |
 
 再現（抽出と合成は各 42 秒、GSI の比較は 20 秒。GSI のタイルは #205 で取得済みの `~/bags/m8-experiments/205/raw/` を読むだけ）：
 
@@ -703,11 +707,8 @@ for th in 15 20 25; do
     --intensity-npz $W/ground_raster.npz --max-intensity $th \
     --out-dir $E/202c/intensity_gate/mp10_tuned_i$th --work-dir $W/intensity_gate/mp10_tuned_i$th --compose
 done
-# #205 が main に入るまでは、そのブランチから読むだけで取り出す
-mkdir -p $W/gsi_ref
-git show origin/exp/205-gsi-reference:scripts/map_georef_gsi.py > $W/gsi_ref/map_georef_gsi.py
-git show origin/exp/205-gsi-reference:docs/maps/campus-m8/georef.yaml > $W/gsi_ref/georef.yaml
-scripts/map_roadway_vs_gsi.py --gsi-module $W/gsi_ref/map_georef_gsi.py --georef-yaml $W/gsi_ref/georef.yaml \
+# GSI の変換と道路の面は main の scripts/map_georef_gsi.py と georef.yaml を既定で読む（#205）
+scripts/map_roadway_vs_gsi.py \
   --mask auto_202=$E/202/roadway_auto.png --mask r1_tuned_202b=$E/202b/R1_tuned/roadway_auto.png \
   --mask mp10_tuned_202c=$E/202c/mp10_tuned/roadway_auto.png \
   --mask gate15=$E/202c/intensity_gate/mp10_tuned_i15/roadway_auto.png \

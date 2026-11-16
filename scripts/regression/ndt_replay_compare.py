@@ -158,8 +158,18 @@ def main():
                     except ValueError:
                         pass
 
-    node.create_subscription(PoseWithCovarianceStamped, '/pcl_pose',
-                             lambda m: poses.append(pose_row(m)), qos_profile_sensor_data)
+    # poses_full.txt は姿勢を回転ごと残す（lidar_yaw_from_drive.py が車体系での進む向きを
+    # 測るのに、yaw だけでなく roll・pitch も要る）。
+    full = []
+
+    def on_pose(m):
+        poses.append(pose_row(m))
+        p, q = m.pose.pose.position, m.pose.pose.orientation
+        full.append([m.header.stamp.sec + m.header.stamp.nanosec * 1e-9,
+                     p.x, p.y, p.z, q.x, q.y, q.z, q.w])
+
+    node.create_subscription(PoseWithCovarianceStamped, '/pcl_pose', on_pose,
+                             qos_profile_sensor_data)
     node.create_subscription(DiagnosticArray, '/alignment_status', on_status,
                              qos_profile_sensor_data)
     br = TransformBroadcaster(node)
@@ -211,6 +221,8 @@ def main():
         sys.exit(f'no poses: {a.out}/localizer.log')
     got = np.array(poses)
     np.savetxt(a.out / 'poses.txt', got, header='t x y z yaw')
+    np.savetxt(a.out / 'poses_full.txt', np.array(full), fmt='%.9f',
+               header='t x y z qx qy qz qw')
     fit = np.array([f for _, f in fitness]) if fitness else np.array([np.nan])
     idx = np.clip(np.searchsorted(ref[:, 0], got[:, 0]), 1, len(ref) - 1)
     idx -= (got[:, 0] - ref[idx - 1, 0]) < (ref[idx, 0] - got[:, 0])

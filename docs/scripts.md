@@ -51,6 +51,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `velodyne_reproject_bag.py` | 誤った校正で記録した点群を、ring を使って正しい校正へ補正した bag を作る（入力は読むだけ） |
 | `velodyne_reproject_verify.sh`, `velodyne_compare_clouds.py` | 上の補正を、パケットのある bag でドライバ（velodyne_transform_node）の出力と点ごとに比べる（[手順](maps/campus-m8/README.md)） |
 | `lidar_floor_fit.py` | 静止 bag の床面から base_link→velodyne の z・roll・pitch を求める（校正台帳 §2.1 の出典） |
+| `lidar_yaw_from_drive.py` | 走行 bag の NDT の姿勢（記録の `/pcl_pose` か `ndt_replay_compare.py` の `poses_full.txt`）から、進んだ向きと車体の向きの差で base_link→velodyne の yaw を求める（#149、[方法](lidar-yaw-measurement.md)）。`--stops` で停止の組を使う |
 | `imu_investigation/` | GLIM の IMU 調査（#147）の対照実験と解析。[報告](reports/2026-11-02-glim-imu-root-cause.md) |
 | `m5r3_export_merged_ply.py` | 結合点群の出力 |
 | `m5r_glim_to_pcd.py` | GLIM結果のPCD化 |
@@ -77,16 +78,18 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `map_roadway_from_curbs.py` | static.pcd の地面の高さから縁石を抽出し、軌跡から領域成長して走行可能域（roadway）を自動で作る試作（#202）。手塗りの候補との IoU と、`--compose` で合成と配車4地点の確認まで行う。出力は `docs/maps/<site>/v2/experiments/202/`（大きい物は `~/bags/m8-experiments/202/`）。`--ground-npz` で PCD の代わりに `map_ground_raster_from_bag.py` の密な面を読み、`--intensity-npz` でその地面の強度が `--max-intensity`（既定 20）以上のセル（芝・植栽）を領域成長の壁に足す。既定の地図は変えない |
 | `map_roadway_vs_gsi.py` | 走行可能域のマスクを、#205 の `map_georef_gsi.py` と同じ GSI の道路の面と比べ（IoU・precision・recall）、地面の強度で舗装と判定した面のうち手塗りに入っていない面積を数える（#202、202c）。出力は `docs/maps/<site>/v2/experiments/202c/intensity_gate/` |
 | `map_ground_raster_from_bag.py` | bag の各スキャンを GLIM の軌跡（`traj_lidar.txt`）で直接地図に重ね、正本の DUFOMap のボクセルに入る点だけで、v2 の 5 cm の格子に点数・最小・下位百分位・最大・地面の強度の平均の面（npz）を作る（#202、202c）。GLIM は回し直さない。キャッシュで中断から再開できる。出力は `~/bags/m8-experiments/202c/` と確認画像の `docs/maps/<site>/v2/experiments/202c/` |
+| `map_georef_gsi.py` | 国土地理院の地理院タイル（写真 z18、ベクトル z16）を取得し（`fetch`）、構造物層を GSI の建物に合わせて map → 平面直角座標系第IX系・緯度経度の変換を求め（`align`、`docs/maps/campus-m8/georef.yaml`）、写真の重ね絵と GSI の道路の面に対する IoU を出す（`report`）（#205、[説明](maps/campus-m8/reference-gsi.md)）。タイルは `~/bags/m8-experiments/205/raw/`。既定の地図は変えない |
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
 | `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
-| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節） |
+| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節）。姿勢は `poses.txt`（yaw のみ）と `poses_full.txt`（四元数）に残す。`patchwork_height_compare.py` は Patchwork++ の設定値違いを同じフレームで比べる（[whill_perception](../src/whill_perception/README.md)） |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
 | `tests/test_check_object_placement.py` | `check_object_placement.py` の計算（校正表の判定・投影し直し・物の誤差・床の勾配）と、TF の既定値が launch・台帳と一致することのテスト（ROS 不要。ROS があれば bag の補正ツールとの一致も確かめる） |
+| `tests/test_lidar_yaw_from_drive.py` | `lidar_yaw_from_drive.py` の符号・蛇行と前後の揺れへの頑健さ・後退・停止の組を、合成の走行で確かめるテスト（ROS 不要） |
 | `tests/test_record_avoidance_bag.py` | `record_avoidance_bag.sh` の録画前の確認と記録後の確認のテスト（偽の ros2・ip。実機不要） |
 | `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数・static.pcd の有無と sha256 の検査・終了処理のテスト（ROS・車体は起動しない） |
 | `tests/test_default_site_consistency.py` | 既定の site と variant が 3 つの launch・起動スクリプト・`check_map_sync.py` で揃っているかのテスト（ROS は使わない） |

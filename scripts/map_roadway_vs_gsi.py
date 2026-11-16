@@ -12,10 +12,9 @@
 左上の広場）で各マスク・舗装・GSI の占める割合を数える。舗装の判定は
 map_roadway_from_curbs.intensity_gate と同じ（同じ引数）で、壁の逆が舗装。
 
-map_georef_gsi.py と georef.yaml は #205 のブランチにある。main に入るまでは
-  git show origin/exp/205-gsi-reference:scripts/map_georef_gsi.py > <dir>/map_georef_gsi.py
-  git show origin/exp/205-gsi-reference:docs/maps/campus-m8/georef.yaml > <dir>/georef.yaml
-で取り出して --gsi-module / --georef-yaml に渡す（読むだけ。#205 の出力は変えない）。
+map_georef_gsi.py と georef.yaml は #205（PR #207）で main に入った。既定でそれを読む
+（読むだけ。#205 の出力は変えない）。202c の記録の数値は、#205 のブランチから取り出した
+同じ内容の写し（main と cmp で一致）で出した。
 道路の面は --road-cache に保存し、次からは作り直さない（タイル・変換が変わったら消す）。
 """
 
