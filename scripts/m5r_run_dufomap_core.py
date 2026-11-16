@@ -104,7 +104,7 @@ def _viewpoint_to_world_transform(viewpoint) -> np.ndarray:
 
 def run_dufomap(data_dir: Path, output: Path,
                 resolution: float, d_s: float, d_p: int,
-                num_threads: int) -> int:
+                num_threads: int, voxel_map: bool = True) -> int:
     """Drive DUFOMap end-to-end on a directory of per-scan PCDs.
 
     Mirrors upstream's ``KTH-RPL/dufomap/main.py`` accumulator pattern:
@@ -117,10 +117,16 @@ def run_dufomap(data_dir: Path, output: Path,
     3. ``oncePropagateCluster`` finalises dynamic / free / unknown
        labels.  Clustering is left off — matches upstream default and
        gives a big speedup with marginal quality loss on outdoor loops.
-    4. ``outputMap(cloud_acc, voxel_map=True, file_name=<basename>)``
+    4. ``outputMap(cloud_acc, voxel_map=<voxel_map>, file_name=<basename>)``
        writes ``<basename>.pcd`` directly to the path we want; no chdir
        or post-move dance is required (file_name kwarg added upstream
        in dufomap 1.x).
+
+    voxel_map=True（既定・正本の campus-m8 と同じ）は、静的と判定された
+    ボクセルの中心を 1 点ずつ書く。x・y・z が 0.05 + 0.1k の格子に乗るので、
+    5 cm 格子の地面高さが 10 cm 刻みになる（#202）。voxel_map=False は
+    cloud_acc のうち静的なボクセルに入った元の点をそのまま書く。動的除去の
+    判定（どのボクセルを消すか）は同じで、出す点だけが変わる。
     """
     dufomap, pcdpy3 = _import_dufomap()
     pcds = collect_pcds(data_dir)
@@ -168,7 +174,7 @@ def run_dufomap(data_dir: Path, output: Path,
     else:
         basename = str(output)
     try:
-        mydufo.outputMap(cloud_acc, voxel_map=True, file_name=basename)
+        mydufo.outputMap(cloud_acc, voxel_map=voxel_map, file_name=basename)
     except Exception as exc:
         # Anything out of the native binding here means an API shape
         # change. Surface that clearly rather than letting a raw error
@@ -189,6 +195,10 @@ def run_dufomap(data_dir: Path, output: Path,
         Path(basename + "_voxel.pcd"),
         Path(basename + ".pcd"),
     ]
+    # raw のときは ".pcd" を先に探す。同じ名前で前に voxel を回した残りの
+    # "_voxel.pcd" があっても、それを raw の結果と取り違えないため。
+    if not voxel_map:
+        candidates.reverse()
     produced = next((c for c in candidates if c.is_file()), None)
     if produced is None:
         print(
@@ -251,6 +261,15 @@ def main() -> int:
         "--num-threads", type=int, default=12,
         help="DUFOMap worker thread count (upstream main.py uses 12)",
     )
+    # 既定はボクセルの中心（正本の static.pcd と同じ）。元の点は縁石の抽出など、
+    # 10 cm の格子の量子化が邪魔になる実験用（#202）。既定を変えると、localizer と
+    # 占有格子の入力が変わるので変えない。
+    parser.add_argument(
+        "--output-points", choices=("voxel", "raw"), default="voxel",
+        help="voxel: 静的なボクセルの中心を書く（既定、正本の static.pcd と同じ）。"
+             "raw: 静的なボクセルに入った元の点を書く（voxel_map=False。"
+             "点は格子に乗らないが、点数はボクセル数より多い）。",
+    )
     args = parser.parse_args()
 
     if args.output.exists() and not args.force:
@@ -269,6 +288,7 @@ def main() -> int:
             d_s=args.d_s,
             d_p=args.d_p,
             num_threads=args.num_threads,
+            voxel_map=(args.output_points == "voxel"),
         )
     except (FileNotFoundError, ImportError) as exc:
         # Both already printed their own error.
