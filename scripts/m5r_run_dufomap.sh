@@ -38,11 +38,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat >&2 <<EOF
-Usage: ${0##*/} <glim-out-dir> <output-dir> [--force]
+Usage: ${0##*/} <glim-out-dir> <output-dir> [--force] [--resolution M] [--output-points voxel|raw]
 
   <glim-out-dir>  GLIM output directory (with NNNNNN/ keyframe subdirs)
   <output-dir>    Directory to write staging/ and static.pcd into
   --force         Overwrite existing staging + static.pcd
+  --resolution M  DUFOMap のボクセルの大きさ [m]。既定 0.1（正本の campus-m8 と同じ）
+  --output-points voxel: 静的なボクセルの中心を書く（既定、正本と同じ）
+                  raw:   静的なボクセルに入った元の点を書く（実験用、#202）
   -h, --help      Show this message
 
 Companion docs:
@@ -57,19 +60,28 @@ EOF
 case "${1:-}" in
   -h|--help) usage ;;
 esac
-if [[ $# -lt 2 || $# -gt 3 ]]; then
+if [[ $# -lt 2 ]]; then
   usage
 fi
 
 GLIM_OUT_DIR="$(cd "$1" && pwd)"
 OUTPUT_DIR="$2"
+shift 2
 FORCE=0
-if [[ $# -eq 3 ]]; then
-  if [[ "$3" != "--force" ]]; then
-    usage
-  fi
-  FORCE=1
-fi
+# 空のときは core の既定（0.1 m、ボクセルの中心）に任せる。既定をここで二重に
+# 持たないので、正本の手順（引数なし）は今までと同じ呼び出しになる。
+CORE_OPTS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force) FORCE=1 ;;
+    --resolution|--output-points)
+      [[ $# -ge 2 ]] || usage
+      CORE_OPTS+=("$1" "$2")
+      shift ;;
+    *) usage ;;
+  esac
+  shift
+done
 
 mkdir -p "${OUTPUT_DIR}"
 OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
@@ -159,7 +171,8 @@ echo "==> Running DUFOMap; output -> ${STATIC_PCD}"
 python3 "${SCRIPT_DIR}/m5r_run_dufomap_core.py" \
   --data-dir "${STAGING_DIR}" \
   --output "${STATIC_PCD}" \
-  "${DUFOMAP_FORCE_FLAG[@]}"
+  "${DUFOMAP_FORCE_FLAG[@]}" \
+  "${CORE_OPTS[@]}"
 
 echo
 echo "static map: ${STATIC_PCD}"

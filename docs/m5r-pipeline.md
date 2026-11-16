@@ -260,6 +260,7 @@ scripts/m5r_run_dufomap_core.py \
 | min_range | (未公開) | 0.2 m | ego 除外 | DUFOMap config.toml で固定。自己車体の bbox が大きい場合のみ要再検討 |
 | max_range | (未公開) | -1 (無制限) | 遠方除外 | 屋外で 50 m 以上が信頼できない場合のみ要再検討 |
 | num_threads | `--num-threads` | 12 | DUFOMap worker thread 数 | 母艦 CPU 物理コア数に合わせる (i9-12900H なら 12-14) |
+| 出す点 (outputMap の voxel_map) | `--output-points` | voxel | voxel: 静的なボクセルの中心 / raw: 静的なボクセルに入った元の点 | 地図の正本は voxel のまま。raw は格子 (0.05 + 0.1k) の量子化を避けたい実験用 (#202、`docs/maps/campus-m8/README.md` §3)。`m5r_run_dufomap.sh` からも `--resolution` と一緒に渡せる |
 
 ### 入出力
 
