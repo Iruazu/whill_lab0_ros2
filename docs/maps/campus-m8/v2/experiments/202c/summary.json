@@ -1,0 +1,64 @@
+{
+  "params": {
+    "bag": "~/bags/m5r-bench-data/2026-07-10-campus-outer-final/bag-hires",
+    "topic": "/velodyne_points",
+    "traj": "docs/maps/campus-m8/traj_lidar.txt",
+    "static_pcd": "~/bags/m5r-bench-data/2026-07-10-campus-outer-final/dufomap-m8-hires-noise-local/static.pcd",
+    "static_voxel": 0.1,
+    "static_dilate": 1,
+    "layers_yaml": "docs/maps/campus-m8/v2/v2_layers.yaml",
+    "work_dir": "~/bags/m8-experiments/202c",
+    "preview_dir": "docs/maps/campus-m8/v2/experiments/202c",
+    "min_range": 0.5,
+    "max_range": 15.0,
+    "max_above_sensor": 3.0,
+    "time_bins": 50,
+    "max_traj_gap": 0.25,
+    "chunk_scans": 500,
+    "hist_bin": 0.01,
+    "hist_bins": 64,
+    "percentile": 5.0,
+    "intensity_band": 0.1,
+    "max_scans": 0,
+    "force": false
+  },
+  "stats": {
+    "scans": 21311,
+    "scans_outside_traj": 10,
+    "points_finite": 447292621,
+    "points_in_range": 298174229,
+    "points_outside_traj": 24775,
+    "points_below_cap": 297953406,
+    "points_static": 295128473,
+    "points_kept": 295128473,
+    "traj_match_dt_max_s": 0.10142254829406738,
+    "traj_match_within_1ms": 21300
+  },
+  "cells": {
+    "count_ge_1": 8453817,
+    "count_ge_3": 7220602,
+    "count_ge_10": 5024210,
+    "count_ge_100": 383915,
+    "count_low_ge_1": 8453817,
+    "count_low_ge_3": 7091990,
+    "count_low_ge_10": 4795907
+  },
+  "z_p_minus_min_median_m": 0.00625002384185791,
+  "intensity_display_range": [
+    2.0,
+    72.81686492919903
+  ],
+  "timing_s": {
+    "cache": 121.0,
+    "accumulate": 33.0,
+    "total": 167.6
+  },
+  "peak_rss_gb": 3.93,
+  "npz": "~/bags/m8-experiments/202c/ground_raster.npz",
+  "preview_png_bytes": {
+    "count_q.png": 475091,
+    "intensity_q.png": 523907,
+    "start_intensity_1to1.png": 609590,
+    "start_ground_1to1.png": 372788
+  }
+}

@@ -55,6 +55,11 @@ def parse_args(argv=None):
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--pcd', type=pathlib.Path, default=D / 'static.pcd',
                    help='正本の static.pcd（読むだけ）。worktree には無いので、無ければ main 側を探す。')
+    p.add_argument('--ground-npz', type=pathlib.Path, default=None,
+                   help='PCD の代わりに、map_ground_raster_from_bag.py の ground_raster.npz（bag の'
+                        'スキャンを軌跡で重ねた密な地面の面）を使う。下位百分位（z_p）と、セルの最小から'
+                        '度数分布の範囲内の点数（count_low）をそのまま使い、局所最小からの帯（--ground-band）'
+                        'は z_p で判定する。格子と百分位が v2_layers.yaml・--ground-percentile と同じことを確かめる。')
     p.add_argument('--traj', type=pathlib.Path, default=D / 'traj_lidar.txt')
     p.add_argument('--layers-yaml', type=pathlib.Path, default=D / 'v2/v2_layers.yaml',
                    help='格子（origin・解像度・大きさ）と構造物層・下絵の場所。')
@@ -130,6 +135,25 @@ def parse_args(argv=None):
     p.add_argument('--barrier-dilate', type=float, default=0.05,
                    help='縁石・構造物の壁を太らせる半径 [m]。点の疎らさで線が 1 セル途切れた'
                         '所から漏れないようにする（4 近傍の成長と合わせて斜めの隙間も塞ぐ）。')
+
+    # --- 2b. 反射強度の壁（202c の推奨 4） ---
+    p.add_argument('--intensity-npz', type=pathlib.Path, default=None,
+                   help='map_ground_raster_from_bag.py の ground_raster.npz。intensity_mean（地面の点の'
+                        '平均の強度）が --max-intensity 以上のセルを、芝・植栽として領域成長で通さない。'
+                        '段の無い縁（舗装と芝の境）は高さでは引けないが、強度では舗装 8〜13・芝 30 前後と'
+                        'はっきり分かれる（campus-m8 README §3「bag のスキャンを軌跡で直接重ねた密な地面の面」）。')
+    p.add_argument('--max-intensity', type=float, default=20.0,
+                   help='舗装とみなす強度の上限（未満が舗装）。20 で手塗りのセルの 98.3%% が舗装に入り、'
+                        '漏れのセルの 27%% が落ちる（202c の集計）。')
+    p.add_argument('--intensity-min-count', type=int, default=3,
+                   help='強度の平均を信じるのに要る地面の点の数。少ないセルは近い値で埋める。')
+    p.add_argument('--intensity-smooth', type=int, default=5,
+                   help='強度の面の中央値フィルタの大きさ（セル、3 か 5）。芝の中の暗い 1 セル、'
+                        '舗装の中の明るい 1 セルで壁に穴・島ができないようにする。')
+    p.add_argument('--intensity-open', type=float, default=0.2,
+                   help='強度の壁を opening する半径 [m]。幅 2r より細い明るい線（白線・横断歩道の'
+                        '帯、幅 0.15〜0.45 m）を壁から外し、道を横に切らないようにする。芝・植栽は'
+                        '面なので残る。0 で無効。')
 
     # --- 3. 領域成長 ---
     p.add_argument('--traj-stride', type=float, default=1.0,
@@ -306,6 +330,57 @@ def ground_raster(pts, H, W, res, ox, oy, args):
     return ground.reshape(H, W), count.reshape(H, W), n_in
 
 
+def ground_raster_from_npz(path, H, W, res, ox, oy, args):
+    """密な地面の面（npz）から、ground_raster() と同じ形の (ground, count, n_in) を作る。
+
+    npz の z_p はセルの全点での下位百分位で、PCD の経路（局所最小から --ground-band 以内の点だけの
+    百分位）とは母集団が違う。密な面では地面の点が多く、植栽・壁の点が混ざっても下位 5%% は
+    ほぼ地面に残るので、帯は点ではなくセルの値（z_p）に掛ける：z_p が局所最小（z_min の円板の収縮）
+    から --ground-band より高いセルは、地面が見えていないとみなす（建物の中・生垣の上など）。
+    """
+    with np.load(path) as f:
+        meta = json.loads(str(f['meta']))
+        zp, zmin, cnt = f['z_p'], f['z_min'], f['count_low']
+    if (meta['width'], meta['height']) != (W, H) or abs(meta['resolution'] - res) > 1e-9 \
+            or np.abs(np.array(meta['origin'][:2]) - [ox, oy]).max() > 1e-9:
+        raise SystemExit(f'{path}: 格子 {meta} が v2_layers.yaml と違う')
+    if abs(meta['percentile'] - args.ground_percentile) > 1e-9:
+        raise SystemExit(f'{path}: 百分位 {meta["percentile"]} が --ground-percentile '
+                         f'{args.ground_percentile} と違う（npz を作り直す）')
+    rr = max(1, int(round(args.local_min_radius / res)))
+    local_min = cv2.erode(np.where(np.isfinite(zmin), zmin, np.inf).astype(np.float32), disk(rr),
+                          borderType=cv2.BORDER_CONSTANT, borderValue=float(np.inf))
+    ok = np.isfinite(zp) & (zp <= local_min + args.ground_band)
+    ground = np.where(ok, zp, np.nan).astype(np.float32)
+    count = np.where(ok, np.minimum(cnt, 65535), 0).astype(np.uint16)
+    return ground, count, int(cnt[ok].sum())
+
+
+def intensity_gate(path, H, W, res, args):
+    """強度の壁（bool）と、平滑化した強度の面（float32、確認画像の下絵用）を返す。
+
+    点の少ないセルは --hole-fill 以内なら最も近い値で埋め、それより遠いセル（強度が分からない）は
+    壁にしない。強度の壁は「芝・植栽を見た」ときだけ立てる（見ていない所の扱いは高さの側に任せる）。
+    """
+    with np.load(path) as f:
+        inten, n = f['intensity_mean'], f['intensity_count']
+    if inten.shape != (H, W):
+        raise SystemExit(f'{path}: 強度の面の形 {inten.shape} が格子 {(H, W)} と違う')
+    valid = np.isfinite(inten) & (n >= args.intensity_min_count)
+    dist, (ir, ic) = ndimage.distance_transform_edt(~valid, return_indices=True)
+    filled = inten[ir, ic].astype(np.float32)
+    del ir, ic
+    near = dist * res <= args.hole_fill
+    k = args.intensity_smooth if args.intensity_smooth in (3, 5) else 5
+    smooth = cv2.medianBlur(np.where(np.isfinite(filled), filled, 0).astype(np.float32), k)
+    gate = near & (smooth >= args.max_intensity)
+    orr = int(round(args.intensity_open / res))
+    if orr > 0:
+        gate = cv2.morphologyEx(gate.astype(np.uint8), cv2.MORPH_OPEN, disk(orr)).astype(bool)
+    smooth[~near] = np.nan
+    return gate, smooth
+
+
 def fill_and_smooth(ground, count, res, args):
     """点の少ないセルを近い値で埋め、中央値で平滑化する。
 
@@ -470,7 +545,7 @@ def save_png(path, rgb):
 
 
 def review_images(out_dir, under_max, hill, curb, high, road, hand, traj_rc,
-                  start_box, H, res, ox, oy, f=4):
+                  start_box, H, res, ox, oy, f=4, crop_under=None):
     sizes = {}
     # (a) 縁石の候補を最大高さの下絵に重ねる（1/4）。
     base = (shrink_rgb(under_max, f).astype(np.float32) * 0.6).astype(np.uint8)
@@ -493,7 +568,7 @@ def review_images(out_dir, under_max, hill, curb, high, road, hand, traj_rc,
     # (c) 発進点まわりの原寸の切り出し：最大高さの下絵に、自動の roadway を緑で薄く、
     # 手塗りの縁を青、縁石を赤、高い段を紫、軌跡を黄で重ねる。
     rs, cs = region_slice(start_box, H, res, ox, oy)
-    crop = under_max[rs, cs].astype(np.float32) * 0.7
+    crop = (under_max if crop_under is None else crop_under)[rs, cs].astype(np.float32) * 0.7
     rc = road[rs, cs]
     crop[rc] = crop[rc] * 0.5 + np.array([0, 160, 60]) * 0.5
     crop = crop.astype(np.uint8)
@@ -555,11 +630,16 @@ def main(argv=None):
     args.work_dir.mkdir(parents=True, exist_ok=True)
     timing = {}
 
-    pcd_path = resolve_pcd(args.pcd)
-    pts = open_pcd_xyz(pcd_path)
-    print(f'[1] 地面の面: {pcd_path}（{len(pts):,} 点）')
-    ground, count, n_band = ground_raster(pts, H, W, res, ox, oy, args)
-    del pts
+    if args.ground_npz is not None:
+        pcd_path = args.ground_npz
+        print(f'[1] 地面の面: {pcd_path}（密な面の npz）')
+        ground, count, n_band = ground_raster_from_npz(pcd_path, H, W, res, ox, oy, args)
+    else:
+        pcd_path = resolve_pcd(args.pcd)
+        pts = open_pcd_xyz(pcd_path)
+        print(f'[1] 地面の面: {pcd_path}（{len(pts):,} 点）')
+        ground, count, n_band = ground_raster(pts, H, W, res, ox, oy, args)
+        del pts
     smooth, seen, known = fill_and_smooth(ground, count, res, args)
     del ground
     timing['ground_s'] = round(time.time() - t0, 1)
@@ -582,6 +662,11 @@ def main(argv=None):
     barrier = curb | structure
     if args.block_high_steps:
         barrier |= high
+    gate, inten_s = None, None
+    if args.intensity_npz is not None:
+        gate, inten_s = intensity_gate(args.intensity_npz, H, W, res, args)
+        print(f'    強度の壁（{args.max_intensity:g} 以上）{int(gate.sum()):,} セル')
+        barrier |= gate
     bd = int(round(args.barrier_dilate / res))
     if bd > 0:
         barrier = cv2.dilate(barrier.astype(np.uint8), disk(bd)).astype(bool)
@@ -617,8 +702,15 @@ def main(argv=None):
 
     under_max = np.array(Image.open(layers_dir / doc['layers']['underlay_maxheight']).convert('RGB'))
     hill = np.array(Image.open(layers_dir / doc['layers']['underlay_hillshade']).convert('RGB'))
+    crop_under = None
+    if inten_s is not None:
+        # 強度の壁を使うときは、原寸の切り出しの下絵を強度にする（舗装の縁と見比べるため）。
+        # 0〜60 を黒〜白に（舗装 8〜13 は暗く、芝 30 前後は明るい）。
+        g8 = (np.clip(np.nan_to_num(inten_s, nan=0.0) / 60.0, 0, 1) * 255).astype(np.uint8)
+        crop_under = np.repeat(g8[..., None], 3, axis=2)
+        del g8
     sizes = review_images(args.out_dir, under_max, hill, curb, high, road, hand, traj_rc,
-                          REGIONS['start_road'], H, res, ox, oy)
+                          REGIONS['start_road'], H, res, ox, oy, crop_under=crop_under)
     del under_max, hill
 
     routes = {}
@@ -646,13 +738,14 @@ def main(argv=None):
 
     timing['total_s'] = round(time.time() - t0, 1)
     params = {k: (short(v) if isinstance(v, pathlib.Path) else v) for k, v in vars(args).items()}
-    params['pcd_resolved'] = short(pcd_path)
+    params['pcd_resolved'] = short(pcd_path)   # --ground-npz のときはその npz
     for v in routes.values():
         v['map'] = short(pathlib.Path(v['map']))
     summary = {'params': params, 'metrics': metrics, 'routes': routes, 'timing': timing,
                'cells': {'seen': int(seen.sum()), 'known': int(known.sum()),
                          'curb': int(curb.sum()), 'high_step': int(high.sum()),
-                         'structure': int(structure.sum()), 'roadway_auto': int(road.sum())},
+                         'structure': int(structure.sum()), 'roadway_auto': int(road.sum()),
+                         'intensity_gate': int(gate.sum()) if gate is not None else None},
                'seeds': {'passable': n_seed_hit, 'total': n_seed},
                'review_png_bytes': sizes}
     (args.out_dir / 'summary.json').write_text(json.dumps(summary, indent=2, ensure_ascii=False))
