@@ -27,7 +27,8 @@ Layers (per ADR-0007 §Demo-scope reduction):
      the "obstacle on path" condition drops entirely. Layer D provides
      the stop-for-obstacle behaviour independently of Nav2 planning.
      See ADR-0007 §Layer D for the geometry rationale.
-     D:scan_silent (Issue #193, parameter scan_silent_sec, default 0.5):
+     D:scan_silent (Issue #193, parameter scan_silent_sec, default 0.0 =
+     off, recommended 0.5 = SCAN_SILENT_S_RECOMMENDED):
      /scan silent for scan_silent_sec after its first message. Without
      it a dead LiDAR / driver / pointcloud_to_laserscan froze Layer D at
      its last decision and the chair kept moving. Releases after scans
@@ -120,7 +121,11 @@ STARTUP_GRACE_S_DEFAULT = 0.0
 LAYER_A_HOLD_S = 1.0
 PUBLISH_HZ = 20.0
 # Issue #193: Layer D の /scan 途絶監視（D:scan_silent）。
-# 0.5 s の判断理由:
+# 既定は 0.0（無効）。failsafe / twist_mux の既定は、ユーザーが実機で確かめる
+# まで変えない方針（#159 の startup_grace_sec 0.0、#161 の救援 false と同じ）。
+# #156 の実機確認（通常の起動で D:scan_silent が出ない、pointcloud_to_laserscan
+# を止めると約 0.5 s で止まる）の後に、既定を推奨値 0.5 にする。
+# 推奨値 0.5 s の判断理由:
 #  - /scan は 10 Hz。2026-07-22〜31 の走行 bag 11 本（/scan 21,206 通）の
 #    記録時刻の間隔は中央値 0.101 s、最大 0.213 s（/velodyne_points も同時に
 #    約 40 s 途切れた 2 か所を除く。これは LiDAR 側か記録側の途絶で、止まるのが
@@ -130,10 +135,11 @@ PUBLISH_HZ = 20.0
 #    に D:scan_silent が入れ替わりで作動し、停止が途切れない（判定は >=）。
 #  - 0.3 m/s で 0.5 s + 1 tick は約 0.17 m。Layer D の扇形の手前端 1.0 m より
 #    十分短い。
-# 0.0 で無効（#193 以前の動作）。上流（Patchwork++、LiDAR）ごと止まった場合は
+# 0.0 で無効（#193 以前の動作、現在の既定）。上流（Patchwork++、LiDAR）ごと止まった場合は
 # C:perception_silent（2 s）も作動するので、これが効くのは
 # pointcloud_to_laserscan だけが止まった場合と、途絶から 2 s までの間。
-SCAN_SILENT_S_DEFAULT = 0.5
+SCAN_SILENT_S_RECOMMENDED = 0.5
+SCAN_SILENT_S_DEFAULT = 0.0
 # 解除のヒステリシス。受信が戻ってからこの時間、途絶が再発しなければ解く。
 # Layer D の解除（5 連続の空き scan）と同じ考え方で、断続的に届く /scan
 # （例: 0.6 s おき）で作動と解除を繰り返さないようにする。

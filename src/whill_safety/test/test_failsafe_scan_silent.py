@@ -3,9 +3,11 @@
 
 Before #193, once /scan had arrived, a later outage (LiDAR unplugged,
 velodyne_driver or pointcloud_to_laserscan dead) left Layer D at its last
-decision and the chair kept moving. scan_silent_sec (default 0.5) makes the
+decision and the chair kept moving. scan_silent_sec makes the
 silence an active layer of its own, released after scans have been back for
-SCAN_SILENT_RELEASE_S.
+SCAN_SILENT_RELEASE_S. The default is 0.0 (off) until the #156 field check;
+the recommended value is SCAN_SILENT_S_RECOMMENDED (0.5), which the fixture
+sets unless a test asks for the shipped default.
 
 What the tests pin, besides stop / release:
 - before the first /scan the monitor is inert, so the startup sequence (Nav2
@@ -24,7 +26,8 @@ from sensor_msgs.msg import LaserScan
 
 from whill_safety.failsafe_node import (
     FORWARD_CLEAR_HYSTERESIS_S, PUBLISH_HZ, SCAN_SILENT_RELEASE_S,
-    SCAN_SILENT_S_DEFAULT, FailsafeNode, silence_step)
+    SCAN_SILENT_S_DEFAULT, SCAN_SILENT_S_RECOMMENDED, FailsafeNode,
+    silence_step)
 
 T0 = 1000.0
 TICK = 1.0 / PUBLISH_HZ
@@ -62,7 +65,9 @@ class _Clock:
 def make_node(monkeypatch):
     made = []
 
-    def _make(t0=T0, **params):
+    def _make(t0=T0, shipped_default=False, **params):
+        if not shipped_default:
+            params.setdefault('scan_silent_sec', SCAN_SILENT_S_RECOMMENDED)
         clock = _Clock(t0)
         monkeypatch.setattr(FailsafeNode, '_now_s', lambda self: clock.t)
         monkeypatch.setattr(FailsafeNode, '_steady_s', lambda self: clock.t)
@@ -128,10 +133,20 @@ def test_helper_clock_step_back_does_not_hold_forever():
     assert silence_step(5.0, 4.95, 0.5, 0.5, True, 100.0) == (True, 5.0)
 
 
-def test_default_is_on_and_matches_layer_d_hysteresis():
-    assert SCAN_SILENT_S_DEFAULT == 0.5
-    assert SCAN_SILENT_S_DEFAULT == FORWARD_CLEAR_HYSTERESIS_S
+def test_default_is_off_and_recommended_matches_layer_d_hysteresis():
+    # Failsafe defaults stay unchanged until the user checks on the robot.
+    assert SCAN_SILENT_S_DEFAULT == 0.0
+    assert SCAN_SILENT_S_RECOMMENDED == 0.5
+    assert SCAN_SILENT_S_RECOMMENDED == FORWARD_CLEAR_HYSTERESIS_S
     assert SCAN_SILENT_RELEASE_S == FORWARD_CLEAR_HYSTERESIS_S
+
+
+def test_shipped_default_does_not_stop_on_silence(make_node):
+    node, clock, pub = make_node(shipped_default=True)
+    _run(node, clock, T0, T0 + 1.0)
+    seen = _run(node, clock, clock.t, clock.t + 30.0, scans=False)
+    assert all(a == () for a in seen)
+    assert pub.take() == []
 
 
 # --- node ----------------------------------------------------------------
@@ -151,10 +166,10 @@ def test_silence_stops_and_resume_releases(make_node):
     seen = _run(node, clock, clock.t, clock.t + 2.0, scans=False)
     # Not yet before 0.5 s, active from 0.5 s on, and zero on every tick.
     fire = [i for i, a in enumerate(seen) if SILENT in a][0]
-    assert (fire + 1) * TICK == pytest.approx(SCAN_SILENT_S_DEFAULT)
+    assert (fire + 1) * TICK == pytest.approx(SCAN_SILENT_S_RECOMMENDED)
     assert all(SILENT in a for a in seen[fire:])
     assert pub.take() == [(0.0, 0.0)] * (len(seen) - fire)
-    assert last_scan + SCAN_SILENT_S_DEFAULT <= T0 + 4.0
+    assert last_scan + SCAN_SILENT_S_RECOMMENDED <= T0 + 4.0
 
     # Scans back: still stopped for the release hysteresis, then silent.
     seen = _run(node, clock, clock.t, clock.t + 2.0)
@@ -192,8 +207,8 @@ def test_forward_blocked_hands_over_without_a_gap(make_node):
 
 
 def test_startup_before_first_scan_is_unaffected(make_node):
-    # Nav2 (the /scan source) starts after m6r_bringup: with the default
-    # (startup grace off) nothing stops before the first /scan.
+    # Nav2 (the /scan source) starts after m6r_bringup: with the monitor on
+    # (0.5) and the startup grace off, nothing stops before the first /scan.
     node, clock, pub = make_node()
     seen = _run(node, clock, T0, T0 + 60.0, scans=False)
     assert all(a == () for a in seen)

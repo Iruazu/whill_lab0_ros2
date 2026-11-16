@@ -49,12 +49,14 @@ def generate_launch_description():
                         'the user approves the change.'),
         DeclareLaunchArgument(
             'failsafe_scan_silent_sec',
-            default_value='0.5',
+            default_value='0.0',
             description='failsafe_node scan_silent_sec (Issue #193). After '
                         'the first /scan, /scan silent this long stops the '
                         'chair as D:scan_silent until scans are back for '
-                        '0.5 s. 0.0 disables it (pre-#193: a dead /scan '
-                        'froze Layer D at its last decision).'),
+                        '0.5 s. 0.0 (default) disables it (pre-#193: a dead '
+                        '/scan froze Layer D at its last decision). '
+                        'Recommended 0.5; default stays off until the #156 '
+                        'field check.'),
 
         Node(
             package='whill_safety',

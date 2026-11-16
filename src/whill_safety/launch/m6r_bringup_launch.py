@@ -304,10 +304,11 @@ def generate_launch_description():
                         'stop the chair after this many seconds.'),
         DeclareLaunchArgument(
             'failsafe_scan_silent_sec',
-            default_value='0.5',
+            default_value='0.0',
             description='Forwarded to safety_launch (Issue #193). /scan '
                         'silent this long after its first message stops '
-                        'the chair (D:scan_silent); 0.0 disables it.'),
+                        'the chair (D:scan_silent); 0.0 (default) disables '
+                        'it. Recommended 0.5 after the #156 field check.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(

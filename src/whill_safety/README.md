@@ -21,27 +21,29 @@ localizerの受理閾値 `score_threshold: 6.0` と、failsafeのfitness閾値1.
 | A | `/reinitialization_requested` | true受信後1秒保持 |
 | B | `/alignment_status`, `/pcl_pose` | fitness>1.0または非収束が2秒継続、pose受信後の途絶>1秒 |
 | C | `/velodyne_points_no_ground` | 初回受信後の途絶>2秒 |
-| D | `/scan` | 前方±30°、1〜2mの有限点が1点以上。最後の検知から0.5秒保持。初回受信後の途絶≥0.5秒（`D:scan_silent`、#193） |
+| D | `/scan` | 前方±30°、1〜2mの有限点が1点以上。最後の検知から0.5秒保持。初回受信後の途絶≥`scan_silent_sec`（`D:scan_silent`、#193、既定は無効、推奨0.5秒） |
 
 Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始10秒後に未受信入力をエラー通知するが、ログを出すだけで起動禁止を保証するものではない。pose / perception / scan の途絶監視は初回受信で開始する。
 
-### 初回受信後の `/scan` 途絶（#193、既定は有効）
+### 初回受信後の `/scan` 途絶（#193、既定は無効、推奨値 0.5 秒）
 
-#193 より前は、`/scan` が一度届いた後に止まると（LiDARの抜け、velodyne_driver や pointcloud_to_laserscan の停止）、Layer D は最後の判定のまま残り、車体は止まらなかった。パラメータ `scan_silent_sec`（launch引数 `failsafe_scan_silent_sec`、`m6r_bringup_launch.py` と `safety_launch.py` にある、既定 `0.5`）を超えて `/scan` が届かないと `D:scan_silent` が作動し、他の層と同じくゼロを20Hzで出す。受信が戻ってから0.5秒（Layer D の解除と同じ値）途絶が再発しなければ解く。0.6秒おきのような断続的な受信では解けない。`0.0` で無効（#193 以前の動作）。負の値やNaNは起動時に拒否する（`startup_grace_sec` と同じ）。
+#193 より前は、`/scan` が一度届いた後に止まると（LiDARの抜け、velodyne_driver や pointcloud_to_laserscan の停止）、Layer D は最後の判定のまま残り、車体は止まらなかった。パラメータ `scan_silent_sec`（launch引数 `failsafe_scan_silent_sec`、`m6r_bringup_launch.py` と `safety_launch.py` にある、既定 `0.0`＝無効、推奨値 `0.5`）を超えて `/scan` が届かないと `D:scan_silent` が作動し、他の層と同じくゼロを20Hzで出す。受信が戻ってから0.5秒（Layer D の解除と同じ値）途絶が再発しなければ解く。0.6秒おきのような断続的な受信では解けない。`0.0` で無効（#193 以前の動作）。負の値やNaNは起動時に拒否する（`startup_grace_sec` と同じ）。
 
-0.5秒の理由：
+推奨値 0.5 秒の根拠：
 
 - `/scan` は10Hz。2026-07-22〜31 の走行 bag 11本（`/scan` 21,206通）の記録時刻の間隔は中央値0.101秒、最大0.213秒。例外は `/velodyne_points` も同時に約40秒途切れた2か所で、LiDAR側か記録側の途絶なので止まるのが正しい。0.5秒は4 scan 連続の欠落で、計測した最大の2倍以上の余裕がある
 - Layer D の保持0.5秒と同じ値にすると、最後の scan で前方が塞がっていた場合でも、`D:forward_blocked` が解ける時刻に `D:scan_silent` が作動し、停止が途切れない（判定は `>=`）
 - 0.3m/sで0.5秒と1 tick は約0.17m。扇形の手前端1.0mより短い
 
-既定を有効にした理由（failsafe の変更なので、PR のマージがユーザーの承認になる）：
+既定を無効（`0.0`）にしている理由：failsafe / twist_mux の既定は、ユーザーが実機で確かめるまで変えない（#159 の `startup_grace_sec` 0.0、#161 の救援 false と同じ扱い）。**#156 の実機確認（通常の起動で `D:scan_silent` が出ない、走行中に pointcloud_to_laserscan を止めると約0.5秒以内に止まり、再起動で解ける）の後に、既定を 0.5 にする。** それまで使うときは `failsafe_scan_silent_sec:=0.5` を渡す。
+
+0.5 で有効にしても誤停止しないと見込む理由：
 
 - 起動の手順では作動しえない。最初の `/scan` までは何もしない（`m6r_bringup` が Nav2 より先に起動しても止まらない）。最初の `/scan` より前は #159 の `D:scan_never_arrived`（`startup_grace_sec > 0` のときだけ）の担当で、両方が同時に出ることはない。`use_sim_time` で `/clock` より前に届いた scan（時刻0）は途絶の基準にしない
 - 新しい停止の場面はほぼ増えない。`/scan` は `/velodyne_points_no_ground` から作るので、Nav2（nav_launch）の停止・再起動や LiDAR の停止では、既存の `C:perception_silent`（2秒）がもともと止める。増えるのは pointcloud_to_laserscan だけが止まった場合と、途絶から2秒までの間
-- 単体テスト（`test/test_failsafe_scan_silent.py`）と、基準 bag の再生（`scripts/regression/replay_check.py --only failsafe`）で確かめた。結果は ADR-0007 の 2026-11-16 追記
+- 単体テスト（`test/test_failsafe_scan_silent.py`）と、0.5 にした failsafe での基準 bag の再生（`scripts/regression/replay_check.py --only failsafe`、843秒）で確かめた。再生の誤停止は0回（`D:scan_silent` 0回、作動41回・33.48秒・走行中0回で基準内）。詳細は ADR-0007 の 2026-11-16 追記
 
-実機の通常起動で誤停止しないことは未確認（#156 の機会に確かめる）。止まる場合は `failsafe_scan_silent_sec:=0.0` で従来の動作に戻せる。
+実機の通常起動で誤停止しないことは未確認（#156 の機会に確かめる）。
 
 救援（#161）との関係：救援の中継は `D:forward_blocked` が単独のときだけなので、`D:scan_silent` の作動中は中継せずゼロを出す。`/scan` が無いと、後退や回転の先を Layer D が見ていないため。
 
