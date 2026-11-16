@@ -1,0 +1,300 @@
+{
+  "params": {
+    "pcd": "docs/maps/campus-m8/static.pcd",
+    "ground_npz": "~/bags/m8-experiments/202c/ground_raster.npz",
+    "traj": "docs/maps/campus-m8/traj_lidar.txt",
+    "layers_yaml": "docs/maps/campus-m8/v2/v2_layers.yaml",
+    "hand_mask": "docs/maps/campus-m8/v2/candidates/candidate_roadway_mask.png",
+    "waypoints": "docs/maps/campus-m8/waypoints.yaml",
+    "out_dir": "docs/maps/campus-m8/v2/experiments/202c/intensity_gate/mp10_tuned_i20",
+    "work_dir": "~/bags/m8-experiments/202c/intensity_gate/mp10_tuned_i20",
+    "resolution": null,
+    "chunk_points": 2000000,
+    "local_min_radius": 0.5,
+    "ground_band": 0.5,
+    "ground_percentile": 5.0,
+    "min_points": 10,
+    "hole_fill": 0.3,
+    "smooth_ksize": 5,
+    "window": 0.5,
+    "curb_dz_min": 0.05,
+    "curb_dz_max": 0.25,
+    "trend_window": 0.8,
+    "trend_dz_min": 0.03,
+    "curb_slope_min": 0.4,
+    "block_high_steps": true,
+    "barrier_dilate": 0.05,
+    "intensity_npz": "~/bags/m8-experiments/202c/ground_raster.npz",
+    "max_intensity": 20.0,
+    "intensity_min_count": 3,
+    "intensity_smooth": 5,
+    "intensity_open": 0.2,
+    "traj_stride": 1.0,
+    "seed_snap": 1.0,
+    "max_dist": 8.0,
+    "gap_radius": 0.25,
+    "close_radius": 0.6,
+    "open_radius": 0.2,
+    "fill_holes_area": 2.0,
+    "compose": true,
+    "hand_free_mask": "docs/maps/campus-m8/v2/candidates/candidate_free_merged.png",
+    "hand_roadway_merged": "docs/maps/campus-m8/v2/candidates/candidate_roadway_merged.png",
+    "keepout_mask": "docs/maps/campus-m8/v2/candidates/candidate_keepout_mask.png",
+    "pcd_resolved": "~/bags/m8-experiments/202c/ground_raster.npz"
+  },
+  "metrics": {
+    "whole": {
+      "auto_cells": 2794609,
+      "hand_cells": 1793532,
+      "both_cells": 1563952,
+      "iou": 0.5171,
+      "precision": 0.5596,
+      "recall": 0.872,
+      "recall_near_traj": 0.954,
+      "hand_cells_near_traj": 1639378
+    },
+    "start_road": {
+      "auto_cells": 228390,
+      "hand_cells": 137608,
+      "both_cells": 132327,
+      "iou": 0.5663,
+      "precision": 0.5794,
+      "recall": 0.9616,
+      "box_xy": [
+        -10.0,
+        70.0,
+        -15.0,
+        15.0
+      ]
+    },
+    "seimon": {
+      "auto_cells": 70128,
+      "hand_cells": 28777,
+      "both_cells": 28777,
+      "iou": 0.4103,
+      "precision": 0.4103,
+      "recall": 1.0,
+      "box_xy": [
+        -100.0,
+        -75.0,
+        -20.0,
+        5.0
+      ]
+    },
+    "north_road": {
+      "auto_cells": 433644,
+      "hand_cells": 303473,
+      "both_cells": 279410,
+      "iou": 0.6105,
+      "precision": 0.6443,
+      "recall": 0.9207,
+      "box_xy": [
+        -125.0,
+        75.0,
+        145.0,
+        175.0
+      ]
+    }
+  },
+  "routes": {
+    "A_auto": {
+      "map": "~/bags/m8-experiments/202c/intensity_gate/mp10_tuned_i20/A_auto/final.yaml",
+      "radius_m": 0.35,
+      "free_cells": 2761556,
+      "eroded_free_components": 51,
+      "waypoints": [
+        {
+          "name": "kounoken",
+          "pixel": [
+            2564,
+            4486
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg7",
+          "pixel": [
+            1796,
+            4494
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "seimon",
+          "pixel": [
+            809,
+            4636
+          ],
+          "value": 254,
+          "free": true,
+          "component": 0,
+          "snap_m": null
+        },
+        {
+          "name": "bldg3",
+          "pixel": [
+            3920,
+            4442
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        }
+      ],
+      "all_connected": false,
+      "occ_free_unknown_pct": [
+        0.94,
+        6.61,
+        92.45
+      ]
+    },
+    "B_auto_handfree": {
+      "map": "~/bags/m8-experiments/202c/intensity_gate/mp10_tuned_i20/B_auto_handfree/final.yaml",
+      "radius_m": 0.35,
+      "free_cells": 2766682,
+      "eroded_free_components": 45,
+      "waypoints": [
+        {
+          "name": "kounoken",
+          "pixel": [
+            2564,
+            4486
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg7",
+          "pixel": [
+            1796,
+            4494
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "seimon",
+          "pixel": [
+            809,
+            4636
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg3",
+          "pixel": [
+            3920,
+            4442
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        }
+      ],
+      "all_connected": true,
+      "occ_free_unknown_pct": [
+        0.94,
+        6.62,
+        92.44
+      ]
+    },
+    "C_union_handfree": {
+      "map": "~/bags/m8-experiments/202c/intensity_gate/mp10_tuned_i20/C_union_handfree/final.yaml",
+      "radius_m": 0.35,
+      "free_cells": 2940318,
+      "eroded_free_components": 44,
+      "waypoints": [
+        {
+          "name": "kounoken",
+          "pixel": [
+            2564,
+            4486
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg7",
+          "pixel": [
+            1796,
+            4494
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "seimon",
+          "pixel": [
+            809,
+            4636
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        },
+        {
+          "name": "bldg3",
+          "pixel": [
+            3920,
+            4442
+          ],
+          "value": 254,
+          "free": true,
+          "component": 1,
+          "snap_m": 0.0
+        }
+      ],
+      "all_connected": true,
+      "occ_free_unknown_pct": [
+        0.93,
+        7.03,
+        92.03
+      ]
+    }
+  },
+  "timing": {
+    "ground_s": 3.8,
+    "curb_s": 1.8,
+    "grow_s": 6.0,
+    "compose_s": 23.3,
+    "total_s": 42.5
+  },
+  "cells": {
+    "seen": 4609044,
+    "known": 8281695,
+    "curb": 309226,
+    "high_step": 301891,
+    "structure": 401771,
+    "roadway_auto": 2794609,
+    "intensity_gate": 3761804
+  },
+  "seeds": {
+    "passable": 1247,
+    "total": 1252
+  },
+  "review_png_bytes": {
+    "curbs_over_maxheight_q.png": 1377728,
+    "roadway_auto_vs_hand_q.png": 747321,
+    "start_crop_1to1.png": 589074
+  }
+}

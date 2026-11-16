@@ -261,3 +261,24 @@ def test_roadway_reads_dense_npz(tmp_path):
     a.ground_percentile = 10.0
     with pytest.raises(SystemExit):
         ground_raster_from_npz(path, H, W, 0.05, 0.0, 0.0, a)
+
+
+def test_intensity_gate_blocks_lawn_not_lines_or_unknown(tmp_path):
+    # map_roadway_from_curbs --intensity-npz：芝（強度 30 の面）は壁、舗装の上の白線
+    # （幅 3 セル = 0.15 m、強度 80）は opening で壁から外れ、強度の分からない所は壁にしない。
+    from map_roadway_from_curbs import intensity_gate, parse_args
+    H, W = 60, 60
+    inten = np.full((H, W), 10.0, np.float32)
+    inten[:, 40:] = 30.0                 # 芝
+    inten[20:23, :40] = 80.0             # 白線（道を横切る）
+    cnt = np.full((H, W), 20, np.uint32)
+    inten[50:, :20] = np.nan             # 見ていない所
+    cnt[50:, :20] = 0
+    path = tmp_path / 'i.npz'
+    np.savez(path, intensity_mean=inten, intensity_count=cnt)
+    a = parse_args(['--max-intensity', '20'])
+    gate, smooth = intensity_gate(path, H, W, 0.05, a)
+    assert gate[10:50, 45:].all()                 # 芝は壁
+    assert not gate[15:28, 5:35].any()            # 白線は壁にならない
+    assert not gate[52:, :15].any()               # 見ていない所は壁にしない
+    assert np.isnan(smooth[55, 5])
