@@ -75,6 +75,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `map_transfer_masks.py` | 旧地図の手塗り（マスクと final.pgm への直接の塗り）を、作り直した地図の格子へ写した候補を作る。確定はしない |
 | `map_route_check.py` | 配車地点が FREE にあり、車体の幅でつながるかを確かめる（Nav2 は動かさない） |
 | `map_roadway_from_curbs.py` | static.pcd の地面の高さから縁石を抽出し、軌跡から領域成長して走行可能域（roadway）を自動で作る試作（#202）。手塗りの候補との IoU と、`--compose` で合成と配車4地点の確認まで行う。出力は `docs/maps/<site>/v2/experiments/202/`（大きい物は `~/bags/m8-experiments/202/`）。既定の地図は変えない |
+| `map_georef_gsi.py` | 国土地理院の地理院タイル（写真 z18、ベクトル z16）を取得し（`fetch`）、構造物層を GSI の建物に合わせて map → 平面直角座標系第IX系・緯度経度の変換を求め（`align`、`docs/maps/campus-m8/georef.yaml`）、写真の重ね絵と GSI の道路の面に対する IoU を出す（`report`）（#205、[説明](maps/campus-m8/reference-gsi.md)）。タイルは `~/bags/m8-experiments/205/raw/`。既定の地図は変えない |
 | `audit_free_leaks.py` | free領域の漏れ解析 |
 | `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |

@@ -1,0 +1,59 @@
+# 自動生成：scripts/map_georef_gsi.py align。手で直さない
+description: campus-m8 の map 座標を国土地理院の建物（電子国土基本図、地理院ベクトル z16）に合わせた剛体変換（#205）。GNSS
+  による測量ではない。docs/maps/campus-m8/reference-gsi.md
+map_grid: docs/maps/campus-m8/v2/v2_layers.yaml
+target_crs: EPSG:6677（JGD2011 平面直角座標系 第IX系）。EPSG の軸順は X=北, Y=東 なので、ここでは easting /
+  northing と書く（easting = EPSG の Y、northing = X）
+transform_map_to_epsg6677:
+  model: easting = cos(yaw)*x - sin(yaw)*y + tE ; northing = sin(yaw)*x + cos(yaw)*y
+    + tN（縮尺 1 に固定）
+  yaw_deg: -95.1497
+  tE_m: 8521.702
+  tN_m: 61107.302
+  matrix_3x3:
+  - - -0.08975907
+    - 0.995963508
+    - 8521.702
+  - - -0.995963508
+    - -0.08975907
+    - 61107.3022
+  - - 0.0
+    - 0.0
+    - 1.0
+  scale_if_free: 0.999551
+map_origin:
+  easting_m: 8521.702
+  northing_m: 61107.302
+  lat_deg: 36.55071134
+  lon_deg: 139.92852267
+  note: 緯度経度は JGD2011。WGS84 との差は数 cm〜数十 cm 程度で、この変換の不確かさより小さい
+map_x_axis_heading_deg:
+  from_grid_north_cw: 185.15
+  from_true_north_cw: 185.206
+  meridian_convergence_deg: 0.0567
+residual:
+  what: 軌跡から 25.0 m 以内にある GSI の建物の輪郭（0.1 m おきの点）から、構造物層（occupied_structure.png）の最も近いセルまでの距離
+  median_m: 0.186
+  frac_within_0p75m: 0.871
+  frac_within_1p5m: 0.945
+  inlier_median_m: 0.172
+  inlier_p90_m: 0.66
+  n_points: 27090
+uncertainty_1sigma_bootstrap_by_building:
+  n: 20
+  yaw_deg: 0.0273
+  origin_easting_m: 0.06
+  origin_northing_m: 0.062
+  note: GSI の建物の位置そのものの誤差（地図情報レベル 2500：水平位置の標準偏差 1.75 m 以内）はブートストラップに入らない。建物ごとに独立なら平均で小さくなるが、図化の系統誤差は残りうる
+ambiguity:
+  second_yaw_deg: 50.73
+  second_frac_within_0p75m: 0.709
+  best_frac_within_0p75m: 0.871
+sanity_check:
+  init_wgs84_user_google_maps:
+  - 36.550694
+  - 139.928528
+  origin_minus_init_m: 1.98
+method: 粗い探索（yaw 全周 × FFT 相関、GSI の輪郭→構造物の近さの比）→ 精密化（打ち切り 3/1.5/0.75 m の 最小二乗、soft_l1）。評価は軌跡から
+  cover_m 以内の GSI の輪郭だけ
+source: 国土地理院 地理院ベクトル（提供実験）experimental_bvmap z16 の building。出典：国土地理院ウェブサイト（https://maps.gsi.go.jp/development/vt_expt.html）を加工して作成
