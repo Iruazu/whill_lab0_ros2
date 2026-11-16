@@ -16,6 +16,7 @@
 | [M8 ロードマップ](plans/2026-10-30-roadmap-m8.md) | 課題の順番。課題の正本は GitHub Issues |
 | [地図一覧](maps/README.md) | 地図成果物の規約 |
 | [校正台帳](calibration-ledger.md) | 車体とセンサの実測値の正本（値・測定方法・状態・反映先） |
+| [低い物の死角](perception-blind-zone.md) | LiDAR と深度で見えない低い物の範囲（比較実験の前提）と扱いの提案 |
 | [設計判断](decisions/README.md) | ADR |
 
 ## パッケージ
