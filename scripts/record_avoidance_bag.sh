@@ -179,7 +179,10 @@ CMD=(ros2 bag record -s mcap --include-hidden-topics -o "$OUT" "${TOPICS[@]}")
 if [[ -n "$DURATION" ]]; then
     # SIGINT で止めると rosbag2 がキャッシュを書き切ってから終了する。書き切れずに
     # 固まったときだけ 10 秒後に KILL する（端末が戻らないまま現地で待たないため）。
-    timeout -s INT -k 10 "$DURATION" "${CMD[@]}" || true
+    # --foreground が無いと timeout は子を背景のプロセスグループに置き、ros2 bag record が
+    # 端末を読もうとして SIGTTIN で止まる（2026-11-16 現地で bag が 1 バイトも書かれなかった）。
+    # stdin も /dev/null にしてキー入力の監視を切る。
+    timeout --foreground -s INT -k 10 "$DURATION" "${CMD[@]}" </dev/null || true
 else
     "${CMD[@]}" || true
 fi
