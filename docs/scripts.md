@@ -80,7 +80,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
 | `demo_regression.sh` | マージ前のデモ回帰チェック（[手順](regression-check.md)）。実機不要 |
-| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節） |
+| `regression/` | 回帰チェックの基準と bag 再生の検査。`ndt_replay_compare.py` は地図・LiDAR の TF・点群を選んで NDT の当てはまりを測る（[campus-m8](maps/campus-m8/README.md) の 4 節）。`patchwork_height_compare.py` は Patchwork++ の設定値違いを同じフレームで比べる（[whill_perception](../src/whill_perception/README.md)） |
 | `run_tests.sh` | 自作パッケージと `scripts/tests` のテストを1コマンドで回す（実機不要） |
 | `tests/test_step_accessible.py` | 段差処理のテスト |
 | `tests/test_check_object_placement.py` | `check_object_placement.py` の計算（校正表の判定・投影し直し・物の誤差・床の勾配）と、TF の既定値が launch・台帳と一致することのテスト（ROS 不要。ROS があれば bag の補正ツールとの一致も確かめる） |
