@@ -1,0 +1,9 @@
+bag,object,x_m,height_m,shape,expect,y_m,half_width_m
+empty_start_140915,empty,,,,,,
+cone_1p5_141326,cone,1.5,0.725,cone,,,
+cone_2p_141506,cone,2.0,0.725,cone,,,
+cone_2p5_141549,cone,2.5,0.725,cone,,,
+cone_3p_141709,cone,3.0,0.725,cone,,,
+cone_3p5_141752,cone,3.5,0.725,cone,,,
+cone_4p_141838,cone,4.0,0.725,cone,,,
+cone_5p_141921,cone,5.0,0.725,cone,,,
