@@ -55,6 +55,11 @@ def parse_args(argv=None):
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--pcd', type=pathlib.Path, default=D / 'static.pcd',
                    help='正本の static.pcd（読むだけ）。worktree には無いので、無ければ main 側を探す。')
+    p.add_argument('--ground-npz', type=pathlib.Path, default=None,
+                   help='PCD の代わりに、map_ground_raster_from_bag.py の ground_raster.npz（bag の'
+                        'スキャンを軌跡で重ねた密な地面の面）を使う。下位百分位（z_p）と、セルの最小から'
+                        '度数分布の範囲内の点数（count_low）をそのまま使い、局所最小からの帯（--ground-band）'
+                        'は z_p で判定する。格子と百分位が v2_layers.yaml・--ground-percentile と同じことを確かめる。')
     p.add_argument('--traj', type=pathlib.Path, default=D / 'traj_lidar.txt')
     p.add_argument('--layers-yaml', type=pathlib.Path, default=D / 'v2/v2_layers.yaml',
                    help='格子（origin・解像度・大きさ）と構造物層・下絵の場所。')
@@ -306,6 +311,32 @@ def ground_raster(pts, H, W, res, ox, oy, args):
     return ground.reshape(H, W), count.reshape(H, W), n_in
 
 
+def ground_raster_from_npz(path, H, W, res, ox, oy, args):
+    """密な地面の面（npz）から、ground_raster() と同じ形の (ground, count, n_in) を作る。
+
+    npz の z_p はセルの全点での下位百分位で、PCD の経路（局所最小から --ground-band 以内の点だけの
+    百分位）とは母集団が違う。密な面では地面の点が多く、植栽・壁の点が混ざっても下位 5%% は
+    ほぼ地面に残るので、帯は点ではなくセルの値（z_p）に掛ける：z_p が局所最小（z_min の円板の収縮）
+    から --ground-band より高いセルは、地面が見えていないとみなす（建物の中・生垣の上など）。
+    """
+    with np.load(path) as f:
+        meta = json.loads(str(f['meta']))
+        zp, zmin, cnt = f['z_p'], f['z_min'], f['count_low']
+    if (meta['width'], meta['height']) != (W, H) or abs(meta['resolution'] - res) > 1e-9 \
+            or np.abs(np.array(meta['origin'][:2]) - [ox, oy]).max() > 1e-9:
+        raise SystemExit(f'{path}: 格子 {meta} が v2_layers.yaml と違う')
+    if abs(meta['percentile'] - args.ground_percentile) > 1e-9:
+        raise SystemExit(f'{path}: 百分位 {meta["percentile"]} が --ground-percentile '
+                         f'{args.ground_percentile} と違う（npz を作り直す）')
+    rr = max(1, int(round(args.local_min_radius / res)))
+    local_min = cv2.erode(np.where(np.isfinite(zmin), zmin, np.inf).astype(np.float32), disk(rr),
+                          borderType=cv2.BORDER_CONSTANT, borderValue=float(np.inf))
+    ok = np.isfinite(zp) & (zp <= local_min + args.ground_band)
+    ground = np.where(ok, zp, np.nan).astype(np.float32)
+    count = np.where(ok, np.minimum(cnt, 65535), 0).astype(np.uint16)
+    return ground, count, int(cnt[ok].sum())
+
+
 def fill_and_smooth(ground, count, res, args):
     """点の少ないセルを近い値で埋め、中央値で平滑化する。
 
@@ -555,11 +586,16 @@ def main(argv=None):
     args.work_dir.mkdir(parents=True, exist_ok=True)
     timing = {}
 
-    pcd_path = resolve_pcd(args.pcd)
-    pts = open_pcd_xyz(pcd_path)
-    print(f'[1] 地面の面: {pcd_path}（{len(pts):,} 点）')
-    ground, count, n_band = ground_raster(pts, H, W, res, ox, oy, args)
-    del pts
+    if args.ground_npz is not None:
+        pcd_path = args.ground_npz
+        print(f'[1] 地面の面: {pcd_path}（密な面の npz）')
+        ground, count, n_band = ground_raster_from_npz(pcd_path, H, W, res, ox, oy, args)
+    else:
+        pcd_path = resolve_pcd(args.pcd)
+        pts = open_pcd_xyz(pcd_path)
+        print(f'[1] 地面の面: {pcd_path}（{len(pts):,} 点）')
+        ground, count, n_band = ground_raster(pts, H, W, res, ox, oy, args)
+        del pts
     smooth, seen, known = fill_and_smooth(ground, count, res, args)
     del ground
     timing['ground_s'] = round(time.time() - t0, 1)
@@ -646,7 +682,7 @@ def main(argv=None):
 
     timing['total_s'] = round(time.time() - t0, 1)
     params = {k: (short(v) if isinstance(v, pathlib.Path) else v) for k, v in vars(args).items()}
-    params['pcd_resolved'] = short(pcd_path)
+    params['pcd_resolved'] = short(pcd_path)   # --ground-npz のときはその npz
     for v in routes.values():
         v['map'] = short(pathlib.Path(v['map']))
     summary = {'params': params, 'metrics': metrics, 'routes': routes, 'timing': timing,
