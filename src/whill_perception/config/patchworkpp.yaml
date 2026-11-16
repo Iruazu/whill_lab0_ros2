@@ -5,10 +5,17 @@
 # patchworkpp.h — only the fields that must diverge from those defaults
 # for the WHILL / VLP-16 / campus deployment are listed here.
 #
-# sensor_height (0.79 m) comes from the M4-R static TF measurement
-# (base_link → velodyne z-translation, whill_sensors_bringup PR #61
-# with the PR #74 pitch correction). If the LiDAR mount is redone the
-# calibration ledger updates and this value must move with it.
+# sensor_height（0.771 m）の出典は docs/calibration-ledger.md §2.1 の
+# base_link→velodyne z（2026-11-13 テープ固定後の屋内静止確認 C、2026-11-16 の
+# 屋外静止確認 D で許容内）。値を 1 か所に揃えるため、LiDAR の取り付けを直して
+# 台帳が変わったらここも同時に変える（旧値 0.79 は M4-R の静止 TF 由来、#192）。
+# 無人の値である。人が座ると車体が沈み、床に対する pitch が約 −0.75° 変わる
+# （台帳 §2.1 B、1 回のみの測定）。前方の床の見かけの高さが 1 m 先ごとに約 1.3 cm
+# 変わる（tan 0.75° ≈ 0.013）。Patchwork++ のコアは sensor_height を最内 zone の
+# seed の下限（−1.2 × h）と RNR の下限（−h − 0.8 m）にだけ使い、毎フレーム床の推定で
+# 書き換える（update_elevation_thr）。0.79 → 0.771 は bag の再生で出力が 1 点も
+# 変わらなかった（scripts/regression/patchwork_height_compare.py、README の検証）。
+# 着座の沈みも同じ理由で吸収される見込みだが、着座の bag での確認はまだ無い（台帳 §6）。
 #
 # max_range = 25.0 m matches the pointcloud_to_laserscan / obstacle_layer
 # raytrace_max_range in whill_navigation/config/nav2_params.yaml so a
@@ -22,7 +29,7 @@
     verbose:        false
 
     # Sensor geometry.
-    sensor_height:  0.79
+    sensor_height:  0.771   # 台帳 §2.1 z。上の注記を参照
     min_range:      1.0     # WHILL body self-return standoff (~0.5 m from LiDAR)
     max_range:      25.0
 
