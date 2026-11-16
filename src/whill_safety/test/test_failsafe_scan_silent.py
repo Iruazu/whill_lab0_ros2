@@ -133,6 +133,15 @@ def test_helper_clock_step_back_does_not_hold_forever():
     assert silence_step(5.0, 4.95, 0.5, 0.5, True, 100.0) == (True, 5.0)
 
 
+def test_helper_future_last_time_reads_not_silent():
+    # Why the node clamps: a last_time ahead of now (clock jumped back) is
+    # "not silent" for as long as the jump, i.e. the detection is delayed.
+    assert silence_step(5.0, 100.0, 0.5, 0.5, False, None) == (False, None)
+    # Clamped to now, the usual threshold applies from the jump on.
+    assert silence_step(5.0, 5.0, 0.5, 0.5, False, None) == (False, None)
+    assert silence_step(5.5, 5.0, 0.5, 0.5, False, None) == (True, None)
+
+
 def test_default_is_off_and_recommended_matches_layer_d_hysteresis():
     # Failsafe defaults stay unchanged until the user checks on the robot.
     assert SCAN_SILENT_S_DEFAULT == 0.0
@@ -242,6 +251,54 @@ def test_scan_before_sim_clock_does_not_trip_it(make_node):
     assert all(SILENT not in a for a in seen)
 
 
+def test_clock_jump_back_does_not_delay_detection(make_node):
+    # bag --clock loop / use_sim_time: time goes back 100 s and /scan stays
+    # dead. The stop must come scan_silent_sec after the jump, not 100 s later.
+    node, clock, pub = make_node()
+    _run(node, clock, T0, T0 + 1.0)
+    back = clock.t - 100.0
+    seen = _run(node, clock, back, back + 1.0, scans=False)
+    fire = [i for i, a in enumerate(seen) if SILENT in a][0]
+    assert (fire + 1) * TICK <= SCAN_SILENT_S_RECOMMENDED + TICK + 1e-9
+
+
+class _Log:
+    def __init__(self):
+        self.warns = []
+
+    def info(self, *_a, **_k):
+        pass
+
+    def error(self, *_a, **_k):
+        pass
+
+    def warn(self, msg, **_k):
+        self.warns.append(msg)
+
+
+@pytest.mark.parametrize('rescue,silent,warned', [
+    ('true', '0.0', True),      # rescue without the /scan silence monitor
+    ('true', '0.5', False),
+    ('false', '0.0', False),
+])
+def test_warns_when_rescue_runs_without_the_monitor(
+        make_node, monkeypatch, rescue, silent, warned):
+    log = _Log()
+    monkeypatch.setattr(FailsafeNode, 'get_logger', lambda self: log)
+    make_node(layer_d_rescue_enabled=rescue, scan_silent_sec=silent)
+    assert any('scan_silent_sec is 0.0' in w for w in log.warns) == warned
+
+
+@pytest.mark.parametrize('silent,warned', [
+    ('0.05', True), ('0.1', False), ('0.5', False), ('5.0', False),
+    ('6.0', True), ('0.0', False)])
+def test_warns_outside_the_sane_range(make_node, monkeypatch, silent, warned):
+    log = _Log()
+    monkeypatch.setattr(FailsafeNode, 'get_logger', lambda self: log)
+    make_node(scan_silent_sec=silent)
+    assert any('is outside' in w for w in log.warns) == warned
+
+
 def test_disabled_keeps_the_pre_193_behaviour(make_node):
     node, clock, pub = make_node(scan_silent_sec=0.0)
     _run(node, clock, T0, T0 + 1.0)
@@ -271,7 +328,8 @@ def test_rescue_refused_while_scan_silent(make_node):
     assert set(sent[fire:]) == {(0.0, 0.0)}
 
 
-@pytest.mark.parametrize('bad', ['-0.1', 'nan'])
+# '.nan' is YAML for a float NaN ('nan' would arrive as a string).
+@pytest.mark.parametrize('bad', ['-0.1', '.nan'])
 def test_rejects_invalid_scan_silent(make_node, bad):
     with pytest.raises(ValueError):
         make_node(scan_silent_sec=bad)

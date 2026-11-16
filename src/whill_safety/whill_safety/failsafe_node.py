@@ -32,7 +32,7 @@ Layers (per ADR-0007 §Demo-scope reduction):
      /scan silent for scan_silent_sec after its first message. Without
      it a dead LiDAR / driver / pointcloud_to_laserscan froze Layer D at
      its last decision and the chair kept moving. Releases after scans
-     have been back for FORWARD_CLEAR_HYSTERESIS_S.
+     have been back for SCAN_SILENT_RELEASE_S.
 
 Optional (parameter layer_d_rescue_enabled, default false, Issue #161,
 ADR-0013 proposed): while Layer D is the ONLY active layer, a fresh
@@ -133,8 +133,9 @@ PUBLISH_HZ = 20.0
 #  - FORWARD_CLEAR_HYSTERESIS_S と同じ値にすると、最後の scan で前方が
 #    塞がっていた場合、D:forward_blocked が解ける時刻（最後の塞がり + 0.5 s）
 #    に D:scan_silent が入れ替わりで作動し、停止が途切れない（判定は >=）。
-#  - 0.3 m/s で 0.5 s + 1 tick は約 0.17 m。Layer D の扇形の手前端 1.0 m より
-#    十分短い。
+#  - 0.3 m/s で 0.5 s + 1 tick は約 0.17 m。ゼロ指令の後の減速距離
+#    （velocity_smoother の max_decel 0.5 m/s² で約 0.09 m）を足しても約 0.26 m で、
+#    Layer D の扇形の手前端 1.0 m より十分短い。
 # 0.0 で無効（#193 以前の動作、現在の既定）。上流（Patchwork++、LiDAR）ごと止まった場合は
 # C:perception_silent（2 s）も作動するので、これが効くのは
 # pointcloud_to_laserscan だけが止まった場合と、途絶から 2 s までの間。
@@ -144,6 +145,10 @@ SCAN_SILENT_S_DEFAULT = 0.0
 # Layer D の解除（5 連続の空き scan）と同じ考え方で、断続的に届く /scan
 # （例: 0.6 s おき）で作動と解除を繰り返さないようにする。
 SCAN_SILENT_RELEASE_S = FORWARD_CLEAR_HYSTERESIS_S
+# 0 以外でこの範囲を外れる値は起動時に WARN する（拒否はしない）。0.1 s 未満は
+# 10 Hz の 1 周期より短く、正常な揺らぎで止まる。5 s を超えると、0.3 m/s で
+# 1.5 m 以上を Layer D 無しで進み、扇形（1〜2 m）の意味が無くなる。
+SCAN_SILENT_SANE_RANGE_S = (0.1, 5.0)
 # Issue #161 / ADR-0013 (proposed) — teleop rescue while Layer D stops.
 # Default off: changing the stop behaviour needs the user's approval.
 RESCUE_LAYER = 'D:forward_blocked'
@@ -194,8 +199,13 @@ def silence_step(now, last_time, silent_s, release_s, latched, ok_since):
     - active while now - last_time >= silent_s.
     - once active, it stays active until the input has been back (not
       silent) for release_s; ok_since is when that started.
-    A clock that steps back (bag --clock loop) only delays the release:
-    ok_since is pulled back to now instead of waiting out the old value.
+    A clock that steps back (bag --clock loop, use_sim_time):
+    - ok_since in the future is pulled back to now, so the release is not
+      held for the size of the jump;
+    - last_time in the future reads as "not silent" here (now - last_time is
+      negative), which would delay the detection by the size of the jump
+      (fail-open). The caller must clamp last_time to now before calling;
+      FailsafeNode._update_scan_silent does.
     """
     if silent_s <= 0.0 or last_time is None:
         return False, None
@@ -281,15 +291,9 @@ class FailsafeNode(Node):
         # Issue #159. ParameterValue(value_type=float) in safety_launch.py
         # keeps a launch value like "10" from arriving as an integer and
         # failing the double type check here.
-        self._startup_grace_s = float(self.declare_parameter(
-            'startup_grace_sec', STARTUP_GRACE_S_DEFAULT).value)
-        if not math.isfinite(self._startup_grace_s) \
-                or self._startup_grace_s < 0.0:
-            # A negative or NaN grace would silently mean "disabled";
-            # refuse to start so a typo cannot switch the stop off.
-            raise ValueError(
-                f'startup_grace_sec={self._startup_grace_s!r} must be a '
-                f'finite value >= 0 (0 disables the never-arrived stop)')
+        self._startup_grace_s = self._declare_seconds(
+            'startup_grace_sec', STARTUP_GRACE_S_DEFAULT,
+            'the never-arrived stop')
 
         self._last_reinit_time = None
         self._fitness_bad_since = None
@@ -300,14 +304,9 @@ class FailsafeNode(Node):
         self._forward_last_blocked_time = None
         # Issue #193. ParameterValue(value_type=float) in safety_launch.py,
         # as for startup_grace_sec.
-        self._scan_silent_s = float(self.declare_parameter(
-            'scan_silent_sec', SCAN_SILENT_S_DEFAULT).value)
-        if not math.isfinite(self._scan_silent_s) \
-                or self._scan_silent_s < 0.0:
-            # startup_grace_sec と同じく、負や NaN を「無効」と黙って読まない。
-            raise ValueError(
-                f'scan_silent_sec={self._scan_silent_s!r} must be a finite '
-                f'value >= 0 (0 disables the /scan silence stop)')
+        self._scan_silent_s = self._declare_seconds(
+            'scan_silent_sec', SCAN_SILENT_S_DEFAULT,
+            'the /scan silence stop')
         # 途絶監視が使う最終受信時刻。_last_scan_time と分けるのは、
         # use_sim_time で /clock より前に届いた scan（時刻 0）を数えないため。
         # 時刻 0 を最終受信にすると、最初の /clock で bag の時刻に跳んだ瞬間に
@@ -374,7 +373,7 @@ class FailsafeNode(Node):
         # （startup_grace_sec）は互いに独立なので、両方を並べて起動ログに出す。
         ready_notes = [
             self._rescue_note(),
-            f'scan silent > {self._scan_silent_s}s stops'
+            f'scan silent >= {self._scan_silent_s}s stops'
             if self._scan_silent_s > 0.0
             else 'scan silence: not monitored',
             f'never-arrived inputs stop after {self._startup_grace_s}s'
@@ -390,6 +389,38 @@ class FailsafeNode(Node):
             f'hysteresis {FORWARD_CLEAR_HYSTERESIS_S}s | '
             f'A hold {LAYER_A_HOLD_S}s | publish {PUBLISH_HZ:.0f} Hz'
             + ''.join(f' | {n}' for n in ready_notes))
+        self._warn_scan_silent_config()
+
+    def _declare_seconds(self, name, default, what):
+        # 負や NaN を「無効」と黙って読むと、打ち間違いで停止が切れる。起動を
+        # 拒否する（#159 の startup_grace_sec から、#193 の scan_silent_sec でも
+        # 同じ扱いにするため共通化した）。
+        value = float(self.declare_parameter(name, default).value)
+        if not math.isfinite(value) or value < 0.0:
+            raise ValueError(
+                f'{name}={value!r} must be a finite value >= 0 '
+                f'(0 disables {what})')
+        return value
+
+    def _warn_scan_silent_config(self):
+        # 動作は変えず、ログだけ出す（既定の変更はユーザーの承認が要るため）。
+        lo, hi = SCAN_SILENT_SANE_RANGE_S
+        if self._scan_silent_s > 0.0 \
+                and not lo <= self._scan_silent_s <= hi:
+            self.get_logger().warn(
+                f'scan_silent_sec={self._scan_silent_s}s is outside '
+                f'{lo}-{hi}s (recommended {SCAN_SILENT_S_RECOMMENDED}s): '
+                f'below {lo}s normal /scan jitter stops the chair, above '
+                f'{hi}s the chair drives that long without Layer D')
+        # ADR-0013: 救援は Layer D が見ていることが前提。/scan の途絶を監視し
+        # ないまま救援を有効にすると、/scan が死んだ後の救援の可否も、停止そのもの
+        # も最後の判定に依存する。
+        if self._rescue_enabled and self._scan_silent_s == 0.0:
+            self.get_logger().warn(
+                'layer_d_rescue_enabled is true but scan_silent_sec is 0.0: '
+                'a dead /scan is not detected (#193). Pass '
+                f'failsafe_scan_silent_sec:={SCAN_SILENT_S_RECOMMENDED} '
+                'with the rescue.')
 
     def _init_rescue(self):
         # Issue #161. Declared even when disabled so `ros2 param get` shows
@@ -549,9 +580,10 @@ class FailsafeNode(Node):
         # sector is blocked; a silent scan pipe would leave both at None
         # and the watchdog would not know whether Layer D armed via
         # "first sector block" or "first scan arrived". Track both.
-        self._last_scan_time = self._now_s()
-        if self._last_scan_time > 0.0:
-            self._scan_rx_time = self._last_scan_time
+        now = self._now_s()
+        self._last_scan_time = now
+        if now > 0.0:
+            self._scan_rx_time = now
         # Count /scan returns inside the forward safety sector. Short-
         # circuit as soon as the threshold is met — no reason to keep
         # counting once Layer D is going to fire; the callback runs at
@@ -565,12 +597,17 @@ class FailsafeNode(Node):
                     and abs(angle) <= FORWARD_SECTOR_HALF_ANGLE_RAD:
                 count += 1
                 if count >= FORWARD_POINT_COUNT_MIN:
-                    self._forward_last_blocked_time = self._now_s()
+                    # 受信時刻と同じ値にする（時計を2回読むと、塞がりの時刻が
+                    # 受信より後になり、D:scan_silent への引き継ぎの判定がずれる）。
+                    self._forward_last_blocked_time = now
                     return
             angle += msg.angle_increment
 
-    def _active_layers(self):
-        now = self._now_s()
+    def _active_layers(self, now=None):
+        # _tick から now を受け取り、同じ tick の判定を1つの時刻で行う。
+        # 引数なし（テストや調査での直接呼び出し）は時計を読む。
+        if now is None:
+            now = self._now_s()
         out = []
         if self._last_reinit_time is not None \
                 and now - self._last_reinit_time < LAYER_A_HOLD_S:
@@ -618,6 +655,11 @@ class FailsafeNode(Node):
         return tuple(out)
 
     def _update_scan_silent(self, now):
+        # 時計が戻ったとき（bag --clock のループ、use_sim_time）、未来の最終受信
+        # 時刻のままだと、戻った分だけ途絶の検出が遅れる（fail-open）。now に
+        # 揃えて、戻った時点から scan_silent_sec を数え直す。
+        if self._scan_rx_time is not None and now < self._scan_rx_time:
+            self._scan_rx_time = now
         self._scan_silent, self._scan_ok_since = silence_step(
             now, self._scan_rx_time, self._scan_silent_s,
             SCAN_SILENT_RELEASE_S, self._scan_silent, self._scan_ok_since)
@@ -653,7 +695,7 @@ class FailsafeNode(Node):
             self._dead_input_warned = True
 
         self._update_scan_silent(now)
-        active = self._active_layers()
+        active = self._active_layers(now)
         if active != self._active_prev:
             if active:
                 self.get_logger().warn(

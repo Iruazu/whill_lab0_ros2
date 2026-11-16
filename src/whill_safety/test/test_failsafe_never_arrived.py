@@ -17,8 +17,8 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from sensor_msgs.msg import LaserScan, PointCloud2
 
 from whill_safety.failsafe_node import (
-    PERCEPTION_TIMEOUT_S, STARTUP_GRACE_S_DEFAULT, FailsafeNode,
-    never_arrived_layers)
+    PERCEPTION_TIMEOUT_S, SCAN_SILENT_S_RECOMMENDED, STARTUP_GRACE_S_DEFAULT,
+    FailsafeNode, never_arrived_layers)
 
 T0 = 1000.0
 NEVER = ('B:pcl_pose_never_arrived', 'C:perception_never_arrived',
@@ -38,15 +38,18 @@ class _Clock:
         self.t = t
 
 
-@pytest.fixture
-def make_node(monkeypatch):
+# #193: run every test with the /scan silence monitor off (the shipped
+# default) and at its recommended value, so #159's behaviour is pinned for both.
+@pytest.fixture(params=[0.0, SCAN_SILENT_S_RECOMMENDED],
+                ids=['scan_silent_off', 'scan_silent_0.5'])
+def make_node(monkeypatch, request):
     """make_node(grace=None, t0=T0) -> (node, clock, pub)."""
     made = []
 
     def _make(grace=None, t0=T0):
         clock = _Clock(t0)
         monkeypatch.setattr(FailsafeNode, '_now_s', lambda self: clock.t)
-        args = ['--ros-args']
+        args = ['--ros-args', '-p', f'scan_silent_sec:={request.param}']
         if grace is not None:
             args += ['-p', f'startup_grace_sec:={grace}']
         rclpy.init(args=args)
@@ -138,7 +141,7 @@ def test_input_that_arrived_in_time_never_trips_it(make_node):
     node._on_perception(PointCloud2())
     node._on_scan(LaserScan())
     # Keep every input fresh so only the #159 labels could fire (/scan too:
-    # since #193 a quiet /scan is D:scan_silent).
+    # with scan_silent_sec > 0, #193, a quiet /scan is D:scan_silent).
     for t in (T0 + 5.0, T0 + 30.0):
         clock.t = t
         node._on_pcl_pose(PoseWithCovarianceStamped())

@@ -33,7 +33,8 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 
 - `/scan` は10Hz。2026-07-22〜31 の走行 bag 11本（`/scan` 21,206通）の記録時刻の間隔は中央値0.101秒、最大0.213秒。例外は `/velodyne_points` も同時に約40秒途切れた2か所で、LiDAR側か記録側の途絶なので止まるのが正しい。0.5秒は4 scan 連続の欠落で、計測した最大の2倍以上の余裕がある
 - Layer D の保持0.5秒と同じ値にすると、最後の scan で前方が塞がっていた場合でも、`D:forward_blocked` が解ける時刻に `D:scan_silent` が作動し、停止が途切れない（判定は `>=`）
-- 0.3m/sで0.5秒と1 tick は約0.17m。扇形の手前端1.0mより短い
+- 0.3m/sで0.5秒と1 tick は約0.17m。ゼロ指令の後の減速距離（velocity_smoother の max_decel 0.5m/s² で約0.09m）を足しても約0.26mで、扇形の手前端1.0mより短い
+- 0以外で0.1〜5秒を外れる値は起動時にWARNを出す（拒否はしない）。0.1秒未満は10Hzの1周期より短く、5秒を超えると Layer D 無しで1.5m以上進む
 
 既定を無効（`0.0`）にしている理由：failsafe / twist_mux の既定は、ユーザーが実機で確かめるまで変えない（#159 の `startup_grace_sec` 0.0、#161 の救援 false と同じ扱い）。**#156 の実機確認（通常の起動で `D:scan_silent` が出ない、走行中に pointcloud_to_laserscan を止めると約0.5秒以内に止まり、再起動で解ける）の後に、既定を 0.5 にする。** それまで使うときは `failsafe_scan_silent_sec:=0.5` を渡す。
 
@@ -41,11 +42,19 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 
 - 起動の手順では作動しえない。最初の `/scan` までは何もしない（`m6r_bringup` が Nav2 より先に起動しても止まらない）。最初の `/scan` より前は #159 の `D:scan_never_arrived`（`startup_grace_sec > 0` のときだけ）の担当で、両方が同時に出ることはない。`use_sim_time` で `/clock` より前に届いた scan（時刻0）は途絶の基準にしない
 - 新しい停止の場面はほぼ増えない。`/scan` は `/velodyne_points_no_ground` から作るので、Nav2（nav_launch）の停止・再起動や LiDAR の停止では、既存の `C:perception_silent`（2秒）がもともと止める。増えるのは pointcloud_to_laserscan だけが止まった場合と、途絶から2秒までの間
-- 単体テスト（`test/test_failsafe_scan_silent.py`）と、0.5 にした failsafe での基準 bag の再生（`scripts/regression/replay_check.py --only failsafe`、843秒）で確かめた。再生の誤停止は0回（`D:scan_silent` 0回、作動41回・33.48秒・走行中0回で基準内）。詳細は ADR-0007 の 2026-11-16 追記
+- 単体テスト（`test/test_failsafe_scan_silent.py`）と、基準 bag の再生（`scripts/regression/replay_check.py --only failsafe --failsafe-param scan_silent_sec:=0.5`、843秒、最終のビルド）で確かめた。再生の誤停止は0回（`D:scan_silent` を含む作動 0 回、作動 40 回・33.0 秒・走行中 0 回で基準内）。詳細は ADR-0007 の 2026-11-16 追記
 
 実機の通常起動で誤停止しないことは未確認（#156 の機会に確かめる）。
 
-救援（#161）との関係：救援の中継は `D:forward_blocked` が単独のときだけなので、`D:scan_silent` の作動中は中継せずゼロを出す。`/scan` が無いと、後退や回転の先を Layer D が見ていないため。
+救援（#161）との関係：救援の中継は `D:forward_blocked` が単独のときだけなので、`D:scan_silent` の作動中は中継せずゼロを出す。`/scan` が無いと、後退や回転の先を Layer D が見ていないため。`layer_d_rescue_enabled` が true で `scan_silent_sec` が 0.0 のときは、起動時に WARN を出す（動作は変えない）。
+
+この監視が働かない場面（安全の根拠にしない）：
+
+- **failsafe の tick や executor が止まる**：判定もゼロ出力も tick で行うので、tick が止まれば何も出ない。twist_mux の safety 枠は 0.5 秒で切れ、Nav2 の指令が通る。既存の単一障害点（ADR-0007、ADR-0013）で、この監視では増えも減りもしない。twist_mux 側の lock（failsafe の心拍が途絶えたら止める）は別 issue として扱う案で、未実装
+- **`/scan` が既に死んだ状態で failsafe が再起動した**：再起動後は1通も届かないので、最初の `/scan` を待つ状態に戻り、この監視は何もしない。捕まえるのは #159 の `startup_grace_sec > 0` だけ。**この監視を使うときは `startup_grace_sec` と併せて有効にするのを勧める**
+- **`use_sim_time` で最初の `/clock` より前に届いた scan**：時刻0なので基準にしない。その後 scan が届かないと、最初の `/scan` を待つ状態のまま（再生専用の場面で、実機では起きない）
+
+時計が戻ったとき（bag の `--clock` のループ、`use_sim_time`）：最終受信の時刻を今に揃え、戻った時点から数え直す。揃えないと戻った分だけ検出が遅れる（fail-open）。B の `/pcl_pose` と C の `/velodyne_points_no_ground` の途絶監視は同じ揃えをしていないので、時計が戻ると同じ遅れが出る（既知の項目、#193 では変えていない。実機の時計は戻らないので、再生のときだけの問題）。
 
 他の入力の途絶監視（#193 で確かめた）：
 
@@ -98,5 +107,7 @@ Dは点の検知で、人の分類ではない。`DEAD INPUT` watchdogは開始1
 | `rescue_max_wz` | 0.6 | 救援と見なす回転速度の上限 |
 
 後方とその場回転の掃引範囲（1m未満）は監視しない。UIの離しのゼロは中継されるので通常はすぐ止まる。ゼロが届かないと、最後の指令から約0.35秒（名目値。executorの遅れで伸びる）中継が続く。鮮度はsteady clockで測る。設計の比較と残る危険はADR-0013。実機では未検証。中継中の状態はログ（`RESCUE relay` / `RESCUE ended`）だけに出る。C3の `/failsafe/state` を取り込むときにそこへ載せる。
+
+救援の前提だった `/scan` 途絶の監視は #193 で実装した（既定は無効）。救援を有効にするときは `failsafe_scan_silent_sec:=0.5` を併せて渡す。渡さないと起動時に WARN が出る。
 
 preflightは `scripts/m6r_preflight.sh`。check 4は各入力の受信を、failsafeと同じ型とQoSで確かめる。
