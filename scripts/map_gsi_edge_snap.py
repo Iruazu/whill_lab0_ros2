@@ -15,7 +15,8 @@
      3. 区間の中点から法線方向 ±--search-m の断面を、区間に沿った 5 本で取り、証拠を探す。
         優先は 段（縁石・高い段・v2 の段差層）＞ 構造物（v2 の occupied_structure）＞
         反射強度の段（舗装 → 芝・植栽、強度 --max-intensity 以上を芝とする 202c の壁）。
-        どの証拠も「道の側から来て最初に当たる所」（道の端）を縁の位置とする。
+        段・構造物は帯の内側の境、強度は舗装 → 芝の境を縁の位置とする。元の位置より内側（道の側）に
+        段・構造物の候補があれば、外側の候補は使わない（道の側から来て最初に当たる所が道の端）。
         強度は背の低い植栽の上でも舗装に見える・木の陰で誤る（ユーザーの目視）ので、強度だけの
         根拠は信頼度を下げ（既定 0.3）、寄せる量の上限も小さくする（--max-offset-intensity-m）。
      4. 区間の並びで、近傍（--smooth-window 区間）の中央値から --jump-m より飛ぶ区間を却下し、
@@ -28,7 +29,8 @@
   C. 安全側の版（参考）：補正後の面から、信頼できる根拠（段・構造物）で寄せられなかった縁の
      --uncert-m 以内を削り、段・構造物のセルも除く。
 
-既定の地図（occupancy_candidate.yaml、candidate_final.pgm、candidates/）は読むだけで変えない。
+既定の地図（occupancy_candidate.yaml、candidate_final.pgm）は読まず、変えない。candidates/ の手塗りは
+比べる相手として読むだけで、変えない。
 出力は --out-dir（小さい確認用の画像と数値、Git 管理）と --work-dir（原寸の面・全区間の表、Git 外）と
 --gimp-dir（GIMP 用の原寸 RGBA の 2 枚、Git 外）。
 """
@@ -63,6 +65,14 @@ CENTER_COLOR = (230, 190, 0)
 # 202c・#205 と同じ区切り（map 座標 [m]、x0, x1, y0, y1）。
 BOXES = {'start_road': (-10, 70, -15, 15), 'seimon': (-100, -75, -20, 5),
          'north_road': (-125, 75, 145, 175)}
+
+# 表の列。空の入力でも見出しだけの CSV を書けるように定数で持つ（rows[0] に頼らない）。
+SEG_FIELDS = ['line', 'seg', 'x', 'y', 'len_m', 'dist_traj_m', 'side_by', 'out_nx', 'out_ny', 'status', 'kind',
+              'raw_offset_m', 'offset_m', 'confidence', 'n_candidates', 'swept_dropped', 'grass_inside_dropped',
+              'outward_blocked', 'dup']
+WIDTH_FIELDS = ['center', 's_m', 'x', 'y', 'nx', 'ny', 'dist_traj_m', 'gsi_left_m', 'gsi_right_m', 'snap_left_m',
+                'snap_right_m', 'paved_left_m', 'paved_right_m', 'w_gsi_m', 'w_snap_m', 'w_paved_m', 'd_snap_m',
+                'd_paved_m', 'flag_snap', 'flag_paved']
 
 # 証拠のラスタのビット。1 枚の uint8 にまとめて、断面の標本を 1 回の添字で引く。
 B_STEP, B_STRUCT, B_GRASS, B_PAVED, B_GROUND = 1, 2, 4, 8, 16
@@ -120,7 +130,8 @@ def parse_args(argv=None):
                         '縁に平行な線だけを拾い、断面を横切る点状の物（車止め、1 本の木）を落とす。'
                         '0.6（3 本）では、発進点の西（x −10〜0 の南）で駐輪・駐車の帯の中の段の点の並びに'
                         '1 m 外へ寄った（202d の目視）。0.8 ではそこは未補正になり、軌跡 8 m 以内の寄せた'
-                        '区間は 74%% → 70%%、手塗りに対する IoU はほぼ同じ（README 202d）。')
+                        '区間は 74%% → 70%%、手塗りに対する IoU はほぼ同じ（タイルの重なりを除く前の値。'
+                        'README 202d）。')
     p.add_argument('--min-inside-m', type=float, default=0.2,
                    help='段・構造物の手前（道の側）に、これだけ証拠の無い所が要る。窓の端から始まる帯は'
                         '「道の端」ではない（縁が帯の中にある）ので使わない。')
@@ -144,6 +155,9 @@ def parse_args(argv=None):
                         '（植栽の島・生垣の縁）として使わない。')
     p.add_argument('--agree-m', type=float, default=0.3,
                    help='段・構造物の縁と強度の段がこの距離以内なら、信頼度を上げる。')
+    p.add_argument('--dup-radius-m', type=float, default=0.5,
+                   help='タイルの重なりで 2 回入った線の区間・幅の標本を同じとみなす距離 [m]。区間の長さ（1 m）'
+                        'の半分。道の両側の縁（3 m 以上離れる）と、同じ線の隣の区間は混ざらない。')
     p.add_argument('--smooth-window', type=int, default=5, help='連続性を見る近傍の区間数（奇数）。')
     p.add_argument('--jump-m', type=float, default=0.5,
                    help='近傍の中央値からこれより飛ぶ区間を却下する [m]。')
@@ -281,6 +295,66 @@ def filter_inside_grass(cands, s, grass, win, max_frac):
     return keep, drop
 
 
+def block_outward(step_c, struct_c, int_c):
+    """元の位置より内側（s < 0）に段・構造物の候補があれば、外側（s > 0）の候補をすべて落とす。
+    返り値は (段, 構造物, 強度の候補, 落とした数)。
+
+    choose_evidence は元の位置に最も近い候補を取るので、内 −0.8 m に縁石、外 +0.5 m に別の段が
+    あると +0.5 を選び、縁石を道に含めてしまう（202d のレビュー SF-1）。道の端は「道の側から来て
+    最初に当たる段」なので、内側に段があれば、その外の候補は道の端になりえない。
+    「内外の両側に候補があれば曖昧として未補正」にする案もあるが、内側の段は道の端の根拠として
+    そのまま使えるので、未補正にして根拠を捨てるより内側を取る方を選んだ。
+    ここで見るのは filter_swept・filter_inside_grass を通った後の候補。内側が芝の生垣の段のように
+    道の端でないと分かった段は、外の候補を止めない。強度の段は内側にあっても外を止めない
+    （暗い背の低い植栽で誤る側なので、段・構造物を覆す根拠にしない）。"""
+    if not any(c < 0 for c in list(step_c) + list(struct_c)):
+        return list(step_c), list(struct_c), list(int_c), 0
+    out = [[c for c in cs if c <= 0] for cs in (step_c, struct_c, int_c)]
+    n = sum(len(a) - len(b) for a, b in zip((step_c, struct_c, int_c), out))
+    return out[0], out[1], out[2], n
+
+
+def decide_side(road_plus, road_minus, vc, dc, nrm, max_half_width):
+    """区間ごとに、道が法線 nrm の正の側か負の側かを決める。返り値は (符号 ±1, 決め方, 決まったか)。
+
+    road_plus / road_minus : 法線の正・負の側で GSI の道路の面に入った標本の割合（0〜1）
+    vc, dc                 : 最も近い GSI の中心線のセルへのベクトルと距離 [m]
+    道路の面の割合の差が 0.5 以上なら、それで決める（'road_area'）。両側とも道（交差点の中など）か
+    両側とも道でないときは、中心線が max_half_width 以内にあり、その向きが法線とはっきり合う
+    （|vc・nrm| > 0.3 |vc|）ときだけ中心線で決める（'centerline'）。それでも決まらなければ
+    ''（向き不明）で、動かさない。"""
+    road_plus = np.asarray(road_plus, float)
+    road_minus = np.asarray(road_minus, float)
+    side = road_plus - road_minus
+    by_area = np.abs(side) >= 0.5
+    sign = np.where(side > 0, 1.0, -1.0)
+    dot = (np.asarray(vc, float) * np.asarray(nrm, float)).sum(1)
+    dc = np.asarray(dc, float)
+    by_cent = ~by_area & (dc <= max_half_width) & (np.abs(dot) > 0.3 * np.maximum(dc, 1e-6))
+    sign = np.where(by_cent, np.sign(dot), sign)
+    how = np.where(by_area, 'road_area', np.where(by_cent, 'centerline', '')).astype(object)
+    return sign, how, by_area | by_cent
+
+
+def find_duplicates(xy, nv, line, radius):
+    """重なった線の区間・標本を探す。返り値は各要素について、先に残した重なり相手の添字（無ければ −1）。
+
+    別の線（line が違う）で、位置が radius 以内、向き nv がほぼ同じ（内積 > 0.9）なら重なりとみなす。
+    同じ線の隣の区間は除く。前から順に見て、先に残したものを正とする。"""
+    out = np.full(len(xy), -1)
+    if len(xy) == 0:
+        return out
+    tree = cKDTree(xy)
+    kept = np.zeros(len(xy), bool)
+    for i in range(len(xy)):
+        for j in sorted(tree.query_ball_point(xy[i], radius)):
+            if j < i and kept[j] and line[j] != line[i] and float(np.dot(nv[i], nv[j])) > 0.9:
+                out[i] = j
+                break
+        kept[i] = out[i] < 0
+    return out
+
+
 def nearest(cands):
     return min(cands, key=abs) if cands else None
 
@@ -306,12 +380,18 @@ def choose_evidence(step_c, struct_c, int_c, max_off, max_off_int, agree_m):
     return 0.0, 'none', 0.0, 'no_evidence', 0
 
 
-def smooth_offsets(off, snapped, window, jump, min_neighbors):
+def smooth_offsets(off, snapped, window, jump, min_neighbors, cap=None):
     """1 本の線の区間の並びで連続性を見る。返り値は (ならした offset, 状態の配列)。
 
     状態：'snapped'、'rejected_jump'（近傍の中央値から jump より飛ぶ）、
-    'rejected_isolated'（近傍に寄せた区間が min_neighbors 未満）、それ以外は元のまま。
-    寄せた区間は、近傍の残った区間の中央値に置き換える（1 区間の揺れをならす）。"""
+    'rejected_isolated'（近傍に寄せた区間が min_neighbors 未満）、
+    'rejected_short_line'（線の区間の数が min_neighbors 未満で、近傍を数えられない）、それ以外は元のまま。
+    寄せた区間は、近傍の残った区間の中央値に置き換える（1 区間の揺れをならす）。
+    cap（区間ごとの上限、省略可）を与えると、ならした値をその区間の根拠の上限で切る。強度だけの
+    区間が段の区間の大きな値に引かれて、強度の上限を超えないようにする（レビュー SF-4）。
+
+    短い線（タイルの境で切れた端など）は、以前は min(min_neighbors, n) で孤立の判定を素通りしていた
+    （レビュー SF-3）。1 区間だけの寄せを連続性で確かめる手段が無いので、救わずに別の状態で記録する。"""
     off = np.asarray(off, float)
     ok = np.asarray(snapped, bool).copy()
     n = off.size
@@ -327,10 +407,16 @@ def smooth_offsets(off, snapped, window, jump, min_neighbors):
     for i in np.nonzero(ok2)[0]:
         lo, hi = max(0, i - h), min(n, i + h + 1)
         nb = off[lo:hi][ok2[lo:hi]]
-        if nb.size < min(min_neighbors, n):
+        if n < min_neighbors:
+            status[i] = 'rejected_short_line'
+            continue
+        if nb.size < min_neighbors:
             status[i] = 'rejected_isolated'
             continue
-        out[i] = float(np.median(nb))
+        v = float(np.median(nb))
+        if cap is not None:
+            v = float(np.clip(v, -cap[i], cap[i]))
+        out[i] = v
     return out, status
 
 
@@ -495,11 +581,10 @@ def main(argv=None):
         mid, tng, nrm, L = segment_frames(V)
         n = len(mid)
         dtraj = ttree.query(mid)[0]
-        # どちら側が道か：道路の面を法線の ±0.5〜1.5 m で見る
-        side = np.zeros(n)
-        how = np.array([''] * n, dtype=object)
+        # どちら側が道か：道路の面を法線の ±0.5〜1.5 m で見る（判定は decide_side）
+        acc = {}
         for sgn in (1, -1):
-            acc = np.zeros(n)
+            a_ = np.zeros(n)
             for d in (0.5, 1.0, 1.5):
                 P = mid + sgn * d * nrm
                 r = np.floor((top - P[:, 1]) / rm).astype(int)
@@ -507,22 +592,14 @@ def main(argv=None):
                 ok = (r >= 0) & (r < road0.shape[0]) & (c >= 0) & (c < road0.shape[1])
                 v = np.zeros(n)
                 v[ok] = road0[r[ok], c[ok]]
-                acc += v / 3
-            side += sgn * acc
-        by_area = np.abs(side) >= 0.5
-        sign = np.where(side > 0, 1.0, -1.0)
-        how[by_area] = 'road_area'
+                a_ += v / 3
+            acc[sgn] = a_
         r = np.clip(np.floor((top - mid[:, 1]) / rm).astype(int), 0, c_m.shape[0] - 1)
         c = np.clip(np.floor((mid[:, 0] - ox) / rm).astype(int), 0, c_m.shape[1] - 1)
         cx = ox + (icc[r, c] + 0.5) * rm
         cy = top - (icr[r, c] + 0.5) * rm
         vc = np.stack([cx - mid[:, 0], cy - mid[:, 1]], 1)
-        dc = dcen[r, c] * rm
-        dot = (vc * nrm).sum(1)
-        by_cent = ~by_area & (dc <= args.max_half_width_m) & (np.abs(dot) > 0.3 * np.maximum(dc, 1e-6))
-        sign = np.where(by_cent, np.sign(dot), sign)
-        how[by_cent] = 'centerline'
-        known_side = by_area | by_cent
+        sign, how, known_side = decide_side(acc[1], acc[-1], vc, dcen[r, c] * rm, nrm, args.max_half_width_m)
         # 外向きの法線（道の外が正）
         u = -sign[:, None] * nrm
         off = np.zeros(n)
@@ -532,6 +609,7 @@ def main(argv=None):
         ncand = np.zeros(n, int)
         swept_drop = np.zeros(n, int)
         grass_drop = np.zeros(n, int)
+        out_block = np.zeros(n, int)
         work = np.nonzero(dtraj <= args.process_m)[0]
         status[(dtraj <= args.process_m) & ~known_side] = 'side_unknown'
         work = work[known_side[work]]
@@ -560,11 +638,14 @@ def main(argv=None):
                 tc, d2 = filter_inside_grass(tc, s, sup[B_GRASS][j], args.trans_win_m, args.inside_grass_max)
                 grass_drop[i] = d1 + d2
                 swept_drop[i] = nd
+                sc, tc, ic, out_block[i] = block_outward(sc, tc, ic)
                 o, kd, cf, st, nc = choose_evidence(sc, tc, ic, args.max_offset_m,
                                                     args.max_offset_intensity_m, args.agree_m)
                 off[i], kind[i], conf[i], status[i], ncand[i] = o, kd, cf, st, nc
         raw_off = off.copy()
-        sm, st2 = smooth_offsets(off, status == 'snapped', args.smooth_window, args.jump_m, args.min_neighbors)
+        cap = np.where(kind == 'intensity', args.max_offset_intensity_m, args.max_offset_m)
+        sm, st2 = smooth_offsets(off, status == 'snapped', args.smooth_window, args.jump_m, args.min_neighbors,
+                                 cap)
         rej = (status == 'snapped') & (st2 != 'snapped')
         status[rej] = st2[rej]
         conf[rej] = 0.0
@@ -581,7 +662,8 @@ def main(argv=None):
                              'kind': kind[i],
                              'raw_offset_m': round(float(raw_off[i]), 3), 'offset_m': round(float(final[i]), 3),
                              'confidence': round(float(conf[i]), 3), 'n_candidates': int(ncand[i]),
-                             'swept_dropped': int(swept_drop[i]), 'grass_inside_dropped': int(grass_drop[i])})
+                             'swept_dropped': int(swept_drop[i]), 'grass_inside_dropped': int(grass_drop[i]),
+                             'outward_blocked': int(out_block[i])})
     summary['timing_s']['snap'] = round(time.time() - t1, 1)
     del dcen, icr, icc
 
@@ -603,16 +685,34 @@ def main(argv=None):
     del du, eu
 
     # ---- 区間の集計
-    # 地理院ベクトルのタイルは隣のタイルと縁を重ねて持つので、同じ線が 2 回入る（軌跡 8 m 以内の区間の
-    # 約 12 %）。両方とも同じ証拠で同じだけ動くので形は困らないが、数えるときは 2 回目を除く。
-    seen = set()
-    for r in seg_rows:
-        key = (round(r['x'], 1), round(r['y'], 1))
-        r['dup'] = key in seen
-        seen.add(key)
+    # 地理院ベクトルのタイルは隣のタイルと縁を重ねて持つので、同じ線が 2 回入る。区間は線の始まりから
+    # 切るので、重なった 2 本の区間の中点はずれることがある。別の線の区間で、中点が --dup-radius-m
+    # 以内、外向きの法線がほぼ同じものを重なりとみなし、数えるときは後の方を除く。重なった 2 本は
+    # 同じ証拠を見るが、区間の切り方が違うので状態・寄せる量が食い違うことがある。食い違いの数を
+    # 実測して summary.json に残す（レビュー SF-2）。補正後の面には両方の線が入る（道路の面は、
+    # どちらの線も越えない所になる）。
+    dup_of = find_duplicates(np.array([[r['x'], r['y']] for r in seg_rows]).reshape(-1, 2),
+                             np.array([[r['out_nx'], r['out_ny']] for r in seg_rows]).reshape(-1, 2),
+                             np.array([r['line'] for r in seg_rows]), args.dup_radius_m)
+    pairs = {'all': [0, 0, 0], 'near_traj': [0, 0, 0]}   # 組の数、状態の食い違い、寄せる量の差 > 0.1 m
+    for r, j in zip(seg_rows, dup_of):
+        r['dup'] = bool(j >= 0)
+        if j < 0:
+            continue
+        q = seg_rows[j]
+        for key in (('all', 'near_traj') if r['dist_traj_m'] <= args.near_m else ('all',)):
+            pairs[key][0] += 1
+            pairs[key][1] += int(r['status'] != q['status'])
+            pairs[key][2] += int(abs(r['offset_m'] - q['offset_m']) > 0.1)
     rows = [r for r in seg_rows if not r['dup']]
     near_rows = [r for r in rows if r['dist_traj_m'] <= args.near_m]
-    summary['duplicate_segments_dropped'] = len(seg_rows) - len(rows)
+    summary['duplicates'] = {
+        'radius_m': args.dup_radius_m,
+        'segments_dropped': len(seg_rows) - len(rows),
+        'segments_dropped_near_traj': sum(1 for r in seg_rows if r['dup'] and r['dist_traj_m'] <= args.near_m),
+        'pairs': {kk: {'pairs': v[0], 'status_mismatch': v[1], 'offset_diff_gt_0p1m': v[2]}
+                  for kk, v in pairs.items()}}
+    print('[重なり]', json.dumps(summary['duplicates'], ensure_ascii=False))
 
     def tally(rs):
         n = len(rs)
@@ -643,7 +743,7 @@ def main(argv=None):
     summary['segments_start_road'] = tally([r for r in near_rows if sb[0] <= r['x'] <= sb[1]
                                             and sb[2] <= r['y'] <= sb[3]])
     print('[A] 軌跡 8 m 以内', json.dumps(summary['segments_near_traj'], ensure_ascii=False))
-    fields = list(rows[0].keys())
+    fields = SEG_FIELDS
     with open(args.work_dir / 'edge_segments.csv', 'w', newline='') as f:
         w = csv.DictWriter(f, fields)
         w.writeheader()
@@ -710,16 +810,16 @@ def main(argv=None):
     def wdiff(r, a, b):
         return None if r[a] is None or r[b] is None else round(r[a] - r[b], 3)
 
-    # 中心線もタイルの重なりで 2 回入るので、同じ位置の標本は 1 つにする
-    seen = set()
-    uniq = []
-    for r in wrows:
-        key = (round(r['x'], 1), round(r['y'], 1))
-        if key not in seen:
-            seen.add(key)
-            uniq.append(r)
-    summary['duplicate_width_samples_dropped'] = len(wrows) - len(uniq)
-    wrows = uniq
+    # 中心線もタイルの重なりで 2 回入る。重なった 2 本は標本の位置が 1 m 刻みの中でずれることが
+    # あるので、位置を丸めた一致ではなく、区間と同じ find_duplicates（別の中心線、--dup-radius-m 以内、
+    # 法線がほぼ平行）で 1 つにする。半径より大きくずれた重なりは二重に数えうる（README 202d）。
+    nv = np.array([[r['nx'], r['ny']] for r in wrows]).reshape(-1, 2)
+    nv = nv * np.where(nv[:, :1] < 0, -1.0, 1.0)                   # 重なった中心線は向きが逆のこともある
+    dupw = find_duplicates(np.array([[r['x'], r['y']] for r in wrows]).reshape(-1, 2), nv,
+                           np.array([r['center'] for r in wrows]), args.dup_radius_m)
+    summary['duplicates']['width_samples_near_traj_before'] = len(wrows)
+    summary['duplicates']['width_samples_dropped'] = int((dupw >= 0).sum())
+    wrows = [r for r, j in zip(wrows, dupw) if j < 0]
     for r in wrows:
         for kk in ('gsi_left_m', 'gsi_right_m', 'snap_left_m', 'snap_right_m', 'paved_left_m', 'paved_right_m'):
             r[kk] = None if not np.isfinite(r[kk]) else round(float(r[kk]), 3)
@@ -731,7 +831,7 @@ def main(argv=None):
         r['flag_snap'] = r['d_snap_m'] is not None and abs(r['d_snap_m']) > args.width_thr_m
         r['flag_paved'] = r['d_paved_m'] is not None and abs(r['d_paved_m']) > args.width_thr_m
     summary['timing_s']['width'] = round(time.time() - t1, 1)
-    wf = list(wrows[0].keys())
+    wf = WIDTH_FIELDS
     with open(args.work_dir / 'width_samples.csv', 'w', newline='') as f:
         w = csv.DictWriter(f, wf)
         w.writeheader()
@@ -894,6 +994,10 @@ def main(argv=None):
     with np.load(args.ground_npz) as f:
         inten_all = f['intensity_mean']
     for cname, x0, x1, y0, y1 in args.crop:
+        # 地図の外を指定したら止める（切り出しが空・負の大きさになり、画像が壊れるため）
+        if not (ox <= x0 < x1 <= ox + W * res and oy <= y0 < y1 <= top):
+            raise SystemExit(f'--crop {cname}: x {x0}〜{x1}、y {y0}〜{y1} が地図（x {ox:g}〜{ox + W * res:g}、'
+                             f'y {oy:g}〜{top:g}）の外')
         c0, r0 = (int(round(float(v))) for v in g.map_to_px(x0, y1, H, res, ox, oy, 1))
         c1, r1 = (int(round(float(v))) for v in g.map_to_px(x1, y0, H, res, ox, oy, 1))
         xs = ox + (np.arange(c0, c1 + 1) + 0.5) * res
