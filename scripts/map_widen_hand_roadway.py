@@ -22,6 +22,8 @@
   R5  点の密な帯（x ≈ −95、y 73〜94.5）は含めない（--exclude-box の既定値）。
   R6  帯の中の小さい障害物（段 ∪ 構造物の 8 連結で 3 セル以下）は、手塗りの内側の塩と同じ規則で消す
       （--band-salt-max-cells、既定 3。0 で前の振る舞い＝帯から 1 セル太らせて除き OCC のまま）。
+      2026-11-19 のレビュー MF-1 で、1 セル以下の隙間で並ぶ点の格子は塊とみなして残す版を既定にした
+      （--band-salt-gap-cells 1。0 で手塗りの内側と同じ生の 8 連結。ユーザーが決め直す。下の R6 の説明）。
 
 向きの注意：georef.yaml では map の x 軸は北から 185°（ほぼ南）、+y はほぼ東を向く。このスクリプトの
 コメント・箱の名前で「北の道」「南の縁」と書いた物は、画像の上下（上 = map の +y = 実際はほぼ東）の
@@ -36,27 +38,32 @@
      格子で描いてあり縁が階段になるので、縁のすぐ外のセルが面に入ることがある（レビュー SF-5）。
   5. 段・構造物（v2 の occupied_step ∪ occupied_structure。compose_occupancy の machine_occ と同じ集合）を
      --barrier-dilate-m だけ正方形の要素で太らせて除く。帯を free の塗りにも入れるので、除かないと機械の
-     障害物を消してしまう。太らせるのは、static.pcd が 10 cm のボクセルなので、植栽・生垣の構造物が 1 セル
-     おきの点の並びになり、太らせないと点の間のセルが帯に残って植え込みの中へ入り込むため（初回の目視、
-     x 104〜106、y 18〜19）。正方形にするのは、楕円の 3×3 は十字で、斜めに 1 セルおきに並ぶ点の間を
-     8 連結の帯がすり抜けるため（レビュー MF-1）。v2 の salt_candidates は段 ∪ 構造物と同じ集合
+     障害物を消してしまう。太らせるのは、static.pcd が 10 cm のボクセルなので、植栽・生垣の構造物が 2 セル
+     ごと（間に 1 セル）の点の並びになり、太らせないと点の間のセルが帯に残って植え込みの中へ入り込むため
+     （初回の目視、x 104〜106、y 18〜19）。正方形にするのは、楕円の 3×3 は十字で、斜めに 2 セルごと（間に
+     1 セル）に並ぶ点の間を 8 連結の帯がすり抜けるため（レビュー MF-1）。v2 の salt_candidates は段 ∪ 構造物と同じ集合
      （2026-11-17 に実測で一致）なので、別には足さない（一致しなければ止める）。
   6. keepout の塗りを除く（今の候補は空だが、keepout は free より優先なので明示する）。
   7. 除外の箱（--exclude-box）の中を除く。
   8. 残りの 8 連結の成分のうち、手塗りに接するものだけを残す（離れた飛び地は足さない）。
   内側へ（手塗りを削る方向）は変えない。
 
-  R6 の小さい障害物は、keepout（6.）と R3 の除外を先に引いた後、5. の前に分ける。gen_auto_free_mask.py と同じく、段 ∪ 構造物の生の格子（太らせない）の
-  8 連結の成分で 3 セル以下のもののうち、成分の全セルが「5. の前の帯 ∪ 手塗り」に入り、しかも残す障害物を
-  太らせた所に掛からないものだけを帯へ戻す（太らせない）。帯の縁にまたがる点・大きい障害物のすぐ脇の点は、
+  R6 の小さい障害物は、keepout（6.）と R3 の除外を先に引いた後、5. の前に分ける。段 ∪ 構造物の成分で
+  3 セル以下のもののうち、成分の全セルが「5. の前の帯 ∪ 手塗り」に入り、しかも残す障害物を太らせた所に
+  掛からないものだけを帯へ戻す（太らせない）。帯の縁にまたがる点・大きい障害物のすぐ脇の点は、
   縁そのものか障害物の一部とみなして残す（安全側）。戻した点は roadway にだけ足し、free の塗りには足さない。
   こうすると合成の gen_auto_free_mask.py が手塗りの内側と同じ規則で free_mask_auto に入れて消し、
   erased_by_free.png では自動（水色）の消去として残る（free にも塗ると人の塗りとの「両方」になり、どの規則で
   消えたか追えない）。消えたことは、合成した free_mask_auto の差分 == 戻した点、で確かめる。
-  既定は生の 8 連結（gen_auto_free_mask と同じ）なので、1 セルおきの点の格子（10 cm ボクセルの植栽・生垣）
-  も 1 点ずつ消える。帯は補正後の縁の内側に限るので外へは広がらないが、縁の内側に格子があればそこは FREE に
-  なる。格子に入っていた点の数は summary の band_salt.cells_in_dot_lattice に残し、
-  --band-salt-gap-cells 1 で格子を残す版と比べられるようにした。
+  成分の取り方は --band-salt-gap-cells で選ぶ。既定の 1 は、1 セル以下の隙間で並ぶ点を 1 つの成分とみなす
+  （2026-11-19 のレビュー MF-1 で既定にした）。生の 8 連結（0、gen_auto_free_mask と同じ）では、2 セルごと
+  （間に 1 セル）の点の格子（10 cm ボクセルの生垣・柵）が 1 点ずつ 3 セル以下になって消え、残す障害物から
+  外れるので太らせた壁も無くなる。すると格子の奥の候補のセルが帯につながり、補正後の縁まで FREE になる
+  （原寸の切り出しで、帯の外の縁で消えた点は生垣の前の列だった）。R6 の回答は「大きい塊は残るので本物の
+  障害物を消すおそれは小さい」という説明に基づいていたが、格子ではそれが成り立たない。ユーザーが
+  決め直すまで、格子を残す側を既定にする。選ばれた点は生の成分も 3 セル以下なので、合成の
+  gen_auto_free_mask はそのまま消す（規則は同じで、選ぶ点が少ないだけ）。生の 8 連結なら消えていた格子の
+  点の数は summary の band_salt.cells_in_dot_lattice に残す。
 
   R3 は 2 回に分けて作る。1 回目の帯を区間に割り当て（集計と同じ割り当て）、帯のセルが --min-seg-cells
   以上で最大の幅が上限 − 半セル以上の区間を「上限まで広がった区間」とする（前の summary の
@@ -172,13 +179,19 @@ def parse_args(argv=None):
     p.add_argument('--capped-policy', choices=('drop', 'clip'), default='drop',
                    help='drop：上限まで広がった区間は、その区間の帯を全部広げない（R3、既定）。clip：上限で切って'
                         '広げる（前の振る舞い）。')
-    p.add_argument('--band-salt-max-cells', type=int, default=3,
-                   help='帯の中の段 ∪ 構造物のうち、8 連結でこのセル数以下の成分を手塗りの内側と同じ規則で消す'
-                        '（R6。gen_auto_free_mask.py の 3 と同じ値にする）。0 で消さない（前の振る舞い）。')
-    p.add_argument('--band-salt-gap-cells', type=int, default=0,
-                   help='R6 の成分を取るとき、このセル数以下の隙間で並ぶ点を 1 つの成分とみなす。0（既定）は'
-                        'gen_auto_free_mask.py と同じ生の 8 連結。1 にすると、1 セルおきの点の格子（10 cm ボクセルの'
-                        '植栽・生垣）を大きい障害物として残す（比較用）。')
+    # 上限 3 は gen_auto_free_mask.py の判定（per_cell_area <= 3）から来る。帯へ戻した点は合成でその判定に
+    # 掛けて消すので、4 以上にすると戻したのに消えない点ができ、check が外れる。外れるのは地図や画像を
+    # 書いた後なので、引数の段階で止める
+    p.add_argument('--band-salt-max-cells', type=int, default=3, choices=range(0, 4), metavar='{0..3}',
+                   help='帯の中の段 ∪ 構造物のうち、このセル数以下の成分を手塗りの内側と同じ規則で消す'
+                        '（R6。gen_auto_free_mask.py の 3 が上限）。0 で消さない（前の振る舞い）。')
+    p.add_argument('--band-salt-gap-cells', type=int, default=1, choices=range(0, 4), metavar='{0..3}',
+                   help='R6 の成分を取るとき、このセル数以下の隙間で並ぶ点を 1 つの成分とみなす。1（既定）は'
+                        '2 セルごと（間に 1 セル）の点の格子（10 cm ボクセルの生垣・柵）を大きい障害物として残す。'
+                        '0 は gen_auto_free_mask.py と同じ生の 8 連結で、格子の点も 1 点ずつ消える。')
+    p.add_argument('--compare-summary', type=pathlib.Path, default=None,
+                   help='別の設定で作った summary.json（例：--band-salt-gap-cells 0 の版）。主な数字を'
+                        'この summary の compare に写す（README の比較表の出所を 1 つにする）。')
     p.add_argument('--free-policy', choices=('paint', 'evidence'), default='paint',
                    help='paint：帯を roadway と free の両方に足す（既定）。evidence：roadway だけ（free_evidence の'
                         '無いセルは UNKNOWN のまま）。')
@@ -325,14 +338,24 @@ def touching(b, hand):
     return ok[lab]
 
 
+def gap_dilate(m, gap):
+    """各セルを、自分を角とする (gap+1)×(gap+1) の正方形に広げる（片側だけ）。2 点の正方形が 8 近傍で
+    接するのは、各軸の差が gap + 1 以下、つまり間の隙間が gap セル以下のときだけ。中心に置いた半径 gap の
+    正方形だと、2 つの正方形が接するだけで連結になり、隙間 2×gap まで繋がってしまう（レビュー SF-1）。"""
+    if gap <= 0:
+        return m.copy()
+    k = np.ones((gap + 1, gap + 1), np.uint8)
+    return cv2.dilate(m.astype(np.uint8), k, anchor=(0, 0)).astype(bool)
+
+
 def small_components(m, max_cells, gap=0):
     """m の 8 連結の成分のうち max_cells 以下のもの。gap = 0 は gen_auto_free_mask.py の判定（生の格子、
     太らせない、8 連結、面積 ≤ 3）と同じ。gap > 0 は、gap セル以下の隙間で並ぶ点を 1 つの成分とみなし
-    （正方形で gap 太らせて連結を取る）、その成分の生のセル数で判定する。10 cm ボクセルの植栽・生垣は
-    1 セルおきの点の格子になり、生の 8 連結では 1 点ずつ ≤ 3 になるため（MF-1 と同じ事情）。gap > 0 で
-    選んだ点も生の成分は ≤ max_cells なので、合成の gen_auto_free_mask はそのまま消す。
-    返り値は (そのセル、ラベル画像。gap > 0 では太らせた格子のラベルで、m のセルは必ずラベルを持つ)。"""
-    g = square_dilate(m, gap) if gap > 0 else m
+    （gap_dilate で広げて連結を取る）、その成分の生のセル数で判定する。10 cm ボクセルの生垣・柵は 2 セル
+    ごと（間に 1 セル）の点の格子になり、生の 8 連結では 1 点ずつ ≤ 3 になるため（MF-1 と同じ事情）。
+    gap > 0 で選んだ点も生の成分は ≤ max_cells なので、合成の gen_auto_free_mask はそのまま消す。
+    返り値は (そのセル、ラベル画像。gap > 0 では広げた格子のラベルで、m のセルは必ずラベルを持つ)。"""
+    g = gap_dilate(m, gap)
     n, lab = cv2.connectedComponents(g.astype(np.uint8), connectivity=8)
     size = np.bincount(lab[m], minlength=n)
     small = size <= max_cells
@@ -594,6 +617,23 @@ def guard_double_widen(args, hand, hw):
     return h_in
 
 
+def key_numbers(s):
+    """比べるときに並べる数字（README の 2 つの版の表の出所）。summary.json の dict から取る。"""
+    w = s['areas']['whole']
+    occ = s['clearance']['occ']
+    rw = s['routes']['widened']
+    return {'band_m2': w['band_m2'], 'free_gained_m2': w['free_gained_m2'],
+            'free_gained_pct': round(100 * w['free_gained_m2'] / w['free_baseline_m2'], 2),
+            'salt_cells': s['band_salt']['cells'], 'salt_components': s['band_salt']['components'],
+            'capped_segments': s['capped']['segments'], 'capped_band_m2': s['capped']['band_m2'],
+            'gained_ge_robot_radius_m2': s['usable']['gained_ge_robot_radius_m2'],
+            'gained_ge_inflation_m2': s['usable']['gained_ge_inflation_m2'],
+            'newly_lt_inflation_segments': occ['newly_lt_inflation'], 'newly_lt_inflation_sites': len(occ['sites']),
+            'all_connected': rw['all_connected'], 'eroded_free_components': rw.get('eroded_free_components'),
+            'occ_cells': s['counts']['widened'][str(OCC)], 'checks_all_true': all(s['checks'].values()),
+            'watch_band_m2': s['watch_band_m2']}
+
+
 # ---------------------------------------------------------------- main
 
 def main(argv=None):
@@ -661,6 +701,8 @@ def main(argv=None):
     if args.capped_policy == 'drop' and cap1.size:
         wb = band_pass(cap_cells)
     del lab1
+    if args.capped_policy != 'drop':
+        cap_cells = np.zeros(hw, bool)
     band, stages, idx_img, d_hand = wb['band'], wb['stages'], wb['near_idx'], wb['d_hand']
     salt_band, barrier_kept = wb['salt'], wb['barrier_kept']
     print(f'[上限] {json.dumps({k_: v_ for k_, v_ in capped.items() if k_ != "list"}, ensure_ascii=False)}',
@@ -709,13 +751,21 @@ def main(argv=None):
     auto_hand = load_mask(args.work_dir / 'compose_hand/free_mask_auto.png', hw)
     auto_gain = auto_new & ~auto_hand
     checks = {'hand_only_compose_equals_baseline': bool(np.array_equal(hand_img, base_img)),
-              'gained_free_equals_band': bool(np.array_equal(gained, band)),
               'changed_cells_within_band': int((changed & ~band).sum()) == 0,
               'band_disjoint_from_hand_keepout_barrier':
                   int((band & (hand | keepout | barrier_kept)).sum()) == 0,
               'band_salt_erased_by_auto_rule': bool(np.array_equal(auto_gain, salt_band))
               and int((auto_hand & ~auto_new).sum()) == 0,
               'salt_candidates_equal_step_or_structure': salt_same}
+    if args.free_policy == 'paint':
+        checks['gained_free_equals_band'] = bool(np.array_equal(gained, band))
+    else:
+        # evidence では帯を free に塗らないので、free_evidence の無いセルは UNKNOWN のまま。増えた FREE は帯の
+        # 部分集合になるだけ（672bd81 までは paint と同じ一致を求めていて、evidence では必ず外れていた）
+        checks['gained_free_within_band'] = int((gained & ~band).sum()) == 0
+    if args.capped_policy == 'drop':
+        # R3 で落とした区間のセルが 1 つも帯に残っていない（直接の確認。下の「上限まで届く区間が無い」とは別）
+        checks['capped_segment_cells_absent_from_band'] = int((band & cap_cells).sum()) == 0
     del auto_new, auto_hand, auto_gain
     print(f'[確認] {checks}', flush=True)
 
@@ -843,6 +893,13 @@ def main(argv=None):
     if args.capped_policy == 'drop':
         # 2 回目は候補が減るだけなので、上限まで広がる区間は残らないはず（R3）
         checks['capped_policy_drop_leaves_no_capped_segment'] = len(capped_rows) == 0
+    # 抜け穴の記録：帯のセルが --min-seg-cells 未満の区間は「上限まで広がった区間」に数えないので、上限まで
+    # 届いていても R3 で落ちない。その区間の数とセル数を残す
+    reach = capped_segments(lab_img, d_hand, 1, cap_thr)
+    n_reach = np.bincount(lab_img.ravel(), minlength=int(lab_img.max()) + 1)[1:]
+    small_reach = reach[n_reach[reach] < args.min_seg_cells] if reach.size else reach
+    capped['small_segments_reaching_cap'] = {'segments': int(small_reach.size),
+                                             'cells': int(n_reach[small_reach].sum()) if small_reach.size else 0}
     # R6 の点の数え方：戻した点の 8 連結の成分（手塗りにまたがる成分も 1 つと数える）と大きさ
     n_salt, salt_lab, salt_st, _ = cv2.connectedComponentsWithStats(salt_band.astype(np.uint8), connectivity=8)
     del salt_lab
@@ -852,7 +909,8 @@ def main(argv=None):
                  'by_size': {str(k_): int((salt_sizes == k_).sum()) for k_ in range(1, args.band_salt_max_cells + 1)},
                  'm2': round(float(salt_band.sum()) * a, 4)}
     if args.band_salt_max_cells > 0:
-        # 1 セルの隙間を閉じると 4 セル以上の塊になる点（1 セルおきの点の格子）。既定の生の 8 連結では消える
+        # 1 セルの隙間を閉じると 4 セル以上の塊になる点（2 セルごとの点の格子）。gap 0 のときに消える数。
+        # gap ≥ 1 では、戻した点はすべて 1 セルの隙間でも孤立しているので 0 になる
         iso1, _ = small_components(barrier, args.band_salt_max_cells, 1)
         band_salt['cells_in_dot_lattice'] = int((salt_band & ~iso1).sum())
         del iso1
@@ -933,6 +991,12 @@ def main(argv=None):
                    'widened': {str(v): int((new_img == v).sum()) for v in (OCC, FREE, UNKNOWN)}},
         'png': png, 'elapsed_s': round(time.time() - t0, 1),
     }
+    summary['key'] = key_numbers(summary)
+    if args.compare_summary is not None:
+        other = json.loads(args.compare_summary.read_text())
+        summary['compare'] = {'summary': short_path(args.compare_summary),
+                              'band_salt_gap_cells': other['params'].get('band_salt_gap_cells'),
+                              'key': key_numbers(other)}
     for r_ in summary['routes'].values():
         r_['map'] = short_path(r_['map'])
     (args.out_dir / 'summary.json').write_text(json.dumps(summary, indent=1, ensure_ascii=False) + '\n')

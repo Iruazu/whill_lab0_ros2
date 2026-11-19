@@ -15,7 +15,8 @@
   "sample_m": 0.025,
   "capped_policy": "drop",
   "band_salt_max_cells": 3,
-  "band_salt_gap_cells": 0,
+  "band_salt_gap_cells": 1,
+  "compare_summary": "~/bags/m8-experiments/154w_gap0/summary.json",
   "free_policy": "paint",
   "hole_max_m2": 1.0,
   "out_dir": "docs/maps/campus-m8/v2/experiments/154w",
@@ -36,17 +37,18 @@
   "segments": "7c6d136ff79e067889d6ef7eeef8408de815f12469d3a306e802ebbfeac02e66"
  },
  "outputs_sha256": {
-  "roadway_widened": "ac4c6360f60621f44f111ca95730b718dc054eb0f5c1e147b17569c0ea3c6bbf",
-  "free_widened": "6175c1640552f17f3e6370170647850e41dbfd6e654fd4f323bc9f3030cde614",
-  "final_pgm": "5c483b43fb965ead2bc7e7664cf50f166a304c52c7dc9843f9a9b5fd9d4d5aec"
+  "roadway_widened": "abcc68ba4cd0814625046a06b9d0a9191168da9e44f9345a6059cf34be0acdf4",
+  "free_widened": "456d692205a58f129192a93b7ade81b39de5bbf0ec54de07de8e983d391f0826",
+  "final_pgm": "fca2abb47a4af7ae987784f976a14b7d51ccf5adfeae1e9190a3b7b959fcaa9e"
  },
  "checks": {
   "hand_only_compose_equals_baseline": true,
-  "gained_free_equals_band": true,
   "changed_cells_within_band": true,
   "band_disjoint_from_hand_keepout_barrier": true,
   "band_salt_erased_by_auto_rule": true,
   "salt_candidates_equal_step_or_structure": true,
+  "gained_free_equals_band": true,
+  "capped_segment_cells_absent_from_band": true,
   "capped_policy_drop_leaves_no_capped_segment": true
  },
  "exclude_boxes": [
@@ -151,12 +153,12 @@
   "nearest_trusted": 255807,
   "outside_snapped_edge": 25465,
   "minus_keepout": 230342,
-  "minus_capped": 186304,
-  "minus_barrier": 175473,
-  "minus_exclude": 157272,
-  "band": 156520,
-  "dropped_islands": 752,
-  "salt_cells": 2292
+  "minus_capped": 189208,
+  "minus_barrier": 169112,
+  "minus_exclude": 150914,
+  "band": 150159,
+  "dropped_islands": 755,
+  "salt_cells": 792
  },
  "q2_boxes": {
   "plaza_nw": {
@@ -222,11 +224,11 @@
  },
  "capped": {
   "policy": "drop",
-  "segments": 68,
-  "band_cells": 44038,
-  "band_m2": 110.1,
-  "first_pass_band_m2": 501.44,
-  "first_pass_salt_cells": 2862,
+  "segments": 65,
+  "band_cells": 41134,
+  "band_m2": 102.84,
+  "first_pass_band_m2": 478.25,
+  "first_pass_salt_cells": 1023,
   "list": [
    {
     "line": 301,
@@ -234,7 +236,7 @@
     "x": -97.67,
     "y": 16.13,
     "kind": "step",
-    "band_cells": 4018
+    "band_cells": 3992
    },
    {
     "line": 303,
@@ -250,7 +252,7 @@
     "x": -98.24,
     "y": 23.49,
     "kind": "step",
-    "band_cells": 936
+    "band_cells": 843
    },
    {
     "line": 303,
@@ -258,7 +260,7 @@
     "x": -98.21,
     "y": 24.49,
     "kind": "step",
-    "band_cells": 898
+    "band_cells": 822
    },
    {
     "line": 303,
@@ -266,7 +268,7 @@
     "x": -98.2,
     "y": 25.49,
     "kind": "step",
-    "band_cells": 532
+    "band_cells": 529
    },
    {
     "line": 303,
@@ -282,7 +284,7 @@
     "x": -98.19,
     "y": 27.49,
     "kind": "structure",
-    "band_cells": 600
+    "band_cells": 552
    },
    {
     "line": 303,
@@ -290,7 +292,7 @@
     "x": -98.18,
     "y": 28.48,
     "kind": "step",
-    "band_cells": 600
+    "band_cells": 567
    },
    {
     "line": 303,
@@ -346,7 +348,7 @@
     "x": -97.97,
     "y": 36.47,
     "kind": "step",
-    "band_cells": 1190
+    "band_cells": 1163
    },
    {
     "line": 303,
@@ -442,7 +444,7 @@
     "x": -98.75,
     "y": 60.67,
     "kind": "step",
-    "band_cells": 418
+    "band_cells": 388
    },
    {
     "line": 305,
@@ -450,7 +452,7 @@
     "x": -98.5,
     "y": 62.76,
     "kind": "step",
-    "band_cells": 1695
+    "band_cells": 1655
    },
    {
     "line": 305,
@@ -458,7 +460,7 @@
     "x": -98.69,
     "y": 63.58,
     "kind": "step",
-    "band_cells": 520
+    "band_cells": 504
    },
    {
     "line": 305,
@@ -466,7 +468,7 @@
     "x": -98.88,
     "y": 64.4,
     "kind": "step",
-    "band_cells": 2254
+    "band_cells": 2130
    },
    {
     "line": 319,
@@ -474,7 +476,7 @@
     "x": 80.7,
     "y": 7.88,
     "kind": "step",
-    "band_cells": 1020
+    "band_cells": 621
    },
    {
     "line": 319,
@@ -482,7 +484,7 @@
     "x": 84.71,
     "y": 7.91,
     "kind": "step",
-    "band_cells": 1019
+    "band_cells": 685
    },
    {
     "line": 319,
@@ -514,7 +516,7 @@
     "x": -92.18,
     "y": 147.19,
     "kind": "step",
-    "band_cells": 279
+    "band_cells": 232
    },
    {
     "line": 322,
@@ -522,23 +524,7 @@
     "x": -92.15,
     "y": 146.2,
     "kind": "step",
-    "band_cells": 576
-   },
-   {
-    "line": 327,
-    "seg": 41,
-    "x": 105.49,
-    "y": 19.39,
-    "kind": "structure",
-    "band_cells": 959
-   },
-   {
-    "line": 328,
-    "seg": 16,
-    "x": 99.96,
-    "y": 45.1,
-    "kind": "step",
-    "band_cells": 231
+    "band_cells": 567
    },
    {
     "line": 329,
@@ -578,7 +564,7 @@
     "x": 94.34,
     "y": 159.09,
     "kind": "step",
-    "band_cells": 632
+    "band_cells": 621
    },
    {
     "line": 332,
@@ -586,7 +572,7 @@
     "x": 93.76,
     "y": 159.68,
     "kind": "step",
-    "band_cells": 351
+    "band_cells": 339
    },
    {
     "line": 350,
@@ -610,7 +596,7 @@
     "x": 72.1,
     "y": 167.16,
     "kind": "step",
-    "band_cells": 417
+    "band_cells": 416
    },
    {
     "line": 353,
@@ -618,7 +604,7 @@
     "x": 72.33,
     "y": 166.51,
     "kind": "step",
-    "band_cells": 579
+    "band_cells": 572
    },
    {
     "line": 353,
@@ -662,19 +648,11 @@
    },
    {
     "line": 359,
-    "seg": 18,
-    "x": 91.84,
-    "y": 166.25,
-    "kind": "step",
-    "band_cells": 358
-   },
-   {
-    "line": 359,
     "seg": 19,
     "x": 92.64,
     "y": 166.65,
     "kind": "step",
-    "band_cells": 1097
+    "band_cells": 1077
    },
    {
     "line": 359,
@@ -772,72 +750,76 @@
     "kind": "step",
     "band_cells": 922
    }
-  ]
+  ],
+  "small_segments_reaching_cap": {
+   "segments": 0,
+   "cells": 0
+  }
  },
  "band_salt": {
   "max_cells": 3,
-  "cells": 2292,
-  "components": 2093,
+  "cells": 792,
+  "components": 766,
   "by_size": {
-   "1": 1898,
-   "2": 191,
-   "3": 4
+   "1": 740,
+   "2": 26,
+   "3": 0
   },
-  "m2": 5.73,
-  "cells_in_dot_lattice": 1720
+  "m2": 1.98,
+  "cells_in_dot_lattice": 0
  },
  "areas": {
   "whole": {
-   "band_m2": 391.3,
-   "free_gained_m2": 391.3,
+   "band_m2": 375.4,
+   "free_gained_m2": 375.4,
    "free_lost_m2": 0.0,
    "free_baseline_m2": 5166.5,
-   "free_widened_m2": 5557.8
+   "free_widened_m2": 5541.9
   },
   "start_bldg3": {
-   "band_m2": 21.33,
-   "free_gained_m2": 21.33,
+   "band_m2": 20.48,
+   "free_gained_m2": 20.48,
    "free_lost_m2": 0.0,
    "free_baseline_m2": 439.2,
-   "free_widened_m2": 460.5
+   "free_widened_m2": 459.7
   },
   "north_road": {
-   "band_m2": 139.88,
-   "free_gained_m2": 139.88,
+   "band_m2": 133.41,
+   "free_gained_m2": 133.41,
    "free_lost_m2": 0.0,
    "free_baseline_m2": 878.7,
-   "free_widened_m2": 1018.6
+   "free_widened_m2": 1012.1
   }
  },
  "watch_band_m2": {
   "south_parking_strip_x-75_-10": 0.0,
   "south_parking_strip_x0_5": 0.0,
-  "north_road_south_x44_60": 2.63,
+  "north_road_south_x44_60": 2.44,
   "capped_x-96_-93_y12_48": 0.09,
-  "north_side_road_x21_27_y5_16": 6.89,
+  "north_side_road_x21_27_y5_16": 6.52,
   "dot_field_x-96.5_-93.5_y76_92": 0.0
  },
- "band_cells": 156520,
+ "band_cells": 150159,
  "usable": {
-  "gained_ge_robot_radius_m2": 177.78,
-  "gained_ge_inflation_m2": 105.23
+  "gained_ge_robot_radius_m2": 152.89,
+  "gained_ge_inflation_m2": 87.87
  },
  "derived": {
   "capped_segments": 0,
   "capped_band_m2": 0.0,
   "capped_band_share": 0.0,
-  "bright_band_m2": 51.64,
-  "bright_band_share": 0.132,
+  "bright_band_m2": 45.68,
+  "bright_band_share": 0.122,
   "bright_hand_share": 0.019,
-  "band_cells_without_free_evidence": 3997,
-  "occ_in_new_holes_cells": 4,
+  "band_cells_without_free_evidence": 2903,
+  "occ_in_new_holes_cells": 104,
   "occ_within_0_1m_of_band": {
-   "cells": 3183,
-   "components": 2797
+   "cells": 4062,
+   "components": 3619
   },
   "new_holes_in_roadway_mask": {
-   "components": 24,
-   "cells": 78
+   "components": 44,
+   "cells": 732
   },
   "cells_reassigned_from_dup_segments": 0,
   "outside_snapped_edge": {
@@ -923,12 +905,12 @@
   }
  },
  "widened_segments": {
-  "count": 772,
+  "count": 774,
   "by_kind": {
-   "step": 761,
-   "structure": 11
+   "step": 762,
+   "structure": 12
   },
-  "width_max_median_m": 0.55,
+  "width_max_median_m": 0.539,
   "width_max_p90_m": 0.9,
   "width_max_max_m": 1.471
  },
@@ -941,14 +923,14 @@
  },
  "clearance": {
   "occ": {
-   "segments_with_new_edge": 772,
-   "new_lt_inflation": 761,
-   "new_lt_robot_radius": 756,
+   "segments_with_new_edge": 774,
+   "new_lt_inflation": 763,
+   "new_lt_robot_radius": 759,
    "new_median_m": 0.1,
-   "new_p90_m": 0.18,
-   "segments_with_old_edge": 767,
-   "old_lt_inflation": 620,
-   "old_lt_inflation_share": 0.808,
+   "new_p90_m": 0.156,
+   "segments_with_old_edge": 769,
+   "old_lt_inflation": 622,
+   "old_lt_inflation_share": 0.809,
    "old_median_m": 0.35,
    "newly_lt_inflation": 136,
    "sites": [
@@ -1741,7 +1723,7 @@
      "n_segments": 1,
      "new_min": 0.1,
      "old_min": 0.6,
-     "widen_max_m": 0.667,
+     "widen_max_m": 0.6,
      "x_range": [
       137.24,
       137.24
@@ -1941,16 +1923,16 @@
    ]
   },
   "step": {
-   "segments_with_new_edge": 772,
-   "new_lt_inflation": 440,
-   "new_lt_robot_radius": 411,
-   "new_median_m": 0.4,
-   "new_p90_m": 3.716,
-   "segments_with_old_edge": 767,
-   "old_lt_inflation": 207,
-   "old_lt_inflation_share": 0.27,
-   "old_median_m": 0.894,
-   "newly_lt_inflation": 237
+   "segments_with_new_edge": 774,
+   "new_lt_inflation": 449,
+   "new_lt_robot_radius": 416,
+   "new_median_m": 0.386,
+   "new_p90_m": 3.487,
+   "segments_with_old_edge": 769,
+   "old_lt_inflation": 206,
+   "old_lt_inflation_share": 0.268,
+   "old_median_m": 0.9,
+   "newly_lt_inflation": 242
   }
  },
  "routes": {
@@ -2010,8 +1992,8 @@
   "widened": {
    "map": "~/bags/m8-experiments/154w/compose/final.yaml",
    "radius_m": 0.35,
-   "free_cells": 2223109,
-   "eroded_free_components": 10,
+   "free_cells": 2216748,
+   "eroded_free_components": 13,
    "waypoints": [
     {
      "name": "kounoken",
@@ -2068,9 +2050,9 @@
    "205": 39338776
   },
   "widened": {
-   "0": 391147,
-   "254": 2223109,
-   "205": 39184544
+   "0": 392646,
+   "254": 2216748,
+   "205": 39189406
   }
  },
  "png": {
@@ -2084,5 +2066,59 @@
   "dotfield_photo": "dotfield_crop_photo_1to1.png",
   "overview": "overview_band_8.png"
  },
- "elapsed_s": 48.1
+ "elapsed_s": 47.9,
+ "key": {
+  "band_m2": 375.4,
+  "free_gained_m2": 375.4,
+  "free_gained_pct": 7.27,
+  "salt_cells": 792,
+  "salt_components": 766,
+  "capped_segments": 65,
+  "capped_band_m2": 102.84,
+  "gained_ge_robot_radius_m2": 152.89,
+  "gained_ge_inflation_m2": 87.87,
+  "newly_lt_inflation_segments": 136,
+  "newly_lt_inflation_sites": 58,
+  "all_connected": true,
+  "eroded_free_components": 13,
+  "occ_cells": 392646,
+  "checks_all_true": true,
+  "watch_band_m2": {
+   "south_parking_strip_x-75_-10": 0.0,
+   "south_parking_strip_x0_5": 0.0,
+   "north_road_south_x44_60": 2.44,
+   "capped_x-96_-93_y12_48": 0.09,
+   "north_side_road_x21_27_y5_16": 6.52,
+   "dot_field_x-96.5_-93.5_y76_92": 0.0
+  }
+ },
+ "compare": {
+  "summary": "~/bags/m8-experiments/154w_gap0/summary.json",
+  "band_salt_gap_cells": 0,
+  "key": {
+   "band_m2": 391.3,
+   "free_gained_m2": 391.3,
+   "free_gained_pct": 7.57,
+   "salt_cells": 2292,
+   "salt_components": 2093,
+   "capped_segments": 68,
+   "capped_band_m2": 110.1,
+   "gained_ge_robot_radius_m2": 177.78,
+   "gained_ge_inflation_m2": 105.23,
+   "newly_lt_inflation_segments": 136,
+   "newly_lt_inflation_sites": 58,
+   "all_connected": true,
+   "eroded_free_components": 10,
+   "occ_cells": 391147,
+   "checks_all_true": true,
+   "watch_band_m2": {
+    "south_parking_strip_x-75_-10": 0.0,
+    "south_parking_strip_x0_5": 0.0,
+    "north_road_south_x44_60": 2.63,
+    "capped_x-96_-93_y12_48": 0.09,
+    "north_side_road_x21_27_y5_16": 6.89,
+    "dot_field_x-96.5_-93.5_y76_92": 0.0
+   }
+  }
+ }
 }

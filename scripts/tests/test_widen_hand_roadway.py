@@ -7,14 +7,16 @@
      境目（赤と桃の点から等距離に近いセル）は総当たりで計算した判定と 1 セルも違わない
   2. 上限（--max-widen-m）を超えて広げない。手塗りは削らない
   3. 手塗りから離れた飛び地は足さない
-  4. 段・構造物は帯より優先。横・斜めに 1 セルおきに並ぶ点も、太らせれば帯がその奥へ入らない（MF-1）
+  4. 段・構造物は帯より優先。横・斜めに 2 セルごと（間に 1 セル）に並ぶ点も、太らせれば帯がその奥へ入らない（MF-1）
   5. 除外の箱（y を限った箱の向きを含む）、keepout
   6. 縁の外側のセル（補正後の面の階段）を落とす（SF-5）
   7. 赤・橙が 1 つも無ければ帯は空
   8. 区間の表の読み方（どの状態・根拠を赤・橙とみなすか、補正後の位置）、小さい穴の検出
   9. R6：帯の中の 3 セル以下の点は帯へ戻し、4 セル以上の塊・帯の縁にまたがる点は残す。
-     --band-salt-gap-cells 1 では 1 セルおきの点の格子を残す
- 10. R3：上限まで広がった区間を求め（集計と同じ割り当て）、drop ではその区間の帯を全部落とす
+     --band-salt-gap-cells 1 では 2 セルごと（間に 1 セル）の点の格子を残し、その奥へ帯を入れない。
+     gap は「隙間 gap セル以下」で連結する（隙間 1 と 2 を区別する）。引数は 0〜3 に限る
+ 10. R3：上限まで広がった区間を求め（集計と同じ割り当て）、drop ではその区間の帯を全部落とす。
+     落とした区間の中の点は R6 で戻さず、障害物として残す
 
 Run:
     python3 -m pytest scripts/tests/test_widen_hand_roadway.py -q
@@ -133,7 +135,7 @@ def test_island_not_touching_hand_is_dropped():
 def test_barrier_wins_and_dotted_row_is_closed():
     hand, gsi, pts, trusted, nv = scene()
     barrier = np.zeros((H, W), bool)
-    barrier[14, ::2] = True   # 横に 1 セルおきの構造物の点（10 cm ボクセルの並び）
+    barrier[14, ::2] = True   # 横に 2 セルごと（間に 1 セル）の構造物の点（10 cm ボクセルの並び）
     band, _ = run(hand, gsi, pts, trusted, nv, barrier=barrier)
     assert not (band & barrier).any()
     # 太らせないと、点の間を通って奥（10〜13 行）まで帯がつながる
@@ -145,7 +147,7 @@ def test_barrier_wins_and_dotted_row_is_closed():
 
 
 def test_diagonal_dotted_row_is_closed():
-    """斜めに 2 セルおきに並ぶ点 (19-2j, 2j)。十字（楕円 3×3）で太らせると、点の間の (r+1, c+1) が残り、
+    """斜めに 2 セルごと（間に 1 セル）に並ぶ点 (19-2j, 2j)。十字（楕円 3×3）で太らせると、点の間の (r+1, c+1) が残り、
     8 連結の帯が壁の向こう（左上の三角）へすり抜ける。正方形なら閉じる（MF-1）。"""
     import cv2
     hand, gsi, pts, trusted, nv = scene()
@@ -286,7 +288,7 @@ def test_band_salt_hand_cells_count_as_room():
 
 
 def test_band_salt_gap_keeps_dot_lattice():
-    """--band-salt-gap-cells 1：1 セルおきの点の格子は 1 つの大きい成分とみなして残す。孤立点は戻す。"""
+    """--band-salt-gap-cells 1：2 セルごと（間に 1 セル）の点の格子は 1 つの大きい成分とみなして残す。孤立点は戻す。"""
     hand, gsi, pts, trusted, nv = scene()
     barrier = np.zeros((H, W), bool)
     barrier[11:17:2, 4:14:2] = True             # 3×5 の格子（各点は生の 8 連結では 1 セル）
@@ -326,3 +328,75 @@ def test_capped_segments_and_drop():
     lab2 = m.assign_segments(band2, pts2, tr, pidx, dup, H, RES, OX, OY)
     assert m.capped_segments(lab2, r2['d_hand'], 4, 0.5 - RES / 2).size == 0
     assert r2['stages']['minus_capped'] < r2['stages']['minus_keepout']
+
+
+def test_gap_connects_only_up_to_gap_cells():
+    """gap = 1 は隙間 1 セル（差 2）までを連結し、隙間 2 セル（差 3）は連結しない。横・縦・斜めとも（SF-1）。
+    中心に置いた半径 1 の正方形で太らせると、隙間 2 でも正方形どうしが接して連結になっていた。"""
+    for dr, dc in ((0, 1), (1, 0), (1, 1), (1, -1)):
+        for gap_cells, connected in ((1, True), (2, False)):
+            mm = np.zeros((20, 20), bool)
+            mm[10, 10] = True
+            mm[10 + dr * (gap_cells + 1), 10 + dc * (gap_cells + 1)] = True
+            small, _ = m.small_components(mm, 1, 1)
+            assert (not small.any()) == connected, (dr, dc, gap_cells)
+    # gap = 2 なら隙間 2 も連結する
+    mm = np.zeros((20, 20), bool)
+    mm[10, 10] = mm[10, 13] = True
+    assert not m.small_components(mm, 1, 2)[0].any()
+    # gap_dilate は元のセルを必ず含む
+    assert (m.gap_dilate(mm, 1) >= mm).all()
+
+
+def test_band_salt_lattice_gap0_vs_gap1_behind_cells():
+    """test_barrier_wins_and_dotted_row_is_closed と同じ配置（14 行に 2 セルごとの点）で R6 を有効にする。
+    gap 0：格子の点が 1 点ずつ戻され、太らせた壁が無くなって、格子の奥（10〜13 行）まで帯が入る。
+    gap 1：格子は大きい障害物として残り、奥へは入らない（既定の振る舞い、MF-1）。"""
+    hand, gsi, pts, trusted, nv = scene()
+    barrier = np.zeros((H, W), bool)
+    barrier[14, ::2] = True
+    band0, r0 = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05, salt=3, gap=0)
+    band1, r1 = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05, salt=3, gap=1)
+    assert band0[10:14, :40].all() and r0['salt'][14, :40:2].all()
+    assert not band1[10:15].any() and not r1['salt'].any()
+    assert r1['barrier_kept'][14, ::2].all()
+    assert band1[16:20, :45].all()
+
+
+def test_band_salt_max_cells_arg_range():
+    """--band-salt-max-cells は 0〜3（gen_auto_free_mask.py の 3 が上限）。4 は引数の段階で止まる（SF-2）。"""
+    import pytest
+    assert m.parse_args(['--band-salt-max-cells', '3']).band_salt_max_cells == 3
+    assert m.parse_args([]).band_salt_gap_cells == 1
+    with pytest.raises(SystemExit):
+        m.parse_args(['--band-salt-max-cells', '4'])
+    with pytest.raises(SystemExit):
+        m.parse_args(['--band-salt-gap-cells', '-1'])
+
+
+def test_capped_drop_with_band_salt():
+    """R3 と R6：1 回目に戻した点が、落とす区間の中にあれば 2 回目は戻さず障害物として残す。
+    残した点を太らせた所も帯に入らない（落とした区間の外の帯は変わらない）。"""
+    hand, gsi, pts, trusted, nv = scene()
+    seg = {'mid': np.array([[0.5, y_of_row_top(10)], [1.625, y_of_row_top(10)]]),
+           'nv': np.array([[0.0, 1.0], [0.0, 1.0]]), 'len': np.array([1.0, 1.25])}
+    pts2, pidx = m.sample_segments(seg, 0.01)
+    tr = np.ones(len(pts2), bool)
+    dup = np.zeros(len(pts2), bool)
+    gsi2 = gsi.copy()
+    gsi2[10:20, 20:] = False
+    gsi2[17:20, 20:] = True
+    gsi2[40:] = False
+    barrier = np.zeros((H, W), bool)
+    barrier[14, 8] = True                       # 左の区間（上限まで広がる）の中の 1 点
+    barrier[18, 30] = True                      # 右の区間（落とさない）の中の 1 点
+    band1, r1 = run(hand, gsi2, pts2, tr, None, barrier=barrier, cap=0.5, dil=0.05, salt=3)
+    assert r1['salt'][14, 8] and r1['salt'][18, 30]
+    lab = m.assign_segments(band1, pts2, tr, pidx, dup, H, RES, OX, OY)
+    cap = m.capped_segments(lab, r1['d_hand'], 4, 0.5 - RES / 2)
+    assert cap.tolist() == [0]
+    drop = np.isin(lab, cap + 1)
+    band2, r2 = run(hand, gsi2, pts2, tr, None, barrier=barrier, cap=0.5, dil=0.05, salt=3, drop=drop)
+    assert not r2['salt'][14, 8] and r2['barrier_kept'][14, 8]
+    assert r2['salt'][18, 30] and band2[18, 30]
+    assert not (band2 & drop).any() and not (band2 & ~band1).any()
