@@ -29,7 +29,7 @@ Webは `/navigate_to_pose` や `/cmd_vel` に直接指令を送らない。地�
 
 地点名は campus-m8・campus とも `kounoken`、`bldg7`、`seimon`、`bldg3`（表示名も同じ）。座標の正本は各 site の `waypoints.yaml`。campus-m8 の座標は旧 campus の点を地図間の変換で写した候補で、現地での照合は #156。
 
-Web背景は `web/map.png` / `web/map_meta.json`。現用metaは `docs/maps/campus-m8/v2/candidate_final.pgm` を出典として記録し、縮小率8、解像度0.4m/pixel（旧 campus v2 と同じ格子なので、origin と寸法も同じ）。再生成は `scripts/m7_make_web_map.py --yaml docs/maps/campus-m8/occupancy_candidate.yaml --out-dir src/whill_dispatch/web`。背景は1組しか置けないので、fallback の `site:=campus` で配車するときは `--yaml docs/maps/campus/occupancy_v2.yaml` で作り直してビルドする（runbook「旧地図（campus）に戻す」）。
+Web背景は `web/map.png` / `web/map_meta.json`。現用metaは `docs/maps/campus-m8/v2/candidate_final.pgm` を出典として記録し、縮小率8、解像度0.4m/pixel（旧 campus v2 と同じ格子なので、origin と寸法も同じ）。再生成は `scripts/m7_make_web_map.py --yaml docs/maps/campus-m8/occupancy_candidate.yaml --out-dir src/whill_dispatch/web`。背景は1組しか置けないので、fallback の `site:=campus` で配車するときは `--yaml docs/maps/campus/occupancy_v2.yaml` で作り直してビルドする（runbook「旧地図（campus）に戻す」）。手塗りのままの `map_variant:=candidate_hand` で配車するときも同じで、`--yaml docs/maps/campus-m8/occupancy_candidate_hand.yaml` で作り直す（runbook「手塗りのままの地図（candidate_hand）に戻す」）。
 
 WebのFREE判定は縮小画像上の補助判定。dispatchは地図の占有状態を再検査しない。最終的な経路計画はNav2が行う。画像と地図の同期は自動ではない。食い違いは `scripts/check_map_sync.py` が検出する（出典・origin・解像度・寸法・画素、negate と FREE_THRESHOLD の前提）。`demo_regression.sh` と `start_dispatch_demo.sh` の起動前検査が実行する。元画像の高さ6295が8で割り切れないため、Webの座標は縦方向に原点からの距離に比例してずれる。原点側の端で0、地点のあるy≈0付近で約0.10m、反対の端で最大0.35m。Webの1画素（0.4m）より小さいので、直すのはバックログ扱い。検査は注意として表示し、起動前検査では表示しない。画素の比較は、Pillowの版による丸めの差で止まらないよう、差が2を超える画素だけを数える。
 

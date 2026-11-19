@@ -4,6 +4,8 @@
 
 既定の地図は 2026-11-13 から `campus-m8`（#190。#186 の LiDAR の TF・Hi-Res 校正を前提に作り直した地図。経緯と再生の結果は [campus-m8 の README](maps/campus-m8/README.md)）。屋外の受入（#156）はまだで、この手順で行う。旧 `campus`（地図 v2）は fallback として残しており、「旧地図（campus）に戻す」の手順で戻せる。
 
+`candidate` の中身は 2026-11-19 の採用（#154 の 154w、R7）から、手塗りの roadway を補正後の地理院の縁まで広げた版（`v2/candidate_final.pgm`、sha256 `fca2abb4…`）。広げる前の手塗りのままの版は `candidate_hand`（`v2/candidate_hand_final.pgm`、sha256 `5106c0bc…`）として残しており、「手塗りのままの地図（candidate_hand）に戻す」で戻せる。広げた版は屋外ではまだ走らせていない。
+
 ## 統合起動（通常）
 
 準備（1〜3 節）が済んでいれば 1 ターミナルで:
@@ -20,6 +22,7 @@ scripts/start_dispatch_demo.sh
 | `--dry-run` | 実行内容だけ表示 |
 | `--no-rviz` | RViz を起動しない（初期位置は別途指定） |
 | `--speed slow` | 低速 |
+| `--variant candidate_hand` | 広げる前の手塗りのままの地図。Web 背景の作り直しが要る（「手塗りのままの地図（candidate_hand）に戻す」） |
 | `--site campus` | 旧地図（fallback）。Web 背景の作り直しが要る（「旧地図（campus）に戻す」） |
 | `--domain 21` | 別 domain（診断側も同じ値に） |
 | `--preflight` | 起動中のスタックに preflight を実行（別ターミナルで） |
@@ -125,7 +128,7 @@ ros2 launch whill_safety m6r_bringup_launch.py site:=campus-m8
 ros2 launch whill_navigation nav_launch.py site:=campus-m8 map_variant:=candidate speed:=normal
 ```
 
-campus-m8 は手塗りが確定していない（#154）ので、variant なしの `occupancy.yaml` を置いていない。`map_variant` を省くと、nav_launch は site ごとの既定（campus-m8 は `candidate`）を使い、読んだ yaml を起動ログの `nav_launch: site=... map_yaml=...` に出す。旧 campus で `map_variant:=v2` を省くと旧 `occupancy.yaml` を読む。speed は slow 0.30 / normal 0.45 / fast 0.60 m/s。`Managed nodes are active` は lifecycle の確認であり、入力や自己位置の確認ではない。
+campus-m8 は手塗りが確定していない（#154）ので、variant なしの `occupancy.yaml` を置いていない。`candidate` は 2026-11-19 から広げた版で、手塗りのままの版は `map_variant:=candidate_hand`。`map_variant` を省くと、nav_launch は site ごとの既定（campus-m8 は `candidate`）を使い、読んだ yaml を起動ログの `nav_launch: site=... map_yaml=...` に出す。旧 campus で `map_variant:=v2` を省くと旧 `occupancy.yaml` を読む。speed は slow 0.30 / normal 0.45 / fast 0.60 m/s。`Managed nodes are active` は lifecycle の確認であり、入力や自己位置の確認ではない。
 
 ## 6. T3: 配車 Web
 
@@ -195,6 +198,45 @@ ss -ltnp | grep -E ':(8000|9090)\b'
 ```
 
 AP を使ったら、元の接続名で `nmcli connection up <接続名>` に戻す。
+
+## 手塗りのままの地図（candidate_hand）に戻す
+
+広げた `candidate` で、広げた縁の近くで経路や停止がおかしいときに、地図だけを広げる前に戻す。site・点群・waypoint は同じ（NDT は `static.pcd` を読むので影響しない）。Web の背景は 1 組しか置けないので、手塗りのままの版で作り直してビルドする（作り直さないと `start_dispatch_demo.sh` の地図の同期検査で止まる）。
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+ls -l docs/maps/campus-m8/occupancy_candidate_hand.yaml docs/maps/campus-m8/v2/candidate_hand_final.pgm
+echo "5106c0bca46650a40a491ca611cabdb0eed470ec96cfca5db5778813fc1c41d9  docs/maps/campus-m8/v2/candidate_hand_final.pgm" | sha256sum -c
+python3 scripts/m7_make_web_map.py --yaml docs/maps/campus-m8/occupancy_candidate_hand.yaml --out-dir src/whill_dispatch/web
+colcon build --symlink-install --packages-select whill_dispatch
+python3 scripts/check_map_sync.py --variant candidate_hand --web-dir install/whill_dispatch/share/whill_dispatch/web
+scripts/start_dispatch_demo.sh --variant candidate_hand
+```
+
+個別に起動するときは、Nav2 だけ `map_variant:=candidate_hand` にする（bringup と dispatch はそのまま。Web の背景は上のブロックの `m7_make_web_map.py` と `colcon build` で作り直しておく）。T2 のターミナルで、3 節と同じ共通環境から:
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file://${PWD}/configs/cyclonedds-runtime-min.xml"
+export ROS_DOMAIN_ID=0
+ros2 launch whill_navigation nav_launch.py site:=campus-m8 map_variant:=candidate_hand speed:=normal
+```
+
+起動ログの `nav_launch: ... map_yaml=.../occupancy_candidate_hand.yaml` で確かめる。広げた版に戻すときは、Web の背景を Git の版に戻してビルドする:
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+git checkout -- src/whill_dispatch/web/map.png src/whill_dispatch/web/map_meta.json
+colcon build --symlink-install --packages-select whill_dispatch
+python3 scripts/check_map_sync.py --web-dir install/whill_dispatch/share/whill_dispatch/web
+```
+
+既定そのものを手塗りのままに戻す（ファイルを差し替える）手順は [campus-m8 の README](maps/campus-m8/README.md) の 154w 節「採用」。ブランチと PR で行う。
 
 ## 旧地図（campus）に戻す
 

@@ -1115,7 +1115,9 @@ def main(argv=None):
     rp.add_argument('--vector-zoom', type=int, default=16)
     rp.add_argument('--auto-mask', default=f'{D}/v2/experiments/202/roadway_auto.png')
     rp.add_argument('--hand-mask', default=f'{D}/v2/candidates/candidate_roadway_mask.png')
-    rp.add_argument('--hand-merged-mask', default=f'{D}/v2/candidates/candidate_roadway_merged.png')
+    # 2026-11-19 に candidate_roadway_merged.png は 154w で広げた版になったので、手塗りのままを残した
+    # *_hand を既定にする（#205 の数字を出した時の入力と同じ物）。
+    rp.add_argument('--hand-merged-mask', default=f'{D}/v2/candidates/candidate_roadway_merged_hand.png')
     rp.add_argument('--metric-scale', type=int, default=2, help='評価の格子（原寸の何倍か）。2 で 0.1 m')
     rp.add_argument('--gap-m', type=float, default=0.3, help='道路縁の切れ目を閉じる膨張 [m]')
     rp.add_argument('--max-half-width-m', type=float, default=10.0,

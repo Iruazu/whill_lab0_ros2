@@ -1,4 +1,5 @@
 {
+ "adopted_note": "2026-11-19 に既定の版を既定の地図に採用した。v2/candidates/candidate_{roadway,free}_merged.png・v2/candidate_final.pgm・occupancy_candidate.yaml は今は広げた版を持ち、手塗りのままは candidate_{roadway,free}_merged_hand.png・v2/candidate_hand_final.pgm・occupancy_candidate_hand.yaml。params の入力のパスがそれより前の名前なら、当時の手塗りのまま（inputs_sha256 で照合）を指す。",
  "params": {
   "layers_yaml": "docs/maps/campus-m8/v2/v2_layers.yaml",
   "hand_roadway": "docs/maps/campus-m8/v2/candidates/candidate_roadway_merged.png",
