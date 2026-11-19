@@ -11,6 +11,22 @@
   Q5  補正後の地理院の面は、手塗りの確定版の候補づくりに使う。
   前提 202c の強度 < 20 の自動抽出は、背の低い植栽を含むので根拠に使わない（強度は確認の数字だけに使う）。
 
+2 回目の判断（2026-11-19、154w の判断票の回答 R1〜R6）。既定の振る舞いにした：
+  R1  発進点から正門前へ向かう道の西（map の −y 側）の駐輪・駐車の帯は、x −77〜+6 の全体を含めない
+      （Q2 の発進点西の箱 x −10〜0 を延ばした。--exclude-box の既定値）。
+  R2  北の道の南（x 44〜60、y 150〜160.5）の出っ張りは広げたまま。
+  R3  上限（--max-widen-m）まで広がった区間は、その区間に割り当てた帯を全部広げない
+      （--capped-policy drop、既定。上限で切った所の縁は補正後の縁に届かず、手塗りに平行な直線になる。
+      clip で前の振る舞い＝上限で切って広げる）。
+  R4  北へ延びる道の両側（x 21〜27、y 5〜16）は広げたまま。
+  R5  点の密な帯（x ≈ −95、y 73〜94.5）は含めない（--exclude-box の既定値）。
+  R6  帯の中の小さい障害物（段 ∪ 構造物の 8 連結で 3 セル以下）は、手塗りの内側の塩と同じ規則で消す
+      （--band-salt-max-cells、既定 3。0 で前の振る舞い＝帯から 1 セル太らせて除き OCC のまま）。
+
+向きの注意：georef.yaml では map の x 軸は北から 185°（ほぼ南）、+y はほぼ東を向く。このスクリプトの
+コメント・箱の名前で「北の道」「南の縁」と書いた物は、画像の上下（上 = map の +y = 実際はほぼ東）の
+呼び名で、方位ではない。R1・R5 から後に書いた所は、方位か「map の ±y 側」で書く。
+
 広げてよい帯（widen_band）：
   1. 補正後の地理院の道路の面（gsi_snapped_road.png）の中で、手塗りの roadway の外。
   2. 手塗りからの距離が --max-widen-m 以内（202d の寄せる量の上限 1.5 m と同じ既定）。
@@ -30,6 +46,23 @@
   8. 残りの 8 連結の成分のうち、手塗りに接するものだけを残す（離れた飛び地は足さない）。
   内側へ（手塗りを削る方向）は変えない。
 
+  R6 の小さい障害物は、keepout（6.）と R3 の除外を先に引いた後、5. の前に分ける。gen_auto_free_mask.py と同じく、段 ∪ 構造物の生の格子（太らせない）の
+  8 連結の成分で 3 セル以下のもののうち、成分の全セルが「5. の前の帯 ∪ 手塗り」に入り、しかも残す障害物を
+  太らせた所に掛からないものだけを帯へ戻す（太らせない）。帯の縁にまたがる点・大きい障害物のすぐ脇の点は、
+  縁そのものか障害物の一部とみなして残す（安全側）。戻した点は roadway にだけ足し、free の塗りには足さない。
+  こうすると合成の gen_auto_free_mask.py が手塗りの内側と同じ規則で free_mask_auto に入れて消し、
+  erased_by_free.png では自動（水色）の消去として残る（free にも塗ると人の塗りとの「両方」になり、どの規則で
+  消えたか追えない）。消えたことは、合成した free_mask_auto の差分 == 戻した点、で確かめる。
+  既定は生の 8 連結（gen_auto_free_mask と同じ）なので、1 セルおきの点の格子（10 cm ボクセルの植栽・生垣）
+  も 1 点ずつ消える。帯は補正後の縁の内側に限るので外へは広がらないが、縁の内側に格子があればそこは FREE に
+  なる。格子に入っていた点の数は summary の band_salt.cells_in_dot_lattice に残し、
+  --band-salt-gap-cells 1 で格子を残す版と比べられるようにした。
+
+  R3 は 2 回に分けて作る。1 回目の帯を区間に割り当て（集計と同じ割り当て）、帯のセルが --min-seg-cells
+  以上で最大の幅が上限 − 半セル以上の区間を「上限まで広がった区間」とする（前の summary の
+  derived.capped_* と同じ定義）。その区間に割り当てたセルを候補から除いて 2 回目を作る。候補が減るだけ
+  なので、2 回目の帯は 1 回目の部分集合で、上限まで広がる区間は新たにはできない（checks で確かめる）。
+
 合成は README の 3 節と同じ順（gen_auto_free_mask.py → compose_occupancy.py）。帯は roadway と free の
 両方に足す（--free-policy paint、既定）。旧地図の直接の拡幅と同じ扱いで、roadway だけだと free_evidence
 （レイの通過）の無いセルは UNKNOWN のまま残り、帯がまだらになる。帯から段・構造物を先に除いてあるので、
@@ -40,7 +73,9 @@ free に足しても機械の障害物は消えない。--free-policy evidence �
 採用した後の手塗りを入力にすると、広げた縁からさらに広げてしまうため。
 
 確かめて記録すること（レビュー SF-7。外れたら summary.json を書いた後で終了コード 1）：
-  手塗りのまま合成した地図 == 今の既定の地図（--baseline-map）、増えた FREE == 帯、変わったセル ⊆ 帯。
+  手塗りのまま合成した地図 == 今の既定の地図（--baseline-map）、増えた FREE == 帯、変わったセル ⊆ 帯、
+  帯が手塗り・keepout・残した障害物と重ならない、帯で消えた点 == 戻した小さい障害物（R6）、
+  drop のときは上限まで広がった区間が残らない（R3）。
 
 既定の地図（occupancy_candidate.yaml、v2/candidate_final.pgm、v2/candidates/）・static.pcd・bag は読むだけで変えない。
 出力は --out-dir（小さい画像と数値、Git 管理）、--work-dir（地図本体・原寸のマスク、Git 外）、
@@ -71,14 +106,25 @@ HOME = pathlib.Path.home()
 OCC, FREE, UNKNOWN = 0, 254, 205
 TRUSTED_KINDS = ('step', 'structure')
 
-# Q2 の 4 か所。x の範囲（と広場・入口の y）はユーザーの回答の座標のまま。回答に y の無い 2 か所は、
-# 手塗りの南の縁の外を覆い、道の反対側（北の縁）の帯に掛からない値を原寸の切り出しで決めた
-# （発進点の道の南の縁は y ≈ −1.5〜−2、北の道の南の縁は y ≈ 159.5〜160、北の縁は y ≈ 163.5）。
+# Q2 の 4 か所と R1・R5。x の範囲（と広場・入口の y）はユーザーの回答の座標のまま。回答に y の無い所は、
+# 手塗りの map の −y 側の縁（画像の下。方位ではほぼ西）の外を覆い、道の反対側（+y 側）の帯に掛からない
+# 値を原寸の切り出しで決めた（発進点の道の −y 側の縁は y ≈ −1.5〜−2、北の道の −y 側の縁は y ≈ 159.5〜160、
+# +y 側の縁は y ≈ 163.5）。
+# R1：Q2 の発進点西の箱（x −10〜0）を、ユーザーの回答の x −77〜+6 へ延ばした（同じ帯なので 1 つの箱で
+# 置き換える）。帯の −y 側のセルはこの x で y −4.87〜−1.42、+y 側のセルは y 0.52 以上（2026-11-19 に前回の
+# 帯で実測）なので、y −9〜−1 は −y 側だけを覆う。−9 は、手塗りの縁が最も −y へ出る x −77（y −4.2）から
+# 上限 1.5 m を引いても余る値。x −80〜−77 の −y 側の帯（正門前の手前）は回答の範囲の外なので残す。
+# R5：判断票の箱は x −96.5〜−93.5、y 76〜92 だったが、点の密な所（x −99〜−95.5 で段 ∪ 構造物のセルが
+# 3% 以上の、y 0.5 m 刻みの帯）は y 73〜94.5 まで続き、前回の帯は箱の外の y 75〜76（0.49 m²）と
+# y 92〜94.5（0.96 m²）にも同じ点の間の隙間として残っていた。また y 94 付近の帯は x −96.68 まで出る。そこで y を密な所の端へ、x を
+# −97 へ広げた。x −93.5 は道の +x 側（x ≈ −91）の帯に届かず、y 94.5 より +y 側の帯（点が 1% 未満の
+# 舗装の脇）は切らない。
 DEFAULT_EXCLUDE = [
     ('plaza_nw', -10.0, -2.0, 3.0, 15.0),            # 左上の広場
     ('diagonal_entrance', 30.0, 45.0, -8.0, -2.0),   # 斜めの舗装路の入口
-    ('start_west_parking', -10.0, 0.0, -9.0, -1.0),  # 発進点西の駐輪・駐車の帯（南の縁）
-    ('north_parking_entrance', 18.0, 44.0, 150.0, 160.5),  # 北の道の駐車場の入口（南）
+    ('west_parking_strip', -77.0, 6.0, -9.0, -1.0),  # 発進点〜正門前の道の西（−y 側）の駐輪・駐車の帯（R1）
+    ('north_parking_entrance', 18.0, 44.0, 150.0, 160.5),  # 北の道の駐車場の入口（−y 側）
+    ('dot_field', -97.0, -93.5, 73.0, 94.5),          # 点の密な帯（R5）
 ]
 # 集計の範囲。start_bldg3 は 202d の BOXES と同じ。north_road は 202d の箱を、目視の切り出し（x 96 まで）に合わせて東へ延ばした
 REGIONS = {'start_bldg3': (-10.0, 70.0, -15.0, 15.0), 'north_road': (-125.0, 96.0, 145.0, 175.0)}
@@ -87,10 +133,14 @@ WATCH = {'south_parking_strip_x-75_-10': (-75.0, -10.0, -6.0, -1.0), 'south_park
          'north_road_south_x44_60': (44.0, 60.0, 150.0, 160.5), 'capped_x-96_-93_y12_48': (-96.0, -93.0, 12.0, 48.0),
          'north_side_road_x21_27_y5_16': (21.0, 27.0, 5.0, 16.0),
          'dot_field_x-96.5_-93.5_y76_92': (-96.5, -93.5, 76.0, 92.0)}
-CROPS = [('start', -15.0, 45.0, -9.0, 4.0), ('north', -12.0, 96.0, 151.0, 168.0)]
+# west・dotfield は R1・R5 の箱の確認用（2026-11-19 に足した）
+CROPS = [('start', -15.0, 45.0, -9.0, 4.0), ('north', -12.0, 96.0, 151.0, 168.0),
+         ('west', -82.0, -12.0, -8.0, 4.0), ('dotfield', -101.0, -89.0, 70.0, 98.0)]
 KIND_COLOR = {'step': (230, 0, 0), 'structure': (255, 140, 0), 'intensity': (0, 110, 255),
               'none': (255, 120, 200), 'far': (150, 150, 150)}
 BAND_COLOR = (255, 0, 255)
+# 帯で消した小さい障害物（R6）。compose_occupancy の erased_by_free.png の自動の消去と同じ水色
+SALT_COLOR = (0, 220, 220)
 
 
 def parse_args(argv=None):
@@ -118,7 +168,17 @@ def parse_args(argv=None):
     p.add_argument('--sample-m', type=float, default=0.025, help='区間を点に分ける間隔 [m]（最近傍の判定用）。')
     p.add_argument('--exclude-box', nargs=5, action='append', default=None,
                    metavar=('NAME', 'X0', 'X1', 'Y0', 'Y1'),
-                   help='広げない箱（map 座標）。1 つでも渡すと既定の 4 か所（Q2）を置き換える。')
+                   help='広げない箱（map 座標）。1 つでも渡すと既定の 5 か所（Q2・R1・R5）を置き換える。')
+    p.add_argument('--capped-policy', choices=('drop', 'clip'), default='drop',
+                   help='drop：上限まで広がった区間は、その区間の帯を全部広げない（R3、既定）。clip：上限で切って'
+                        '広げる（前の振る舞い）。')
+    p.add_argument('--band-salt-max-cells', type=int, default=3,
+                   help='帯の中の段 ∪ 構造物のうち、8 連結でこのセル数以下の成分を手塗りの内側と同じ規則で消す'
+                        '（R6。gen_auto_free_mask.py の 3 と同じ値にする）。0 で消さない（前の振る舞い）。')
+    p.add_argument('--band-salt-gap-cells', type=int, default=0,
+                   help='R6 の成分を取るとき、このセル数以下の隙間で並ぶ点を 1 つの成分とみなす。0（既定）は'
+                        'gen_auto_free_mask.py と同じ生の 8 連結。1 にすると、1 セルおきの点の格子（10 cm ボクセルの'
+                        '植栽・生垣）を大きい障害物として残す（比較用）。')
     p.add_argument('--free-policy', choices=('paint', 'evidence'), default='paint',
                    help='paint：帯を roadway と free の両方に足す（既定）。evidence：roadway だけ（free_evidence の'
                         '無いセルは UNKNOWN のまま）。')
@@ -265,6 +325,21 @@ def touching(b, hand):
     return ok[lab]
 
 
+def small_components(m, max_cells, gap=0):
+    """m の 8 連結の成分のうち max_cells 以下のもの。gap = 0 は gen_auto_free_mask.py の判定（生の格子、
+    太らせない、8 連結、面積 ≤ 3）と同じ。gap > 0 は、gap セル以下の隙間で並ぶ点を 1 つの成分とみなし
+    （正方形で gap 太らせて連結を取る）、その成分の生のセル数で判定する。10 cm ボクセルの植栽・生垣は
+    1 セルおきの点の格子になり、生の 8 連結では 1 点ずつ ≤ 3 になるため（MF-1 と同じ事情）。gap > 0 で
+    選んだ点も生の成分は ≤ max_cells なので、合成の gen_auto_free_mask はそのまま消す。
+    返り値は (そのセル、ラベル画像。gap > 0 では太らせた格子のラベルで、m のセルは必ずラベルを持つ)。"""
+    g = square_dilate(m, gap) if gap > 0 else m
+    n, lab = cv2.connectedComponents(g.astype(np.uint8), connectivity=8)
+    size = np.bincount(lab[m], minlength=n)
+    small = size <= max_cells
+    small[0] = False   # ラベル 0 は背景
+    return m & small[lab], lab
+
+
 def small_holes(mask, max_cells):
     """mask の中の、max_cells 以下の穴（4 連結の ~mask の成分で、格子の端に接しないもの）。"""
     n, lab, stats, _ = cv2.connectedComponentsWithStats((~mask).astype(np.uint8), connectivity=4)
@@ -278,13 +353,18 @@ def small_holes(mask, max_cells):
 # ---------------------------------------------------------------- 広げる帯
 
 def widen_band(hand, gsi, barrier, exclude, pts, pts_trusted, res, ox, oy, max_widen_m, tie_m,
-               barrier_dilate_m=0.0, pts_nv=None, keepout=None):
-    """広げてよい帯を返す（モジュールの説明の 1〜8）。
+               barrier_dilate_m=0.0, pts_nv=None, keepout=None, salt_max_cells=0, drop=None, salt_gap=0):
+    """広げてよい帯を返す（モジュールの説明の 1〜8 と R6、R3 の 2 回目）。
 
     hand, gsi, barrier, exclude, keepout：同じ形の bool の格子。pts：補正後の縁の点（map 座標 [N,2]）、
     pts_trusted：その点が赤・橙の区間か、pts_nv：その点の区間の外向きの法線（[N,2]。None なら 4. を省く）。
-    返り値は dict：band、band_nobox（除外の箱が無いときの帯）、stages（段階ごとのセル数）、
-    near_idx（候補のセルごとの最も近い赤・橙の点の番号、-1 は対象外）、d_hand、outside_edge（4. で落としたセル）。"""
+    salt_max_cells：帯へ戻す小さい障害物の大きさの上限（R6。0 なら戻さない）。salt_gap：その成分を
+    取るときに、この数のセルの隙間までを同じ成分とみなす（small_components）。drop：候補から除くセル
+    （R3 の上限まで広がった区間のセル。None なら除かない）。
+    返り値は dict：band（戻した小さい障害物を含む）、band_nobox（除外の箱が無いときの帯。戻す判定は箱の
+    後の候補で行うので、箱の中の点は戻さない）、salt（band のうち戻した小さい障害物のセル）、
+    barrier_kept（残した障害物）、stages（段階ごとのセル数）、near_idx（候補のセルごとの最も近い赤・橙の
+    点の番号、-1 は対象外）、d_hand、outside_edge（4. で落としたセル）。"""
     H = hand.shape[0]
     stages = {}
     # 手塗りからの距離。cv2 の距離変換は 0 のセルまでの距離を測るので、手塗りを 0 にする
@@ -317,21 +397,72 @@ def widen_band(hand, gsi, barrier, exclude, pts, pts_trusted, res, ox, oy, max_w
     b[rr[keep], cc[keep]] = True
     outside_edge = np.zeros_like(hand)
     outside_edge[rr[beyond], cc[beyond]] = True
-    b &= ~square_dilate(barrier, int(round(barrier_dilate_m / res)))
-    stages['minus_barrier'] = int(b.sum())
+    # keepout と R3 の除外を障害物より先に引く。R6 で点を戻すかは「残った候補 ∪ 手塗り」に収まるかで
+    # 決めるので、候補を先に確定させる（障害物を引いた後の段階のセル数の意味は前と同じ）
     if keepout is not None:
         b &= ~keepout
     stages['minus_keepout'] = int(b.sum())
+    if drop is not None:
+        b &= ~drop
+    stages['minus_capped'] = int(b.sum())
+    r = int(round(barrier_dilate_m / res))
+    absorbed = np.zeros_like(hand)
+    if salt_max_cells > 0:
+        small, lab = small_components(barrier, salt_max_cells, salt_gap)
+        room = (b & ~exclude) | hand
+        ok = small
+        # 戻せない点（候補の外にはみ出す・残す障害物の太らせた所に掛かる）を落とすと、その点は残す側に
+        # 回り、その周りがまた太らせた所になる。r = 1 なら 8 近傍は同じ成分なので 1 回で止まるが、
+        # r ≥ 2 でも正しいように、変わらなくなるまで回す
+        while True:
+            bad = ok & (~room | square_dilate(barrier & ~ok, r))
+            if not bad.any():
+                break
+            lut = np.ones(int(lab.max()) + 1, bool)
+            lut[np.unique(lab[bad])] = False
+            ok = ok & lut[lab]
+        absorbed = ok
+    barrier_kept = barrier & ~absorbed
+    b &= ~square_dilate(barrier_kept, r)
+    stages['minus_barrier'] = int(b.sum())
     band_nobox = touching(b, hand)
     b &= ~exclude
     stages['minus_exclude'] = int(b.sum())
     band = touching(b, hand)
     stages['band'] = int(band.sum())
     stages['dropped_islands'] = stages['minus_exclude'] - stages['band']
+    salt = band & absorbed
+    stages['salt_cells'] = int(salt.sum())
     idx_img = np.full(hand.shape, -1, np.int64)
     idx_img[rr, cc] = near_idx
-    return {'band': band, 'band_nobox': band_nobox, 'stages': stages, 'near_idx': idx_img, 'd_hand': d_hand,
-            'outside_edge': outside_edge}
+    return {'band': band, 'band_nobox': band_nobox, 'salt': salt, 'barrier_kept': barrier_kept,
+            'stages': stages, 'near_idx': idx_img, 'd_hand': d_hand, 'outside_edge': outside_edge}
+
+
+def assign_segments(band, pts, pts_trusted, pidx, dup_pts, H, res, ox, oy):
+    """帯のセルを、最も近い赤・橙の区間に割り当てたラベル画像（区間の番号 + 1、0 は帯の外）を返す。
+    タイルの重なり（dup）の区間は相方と同じ縁なので、重なりでない赤・橙の点の最近傍へ寄せる（SF-6）。
+    R3 の判定と集計の両方でこれを使い、「上限まで広がった区間」の定義を 1 つにする。"""
+    nd = pts_trusted & ~dup_pts
+    lab_img = np.zeros(band.shape, np.int32)
+    br, bc = np.nonzero(band)
+    if br.size == 0 or not nd.any():
+        return lab_img
+    bx_, by_ = cell_xy(br, bc, H, res, ox, oy)
+    _, j_nd = cKDTree(pts[nd]).query(np.column_stack([bx_, by_]))
+    lab_img[br, bc] = pidx[np.flatnonzero(nd)[j_nd]] + 1
+    return lab_img
+
+
+def capped_segments(lab_img, d_hand, min_cells, thr):
+    """帯のセルが min_cells 以上で、そのセルの手塗りからの距離の最大が thr 以上の区間の番号（R3）。
+    集計の widened_segments.csv の width_max_m >= thr と同じ判定。"""
+    n = int(lab_img.max())
+    if n == 0:
+        return np.zeros(0, int)
+    cnt = np.bincount(lab_img.ravel(), minlength=n + 1)[1:]
+    mx = np.asarray(ndimage.maximum(d_hand, lab_img, index=np.arange(1, n + 1)))
+    return np.flatnonzero((cnt >= min_cells) & (mx >= thr))
 
 
 # ---------------------------------------------------------------- 合成と確認
@@ -505,12 +636,38 @@ def main(argv=None):
     pts_trusted = seg['trusted'][pidx]
     print(f'[区間] {len(seg["len"]):,}（赤・橙 {int(seg["trusted"].sum()):,}）、点 {len(pts):,}', flush=True)
 
-    wb = widen_band(hand, gsi, barrier, exclude, pts, pts_trusted, res, ox, oy, args.max_widen_m, args.tie_m,
-                    args.barrier_dilate_m, seg['nv'][pidx], keepout)
+    dup_pts = seg['dup'][pidx]
+    cap_thr = args.max_widen_m - res / 2
+
+    def band_pass(drop):
+        return widen_band(hand, gsi, barrier, exclude, pts, pts_trusted, res, ox, oy, args.max_widen_m,
+                          args.tie_m, args.barrier_dilate_m, seg['nv'][pidx], keepout,
+                          args.band_salt_max_cells, drop, args.band_salt_gap_cells)
+
+    wb = band_pass(None)
+    # R3：1 回目の帯で上限まで広がった区間を求め、その区間のセルを除いて作り直す
+    lab1 = assign_segments(wb['band'], pts, pts_trusted, pidx, dup_pts, H, res, ox, oy)
+    cap1 = capped_segments(lab1, wb['d_hand'], args.min_seg_cells, cap_thr)
+    cap_cells = np.isin(lab1, cap1 + 1)
+    cap_rows = []
+    for i in cap1:
+        cap_rows.append({'line': int(seg['line'][i]), 'seg': int(seg['seg'][i]),
+                         'x': round(float(seg['mid'][i, 0]), 2), 'y': round(float(seg['mid'][i, 1]), 2),
+                         'kind': str(seg['kind'][i]), 'band_cells': int((lab1 == i + 1).sum())})
+    capped = {'policy': args.capped_policy, 'segments': int(cap1.size),
+              'band_cells': int(cap_cells.sum()), 'band_m2': round(float(cap_cells.sum()) * a, 2),
+              'first_pass_band_m2': round(float(wb['band'].sum()) * a, 2),
+              'first_pass_salt_cells': wb['stages']['salt_cells'], 'list': cap_rows}
+    if args.capped_policy == 'drop' and cap1.size:
+        wb = band_pass(cap_cells)
+    del lab1
     band, stages, idx_img, d_hand = wb['band'], wb['stages'], wb['near_idx'], wb['d_hand']
+    salt_band, barrier_kept = wb['salt'], wb['barrier_kept']
+    print(f'[上限] {json.dumps({k_: v_ for k_, v_ in capped.items() if k_ != "list"}, ensure_ascii=False)}',
+          flush=True)
     print(f'[帯] {stages}', flush=True)
 
-    # Q2 の箱：補正後の面・箱が無いときの帯・箱の後の帯を実測で残す（箱が効いたかどうかの記録）
+    # 除外の箱（Q2・R1・R5）：補正後の面・箱が無いときの帯・箱の後の帯を実測で残す（箱が効いたかどうかの記録）
     q2 = {}
     for name, *bx in boxes:
         m = box_m[name]
@@ -522,8 +679,10 @@ def main(argv=None):
     print(f'[Q2] {json.dumps(q2, ensure_ascii=False)}', flush=True)
 
     # ---- 合成（手塗りのまま・広げた版の 2 つ。手塗りのままは今の既定の地図と一致するはず）
+    # R6 で戻した点は roadway にだけ足す。free にも塗ると、合成の gen_auto_free_mask の規則（≤3 セル）ではなく
+    # 人の塗りとして消えたことになり、erased_by_free.png で区別できない（モジュールの説明の R6）
     roadway_w = hand | band
-    free_w = hand_free | band if args.free_policy == 'paint' else hand_free
+    free_w = hand_free | (band & ~salt_band) if args.free_policy == 'paint' else hand_free
     save_mask_rgba(args.work_dir / 'roadway_widened.png', roadway_w)
     save_mask_rgba(args.work_dir / 'free_widened.png', free_w)
     save_mask_rgba(args.work_dir / 'band.png', band)
@@ -545,11 +704,19 @@ def main(argv=None):
     gained = new_free & ~base_free
     lost = base_free & ~new_free
     changed = base_img != new_img
+    # R6：帯で消えた点（合成の free_mask_auto の、手塗りのままとの差分）が、戻した点と 1 セルも違わない
+    auto_new = load_mask(args.work_dir / 'compose/free_mask_auto.png', hw)
+    auto_hand = load_mask(args.work_dir / 'compose_hand/free_mask_auto.png', hw)
+    auto_gain = auto_new & ~auto_hand
     checks = {'hand_only_compose_equals_baseline': bool(np.array_equal(hand_img, base_img)),
               'gained_free_equals_band': bool(np.array_equal(gained, band)),
               'changed_cells_within_band': int((changed & ~band).sum()) == 0,
-              'band_disjoint_from_hand_keepout_barrier': int((band & (hand | keepout | barrier)).sum()) == 0,
+              'band_disjoint_from_hand_keepout_barrier':
+                  int((band & (hand | keepout | barrier_kept)).sum()) == 0,
+              'band_salt_erased_by_auto_rule': bool(np.array_equal(auto_gain, salt_band))
+              and int((auto_hand & ~auto_new).sum()) == 0,
               'salt_candidates_equal_step_or_structure': salt_same}
+    del auto_new, auto_hand, auto_gain
     print(f'[確認] {checks}', flush=True)
 
     # ---- 面積
@@ -574,14 +741,9 @@ def main(argv=None):
     # ---- 区間ごとの集計
     # 帯のセルを、最も近い赤・橙の区間に割り当てる。タイルの重なり（dup）の区間は相方と同じ縁なので、
     # 集計では重なりでない赤・橙の点の最近傍へ寄せ直す（SF-6。寄せ直したセル数を記録する）
-    nd = pts_trusted & ~seg['dup'][pidx]
     br, bc = np.nonzero(band)
-    bx_, by_ = cell_xy(br, bc, H, res, ox, oy)
-    _, j_nd = cKDTree(pts[nd]).query(np.column_stack([bx_, by_]))
-    agg_seg = pidx[np.flatnonzero(nd)[j_nd]]
     reassigned = int(seg['dup'][pidx[idx_img[br, bc]]].sum())
-    lab_img = np.zeros(hw, np.int32)
-    lab_img[br, bc] = agg_seg + 1
+    lab_img = assign_segments(band, pts, pts_trusted, pidx, dup_pts, H, res, ox, oy)
 
     occ_new = new_img == OCC
     occ_base = base_img == OCC
@@ -677,14 +839,31 @@ def main(argv=None):
         wr.writerows(seg_rows)
 
     # ---- 数値（README に書く数字の出所。SF-4）
-    capped = [r for r in seg_rows if r['width_max_m'] >= args.max_widen_m - res / 2]
+    capped_rows = [r for r in seg_rows if r['width_max_m'] >= cap_thr]
+    if args.capped_policy == 'drop':
+        # 2 回目は候補が減るだけなので、上限まで広がる区間は残らないはず（R3）
+        checks['capped_policy_drop_leaves_no_capped_segment'] = len(capped_rows) == 0
+    # R6 の点の数え方：戻した点の 8 連結の成分（手塗りにまたがる成分も 1 つと数える）と大きさ
+    n_salt, salt_lab, salt_st, _ = cv2.connectedComponentsWithStats(salt_band.astype(np.uint8), connectivity=8)
+    del salt_lab
+    salt_sizes = salt_st[1:, cv2.CC_STAT_AREA]
+    band_salt = {'max_cells': args.band_salt_max_cells, 'cells': int(salt_band.sum()),
+                 'components': int(n_salt - 1),
+                 'by_size': {str(k_): int((salt_sizes == k_).sum()) for k_ in range(1, args.band_salt_max_cells + 1)},
+                 'm2': round(float(salt_band.sum()) * a, 4)}
+    if args.band_salt_max_cells > 0:
+        # 1 セルの隙間を閉じると 4 セル以上の塊になる点（1 セルおきの点の格子）。既定の生の 8 連結では消える
+        iso1, _ = small_components(barrier, args.band_salt_max_cells, 1)
+        band_salt['cells_in_dot_lattice'] = int((salt_band & ~iso1).sum())
+        del iso1
     # 帯から段・構造物を 1 セル太らせて除いたので、OCC は帯に 8 近傍では接しない。2 セル（0.1 m）以内で数える
     band_touch_occ = occ_new & square_dilate(band, 2) & ~hand
     new_holes = small_holes(roadway_w, hmax) & ~small_holes(hand, hmax)
     nh, _ = cv2.connectedComponents(new_holes.astype(np.uint8), connectivity=4)
     derived = {
-        'capped_segments': len(capped), 'capped_band_m2': round(sum(r['band_cells'] for r in capped) * a, 2),
-        'capped_band_share': round(sum(r['band_cells'] for r in capped) / max(1, int(band.sum())), 3),
+        'capped_segments': len(capped_rows),
+        'capped_band_m2': round(sum(r['band_cells'] for r in capped_rows) * a, 2),
+        'capped_band_share': round(sum(r['band_cells'] for r in capped_rows) / max(1, int(band.sum())), 3),
         'bright_band_m2': round(float((band & grass).sum()) * a, 2),
         'bright_band_share': round(float((band & grass).sum()) / max(1, int(band.sum())), 3),
         'bright_hand_share': round(float((hand & grass).sum()) / max(1, int(hand.sum())), 3),
@@ -701,8 +880,10 @@ def main(argv=None):
     # ---- 画像（原寸の切り出し。帯 = 桃、手塗りの roadway = 青の薄塗り、段 = 赤、構造物 = 橙）
     png = {}
     # 帯は薄く塗って縁を濃く描く（下絵の芝・舗装が見えるように）
+    # 消した点（R6）は段・構造物の上に水色で重ねる（残した点と見分ける）
     lay = [(hand, (0, 90, 255), 0.25), (band, BAND_COLOR, 0.35), (edge_of(band), BAND_COLOR, 1.0),
-           (step, (255, 0, 0), 0.9), (struct, (255, 150, 0), 0.9), (edge_of(hand), (0, 60, 255), 1.0)]
+           (step, (255, 0, 0), 0.9), (struct, (255, 150, 0), 0.9), (salt_band, SALT_COLOR, 1.0),
+           (edge_of(hand), (0, 60, 255), 1.0)]
     for cname, *cb in CROPS:
         sl = crop_slice(H, res, ox, oy, cb)
         for uname, up in (('intensity', args.underlay_intensity), ('photo', args.underlay_photo)):
@@ -722,7 +903,8 @@ def main(argv=None):
     if not args.no_gimp:
         args.gimp_dir.mkdir(parents=True, exist_ok=True)
         g = np.zeros((H, W, 4), np.uint8)
-        g[band] = (255, 0, 255, 255)
+        g[band] = (*BAND_COLOR, 255)
+        g[salt_band] = (*SALT_COLOR, 255)
         Image.fromarray(g, 'RGBA').save(args.gimp_dir / '19_widened_candidate.png', compress_level=3)
         print(f'[GIMP] {args.gimp_dir}/19_widened_candidate.png', flush=True)
 
@@ -739,7 +921,8 @@ def main(argv=None):
                      'trusted_step': int((seg['trusted'] & (seg['kind'] == 'step')).sum()),
                      'trusted_structure': int((seg['trusted'] & (seg['kind'] == 'structure')).sum()),
                      'trusted_non_dup': int((seg['trusted'] & ~seg['dup']).sum())},
-        'stages_cells': stages, 'q2_boxes': q2, 'areas': areas, 'watch_band_m2': watch,
+        'stages_cells': stages, 'q2_boxes': q2, 'capped': capped, 'band_salt': band_salt,
+        'areas': areas, 'watch_band_m2': watch,
         'band_cells': int(band.sum()), 'usable': usable, 'derived': derived,
         'widened_segments': {'count': len(seg_rows), 'by_kind': by_kind,
                              'width_max_median_m': pct(wmax, 50), 'width_max_p90_m': pct(wmax, 90),
@@ -753,8 +936,8 @@ def main(argv=None):
     for r_ in summary['routes'].values():
         r_['map'] = short_path(r_['map'])
     (args.out_dir / 'summary.json').write_text(json.dumps(summary, indent=1, ensure_ascii=False) + '\n')
-    print(json.dumps({k_: summary[k_] for k_ in ('areas', 'widened_segments', 'usable', 'derived', 'watch_band_m2')},
-                     ensure_ascii=False, indent=1))
+    print(json.dumps({k_: summary[k_] for k_ in ('areas', 'widened_segments', 'usable', 'derived', 'watch_band_m2',
+                                                 'band_salt')}, ensure_ascii=False, indent=1))
     print(json.dumps({t: {k2: v2 for k2, v2 in c.items() if k2 != 'sites'} for t, c in clearance.items()},
                      ensure_ascii=False))
     print(f'[完了] {summary["elapsed_s"]} s')

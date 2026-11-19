@@ -12,6 +12,9 @@
   6. 縁の外側のセル（補正後の面の階段）を落とす（SF-5）
   7. 赤・橙が 1 つも無ければ帯は空
   8. 区間の表の読み方（どの状態・根拠を赤・橙とみなすか、補正後の位置）、小さい穴の検出
+  9. R6：帯の中の 3 セル以下の点は帯へ戻し、4 セル以上の塊・帯の縁にまたがる点は残す。
+     --band-salt-gap-cells 1 では 1 セルおきの点の格子を残す
+ 10. R3：上限まで広がった区間を求め（集計と同じ割り当て）、drop ではその区間の帯を全部落とす
 
 Run:
     python3 -m pytest scripts/tests/test_widen_hand_roadway.py -q
@@ -54,10 +57,11 @@ def scene():
     return hand, gsi, pts, trusted, nv
 
 
-def run(hand, gsi, pts, trusted, nv=None, barrier=None, exclude=None, keepout=None, cap=1.5, dil=0.0):
+def run(hand, gsi, pts, trusted, nv=None, barrier=None, exclude=None, keepout=None, cap=1.5, dil=0.0,
+        salt=0, drop=None, gap=0):
     z = np.zeros((H, W), bool)
     r = m.widen_band(hand, gsi, z if barrier is None else barrier, z if exclude is None else exclude,
-                     pts, trusted, RES, OX, OY, cap, TIE, dil, nv, keepout)
+                     pts, trusted, RES, OX, OY, cap, TIE, dil, nv, keepout, salt, drop, gap)
     return r['band'], r
 
 
@@ -229,3 +233,96 @@ def test_read_segments_trusted_kinds(tmp_path):
     pts, idx = m.sample_segments(s, 0.25)
     assert idx.max() == 4 and np.allclose(pts[idx == 0][:, 1], 2.5)
     assert np.isclose(pts[idx == 0][:, 0].min(), 0.5) and np.isclose(pts[idx == 0][:, 0].max(), 1.5)
+
+
+def test_band_salt_small_clusters_erased_large_kept():
+    """R6：帯の中の 1・3 セルの点は帯へ戻し（太らせた分も帯に戻る）、4 セルの塊は残して周りを 1 セル空ける。"""
+    hand, gsi, pts, trusted, nv = scene()
+    barrier = np.zeros((H, W), bool)
+    barrier[14, 5] = True                       # 1 セル
+    barrier[14, 12:15] = True                   # 3 セル（横一列）
+    barrier[14:16, 25:27] = True                # 4 セル（2×2）
+    band0, r0 = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05)
+    band, r = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05, salt=3)
+    # 前の振る舞い（salt=0）：どの点も帯から除き、周り 1 セルも空ける
+    assert not (band0 & barrier).any() and not band0[13:16, 4:7].any() and r0['stages']['salt_cells'] == 0
+    # 1・3 セルは帯へ戻り、周りの 1 セルも帯になる
+    assert band[14, 5] and band[14, 12:15].all()
+    assert band[13:16, 4:7].all() and band[13:16, 11:16].all()
+    expect = barrier.copy()
+    expect[:, 20:] = False                      # 戻すのは 1・3 セルの 4 セルだけ
+    assert np.array_equal(r['salt'], expect)
+    # 4 セルの塊は残り（帯に入らない）、周り 1 セルも帯に入らない
+    assert not band[13:17, 24:28].any()
+    assert r['barrier_kept'][14:16, 25:27].all() and not r['barrier_kept'][14, :20].any()
+    assert r['stages']['salt_cells'] == 4
+    # 戻した点の外は前と同じ（太らせた分が戻る以外に帯は変わらない）
+    assert not (band0 & ~band).any()
+
+
+def test_band_salt_straddling_edge_or_near_large_is_kept():
+    """R6：成分の一部が候補の外（補正後の面の外）にある点、残す塊を太らせた所に掛かる点は戻さない。"""
+    hand, gsi, pts, trusted, nv = scene()
+    barrier = np.zeros((H, W), bool)
+    barrier[9:11, 8] = True                     # 2 セル。9 行は補正後の面の外（縁にまたがる）
+    barrier[14:16, 30:32] = True                # 4 セルの塊
+    barrier[14, 33] = True                      # 塊から 1 セル空けた 1 セル（別の成分）
+    barrier[17, 40] = True                      # 孤立した 1 セル（比較）
+    band, r = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.10, salt=3)
+    assert not r['salt'][9:11, 8].any() and r['barrier_kept'][9:11, 8].all()
+    # 0.10 m = 2 セル太らせる。(14, 33) は塊を太らせた所（28〜33 列）に掛かるので残す
+    assert not r['salt'][14, 33] and r['barrier_kept'][14, 33]
+    assert r['salt'][17, 40] and band[17, 40]
+
+
+def test_band_salt_hand_cells_count_as_room():
+    """R6：手塗りと帯にまたがる 3 セル以下の点も戻す（手塗りの側は合成の規則で元から消える）。"""
+    hand, gsi, pts, trusted, nv = scene()
+    barrier = np.zeros((H, W), bool)
+    barrier[19:21, 10] = True                   # 19 行は帯、20 行は手塗り
+    band, r = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05, salt=3)
+    assert r['salt'][19, 10] and not r['salt'][20, 10]   # 帯の側だけが帯に入る
+    assert not r['barrier_kept'].any()
+
+
+def test_band_salt_gap_keeps_dot_lattice():
+    """--band-salt-gap-cells 1：1 セルおきの点の格子は 1 つの大きい成分とみなして残す。孤立点は戻す。"""
+    hand, gsi, pts, trusted, nv = scene()
+    barrier = np.zeros((H, W), bool)
+    barrier[11:17:2, 4:14:2] = True             # 3×5 の格子（各点は生の 8 連結では 1 セル）
+    barrier[15, 30] = True                      # 孤立点
+    small_raw, _ = m.small_components(barrier, 3)
+    small_gap, _ = m.small_components(barrier, 3, 1)
+    assert small_raw[11:17:2, 4:14:2].all()     # 生の 8 連結では格子の点も 1 セルずつ ≤ 3
+    assert not small_gap[11:17:2, 4:14:2].any() and small_gap[15, 30]
+    _, r_raw = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05, salt=3)
+    _, r_gap = run(hand, gsi, pts, trusted, nv, barrier=barrier, dil=0.05, salt=3, gap=1)
+    assert r_raw['salt'][11:17:2, 4:14:2].all()
+    assert not r_gap['salt'][11:17:2, 4:14:2].any() and r_gap['salt'][15, 30]
+
+
+def test_capped_segments_and_drop():
+    """R3：上限まで広がった区間（赤の左半分）を集計と同じ割り当てで求め、drop で落とすと帯から消える。"""
+    hand, gsi, pts, trusted, nv = scene()
+    # 区間を 2 つに分ける：左（0〜1 m、行 10 の上の境）と右（1〜2.25 m）。どちらも赤。
+    seg = {'mid': np.array([[0.5, y_of_row_top(10)], [1.625, y_of_row_top(10)]]),
+           'nv': np.array([[0.0, 1.0], [0.0, 1.0]]), 'len': np.array([1.0, 1.25])}
+    pts2, pidx = m.sample_segments(seg, 0.01)
+    tr = np.ones(len(pts2), bool)
+    dup = np.zeros(len(pts2), bool)
+    gsi2 = gsi.copy()
+    gsi2[10:20, 20:] = False
+    gsi2[17:20, 20:] = True                     # 右の区間の面は手塗りから 0.15 m だけ
+    gsi2[40:] = False                           # 下の縁（ここでは全部赤とみなす）の面は除く
+    band1, r1 = run(hand, gsi2, pts2, tr, None, cap=0.5)
+    lab = m.assign_segments(band1, pts2, tr, pidx, dup, H, RES, OX, OY)
+    assert set(np.unique(lab[band1])) == {1, 2}
+    cap = m.capped_segments(lab, r1['d_hand'], 4, 0.5 - RES / 2)
+    assert cap.tolist() == [0]                  # 左だけが上限 0.5 m まで広がる
+    drop = np.isin(lab, cap + 1)
+    band2, r2 = run(hand, gsi2, pts2, tr, None, cap=0.5, drop=drop)
+    assert not (band2 & drop).any() and band2[17:20, 20:45].all()
+    assert not (band2 & ~band1).any()           # 2 回目は 1 回目の部分集合
+    lab2 = m.assign_segments(band2, pts2, tr, pidx, dup, H, RES, OX, OY)
+    assert m.capped_segments(lab2, r2['d_hand'], 4, 0.5 - RES / 2).size == 0
+    assert r2['stages']['minus_capped'] < r2['stages']['minus_keepout']
