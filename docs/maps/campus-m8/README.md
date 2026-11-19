@@ -24,7 +24,7 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus �
 | --- | --- | --- |
 | 1. 元 bag の点群を Hi-Res に補正 | #152 | 済（オフライン検証まで） |
 | 2. GLIM → DUFOMap で static.pcd | #153 | 済（オフラインの品質指標まで。屋外の確認は未） |
-| 3. 占有格子と手塗りの候補 | #154 | 候補まで。**手塗りの確定はユーザー**。既定の Nav2 の地図は候補（`candidate`） |
+| 3. 占有格子と手塗りの候補 | #154 | 候補まで。**手塗りの確定はユーザー**。既定の Nav2 の地図は候補（`candidate`）。地理院の縁まで広げた確定版の候補（154w）を作った（採用は未定） |
 | 4. waypoint とローカライザの再生確認 | #155 | 再生まで。**屋外の受入（#156）は未**（既定にした後の検証） |
 | 5. 既定の site にする | #190 | 済（2026-11-13）。旧 `campus` は fallback |
 
@@ -37,6 +37,7 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus �
 | `align_from_campus/` | 旧 campus からの座標変換と waypoint の写像 | 管理 |
 | `v2/` | v2 の機械レイヤ、`candidates/`（手塗りの候補）、`candidate_final.pgm` | 管理 |
 | `v2/experiments/202/`, `202b/`, `202c/`, `202d/` | 縁石からの自動抽出の試作（#202、3 節。202b は DUFOMap の元の点、202c は bag のスキャンを軌跡で重ねた密な面、202d は GSI の道路縁を縁ごとに証拠へ寄せる試作）。既定の地図には使わない | 管理（小さい画像と数値だけ） |
+| `v2/experiments/154w/` | 手塗りを 202d の補正後の地理院の縁（段・構造物で寄せた区間だけ）まで広げた確定版の候補（#154、3 節）。採用は未定で、既定の地図は変えていない | 管理（小さい画像と数値だけ） |
 | `georef.yaml`, `reference-gsi.md` | 国土地理院の建物に合わせた map → 平面直角座標系第IX系・緯度経度の変換と、GSI の道路との比較（#205） | 管理 |
 | `v2/experiments/205/` | 上の照合の重ね絵と数値 | 管理（小さい画像と数値だけ） |
 | `occupancy_candidate.yaml` | `map_variant:=candidate` で読む候補の地図。既定の site で variant を省いたときもこれ | 管理 |
@@ -860,6 +861,269 @@ python3 -m pytest scripts/tests/test_gsi_edge_snap.py -q
 ```
 
 `map_gsi_edge_snap.py` は既定で、docs の `v2/experiments/202d/`、`~/bags/m8-experiments/202d/`、`~/bags/m8-experiments/gimp-layers/` の 17・18 番を上書きする。パラメータを試すときは `--out-dir`・`--work-dir` を変え、`--no-gimp` を付ける。`build_xcf.sh` は `layers.txt`（`ファイル名の幹|レイヤー名|表示 1/0`）の各行から作る。17・18 番の 2 行は 2026-11-17 に足した。
+
+### 手塗りを補正後の地理院の縁まで広げた候補（154w、2026-11-17、2026-11-19 に R1〜R6 を反映）
+
+**結論：手塗りの roadway を、202d で段・構造物へ寄せた地理院の縁（赤・橙）まで外へ広げた「確定版の候補」を作った。2026-11-19 の判断（R1〜R6）を既定に入れた版で、FREE は全体で 375.4 m²（+7.3%）増え、FREE が減った所は無い。OCC は、帯の中の孤立した 3 セル以下の点（R6）の 789 セルだけ減った。waypoint の 4 地点は今の既定の地図と同じく、4点とも FREE で、車体の幅で1つの成分につながる。広げた縁はほぼ全部（774 区間のうち 763）で OCC まで inflation の半径（0.6 m）より近い。車体の中心が置ける面（OCC から 0.45 m 以上）として増えたのは 152.9 m²、inflation の外は 87.9 m²。R6 は、生垣・柵の 2 セルごと（間に 1 セル）の点の格子を障害物として残す版（`--band-salt-gap-cells 1`）を既定にした。手塗りの内側と同じ生の 8 連結（gap 0）では格子の前の列が消えて帯がその奥まで入るためで、gap 0 の版（FREE +391.3 m²）との採否はユーザーが決め直す（下の「R6 の 2 つの版」）。既定の地図は変えていない。採用はユーザーが判断する。**
+
+向き：georef.yaml では map の +x はほぼ南（北から 185°）、+y はほぼ東を向く。この節の「北の道」「南の縁」などは、前の版から使っている画像の上下（上 = map の +y）の呼び名で、方位ではない。R1〜R6 の所は方位か「map の ±y 側」で書いた。
+
+`scripts/map_widen_hand_roadway.py` で作った。読むのは、手塗りの候補（`candidate_roadway_merged.png`、`candidate_free_merged.png`、`candidate_keepout_mask.png`）、v2 の機械レイヤ、202d の補正後の道路の面（`~/bags/m8-experiments/202d/gsi_snapped_road.png`）と全区間の表（`edge_segments.csv`）だけ。この節の数字は、断りが無ければ `v2/experiments/154w/summary.json` の値（キーを括弧に書く）。
+
+#### ユーザーの判断（2026-11-17、判断票の回答）
+
+- Q1：手塗りの縁は、**赤・橙の区間（status=snapped かつ kind が step または structure）だけ**、補正後の地理院の縁まで広げた候補を作る。
+- Q2：左上の広場（x −10〜−2、y 3〜15）、斜めの舗装路の入口（x 30〜45、y −8〜−2）、発進点西の駐輪・駐車の帯（x −10〜0 の南の縁）、北の道の駐車場の入口（x 18〜44 の南）は**含めない**。
+- Q3：北の道の東の路肩の帯（x 74〜87、y ≈ 160）は補正後の縁のまま（帯は含めない）。
+- Q4：強度だけで寄せた区間（kind=intensity）は**採らない**（未補正と同じ扱い＝広げない）。
+- Q5：補正後の地理院の面は、手塗りの確定版の候補づくりに使う。
+- Q6：地理院の要調整箇所の追加指定はなし。
+- 前提：自動抽出（202c の強度 < 20、緑）は背の低い植栽を含むとユーザーが目視で判断したので、根拠に使わない。
+
+#### 2 回目の判断（2026-11-19、判断票の回答 R1〜R6）
+
+前の版（2026-11-17、コミット 672bd81）の「要判断の所」への回答。すべてスクリプトの既定の振る舞いにした（前の振る舞いはオプションで再現できる。下の表）。
+
+| 回答 | 内容 | 実装 | 前の版の再現 |
+| --- | --- | --- | --- |
+| R1 除く | 発進点から正門前へ向かう道の西（map の −y 側）の駐輪・駐車の帯の全体 | 除外の箱 `west_parking_strip`（x −77〜+6、y −9〜−1）。Q2 の発進点西の箱（x −10〜0）を置き換えた | `--exclude-box` で前の 4 つを渡す |
+| R2 残す | 北の道の南（x 44〜60、y 150〜160.5）の出っ張り | 変更なし | — |
+| R3 広げない | 上限 1.5 m まで広がった区間 | その区間に割り当てた帯を全部落とす（`--capped-policy drop`、既定） | `--capped-policy clip` |
+| R4 残す | 北へ延びる道の両側（x 21〜27、y 5〜16） | 変更なし | — |
+| R5 除く | 点の密な帯（x ≈ −95） | 除外の箱 `dot_field`（x −97〜−93.5、y 73〜94.5。判断票の箱から広げた。下の 6.） | 箱を外す |
+| R6 消す | 帯の中の 3 セル以下の障害物 | 手塗りの内側の塩と同じ規則で消す（`--band-salt-max-cells 3`、既定）。ただし点の格子は残す（`--band-salt-gap-cells 1`、既定。2026-11-19 のレビュー MF-1、下の「R6 の 2 つの版」） | `--band-salt-max-cells 0` |
+
+#### 方法
+
+1. 広げてよい帯：補正後の地理院の道路の面の中で、手塗りの roadway の外、手塗りからの距離が `--max-widen-m`（1.5 m。202d の寄せる量の上限と同じ）以内のセル。
+2. そのセルに最も近い補正後の縁の区間が赤・橙で、最も近い青・桃・灰の区間より `--tie-m`（0.05 m）以上近いもの。区間は 202d の表の中点を `offset_m` × 外向きの法線だけ動かし、2.5 cm ごとの点にして最近傍を取る（全 69,775 区間、うち赤・橙 999）。境目で迷うセルは広げない側に倒す。
+3. その最も近い赤・橙の区間の外向きの法線で見て、縁の外側にあるセルは落とす（`stages_cells.outside_snapped_edge`：25,465 セル）。補正後の面は 202d で 0.1 m の格子で作ったので、縁が階段になり、縁のすぐ外のセルが面に入る。また、交わる道の口では、面が縁の延長の外（交わる道の中）へ続く。
+4. keepout の塗りを除く（今の候補は空。keepout は free より優先なので明示した）。
+5. R3：上限まで広がった区間の帯を落とす。帯を一度作り（下の 6.〜9. まで）、帯のセルを最も近い赤・橙の区間に割り当て（集計と同じ割り当て）、帯のセルが 4 以上（`--min-seg-cells`）で最大の幅が上限 − 半セル（1.475 m）以上の区間を「上限まで広がった区間」とする（前の版の `derived.capped_*` と同じ定義）。その区間に割り当てたセルを候補から除いて作り直す。候補が減るだけなので、作り直した帯は 1 回目の部分集合で、上限まで広がる区間は新たにはできない（`checks.capped_policy_drop_leaves_no_capped_segment`）。1 回目の数字は `capped`。
+6. R6：段 ∪ 構造物の成分で 3 セル以下のもののうち、成分の全セルが「ここまでの候補（除外の箱の後）∪ 手塗り」に入り、しかも 7. で残す障害物を太らせた所に掛からないものを、帯へ戻す。成分は、1 セル以下の隙間で並ぶ点を 1 つとみなして取る（`--band-salt-gap-cells 1`、既定。各点を自分を角とする 2×2 の正方形に広げて 8 連結を取ると、隙間が 1 セル以下の点どうしだけが繋がる）。こうすると 10 cm ボクセルの生垣・柵の 2 セルごとの点の格子は大きい塊として残る。`--band-salt-gap-cells 0` は `gen_auto_free_mask.py`（手塗りの内側の塩を消す規則、3 節）と同じ生の 8 連結。どちらで選んだ点も生の成分は 3 セル以下なので、消すのは `gen_auto_free_mask.py` の同じ規則。帯の縁にまたがる点（補正後の縁の外に一部が出る）と大きい障害物のすぐ脇の点は戻さない（縁そのものか障害物の一部とみなす、安全側）。戻した点は **roadway にだけ**足し、free の塗りには足さない。合成の `gen_auto_free_mask.py` が手塗りの内側と同じく `free_mask_auto.png` に入れて消し、`erased_by_free.png` では自動の消去（水色）として残る（free にも塗ると人の塗りとの「両方」の扱いになり、どちらの規則で消えたか追えない）。
+7. 残した段・構造物（`occupied_step` ∪ `occupied_structure` から 6. で戻した点を除いた物。compose_occupancy の machine_occ と同じ集合から）を 1 セル（0.05 m、`--barrier-dilate-m`）**正方形**で太らせて除く。帯は free の塗りにも足すので、除かないと機械の障害物を消す。太らせるのは、static.pcd が 10 cm のボクセルで、植栽・生垣の構造物が 2 セルごと（間に 1 セル）の点の並びになるため（太らせない初回は、x 104〜106、y 18〜19 で帯が点の間を通って植え込みへ入った）。正方形にするのは、楕円の 3×3 は十字で、斜めに 2 セルごと（間に 1 セル）に並ぶ点の間を 8 連結の帯がすり抜けるため（レビュー MF-1）。`salt_candidates` は段 ∪ 構造物と同じ集合（2026-11-17 に実測で 401,771 セルが一致、`checks.salt_candidates_equal_step_or_structure`）なので、別には足さない。
+8. 除外の箱（`--exclude-box`、既定は下の 5 つ）の中を除く。
+9. 残りの 8 連結の成分のうち、手塗りに接するものだけを残す（飛び地は足さない。`stages_cells.dropped_islands`：755 セル）。
+10. 内側へ（手塗りを削る方向）は変えない。
+11. 合成：3 節の「再現」と同じ順（`gen_auto_free_mask.py` → `compose_occupancy.py`）。roadway = 手塗り ∪ 帯（6. の点を含む）、free = 手塗りの free ∪ 帯（6. の点を除く）、keepout は手塗りの候補のまま。帯を free にも足すのは、旧地図の直接の拡幅と同じ扱い。roadway だけに足すと、free_evidence（レイの通過）の無い 2,903 セル（7.3 m²、帯の 1.9%、`derived.band_cells_without_free_evidence`）が UNKNOWN のまま残り、帯がまだらになる（`--free-policy evidence` で比べられる）。
+12. 確かめること（外れたら終了コード 1、`checks`）：手塗りのまま同じ手順で合成した地図が今の既定の地図とバイト単位で同じ、増えた FREE が帯と一致（`--free-policy evidence` では帯の部分集合）、変わったセルが帯の中だけ、帯が手塗り・keepout・残した段・構造物と重ならない、合成の `free_mask_auto.png` の手塗りのままとの差分が 6. で戻した点と 1 セルも違わない（`band_salt_erased_by_auto_rule`）、drop のとき、落とした区間のセルが帯に 1 つも無い（`capped_segment_cells_absent_from_band`）、上限まで広がった区間が残らない（`capped_policy_drop_leaves_no_capped_segment`）。2026-11-19 の実行では、既定（gap 1）・gap 0 ともすべて成り立った。
+    - 抜け穴：帯のセルが `--min-seg-cells`（4）未満の区間は「上限まで広がった区間」に数えないので、上限まで届いても R3 で落ちない。その数を `capped.small_segments_reaching_cap` に残す（2026-11-19 は両方の版で 0 区間）。
+13. 二重に広げない止め：入力の手塗りが、前回の出力の `roadway_widened.png` と同じ（`summary.json` の `outputs_sha256.roadway_widened` と sha256 が一致、または `~/bags/m8-experiments/154w/roadway_widened.png` と塗りが一致）なら、何も書かずに止まる。入力の sha256 は `inputs_sha256` に残す。
+
+除外の箱（Q2 の x の範囲と、広場・入口の y はユーザーの回答のまま。回答に y の無い所は、手塗りの map の −y 側の縁の外を覆い、道の反対側の帯に掛からない値を原寸の切り出しで決めた）と、その中の実測（`q2_boxes`。キーの名前は前の版のまま、R1・R5 の箱も入る。「箱が無いときの帯」は 6. の点の戻しを箱の後の候補で判定した値なので、箱の中の点は戻していない）：
+
+| 箱 | 範囲（x / y） | 補正後の面のうち手塗りの外 | 箱が無いときの帯 | 箱の後 |
+| --- | --- | --- | --- | --- |
+| 左上の広場 | −10〜−2 / 3〜15 | 3.46 m² | **1.49 m²**（広場の map の −y 側の縁の段の手前の細い帯） | 0 |
+| 斜めの舗装路の入口 | 30〜45 / −8〜−2 | 0 | 0（入口の縁は未補正＝桃） | 0 |
+| 発進点〜正門前の道の西の駐輪・駐車の帯（R1、`west_parking_strip`） | −77〜+6 / −9〜−1 | 77.71 m² | **16.87 m²** | 0 |
+| 北の道の駐車場の入口 | 18〜44 / 150〜160.5 | 32.37 m² | **20.73 m²**（駐車場との境の縁石の手前、x 18〜44 の map の −y 側の縁） | 0 |
+| 点の密な帯（R5、`dot_field`） | −97〜−93.5 / 73〜94.5 | 31.72 m² | **5.10 m²** | 0 |
+
+広場と駐車場の入口は、補正後の面に入り、赤の区間に面していたので、箱が要った。斜めの入口は、縁が未補正なので、箱が無くても入らなかった。Q3 の路肩の帯（x 74〜87、y ≈ 160）は補正後の縁（内へ 0.63 m）の外なので入らない。
+
+R1・R5 の箱の決め方（2026-11-19、前の版の帯の原寸で実測）：
+
+- R1：前の版の帯の、x −77〜+6 の map の −y 側のセルは y −4.87〜−1.42、+y 側のセルは y 0.52 以上。y −9〜−1 は −y 側だけを覆い、道の反対側の帯は切らない（`west_crop_*` で確かめた）。y −9 は、手塗りの縁が最も −y へ出る x −77（y −4.2）から上限 1.5 m を引いても余る値。x −80〜−77 の −y 側の帯（正門前の手前、1.05 m²、419 セル）は回答の範囲の外なので残した。中身（2026-11-19 の原寸の目視）：手塗りの縁と、その −y 側の植え込みの角の縁石（強度の明るい線）の間の細い帯で、強度は暗い舗装（中央値 12.4、≥ 20 は 3%。隣の手塗りの内側は 8.4）。x −77 より +x 側の駐車・駐輪の区画（強度の四角い模様）には掛からず、区画の前の路肩の舗装に見える。写真（約 0.48 m/画素）では区別できない。
+- R5：判断票の箱（x −96.5〜−93.5、y 76〜92）では、点の密な所（x −99〜−95.5 で段 ∪ 構造物のセルが 3% 以上の、y 0.5 m 刻みの帯）が y 73〜94.5 まで続き、前の版の帯は箱の外の y 75〜76（0.49 m²）と y 92〜94.5（0.96 m²）にも同じ点の間の隙間として残っていた。y 94 付近の帯は x −96.68 まで出る。そこで y を密な所の端へ、x を −97 へ広げた。x −93.5 は道の反対側（x ≈ −91）の帯に届かない。y 94.5 より +y 側の帯（点が 1% 未満の舗装の脇、3.03 m²）は切らない。
+
+#### 結果（今の既定の地図 `occupancy_candidate.yaml` との比較）
+
+| 項目 | 今の既定の地図 | 154w の候補（2026-11-19） |
+| --- | --- | --- |
+| FREE（全体、`areas.whole`） | 2,066,589 セル（5,166.5 m²） | 2,216,748 セル（5,541.9 m²、**+375.4 m²、+7.3%**） |
+| FREE（発進点〜bldg3：x −10〜70、y −15〜15） | 439.2 m² | 459.7 m²（+20.5） |
+| FREE（北の道：x −125〜96、y 145〜175） | 878.7 m² | 1,012.1 m²（+133.4） |
+| FREE が減ったセル | — | 0 |
+| OCC | 393,435 セル | 392,646 セル（−789。R6 で消した点。消した 792 セルのうち 3 セルは手塗りの free の塗りの中で、今の地図でも OCC ではなかった） |
+| waypoint の 4 地点が FREE か | 4点とも FREE | 4点とも FREE |
+| 4地点が車体の幅でつながるか（`map_route_check.py`、0.35 m 削り、`routes`） | つながる（成分 7 個） | つながる（成分 13 個。増えたのは帯の小さな出っ張りが削った後に残る分で、4点はどちらも同じ成分） |
+
+R1〜R6 ごとの数字（前の版は 2026-11-17 のコミット 672bd81 の `summary.json`。「要判断の所」の箱の帯の面積は `watch_band_m2`）：
+
+| 回答 | 前の版 | 今の版 | 内訳 |
+| --- | --- | --- | --- |
+| R1 駐輪・駐車の帯（x −75〜−10、y −6〜−1） | 15.49 m² | 0 | 箱 `west_parking_strip` の中の帯は箱が無ければ 16.87 m²（`q2_boxes`） |
+| R1 同じ帯の東（x 0〜5、y −4〜−1） | 0.48 m² | 0 | |
+| R2 北の道の南（x 44〜60） | 1.97 m² | 2.44 m² | 増えた 0.47 m² は R6（孤立した点とその周りの 1 セルが帯に戻った）。R6 を外す（`--band-salt-max-cells 0`）と 1.97 m² で前の版と同じ。gap 0 では 2.63 m² |
+| R3 上限で切れる所（x −96〜−93、y 12〜48） | 36.80 m² | 0.09 m² | 残るのは上限に達しない隣の区間のセル |
+| R4 北へ延びる道の両側（x 21〜27、y 5〜16） | 6.40 m² | 6.52 m² | 増えた 0.12 m² は R6。R6 を外すと 6.40 m²、gap 0 では 6.89 m² |
+| R5 点の密な帯（x −96.5〜−93.5、y 76〜92） | 3.65 m² | 0 | 広げた箱 `dot_field` の中は箱が無ければ 5.10 m² |
+
+R3（`capped`）：1 回目の帯（R1・R5・R6 を入れた後、478.3 m²）で上限まで広がった区間は **65 区間、102.8 m²**（41,134 セル）。これを全部落とした。前の版の定義と数え方は同じ。前の版の 65 区間・98.3 m² より面積が多いのは R6 のため：孤立した点とその周りが帯に戻ると、同じ区間の帯が少し広がる。R6 を外して作ると 65 区間・98.32 m² で前の版と一致する。`--capped-policy clip`（上限で切って広げる）なら帯は 478.3 m²。
+
+R6（`band_salt`）：帯へ戻して消した点は **792 セル、766 成分**（1 セル 740、2 セル 26。1.98 m²）。合成の `free_mask_auto.png` の差分と 1 セルも違わない。1 セルの隙間で繋がる点の格子と 4 セル以上の塊は残り、その周りの 1 セルも帯に入らない。帯の 0.1 m 以内に残る OCC は 4,062 セル（3,619 成分、`derived.occ_within_0_1m_of_band`。前の版は 5,783 セル、5,191 成分）。
+
+#### R6 の 2 つの版（2026-11-19 のレビュー MF-1）
+
+9f8cc95 では R6 を手塗りの内側と同じ生の 8 連結（gap 0）で入れた。レビューで、生垣・柵の 2 セルごと（間に 1 セル）の点の格子が 1 点ずつ「3 セル以下」として消え、残す障害物から外れて太らせた壁も無くなるので、格子の奥の候補のセルが帯につながり補正後の縁まで FREE になることが分かった（原寸の切り出しで、帯の外の縁で消えた水色の点は生垣の前の列だった。上限まで届く区間が 65 から 68 に増えたのもこのため）。R6 の回答は「大きい塊は残るので本物の障害物を消すおそれは小さい」という説明に基づいていたが、格子ではそれが成り立たない。そこで、格子を残す版（`--band-salt-gap-cells 1`）を既定にし、gap 0 は選べるように残した。ユーザーが決め直す。
+
+なお 9f8cc95 の `--band-salt-gap-cells g` は、中心に置いた半径 g の正方形で太らせて連結を取っていたので、隙間 2g まで繋がっていた（レビュー SF-1）。各点を自分を角とする (g+1)×(g+1) の正方形に広げる方法に直し、隙間 g 以下だけが繋がるようにした（単体テストで隙間 1 と 2 を区別）。9f8cc95 の報告にあった gap 1 の一時の数字（帯 370.6 m² など）と、gap 0 の `cells_in_dot_lattice` 1,720 は、この誤りの入った値で、下の表で置き換える。
+
+| 項目 | 既定（gap 1、格子を残す） | gap 0（手塗りの内側と同じ生の 8 連結） |
+| --- | --- | --- |
+| 帯 = 増えた FREE | 375.4 m²（+7.27%） | 391.3 m²（+7.57%） |
+| 消した点 | 792 セル、766 成分 | 2,292 セル、2,093 成分（うち 1 セルの隙間で格子になる点 1,423 セル、`band_salt.cells_in_dot_lattice`） |
+| OCC の減り | 789 セル | 2,288 セル |
+| R3 で落とした区間 | 65 区間、102.8 m² | 68 区間、110.1 m² |
+| 増えた FREE のうち OCC から 0.45 m 以上 / 0.6 m 以上 | 152.9 / 87.9 m² | 177.8 / 105.2 m² |
+| 今は 0.6 m 以上で、広げて 0.6 m 未満になる区間（全 OCC まで） | 136 区間、58 か所 | 136 区間、58 か所 |
+| waypoint の 4 地点（`map_route_check.py`） | all_connected、成分 13 個 | all_connected、成分 10 個 |
+| `checks` | すべて成り立つ | すべて成り立つ |
+| 出力 | `v2/experiments/154w/`、`~/bags/m8-experiments/154w/` | `~/bags/m8-experiments/154w_gap0/`（Git 外） |
+
+数字の出所は、既定の版の `summary.json` の `key` と `compare.key`（gap 0 の `summary.json` から写した物）。gap 0 で多い 1,500 セルは、ほとんどが格子の点（1,423 セル）で、多いのは x 60〜100、y 0〜20、x 60〜120、y 160〜180、x −100〜−80、y 120〜160（9f8cc95 の一時の集計、20 m の升目）。
+
+| 項目 | 値 |
+| --- | --- |
+| 広げた区間（帯のセルが 4 以上、`widened_segments`） | 774（段 762、構造物 12）。赤・橙の区間にタイルの重なり（dup）の区間は無かった（`segments.trusted_non_dup` = 999）ので、重なりへ割り当てたセルは 0（`derived.cells_reassigned_from_dup_segments`） |
+| 区間ごとの最大の広げた幅（手塗りの縁から） | 中央値 0.54 m、p90 0.90 m、最大 1.47 m（上限まで広がった区間は R3 で落とした） |
+| 上限 1.5 m に達した区間（`derived.capped_*`） | 0（R3） |
+| 増えた FREE のうち OCC から 0.45 m 以上（車体の中心が置ける、`usable`） | 152.9 m² |
+| 増えた FREE のうち OCC から 0.6 m 以上（inflation の外） | 87.9 m² |
+| 帯の中で強度 ≥ 20（明るい）のセル（`derived.bright_*`） | 45.7 m²（帯の 12.2%。手塗りの内側は 1.9%）。縁石・側溝のコンクリートも明るく、芝と区別できないので参考 |
+| 広げた roadway に新たにできる穴（1 m² 以下、`derived.new_holes_in_roadway_mask`） | 44 個、732 セル（そのうち OCC 104 セル）。前の版は 575 個、7,650 セル。R6 で孤立した点が roadway に入ったため（gap 0 では 24 個、78 セル） |
+| 所要時間・最大メモリ | 約 48 秒、3.6 GB（R3 で帯を 2 回作る） |
+
+#### レビューの修正（MF-1、SF-5）の前後（2026-11-17 の版の記録）
+
+この小節の数字は R1〜R6 を入れる前の 2026-11-17 の版（コミット 672bd81）のもので、今の `summary.json` には無い。前の版（2026-11-17 のコミット e5dbf39。楕円 3×3 で太らせ、縁の外側のセルを落としていなかった）と比べた。前の版の帯を、同じコードの十字・法線なしの設定で作り直すと 1 セルも違わない（215,058 セル）ことを確かめてから分けた（この表は一時の比較で、`summary.json` には無い。今の版の数字だけが `summary.json` にある）：
+
+| 段階 | 帯 | 減った面積 | 減った所 |
+| --- | --- | --- | --- |
+| 前の版 | 537.6 m² | — | — |
+| MF-1（正方形で太らせる）だけ | 510.9 m² | −26.8 m² | 9,328 か所に散る。ほとんどは点の斜めの隣の 1 セル。点の間を抜けて奥へつながっていた所は x −95.4、y 80.4（0.25 m²）、x −95.3、y 77.7（0.16 m²）、x 26.3、y 12.2（0.10 m²）など。発進点〜bldg3 で −1.8 m²、北の道で −10.5 m² |
+| ＋SF-5（縁の外側を落とす）＝今の版 | 480.1 m² | −30.7 m² | 763 か所。大きい所は x −13.4、y 75.4 と x −19.7、y 75.2（各 1.1 m²、南北の道の交差点で、交わる道の口の中）、x 51.1、y 159.6（0.8 m²、北の道の南の縁。補正後の面が赤い縁より 0.4 m 外まで続いていた）、x 17.3、y 147.1（0.7 m²）、x 146.5、y 79〜81（各 0.6 m²）。発進点〜bldg3 で −2.0 m²、北の道で −8.4 m² |
+
+目視（原寸の切り出し）：x −95、y 76〜82 では、構造物の点が密に並ぶ帯（点群では高さ 0.1〜2.2 m の物の並び。植栽か駐輪かは区別できない）の中へ、前の版の帯が点の斜めの隙間を通って入り込んでいた。修正後もこの帯の中に、点の間の 2 セル以上の隙間の帯が残った（x −96.5〜−93.5、y 76〜92 で 3.65 m²。2026-11-19 に R5 で箱を置いて除いた）。SF-5 で落ちた交差点の 2 か所は、南北の道の赤い縁の延長の外、交わる道の中で、落とすのが正しい。x 51.1、y 159.6 は、帯が赤い縁で止まるようになった。
+
+#### inflation の余裕
+
+`src/whill_navigation/config/nav2_params.yaml`：global / local とも `robot_radius` 0.45 m（円）、`inflation_radius` 0.6 m、`cost_scaling_factor` 4.0。global は static_layer + inflation_layer、`allow_unknown: false`、`track_unknown_space: true`。
+
+縁は、小さい穴（1 m² 以下、`--hole-max-m2`。帯の中に残る点とその周り）を埋めた FREE の外の縁で取る。新しい縁は区間に割り当てた帯の外の縁、今の縁はその帯のセルに 8 近傍で接する今の FREE の縁（`clearance`）：
+
+| 距離の相手 | 新しい縁：0.6 m 未満 / 0.45 m 未満 | 新しい縁：中央値 / p90 | 今の縁：0.6 m 未満 | 今の縁：中央値 | 今は 0.6 m 以上で、広げて 0.6 m 未満になる区間 |
+| --- | --- | --- | --- | --- | --- |
+| 全 OCC | 763 / 759（774 区間中） | 0.10 / 0.16 m | 622 / 769（80.9%） | 0.35 m | **136** |
+| 段だけ | 449 / 416 | 0.39 / 3.49 m | 206 / 769（27%） | 0.90 m | 242 |
+
+（前の版は全 OCC で 850 / 839（870 区間中）、今は 0.6 m 以上で広げて 0.6 m 未満になる区間 169・72 か所。）
+
+- 帯の外の縁は、段の内側の境か、その手前の構造物の点（太らせた 1 セルの外）で止まるので、全 OCC までの距離はほぼ 0.1〜0.2 m。段だけまでの中央値が 0.39 m なのは、202d が寄せた先の段（202c の縁石と v2 の段差層を 1 セル太らせた物）と、v2 の段差層の OCC のセルがずれる所、縁石の手前に構造物の点が並ぶ所があるため。段だけで p90 が 3.49 m なのは、構造物で寄せた区間と、点の格子・構造物の点で止まって段に届かない区間。
+- 帯のうち OCC から 0.45 m 以内は、Nav2 では車体の中心が入れない（inscribed）。使える面として増えるのは 152.9 m²（inflation の外は 87.9 m²）。前の版（165.3 m²、99.7 m²）より少ないのは、R1・R3・R5 で帯が減った（全体で 104.7 m²）ため。gap 0 では帯の中の格子の点も消えるので 177.8 m²、105.2 m²。
+- 今の縁でも 80.9% はすでに OCC まで 0.6 m 未満（中央値 0.35 m）。手塗りの縁の外の段・構造物が、すでに inflation に掛かっていた。
+- **今は 0.6 m 以上あり、広げて 0.6 m 未満になる区間（全 OCC まで）：136**。同じ線で続く区間をまとめて 58 か所（`clearance.occ.sites`。線・区間の番号、x・y の範囲、前後の最短距離、最大の広げた幅）。多いのは、北の道の西（x −76〜−67、y 154、11 区間）、x ≈ −97 の南北の道（y 95〜104 で 10 区間、y 118〜125 で 7 区間）、x ≈ −13.5、y 33〜42（9 区間）、東の道（x 132〜136、y 167〜170 と y 44）。
+- 推測（Nav2 は動かしていない）：今の地図の手塗りの縁の外は UNKNOWN で、inflation は UNKNOWN を膨らませないので、経路は手塗りの縁ぎりぎりを通りうる。広げると、縁の外は段・構造物の OCC になり、その手前に inflation のコストが付く。経路が縁から離れる向きに効く可能性があるが、確かめていない。
+
+#### 目視（`v2/experiments/154w/start_crop_{intensity,photo}_1to1.png` は x −15〜45、y −9〜4、`north_crop_*` は x −12〜96、y 151〜168、`west_crop_*` は x −82〜−12、y −8〜4（R1）、`dotfield_crop_*` は x −101〜−89、y 70〜98（R5）。色：青の薄塗り = 手塗りの roadway、桃 = 広げた帯（縁を濃く）、赤の点 = 段、橙の点 = 構造物、水色の点 = R6 で消した点、線 = 補正後の縁（赤 = 段、橙 = 構造物、青 = 強度、桃 = 未補正、灰 = 探していない）、水色の箱 = 除外の箱。補正後の面は 0.1 m の格子なので、帯の外の縁は 2 画素の階段になる）
+
+2026-11-19 の版で見たこと：`west_crop_*` では、箱が道の map の −y 側だけを覆い、+y 側の帯は残る。x −80〜−77 の −y 側の帯は箱の外に残る。`dotfield_crop_*` では、点の密な所が箱の中に収まり、y 94.5 より +y 側の帯は残る。下の箇条は 2026-11-17 の版の目視で、R1・R3・R5・R6 で変わった所は括弧に書いた。
+
+- **発進点付近**：南の縁は x 13〜20 などで、芝の手前の赤い縁石まで 0.3〜0.5 m 広がる。帯は強度の暗い（舗装）側にある。広場・斜めの入口・駐輪の帯（箱の中）には帯が無い。
+- **北の道（x −12〜18）**：北・南とも、芝の島の縁石（赤）まで 0.5〜1 m 広がり、強度の暗い側に収まる。202d で GSI が芝へ入り込んでいた所は、補正後の縁（縁石）で止まる。帯の中に点の穴（小さい丸）が多い（R6 で 3 セル以下の点は消えた）。
+- **北の道（x 18〜44）**：北の縁は芝の縁石まで。南（駐車場の入口）は箱で除いた。
+- **北の道（x 60〜96）**：南の路肩（Q3）は補正後の縁（側溝の外の段）までで止まり、路肩の帯には入らない。北の x 66〜70 と x 92〜96 は、交わる道の口・角の縁石まで三角形に広がる（形は最近傍の区間の境で決まり、角の丸みには沿わない）。
+- **植栽への入り込み**：x 104〜106、y 18〜19 は植え込みの手前で止まる。x −95、y 76〜92 の点の密な帯の中には、上のとおり 3.65 m² が残る。
+
+**要判断だった所**（2026-11-17 の版の値と内容。2026-11-19 に R1〜R5 で決まった。今の値は上の「R1〜R6 ごとの数字」）：
+
+| 所 | 帯（11-17） | 内容 | 回答 |
+| --- | --- | --- | --- |
+| 駐輪・駐車の帯の箱の外（x −75〜−10、y −6〜−1） | 15.49 m² | 発進点の道の map の −y 側（西）の駐輪の帯は x −75〜+5 まで続く。孤立した赤・橙の区間に面した出っ張りが残っていた：x −16〜−13（構造物＝駐輪の列の前面）、x −35〜−32（段、駐輪の列の前に入る）、x −74〜−48（段まで 0.5〜0.8 m） | R1 除く |
+| 同じ帯の東（x 0〜5） | 0.48 m² | 箱のすぐ +x 側の小さな出っ張り | R1 除く |
+| 北の道の南（x 44〜60） | 1.97 m² | 駐車場の入口の箱の +x 側のすぐ外。駐車場・建物の前庭との境の段までの出っ張り | R2 残す |
+| 上限で切れる所（x −96〜−93、y 12〜48） | 36.80 m² | 補正後の縁（x ≈ −98.5 の縁石）が手塗りの縁から 5 m 離れ、間は舗装で、手塗りの縁の 1 m 外に白線がある。帯は白線を越えて 1.5 m の所で直線で切れていた | R3 広げない |
+| 北へ延びる道の両側（x 21〜27、y 5〜16） | 6.40 m² | 強度ではやや明るく、写真（約 0.48 m/画素）では舗装より暗い。側溝か背の低い植栽か区別できない（未確認） | R4 残す |
+| 点の密な帯（x −96.5〜−93.5、y 76〜92） | 3.65 m² | 構造物の点の間の隙間に残る帯 | R5 除く |
+
+#### 採用する場合の手順（今回は実行していない）
+
+既定の地図を差し替えるので、ブランチと PR で行い、マージはユーザーが行う。**入力は採用前の手塗り（154w を作った時点の main、1a4f327 の版）に固定する**。差し替えた後の `candidates/` を入力にすると、広げた縁からさらに広げてしまう（スクリプトは、入力が前回の出力の `roadway_widened.png` と同じなら止まる。上の方法の 11.）。
+
+```bash
+cd ~/whill_lab0_ros2   # 採用用のブランチの checkout
+D=docs/maps/campus-m8
+PRE=1a4f327            # 採用前の手塗りの版（差し替えた後も、この版から作る）
+IN=/tmp/154w_in
+mkdir -p $IN
+# 1. 採用前の手塗りと、比べる相手の地図を一時ファイルへ取り出す
+git show $PRE:$D/v2/candidates/candidate_roadway_merged.png > $IN/candidate_roadway_merged.png
+git show $PRE:$D/v2/candidates/candidate_free_merged.png > $IN/candidate_free_merged.png
+git show $PRE:$D/v2/candidates/candidate_keepout_mask.png > $IN/candidate_keepout_mask.png
+git show $PRE:$D/v2/candidate_final.pgm > $IN/candidate_final.pgm
+git show $PRE:$D/occupancy_candidate.yaml | sed 's|^image: v2/candidate_final.pgm|image: candidate_final.pgm|' > $IN/occupancy_candidate.yaml
+# 入力の sha256 が summary.json の inputs_sha256.hand_roadway（7441d3d1…）と同じこと
+sha256sum $IN/candidate_roadway_merged.png
+# 2. 154w を採用前の版から作り直す（入力が同じなら、出力の sha256 は summary.json の outputs_sha256 と同じ）
+python3 scripts/map_widen_hand_roadway.py --hand-roadway $IN/candidate_roadway_merged.png \
+  --hand-free $IN/candidate_free_merged.png --keepout $IN/candidate_keepout_mask.png \
+  --baseline-map $IN/occupancy_candidate.yaml
+sha256sum ~/bags/m8-experiments/154w/roadway_widened.png ~/bags/m8-experiments/154w/free_widened.png
+# 3. 手塗りの候補を広げた版に差し替える（旧版は git の履歴に残る）
+cp ~/bags/m8-experiments/154w/roadway_widened.png $D/v2/candidates/candidate_roadway_merged.png
+cp ~/bags/m8-experiments/154w/free_widened.png $D/v2/candidates/candidate_free_merged.png
+# 4. 3 節の「再現」の最後の 2 段と同じ合成で candidate_final.pgm を作り直す
+mkdir -p /tmp/new
+scripts/gen_auto_free_mask.py --layers-yaml $D/v2/v2_layers.yaml --roadway-mask $D/v2/candidates/candidate_roadway_merged.png \
+  --output-free-mask-auto /tmp/new/free_mask_auto.png --output-salt-csv /tmp/new/salt.csv
+scripts/compose_occupancy.py --layers-yaml $D/v2/v2_layers.yaml \
+  --roadway-mask $D/v2/candidates/candidate_roadway_merged.png --free-mask $D/v2/candidates/candidate_free_merged.png \
+  --free-mask-auto /tmp/new/free_mask_auto.png --keepout-mask $D/v2/candidates/candidate_keepout_mask.png \
+  --output-pgm $D/v2/candidate_final.pgm
+# 5. 154w の地図と1セルも違わないこと、配車4地点
+cmp $D/v2/candidate_final.pgm ~/bags/m8-experiments/154w/compose/final.pgm && echo "154w と同一"
+scripts/map_route_check.py $D/occupancy_candidate.yaml $D/waypoints.yaml
+# 6. Web の背景を作り直し、ビルドして、Nav2 の地図との同期を確かめる（runbook と同じ）
+source /opt/ros/humble/setup.bash
+python3 scripts/m7_make_web_map.py --yaml $D/occupancy_candidate.yaml --out-dir src/whill_dispatch/web
+colcon build --symlink-install --packages-select whill_dispatch
+python3 scripts/check_map_sync.py --web-dir install/whill_dispatch/share/whill_dispatch/web
+```
+
+- `compose_occupancy.py` は `candidate_final.yaml` も書く（3 節の再現と同じ）。`occupancy_candidate.yaml` は `v2/candidate_final.pgm` を指すので変えない。Web の背景（`src/whill_dispatch/web/map.png`、`map_meta.json`）も差し替えの PR に入れる。
+- 差し替えた手塗りの roadway には、R6 で戻した 3 セル以下の点が入るので、手順 4. の `gen_auto_free_mask.py` が手塗りの内側と同じく消す（`compose/` の合成と同じ）。手塗りの free には入れていない。残る穴は 44 個、732 セル（`derived.new_holes_in_roadway_mask`。帯の中に残した点の格子・塊とその周りの 1 セル、うち OCC 104 セル）で、穴の OCC は合成でも OCC、残りは UNKNOWN になる。
+- 差し替えの後、3 節「候補の合成の結果」の表と、この節の「今の既定の地図」の列は古くなるので書き直す。手塗りの確定（`v2/roadway_mask.png` 等、3 節の「ユーザーが確かめること」4.）とは別の段階。
+
+#### 置き場（154w）
+
+| ファイル | 中身 | Git |
+| --- | --- | --- |
+| `v2/experiments/154w/summary.json` | パラメータ（パスはリポジトリ相対・`~/`）、入力・出力の sha256、確かめたこと（`checks`）、除外の箱、帯の各段階のセル数、除外の箱ごとの実測（`q2_boxes`）、R3 の 1 回目で上限まで広がった区間（`capped`、区間ごとの一覧つき）、R6 で消した点（`band_salt`）、比べるときの主な数字（`key`）と gap 0 の版の同じ数字（`compare`）、面積、要判断だった所の帯の面積、広げた区間の数と幅、この節の数字の出所（`derived`）、Nav2 の値、inflation の余裕（`clearance`）、`map_route_check.py` の結果 | 管理 |
+| `v2/experiments/154w/widened_segments.csv` | 広げた区間ごと（線・区間の番号、補正後の中点、根拠、寄せた量、帯のセル数、広げた幅の最大・中央値、明るいセルの割合、新しい縁・今の縁のセル数と、全 OCC・段だけまでの最短距離） | 管理 |
+| `v2/experiments/154w/{start,north,west,dotfield}_crop_{intensity,photo}_1to1.png` | 原寸。上の「目視」の画像（west・dotfield は 2026-11-19 に足した） | 管理 |
+| `v2/experiments/154w/overview_band_8.png` | 1/8。今の FREE（薄青）、OCC（灰）、帯（桃、見えるように 1 画素太らせた） | 管理 |
+| `~/bags/m8-experiments/154w/band.png`, `roadway_widened.png`, `free_widened.png` | 原寸（白・不透明が塗り。compose_occupancy の形式）。帯だけ（R6 の点を含む）、広げた roadway（R6 の点を含む）、広げた free（R6 の点を含まない） | 管理外 |
+| `~/bags/m8-experiments/154w/compose/final.pgm`, `final.yaml` | 合成した候補の地図（と `free_mask_auto.png`、`salt.csv`、`erased_by_free.png`、`clipped_by_roadway.png`） | 管理外 |
+| `~/bags/m8-experiments/154w_gap0/` | R6 を gap 0（生の 8 連結）で作った比べる版。`summary.json`、切り出し、`compose/final.{pgm,yaml}` など、上と同じ物（GIMP の 19 番は書かない） | 管理外 |
+| `~/bags/m8-experiments/154w/compose_hand/` | 手塗りのまま同じ手順で合成した地図（今の既定の地図と同じことの確認用） | 管理外 |
+| `~/bags/m8-experiments/154w/run.log` | 実行記録（`/usr/bin/time -v`） | 管理外 |
+| `~/bags/m8-experiments/gimp-layers/19_widened_candidate.png` | GIMP 用の原寸 RGBA（帯 = 桃、R6 で消した点 = 水色）。`campus-m8_layers.xcf` に表示で入れた | 管理外 |
+
+再現（1 回約 48 秒、最大メモリ 3.6 GB。gap 0 の版を先に作り、既定の版に `--compare-summary` で数字を写す。xcf の作り直しは約 15 秒）。入力の `~/bags/m8-experiments/202d/` は上の 202d の再現で作る。`build_xcf.sh` の `layers.txt` には 2026-11-17 に 19 番の 1 行を足し、2026-11-19 にレイヤー名を `19_widened_candidate|手塗りを補正後の地理院の縁まで広げた帯（桃、消した小さい点＝水色、154w の候補）|1` に変えた。R1〜R6 の前の版を作るときは `--exclude-box` で前の 4 つの箱を渡し、`--capped-policy clip --band-salt-max-cells 0` を付ける（2026-11-19 に、672bd81 の `outputs_sha256` の 3 つと sha256 が一致することを確かめた）：
+
+```bash
+cd ~/whill_lab0_ros2   # このブランチの checkout
+mkdir -p ~/bags/m8-experiments/154w
+mkdir -p ~/bags/m8-experiments/154w_gap0
+/usr/bin/time -v python3 scripts/map_widen_hand_roadway.py --band-salt-gap-cells 0 \
+  --out-dir ~/bags/m8-experiments/154w_gap0 --work-dir ~/bags/m8-experiments/154w_gap0 --no-gimp \
+  > ~/bags/m8-experiments/154w_gap0/run.log 2>&1
+/usr/bin/time -v python3 scripts/map_widen_hand_roadway.py --compare-summary ~/bags/m8-experiments/154w_gap0/summary.json \
+  > ~/bags/m8-experiments/154w/run.log 2>&1
+bash ~/bags/m8-experiments/gimp-layers/build_xcf.sh   # Git 外のスクリプト（このリポジトリには無い）
+scripts/run_tests.sh --scripts-only
+```
+
+`map_widen_hand_roadway.py` は既定で、docs の `v2/experiments/154w/`、`~/bags/m8-experiments/154w/`、`~/bags/m8-experiments/gimp-layers/19_widened_candidate.png` を上書きする。パラメータを試すときは `--out-dir`・`--work-dir` を変え、`--no-gimp` を付ける。
+
+#### 確かめていないこと
+
+- Nav2 の planner・controller での走り（inflation のコストで経路が縁から離れるか、帯の中に残る OCC の点の影響）。
+- 北へ延びる道の帯（R4 で残した）が側溝か植栽か、点の密な帯（R5 で除いた）の中身。現地か高解像度の写真が要る。
+- R6 を gap 1（既定、格子を残す）と gap 0 のどちらにするか（ユーザーが決め直す）。gap 0 で余分に消える格子の点（1,423 セル）が、生垣・柵か塩かは現地で確かめていない。
+- 発進点付近・北の道・上の点検箇所以外の目視。
+- `--max-widen-m`、`--tie-m`、`--barrier-dilate-m`、`--hole-max-m2` の掃引。
 
 ## 4. waypoint とローカライザの再生確認（#155、オフラインの部分）
 
