@@ -79,12 +79,16 @@ free に足しても機械の障害物は消えない。--free-policy evidence �
 （--work-dir の roadway_widened.png、または --out-dir の summary.json に記録した sha256）と同じなら止める。
 採用した後の手塗りを入力にすると、広げた縁からさらに広げてしまうため。
 
+2026-11-19 にこの既定の版を既定の地図に採用した（README 154w 節「採用」）。candidate_*_merged.png・
+v2/candidate_final.pgm・occupancy_candidate.yaml は広げた版になり、採用前の版は *_hand の名前で残した。
+入力と --baseline-map の既定はその *_hand を指す。
+
 確かめて記録すること（レビュー SF-7。外れたら summary.json を書いた後で終了コード 1）：
-  手塗りのまま合成した地図 == 今の既定の地図（--baseline-map）、増えた FREE == 帯、変わったセル ⊆ 帯、
+  手塗りのまま合成した地図 == 手塗りのままの地図（--baseline-map）、増えた FREE == 帯、変わったセル ⊆ 帯、
   帯が手塗り・keepout・残した障害物と重ならない、帯で消えた点 == 戻した小さい障害物（R6）、
   drop のときは上限まで広がった区間が残らない（R3）。
 
-既定の地図（occupancy_candidate.yaml、v2/candidate_final.pgm、v2/candidates/）・static.pcd・bag は読むだけで変えない。
+地図（occupancy_candidate*.yaml、v2/candidate*_final.pgm、v2/candidates/）・static.pcd・bag は読むだけで変えない。
 出力は --out-dir（小さい画像と数値、Git 管理）、--work-dir（地図本体・原寸のマスク、Git 外）、
 --gimp-dir の 19_widened_candidate.png（Git 外）。
 """
@@ -155,12 +159,17 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split('\n\n', 1)[0],
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--layers-yaml', type=pathlib.Path, default=D / 'v2/v2_layers.yaml')
-    p.add_argument('--hand-roadway', type=pathlib.Path, default=D / 'v2/candidates/candidate_roadway_merged.png',
-                   help='広げる前の手塗りの roadway。採用した後は、採用前の版（git show で取り出した物）を渡す。')
-    p.add_argument('--hand-free', type=pathlib.Path, default=D / 'v2/candidates/candidate_free_merged.png')
+    # 既定の入力は、154w を既定の地図に採用したとき（2026-11-19）に残した手塗りのままの版（*_hand）。
+    # 採用で candidate_*_merged.png と occupancy_candidate.yaml は広げた版になったので、そちらを既定に
+    # したままだと、既定の実行が二重に広げる止めで止まり、README の再現が動かない。
+    p.add_argument('--hand-roadway', type=pathlib.Path,
+                   default=D / 'v2/candidates/candidate_roadway_merged_hand.png',
+                   help='広げる前の手塗りの roadway（既定は採用前の版を残した *_hand）。')
+    p.add_argument('--hand-free', type=pathlib.Path, default=D / 'v2/candidates/candidate_free_merged_hand.png')
     p.add_argument('--keepout', type=pathlib.Path, default=D / 'v2/candidates/candidate_keepout_mask.png')
-    p.add_argument('--baseline-map', type=pathlib.Path, default=D / 'occupancy_candidate.yaml',
-                   help='比べる相手（今の既定の地図）。読むだけ。手塗りのまま合成した地図と一致することを確かめる。')
+    p.add_argument('--baseline-map', type=pathlib.Path, default=D / 'occupancy_candidate_hand.yaml',
+                   help='比べる相手（手塗りのままの地図。採用前の既定）。読むだけ。手塗りのまま合成した地図と'
+                        '一致することを確かめる。')
     p.add_argument('--waypoints', type=pathlib.Path, default=D / 'waypoints.yaml')
     p.add_argument('--gsi-road', type=pathlib.Path, default=b / '202d/gsi_snapped_road.png',
                    help='202d の補正後の地理院の道路の面（原寸、白・不透明 = 道）。')
@@ -720,7 +729,7 @@ def main(argv=None):
                     'band_m2': round(float((band & m).sum()) * a, 2)}
     print(f'[Q2] {json.dumps(q2, ensure_ascii=False)}', flush=True)
 
-    # ---- 合成（手塗りのまま・広げた版の 2 つ。手塗りのままは今の既定の地図と一致するはず）
+    # ---- 合成（手塗りのまま・広げた版の 2 つ。手塗りのままは --baseline-map と一致するはず）
     # R6 で戻した点は roadway にだけ足す。free にも塗ると、合成の gen_auto_free_mask の規則（≤3 セル）ではなく
     # 人の塗りとして消えたことになり、erased_by_free.png で区別できない（モジュールの説明の R6）
     roadway_w = hand | band

@@ -43,7 +43,7 @@ launchは既定でこの地図ディレクトリをworkspaceから解決する�
 v2の人手maskは編集成果物として保持する。PCD・bag・再生成キャッシュとGit管理する画像を混同しない。旧地図は根拠なく削除しない。
 
 - [campus地図](campus/README.md)：M5-R の地図。2026-11-13 から fallback（`site:=campus`）
-- [campus-m8地図](campus-m8/README.md)：M8-2 で Hi-Res の点群から作り直した地図。2026-11-13 から既定の site（占有格子は手塗りの候補 `candidate`）。屋外の受入（#156）と手塗りの確定（#154）は既定にした後に行う
+- [campus-m8地図](campus-m8/README.md)：M8-2 で Hi-Res の点群から作り直した地図。2026-11-13 から既定の site（占有格子は手塗りの候補 `candidate`。2026-11-19 から地理院の縁まで広げた版で、広げる前は `candidate_hand`）。屋外の受入（#156）と手塗りの確定（#154）は既定にした後に行う
 - [campus-m8 と国土地理院の地図の照合](campus-m8/reference-gsi.md)：map 座標を GSI の建物に合わせた変換（`campus-m8/georef.yaml`）と、走行可能域を GSI の道路と比べた結果（#205）。既定の地図は変えない
 - [新規siteのテンプレート](_template/README.md)
 - [旧試作地図](lab-legacy-m5b/README.md)

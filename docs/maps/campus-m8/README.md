@@ -4,6 +4,8 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus �
 
 **2026-11-13 から既定の site**（ユーザー判断、#190）。3 つの launch・`start_dispatch_demo.sh`・`check_map_sync.py`・Web の背景の既定は campus-m8 で、Nav2 は手塗りの候補（`map_variant:=candidate`、3 節）を読む。旧 `campus` は fallback として `site:=campus`（Nav2 は `map_variant:=v2`）で選べる（[runbook](../../runbook-live-demo.md)「旧地図（campus）に戻す」）。屋外の受入（#156）は既定にするための条件から外し、既定にした後の検証として行う。手塗りの確定（#154）もまだ。
 
+**2026-11-19 から `candidate` は、手塗りを補正後の地理院の縁まで広げた版（154w）**（ユーザー判断 R7、R6 は gap 1 の版）。広げる前の手塗りのままの版は `map_variant:=candidate_hand`（`occupancy_candidate_hand.yaml` → `v2/candidate_hand_final.pgm`）で選べる。戻し方は 3 節 154w の「採用」と [runbook](../../runbook-live-demo.md)「手塗りのままの地図（candidate_hand）に戻す」。
+
 経緯：この README の当初の版（2026-11-12）は「採用は未定。#156 と #154 が済むまで、デモは旧 `campus` を使う」としていた。2026-11-13 に、#186（LiDAR の TF と校正台帳）を main に入れて基準にすること、campus-m8 を #190 のマージで既定にすること、#156 はマージの後に検証することをユーザーが決めた。main には戻し先として `m8-pre-calib-20261113` のタグがある。
 
 旧地図との違いは、点群の校正を正しくしたこと（Hi-Res の実機に VLP16db.yaml を使っていた。#144）と、GLIM の設定（#147 の結論）。経路と元の記録は同じ。
@@ -24,7 +26,7 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus �
 | --- | --- | --- |
 | 1. 元 bag の点群を Hi-Res に補正 | #152 | 済（オフライン検証まで） |
 | 2. GLIM → DUFOMap で static.pcd | #153 | 済（オフラインの品質指標まで。屋外の確認は未） |
-| 3. 占有格子と手塗りの候補 | #154 | 候補まで。**手塗りの確定はユーザー**。既定の Nav2 の地図は候補（`candidate`）。地理院の縁まで広げた確定版の候補（154w）を作った（採用は未定） |
+| 3. 占有格子と手塗りの候補 | #154 | 候補まで。**手塗りの確定はユーザー**。既定の Nav2 の地図は候補（`candidate`）で、2026-11-19 から地理院の縁まで広げた版（154w）。手塗りのままの版は `candidate_hand`。広げた版の屋外の走行は未 |
 | 4. waypoint とローカライザの再生確認 | #155 | 再生まで。**屋外の受入（#156）は未**（既定にした後の検証） |
 | 5. 既定の site にする | #190 | 済（2026-11-13）。旧 `campus` は fallback |
 
@@ -35,12 +37,13 @@ M8-2（#152〜#155）で、07-10 の地図用 bag から作り直した campus �
 | `glim_config/` | 実行した GLIM の設定（実ファイル） | 管理 |
 | `metadata.yaml` | 出典と設定 | 管理 |
 | `align_from_campus/` | 旧 campus からの座標変換と waypoint の写像 | 管理 |
-| `v2/` | v2 の機械レイヤ、`candidates/`（手塗りの候補）、`candidate_final.pgm` | 管理 |
+| `v2/` | v2 の機械レイヤ、`candidates/`（手塗りの候補。`candidate_*_merged.png` は 154w で広げた版、`candidate_*_merged_hand.png` は広げる前）、`candidate_final.pgm`（広げた版）、`candidate_hand_final.pgm`（広げる前） | 管理 |
 | `v2/experiments/202/`, `202b/`, `202c/`, `202d/` | 縁石からの自動抽出の試作（#202、3 節。202b は DUFOMap の元の点、202c は bag のスキャンを軌跡で重ねた密な面、202d は GSI の道路縁を縁ごとに証拠へ寄せる試作）。既定の地図には使わない | 管理（小さい画像と数値だけ） |
-| `v2/experiments/154w/` | 手塗りを 202d の補正後の地理院の縁（段・構造物で寄せた区間だけ）まで広げた確定版の候補（#154、3 節）。採用は未定で、既定の地図は変えていない | 管理（小さい画像と数値だけ） |
+| `v2/experiments/154w/` | 手塗りを 202d の補正後の地理院の縁（段・構造物で寄せた区間だけ）まで広げた確定版の候補（#154、3 節）。2026-11-19 に既定の `candidate` に採用した | 管理（小さい画像と数値だけ） |
 | `georef.yaml`, `reference-gsi.md` | 国土地理院の建物に合わせた map → 平面直角座標系第IX系・緯度経度の変換と、GSI の道路との比較（#205） | 管理 |
 | `v2/experiments/205/` | 上の照合の重ね絵と数値 | 管理（小さい画像と数値だけ） |
-| `occupancy_candidate.yaml` | `map_variant:=candidate` で読む候補の地図。既定の site で variant を省いたときもこれ | 管理 |
+| `occupancy_candidate.yaml` | `map_variant:=candidate` で読む候補の地図（`v2/candidate_final.pgm`、2026-11-19 から 154w で広げた版）。既定の site で variant を省いたときもこれ | 管理 |
+| `occupancy_candidate_hand.yaml` | `map_variant:=candidate_hand` で読む、広げる前の手塗りのままの地図（`v2/candidate_hand_final.pgm`、2026-11-19 までの既定）。戻し先として残す | 管理 |
 | `waypoints.yaml` | 配車地点（候補） | 管理 |
 | `start_side_view.png` | 始点付近の横からの図（旧と新） | 管理 |
 
@@ -237,8 +240,11 @@ scripts/map_align.py --old-traj docs/maps/campus/traj_lidar.txt --new-traj docs/
   git show b36b204:docs/maps/campus/v2/final.pgm | cmp - /tmp/old/final_recomposed.pgm && echo "b36b204 と同一"
   ```
 - `v2/candidate_final.pgm`、`occupancy_candidate.yaml`：候補のマスクで合成した地図。`nav_launch.py site:=campus-m8 map_variant:=candidate` で読める。`occupancy.yaml`（variant 無指定）は、確定するまで置かない。2026-11-13 に既定の site にしたので、variant を省いたときも nav_launch はこの候補を読む（`_DEFAULT_VARIANT_BY_SITE`）。確定して `occupancy.yaml` を置いたら、その対応と `start_dispatch_demo.sh`・`check_map_sync.py` の対応を消す。
+- 2026-11-19 に、この節の候補を地理院の縁まで広げた版（154w）を `candidate` に採用した（下の 154w 節「採用」）。ここで作った手塗りのままの地図は `v2/candidate_hand_final.pgm`・`occupancy_candidate_hand.yaml`（`map_variant:=candidate_hand`）、その入力のマスクは `v2/candidates/candidate_{roadway,free}_merged_hand.png` として残した。下の「再現」の最後の合成は、出力を `candidate_final.pgm` に書くと広げた版を手塗りのままで上書きするので、作り直すときは `--output-pgm $D/v2/candidate_hand_final.pgm` に読み替え、入力も `*_hand.png` にする（`map_transfer_masks.py` も `candidate_*_merged.png` を上書きするので、作り直したら 154w 節の「採用」をやり直す）。
 
 ### 候補の合成の結果
+
+この表は手塗りのままの版（2026-11-19 からは `candidate_hand`）の値。今の `candidate`（154w で広げた版）の値は 154w 節の「結果」の表。
 
 | 項目 | 値 |
 | --- | --- |
@@ -250,10 +256,10 @@ scripts/map_align.py --old-traj docs/maps/campus/traj_lidar.txt --new-traj docs/
 | 参考：手塗りなし（機械だけ） | 4点が別々の成分（1714 成分）、正門前は FREE の外。塗りが要ることの確認 |
 
 ```bash
-scripts/map_route_check.py docs/maps/campus-m8/occupancy_candidate.yaml docs/maps/campus-m8/waypoints.yaml
+scripts/map_route_check.py docs/maps/campus-m8/occupancy_candidate_hand.yaml docs/maps/campus-m8/waypoints.yaml
 ```
 
-つながらない（`all_connected: false`）と終了コード 1 で終わる。これは「全体の経路が計画できる」の代わりの必要条件で、Nav2 の planner は動かしていない（コストの膨張、smoother、controller は見ていない）。
+つながらない（`all_connected: false`）と終了コード 1 で終わる。これは「全体の経路が計画できる」の代わりの必要条件で、Nav2 の planner は動かしていない（コストの膨張、smoother、controller は見ていない）。Nav2 の global planner を地図だけで動かした結果は 154w 節の「Nav2 の planner での確認」（`scripts/nav2_plan_check.py`）。
 
 ### ユーザーが確かめること
 
@@ -864,7 +870,9 @@ python3 -m pytest scripts/tests/test_gsi_edge_snap.py -q
 
 ### 手塗りを補正後の地理院の縁まで広げた候補（154w、2026-11-17、2026-11-19 に R1〜R6 を反映）
 
-**結論：手塗りの roadway を、202d で段・構造物へ寄せた地理院の縁（赤・橙）まで外へ広げた「確定版の候補」を作った。2026-11-19 の判断（R1〜R6）を既定に入れた版で、FREE は全体で 375.4 m²（+7.3%）増え、FREE が減った所は無い。OCC は、帯の中の孤立した 3 セル以下の点（R6）の 789 セルだけ減った。waypoint の 4 地点は今の既定の地図と同じく、4点とも FREE で、車体の幅で1つの成分につながる。広げた縁はほぼ全部（774 区間のうち 763）で OCC まで inflation の半径（0.6 m）より近い。車体の中心が置ける面（OCC から 0.45 m 以上）として増えたのは 152.9 m²、inflation の外は 87.9 m²。R6 は、生垣・柵の 2 セルごと（間に 1 セル）の点の格子を障害物として残す版（`--band-salt-gap-cells 1`）を既定にした。手塗りの内側と同じ生の 8 連結（gap 0）では格子の前の列が消えて帯がその奥まで入るためで、gap 0 の版（FREE +391.3 m²）との採否はユーザーが決め直す（下の「R6 の 2 つの版」）。既定の地図は変えていない。採用はユーザーが判断する。**
+**結論：手塗りの roadway を、202d で段・構造物へ寄せた地理院の縁（赤・橙）まで外へ広げた「確定版の候補」を作った。2026-11-19 の判断（R1〜R6）を既定に入れた版で、FREE は全体で 375.4 m²（+7.3%）増え、FREE が減った所は無い。OCC は、帯の中の孤立した 3 セル以下の点（R6）の 789 セルだけ減った。waypoint の 4 地点は今の既定の地図と同じく、4点とも FREE で、車体の幅で1つの成分につながる。広げた縁はほぼ全部（774 区間のうち 763）で OCC まで inflation の半径（0.6 m）より近い。車体の中心が置ける面（OCC から 0.45 m 以上）として増えたのは 152.9 m²、inflation の外は 87.9 m²。R6 は、生垣・柵の 2 セルごと（間に 1 セル）の点の格子を障害物として残す版（`--band-salt-gap-cells 1`）を既定にした。手塗りの内側と同じ生の 8 連結（gap 0）では格子の前の列が消えて帯がその奥まで入るためで、gap 0 の版（FREE +391.3 m²）との採否はユーザーが決め直す（下の「R6 の 2 つの版」）。**
+
+**2026-11-19 に、この既定の版（gap 1）を既定の地図 `candidate` に採用した**（ユーザー判断 R7。下の「採用」）。広げる前の手塗りのままの版は `candidate_hand` として残し、ファイルかパラメータの切り替えで戻せる。Nav2 の planner を地図だけで動かすと、配車 4 地点の 12 組はどちらの地図でも全て計画でき、12 組のうち 9 組は経路が変わらない（下の「Nav2 の planner での確認」）。屋外ではまだ走らせていない。
 
 向き：georef.yaml では map の +x はほぼ南（北から 185°）、+y はほぼ東を向く。この節の「北の道」「南の縁」などは、前の版から使っている画像の上下（上 = map の +y）の呼び名で、方位ではない。R1〜R6 の所は方位か「map の ±y 側」で書いた。
 
@@ -927,9 +935,11 @@ R1・R5 の箱の決め方（2026-11-19、前の版の帯の原寸で実測）�
 - R1：前の版の帯の、x −77〜+6 の map の −y 側のセルは y −4.87〜−1.42、+y 側のセルは y 0.52 以上。y −9〜−1 は −y 側だけを覆い、道の反対側の帯は切らない（`west_crop_*` で確かめた）。y −9 は、手塗りの縁が最も −y へ出る x −77（y −4.2）から上限 1.5 m を引いても余る値。x −80〜−77 の −y 側の帯（正門前の手前、1.05 m²、419 セル）は回答の範囲の外なので残した。中身（2026-11-19 の原寸の目視）：手塗りの縁と、その −y 側の植え込みの角の縁石（強度の明るい線）の間の細い帯で、強度は暗い舗装（中央値 12.4、≥ 20 は 3%。隣の手塗りの内側は 8.4）。x −77 より +x 側の駐車・駐輪の区画（強度の四角い模様）には掛からず、区画の前の路肩の舗装に見える。写真（約 0.48 m/画素）では区別できない。
 - R5：判断票の箱（x −96.5〜−93.5、y 76〜92）では、点の密な所（x −99〜−95.5 で段 ∪ 構造物のセルが 3% 以上の、y 0.5 m 刻みの帯）が y 73〜94.5 まで続き、前の版の帯は箱の外の y 75〜76（0.49 m²）と y 92〜94.5（0.96 m²）にも同じ点の間の隙間として残っていた。y 94 付近の帯は x −96.68 まで出る。そこで y を密な所の端へ、x を −97 へ広げた。x −93.5 は道の反対側（x ≈ −91）の帯に届かない。y 94.5 より +y 側の帯（点が 1% 未満の舗装の脇、3.03 m²）は切らない。
 
-#### 結果（今の既定の地図 `occupancy_candidate.yaml` との比較）
+#### 結果（手塗りのままの地図との比較）
 
-| 項目 | 今の既定の地図 | 154w の候補（2026-11-19） |
+「手塗りのまま」は採用前の既定の地図（2026-11-19 からは `occupancy_candidate_hand.yaml`）。この節で「今の既定の地図」「今の縁」と書いた所は、採用前に書いたもので、手塗りのままの版を指す。
+
+| 項目 | 手塗りのまま（`candidate_hand`） | 154w の候補（2026-11-19。採用して今の `candidate`） |
 | --- | --- | --- |
 | FREE（全体、`areas.whole`） | 2,066,589 セル（5,166.5 m²） | 2,216,748 セル（5,541.9 m²、**+375.4 m²、+7.3%**） |
 | FREE（発進点〜bldg3：x −10〜70、y −15〜15） | 439.2 m² | 459.7 m²（+20.5） |
@@ -1014,7 +1024,7 @@ R6（`band_salt`）：帯へ戻して消した点は **792 セル、766 成分**
 - 帯のうち OCC から 0.45 m 以内は、Nav2 では車体の中心が入れない（inscribed）。使える面として増えるのは 152.9 m²（inflation の外は 87.9 m²）。前の版（165.3 m²、99.7 m²）より少ないのは、R1・R3・R5 で帯が減った（全体で 104.7 m²）ため。gap 0 では帯の中の格子の点も消えるので 177.8 m²、105.2 m²。
 - 今の縁でも 80.9% はすでに OCC まで 0.6 m 未満（中央値 0.35 m）。手塗りの縁の外の段・構造物が、すでに inflation に掛かっていた。
 - **今は 0.6 m 以上あり、広げて 0.6 m 未満になる区間（全 OCC まで）：136**。同じ線で続く区間をまとめて 58 か所（`clearance.occ.sites`。線・区間の番号、x・y の範囲、前後の最短距離、最大の広げた幅）。多いのは、北の道の西（x −76〜−67、y 154、11 区間）、x ≈ −97 の南北の道（y 95〜104 で 10 区間、y 118〜125 で 7 区間）、x ≈ −13.5、y 33〜42（9 区間）、東の道（x 132〜136、y 167〜170 と y 44）。
-- 推測（Nav2 は動かしていない）：今の地図の手塗りの縁の外は UNKNOWN で、inflation は UNKNOWN を膨らませないので、経路は手塗りの縁ぎりぎりを通りうる。広げると、縁の外は段・構造物の OCC になり、その手前に inflation のコストが付く。経路が縁から離れる向きに効く可能性があるが、確かめていない。
+- 推測（この節を書いた時点では Nav2 は動かしていない）：今の地図の手塗りの縁の外は UNKNOWN で、inflation は UNKNOWN を膨らませないので、経路は手塗りの縁ぎりぎりを通りうる。広げると、縁の外は段・構造物の OCC になり、その手前に inflation のコストが付く。経路が縁から離れる向きに効く可能性がある。2026-11-19 に planner だけで確かめた結果は下の「Nav2 の planner での確認」：手塗りのままでは経路が UNKNOWN の縁に 0.25 m まで寄る所があることは当たっていた。広げた版で離れたのは正門前の手前の 1 か所だけで、R1 の箱の中の 1 か所は広げていないので残る。
 
 #### 目視（`v2/experiments/154w/start_crop_{intensity,photo}_1to1.png` は x −15〜45、y −9〜4、`north_crop_*` は x −12〜96、y 151〜168、`west_crop_*` は x −82〜−12、y −8〜4（R1）、`dotfield_crop_*` は x −101〜−89、y 70〜98（R5）。色：青の薄塗り = 手塗りの roadway、桃 = 広げた帯（縁を濃く）、赤の点 = 段、橙の点 = 構造物、水色の点 = R6 で消した点、線 = 補正後の縁（赤 = 段、橙 = 構造物、青 = 強度、桃 = 未補正、灰 = 探していない）、水色の箱 = 除外の箱。補正後の面は 0.1 m の格子なので、帯の外の縁は 2 画素の階段になる）
 
@@ -1037,53 +1047,138 @@ R6（`band_salt`）：帯へ戻して消した点は **792 セル、766 成分**
 | 北へ延びる道の両側（x 21〜27、y 5〜16） | 6.40 m² | 強度ではやや明るく、写真（約 0.48 m/画素）では舗装より暗い。側溝か背の低い植栽か区別できない（未確認） | R4 残す |
 | 点の密な帯（x −96.5〜−93.5、y 76〜92） | 3.65 m² | 構造物の点の間の隙間に残る帯 | R5 除く |
 
-#### 採用する場合の手順（今回は実行していない）
+#### 採用（2026-11-19、R7）
 
-既定の地図を差し替えるので、ブランチと PR で行い、マージはユーザーが行う。**入力は採用前の手塗り（154w を作った時点の main、1a4f327 の版）に固定する**。差し替えた後の `candidates/` を入力にすると、広げた縁からさらに広げてしまう（スクリプトは、入力が前回の出力の `roadway_widened.png` と同じなら止まる。上の方法の 11.）。
+ユーザーの判断（R7）：既定の地図をこの広げた版に差し替え、次の屋外の試験で使う。手塗りのままの地図は消さず、ファイルかパラメータの切り替えで戻せるように残す。R6 は gap 1（スクリプトの既定）の版。ブランチ `feat/154-adopt-widened-map`（#210 の上に積む）で行い、マージはユーザーが行う。
+
+runtime が読む物と変えた物：
+
+- Nav2（map_server）が読むのは `nav_launch.py` が解決する `occupancy_<variant>.yaml` と、その `image` の pgm だけ。campus-m8 の既定の variant は `candidate`（`_DEFAULT_VARIANT_BY_SITE`、`start_dispatch_demo.sh` の `demo_variant_for`、`check_map_sync.py` の `DEMO_VARIANT_BY_SITE`）。`occupancy_candidate.yaml` は `v2/candidate_final.pgm` を指したまま変えず、pgm の中身を広げた版に差し替えた。launch・パラメータ・variant の対応は変えていない。
+- 配車 Web の背景（`src/whill_dispatch/web/map.png`、`map_meta.json`）は広げた版で作り直した（`source_pgm` は同じ `v2/candidate_final.pgm`）。
+- NDT（localizer）は `static.pcd` を読み、占有格子は読まない。`static.pcd`・waypoint・TF・校正値は変えていない。
+
+| ファイル | 中身 | sha256 |
+| --- | --- | --- |
+| `v2/candidate_final.pgm` | 広げた版（既定の `candidate`）。`~/bags/m8-experiments/154w/compose/final.pgm` とバイト単位で同じ | `fca2abb47a4af7ae987784f976a14b7d51ccf5adfeae1e9190a3b7b959fcaa9e` |
+| `v2/candidate_hand_final.pgm` | 手塗りのまま（`candidate_hand`）。1a4f327 の `v2/candidate_final.pgm` と同じ | `5106c0bca46650a40a491ca611cabdb0eed470ec96cfca5db5778813fc1c41d9` |
+| `v2/candidates/candidate_roadway_merged.png` | 広げた roadway（`outputs_sha256.roadway_widened`） | `abcc68ba4cd0814625046a06b9d0a9191168da9e44f9345a6059cf34be0acdf4` |
+| `v2/candidates/candidate_free_merged.png` | 広げた free（`outputs_sha256.free_widened`） | `456d692205a58f129192a93b7ade81b39de5bbf0ec54de07de8e983d391f0826` |
+| `v2/candidates/candidate_roadway_merged_hand.png` | 広げる前の roadway（`inputs_sha256.hand_roadway`） | `7441d3d19ba875e3c04b2548ec0cd508e56369c5e2b01b9a56920d974448861d` |
+| `v2/candidates/candidate_free_merged_hand.png` | 広げる前の free（`inputs_sha256.hand_free`） | `ba775314a8df0980fefc5e856640accd833805272377acc006bff02a16c95207` |
+| `occupancy_candidate_hand.yaml` | `occupancy_candidate.yaml` と同じ値で、`image: v2/candidate_hand_final.pgm` | — |
+
+`candidate_keepout_mask.png` は空のままで変えていない。`*_hand` の 3 つは 1a4f327 の版とバイト単位で同じなので、Git の中身は増えない。`map_widen_hand_roadway.py` の入力と `--baseline-map` の既定は `*_hand` に変えた（入力の既定が広げた版のままだと、既定の実行が二重に広げる止めで止まる）。既定のまま実行して、出力の sha256 が 3 つとも `outputs_sha256` と同じで、`checks` が全て成り立つことを確かめた（`summary.json` の数字は、入力のパスの記録以外は変わらない。`summary.json` は差し替えていないので、`params.hand_roadway` などは採用前のパスのまま）。
+
+実行したコマンド（2026-11-19）：
 
 ```bash
 cd ~/whill_lab0_ros2   # 採用用のブランチの checkout
 D=docs/maps/campus-m8
-PRE=1a4f327            # 採用前の手塗りの版（差し替えた後も、この版から作る）
-IN=/tmp/154w_in
-mkdir -p $IN
-# 1. 採用前の手塗りと、比べる相手の地図を一時ファイルへ取り出す
+PRE=1a4f327            # 採用前の手塗りの版
+IN=/tmp/154w_in; OUT=/tmp/154w_out; WORK=/tmp/154w_work; T=/tmp/154w_compose
+mkdir -p $IN $OUT $WORK $T
+# 1. 採用前の手塗りと、比べる相手の地図を取り出し、入力の sha256 が inputs_sha256 と同じことを確かめる
 git show $PRE:$D/v2/candidates/candidate_roadway_merged.png > $IN/candidate_roadway_merged.png
 git show $PRE:$D/v2/candidates/candidate_free_merged.png > $IN/candidate_free_merged.png
 git show $PRE:$D/v2/candidates/candidate_keepout_mask.png > $IN/candidate_keepout_mask.png
 git show $PRE:$D/v2/candidate_final.pgm > $IN/candidate_final.pgm
 git show $PRE:$D/occupancy_candidate.yaml | sed 's|^image: v2/candidate_final.pgm|image: candidate_final.pgm|' > $IN/occupancy_candidate.yaml
-# 入力の sha256 が summary.json の inputs_sha256.hand_roadway（7441d3d1…）と同じこと
-sha256sum $IN/candidate_roadway_merged.png
-# 2. 154w を採用前の版から作り直す（入力が同じなら、出力の sha256 は summary.json の outputs_sha256 と同じ）
+sha256sum $IN/candidate_roadway_merged.png $IN/candidate_free_merged.png   # 7441d3d1… / ba775314…
+# 2. 154w を採用前の版から作り直す。docs の summary.json と ~/bags の出力を上書きしないよう、出力先は一時の所
 python3 scripts/map_widen_hand_roadway.py --hand-roadway $IN/candidate_roadway_merged.png \
   --hand-free $IN/candidate_free_merged.png --keepout $IN/candidate_keepout_mask.png \
-  --baseline-map $IN/occupancy_candidate.yaml
-sha256sum ~/bags/m8-experiments/154w/roadway_widened.png ~/bags/m8-experiments/154w/free_widened.png
-# 3. 手塗りの候補を広げた版に差し替える（旧版は git の履歴に残る）
-cp ~/bags/m8-experiments/154w/roadway_widened.png $D/v2/candidates/candidate_roadway_merged.png
-cp ~/bags/m8-experiments/154w/free_widened.png $D/v2/candidates/candidate_free_merged.png
-# 4. 3 節の「再現」の最後の 2 段と同じ合成で candidate_final.pgm を作り直す
-mkdir -p /tmp/new
+  --baseline-map $IN/occupancy_candidate.yaml --out-dir $OUT --work-dir $WORK --no-gimp
+sha256sum $WORK/roadway_widened.png $WORK/free_widened.png $WORK/compose/final.pgm   # abcc68ba… / 456d6922… / fca2abb4…
+# 3. 手塗りのままの版を *_hand の名前で残す
+cp $D/v2/candidate_final.pgm $D/v2/candidate_hand_final.pgm
+cp $D/v2/candidates/candidate_roadway_merged.png $D/v2/candidates/candidate_roadway_merged_hand.png
+cp $D/v2/candidates/candidate_free_merged.png $D/v2/candidates/candidate_free_merged_hand.png
+sed 's|^image: v2/candidate_final.pgm|image: v2/candidate_hand_final.pgm|' $D/occupancy_candidate.yaml > $D/occupancy_candidate_hand.yaml
+# 4. 手塗りの候補を広げた版に差し替え、3 節の「再現」の最後の 2 段と同じ合成で candidate_final.pgm を作り直す
+cp $WORK/roadway_widened.png $D/v2/candidates/candidate_roadway_merged.png
+cp $WORK/free_widened.png $D/v2/candidates/candidate_free_merged.png
 scripts/gen_auto_free_mask.py --layers-yaml $D/v2/v2_layers.yaml --roadway-mask $D/v2/candidates/candidate_roadway_merged.png \
-  --output-free-mask-auto /tmp/new/free_mask_auto.png --output-salt-csv /tmp/new/salt.csv
+  --output-free-mask-auto $T/free_mask_auto.png --output-salt-csv $T/salt.csv
 scripts/compose_occupancy.py --layers-yaml $D/v2/v2_layers.yaml \
   --roadway-mask $D/v2/candidates/candidate_roadway_merged.png --free-mask $D/v2/candidates/candidate_free_merged.png \
-  --free-mask-auto /tmp/new/free_mask_auto.png --keepout-mask $D/v2/candidates/candidate_keepout_mask.png \
+  --free-mask-auto $T/free_mask_auto.png --keepout-mask $D/v2/candidates/candidate_keepout_mask.png \
   --output-pgm $D/v2/candidate_final.pgm
-# 5. 154w の地図と1セルも違わないこと、配車4地点
+# 5. 154w の地図と 1 セルも違わないこと、残した版が採用前と同じこと、配車 4 地点
 cmp $D/v2/candidate_final.pgm ~/bags/m8-experiments/154w/compose/final.pgm && echo "154w と同一"
+cmp $D/v2/candidate_hand_final.pgm $IN/candidate_final.pgm && echo "手塗りのまま = 1a4f327"
 scripts/map_route_check.py $D/occupancy_candidate.yaml $D/waypoints.yaml
-# 6. Web の背景を作り直し、ビルドして、Nav2 の地図との同期を確かめる（runbook と同じ）
+scripts/map_route_check.py $D/occupancy_candidate_hand.yaml $D/waypoints.yaml
+# 6. 二重に広げる止めが効くこと（差し替えた後の candidate_roadway_merged.png を渡すと何も書かずに止まる）
+python3 scripts/map_widen_hand_roadway.py --hand-roadway $D/v2/candidates/candidate_roadway_merged.png \
+  --work-dir /tmp/154w_guard --no-gimp
+# 7. Web の背景を作り直し、Nav2 の地図との同期を確かめる
+python3 scripts/m7_make_web_map.py --yaml $D/occupancy_candidate.yaml --out-dir src/whill_dispatch/web
+python3 scripts/check_map_sync.py --web-dir src/whill_dispatch/web
+```
+
+結果：5. は両方とも同一、`map_route_check.py` は両方とも `all_connected: true`（広げた版は成分 13 個、手塗りのままは 7 個）。6. は「前回の広げた版（summary.json の sha256）と同じ。二重に広げないよう止める」で止まり、何も書かなかった。7. は ok。
+
+- `compose_occupancy.py` は `candidate_final.yaml` も書く（3 節の再現と同じ）が、中身は変わらない。`erased_by_free.png`・`clipped_by_roadway.png` は Git 管理外。
+- 差し替えた手塗りの roadway には、R6 で戻した 3 セル以下の点が入るので、手順 4. の `gen_auto_free_mask.py` が手塗りの内側と同じく消す（`compose/` の合成と同じ）。手塗りの free には入れていない。残る穴は 44 個、732 セル（`derived.new_holes_in_roadway_mask`。帯の中に残した点の格子・塊とその周りの 1 セル、うち OCC 104 セル）で、穴の OCC は合成でも OCC、残りは UNKNOWN になる。
+- 手塗りの確定（`v2/roadway_mask.png` 等、3 節の「ユーザーが確かめること」4.）とは別の段階。確定するときは、広げた版と手塗りのままのどちらを元にするかを決める。
+
+戻し方：
+
+- その場で一時的に戻す（ファイルは変えない）：Nav2 を `map_variant:=candidate_hand` で起動し、Web の背景を手塗りのままの版で作り直す。コマンドは [runbook](../../runbook-live-demo.md)「手塗りのままの地図（candidate_hand）に戻す」。
+- 既定そのものを戻す（ファイルを差し替える。ブランチと PR で行う）：
+
+```bash
+cd ~/whill_lab0_ros2   # 戻す用のブランチの checkout
 source /opt/ros/humble/setup.bash
+D=docs/maps/campus-m8
+cp $D/v2/candidate_hand_final.pgm $D/v2/candidate_final.pgm
+cp $D/v2/candidates/candidate_roadway_merged_hand.png $D/v2/candidates/candidate_roadway_merged.png
+cp $D/v2/candidates/candidate_free_merged_hand.png $D/v2/candidates/candidate_free_merged.png
+sha256sum $D/v2/candidate_final.pgm   # 5106c0bca46650a40a491ca611cabdb0eed470ec96cfca5db5778813fc1c41d9
 python3 scripts/m7_make_web_map.py --yaml $D/occupancy_candidate.yaml --out-dir src/whill_dispatch/web
 colcon build --symlink-install --packages-select whill_dispatch
 python3 scripts/check_map_sync.py --web-dir install/whill_dispatch/share/whill_dispatch/web
+scripts/map_route_check.py $D/occupancy_candidate.yaml $D/waypoints.yaml
 ```
 
-- `compose_occupancy.py` は `candidate_final.yaml` も書く（3 節の再現と同じ）。`occupancy_candidate.yaml` は `v2/candidate_final.pgm` を指すので変えない。Web の背景（`src/whill_dispatch/web/map.png`、`map_meta.json`）も差し替えの PR に入れる。
-- 差し替えた手塗りの roadway には、R6 で戻した 3 セル以下の点が入るので、手順 4. の `gen_auto_free_mask.py` が手塗りの内側と同じく消す（`compose/` の合成と同じ）。手塗りの free には入れていない。残る穴は 44 個、732 セル（`derived.new_holes_in_roadway_mask`。帯の中に残した点の格子・塊とその周りの 1 セル、うち OCC 104 セル）で、穴の OCC は合成でも OCC、残りは UNKNOWN になる。
-- 差し替えの後、3 節「候補の合成の結果」の表と、この節の「今の既定の地図」の列は古くなるので書き直す。手塗りの確定（`v2/roadway_mask.png` 等、3 節の「ユーザーが確かめること」4.）とは別の段階。
+  この採用のコミットを `git revert` しても同じ（`*_hand` と `occupancy_candidate_hand.yaml` も消える。`map_widen_hand_roadway.py` の既定の入力も元に戻る）。
+
+#### Nav2 の planner での確認（2026-11-19、オフライン）
+
+`scripts/nav2_plan_check.py` で、地図ごとに map_server と planner_server（global_costmap を内に持つ）だけを起動し、配車 4 地点の順序つきの 12 組で `ComputePathToPose`（`use_start: true`）を呼んだ。パラメータは `src/whill_navigation/config/nav2_params.yaml` をそのまま読む（NavFn、`tolerance` 0.5、`allow_unknown: false`、global_costmap は static_layer + inflation_layer、`robot_radius` 0.45 m、`inflation_radius` 0.6 m、`cost_scaling_factor` 4.0）。外した層は無い（global_costmap にはもともと obstacle_layer が無い）。map → base_link は static TF の恒等。controller・velocity_smoother・twist_mux は起動していないので cmd_vel は出ない。domain 87、`rmw_cyclonedds_cpp`、`configs/cyclonedds-runtime-min.xml`。smoother・controller（RPP）・local costmap・実機の自己位置は見ていない。
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+python3 scripts/nav2_plan_check.py \
+  --map docs/maps/campus-m8/occupancy_candidate_hand.yaml --map docs/maps/campus-m8/occupancy_candidate.yaml \
+  --waypoints docs/maps/campus-m8/waypoints.yaml --out-dir /tmp/nav2_plan_check
+```
+
+列：長さは経路の点列の折れ線の長さ。OCC まで・非 FREE までは経路の点から最も近い OCC / FREE でない（UNKNOWN か OCC の）セルまでの距離の最小（地図の pgm から。中心どうしなので ±0.05 m）。ずれは、広げた版の経路の各点から手塗りのままの経路への最短距離の平均 / 最大（最大は両向きの Hausdorff）。
+
+| 組（始点 → 終点） | 成功（手塗り / 広げた） | 長さ [m]（手塗り → 広げた） | OCC まで最小 [m] | 非 FREE まで最小 [m] | ずれ 平均 / 最大 [m] |
+| --- | --- | --- | --- | --- | --- |
+| kounoken → bldg7 | ○ / ○ | 38.49 → 38.49 | 1.85 → 1.85 | 1.60 → 1.60 | 0 / 0 |
+| kounoken → seimon | ○ / ○ | 88.87 → 88.85 | 0.68 → 0.76 | **0.29 → 0.56** | 0.025 / 0.38 |
+| kounoken → bldg3 | ○ / ○ | 68.22 → 68.22 | 1.25 → 1.25 | 1.20 → 1.20 | 0 / 0 |
+| bldg7 → kounoken | ○ / ○ | 38.53 → 38.53 | 1.80 → 1.80 | 1.55 → 1.55 | 0 / 0 |
+| bldg7 → seimon | ○ / ○ | 50.37 → 50.34 | 0.68 → 0.67 | **0.25 → 0.50** | 0.024 / 0.26 |
+| bldg7 → bldg3 | ○ / ○ | 106.62 → 106.62 | 0.62 → 0.62 | 0.50 → 0.50 | 0 / 0 |
+| seimon → kounoken | ○ / ○ | 89.19 → 89.19 | 0.89 → 0.89 | **0.25 → 0.25** | 0 / 0 |
+| seimon → bldg7 | ○ / ○ | 50.70 → 50.70 | 0.90 → 0.90 | **0.25 → 0.25** | 0 / 0 |
+| seimon → bldg3 | ○ / ○ | 157.26 → 157.26 | 0.70 → 0.70 | **0.25 → 0.25** | 0 / 0 |
+| bldg3 → kounoken | ○ / ○ | 68.03 → 68.03 | 1.45 → 1.66 | 1.30 → 1.43 | 0 / 0 |
+| bldg3 → bldg7 | ○ / ○ | 106.51 → 106.51 | 0.66 → 0.66 | 0.60 → 0.60 | 0 / 0 |
+| bldg3 → seimon | ○ / ○ | 156.85 → 156.83 | 0.66 → 0.66 | **0.29 → 0.50** | 0.007 / 0.17 |
+
+- 12 組とも両方の地図で計画できた。経路が OCC から 0.6 m（inflation の半径）より近づく所は、どの組にも無い（最小 0.62 m）。経路上の global costmap のコストはどの組も 0。
+- 経路が変わったのは正門前（seimon）へ向かう 3 組だけで、ずれは最大 0.38 m、長さの差は 0.02〜0.03 m。他の 9 組は 1 点も変わらない（bldg3 → kounoken は経路は同じで、その脇の縁が広がって OCC・非 FREE までの距離が増えた）。NavFn はコスト 0 の面で最短の経路を取るので、広げた帯がカーブの内側に無ければ経路は動かない。
+- **手塗りのままでは、経路が UNKNOWN の縁に 0.25〜0.29 m（`robot_radius` 0.45 m より近い）まで寄る所が 2 か所ある**。inflation は UNKNOWN を膨らませない（Humble の InflationLayer は LETHAL だけを膨らませる）ので、global の経路は車体の中心を手塗りの縁の 0.25 m まで寄せる。
+  - x −80.0〜−80.9、y −4.6〜−5.0（正門前の手前、map の −y 側、約 1 m）：seimon へ向かう 3 組。広げた版では 0.50〜0.56 m に離れた（R1 の箱 x −77〜+6 の外で、帯が広がった所）。
+  - x −67.1〜−64.6、y ≈ −3.0（正門前から発進点への道、map の −y 側、約 2.5 m）：seimon から出る 3 組。広げた版でも 0.25 m のまま。R1 の箱（駐輪・駐車の帯）の中で広げていないため。
+- 残る 1 か所は、global の経路としては計画できるが、車体の円（0.45 m）が UNKNOWN に 0.2 m 掛かる。local costmap の static_layer と RPP の衝突検知がこれをどう扱うかは、オフラインでは確かめていない（屋外で、seimon から出発する組で見る）。
+- `nav2_plan_check.py` は経路を重ねた原寸の切り出し（`plans_crop.png`、手塗りのまま = 青、広げた版 = 赤）と全組の点列（`plans.json`）を `--out-dir` に書く（Git 管理外）。
 
 #### 置き場（154w）
 
@@ -1096,7 +1191,7 @@ python3 scripts/check_map_sync.py --web-dir install/whill_dispatch/share/whill_d
 | `~/bags/m8-experiments/154w/band.png`, `roadway_widened.png`, `free_widened.png` | 原寸（白・不透明が塗り。compose_occupancy の形式）。帯だけ（R6 の点を含む）、広げた roadway（R6 の点を含む）、広げた free（R6 の点を含まない） | 管理外 |
 | `~/bags/m8-experiments/154w/compose/final.pgm`, `final.yaml` | 合成した候補の地図（と `free_mask_auto.png`、`salt.csv`、`erased_by_free.png`、`clipped_by_roadway.png`） | 管理外 |
 | `~/bags/m8-experiments/154w_gap0/` | R6 を gap 0（生の 8 連結）で作った比べる版。`summary.json`、切り出し、`compose/final.{pgm,yaml}` など、上と同じ物（GIMP の 19 番は書かない） | 管理外 |
-| `~/bags/m8-experiments/154w/compose_hand/` | 手塗りのまま同じ手順で合成した地図（今の既定の地図と同じことの確認用） | 管理外 |
+| `~/bags/m8-experiments/154w/compose_hand/` | 手塗りのまま同じ手順で合成した地図（`--baseline-map` と同じことの確認用。採用後の既定は `occupancy_candidate_hand.yaml`） | 管理外 |
 | `~/bags/m8-experiments/154w/run.log` | 実行記録（`/usr/bin/time -v`） | 管理外 |
 | `~/bags/m8-experiments/gimp-layers/19_widened_candidate.png` | GIMP 用の原寸 RGBA（帯 = 桃、R6 で消した点 = 水色）。`campus-m8_layers.xcf` に表示で入れた | 管理外 |
 
@@ -1115,11 +1210,11 @@ bash ~/bags/m8-experiments/gimp-layers/build_xcf.sh   # Git 外のスクリプ�
 scripts/run_tests.sh --scripts-only
 ```
 
-`map_widen_hand_roadway.py` は既定で、docs の `v2/experiments/154w/`、`~/bags/m8-experiments/154w/`、`~/bags/m8-experiments/gimp-layers/19_widened_candidate.png` を上書きする。パラメータを試すときは `--out-dir`・`--work-dir` を変え、`--no-gimp` を付ける。
+`map_widen_hand_roadway.py` は既定で、docs の `v2/experiments/154w/`、`~/bags/m8-experiments/154w/`、`~/bags/m8-experiments/gimp-layers/19_widened_candidate.png` を上書きする。パラメータを試すときは `--out-dir`・`--work-dir` を変え、`--no-gimp` を付ける。採用（2026-11-19）の後は、入力と `--baseline-map` の既定が `*_hand` を指すので、上のコマンドはそのまま採用前の版から作る。採用の後に上のコマンドで `summary.json` を書き直すと、`params` の入力のパスだけが `*_hand` に変わる。
 
 #### 確かめていないこと
 
-- Nav2 の planner・controller での走り（inflation のコストで経路が縁から離れるか、帯の中に残る OCC の点の影響）。
+- controller（RPP）・local costmap・実機の自己位置での走り、帯の中に残る OCC の点の影響。global の planner だけは 2026-11-19 にオフラインで確かめた（上の「Nav2 の planner での確認」）。特に、seimon から出る組で経路が UNKNOWN の縁に 0.25 m まで寄る所（x −67〜−65、y ≈ −3、R1 の箱の中）を、屋外で RPP がどう扱うか。
 - 北へ延びる道の帯（R4 で残した）が側溝か植栽か、点の密な帯（R5 で除いた）の中身。現地か高解像度の写真が要る。
 - R6 を gap 1（既定、格子を残す）と gap 0 のどちらにするか（ユーザーが決め直す）。gap 0 で余分に消える格子の点（1,423 セル）が、生垣・柵か塩かは現地で確かめていない。
 - 発進点付近・北の道・上の点検箇所以外の目視。
