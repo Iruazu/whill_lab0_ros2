@@ -94,8 +94,11 @@ def check_failsafe(args, out):
                              lambda _: stamps.append(node.sim_s()), 50)
     ex = spin_in_background(node)
     log = out / 'failsafe_node.log'
+    # --failsafe-param は既定を変えずに任意の監視（例: #193 の scan_silent_sec）を
+    # 有効にして測るため。既定のままの再生は従来と同じコマンドになる。
+    extra = [a for kv in args.failsafe_param for a in ('-p', kv)]
     fs = spawn(['ros2', 'run', 'whill_safety', 'failsafe_node', '--ros-args',
-                '-p', 'use_sim_time:=true',
+                '-p', 'use_sim_time:=true', *extra,
                 '-r', '/cmd_vel_safety:=/regression/cmd_vel_safety'], log)
     time.sleep(5)
     play = spawn(['ros2', 'bag', 'play', args.bag, '--clock', '100',
@@ -117,7 +120,13 @@ def check_failsafe(args, out):
     text = log.read_text(errors='replace')
     # The node's own transitions are the engagement count. Stop commands merged by
     # ENGAGEMENT_GAP_S only locate them in time and measure how long they lasted.
-    return {'engagements': text.count('failsafe ENGAGED'),
+    # 層ごとの作動回数は基準と比べない（compare は baseline.json の limits の
+    # キーだけを見る）。どの層が作動したかを結果に残し、新しい層の誤作動を読めるようにする。
+    engaged_lines = [ln for ln in text.splitlines() if 'failsafe ENGAGED' in ln]
+    return {'engagements': len(engaged_lines),
+            'engagements_with_scan_silent': sum(
+                'D:scan_silent' in ln for ln in engaged_lines),
+            'params': list(args.failsafe_param),
             'engaged_s': round(float((ends - starts).sum()), 2),
             'stops_while_driving': int(np.sum(in_nav))}
 
@@ -228,6 +237,15 @@ def check_localizer(args, out):
             'fitness_max': round(float(np.nanmax(fit)), 4)}
 
 
+def _failsafe_param(text):
+    # ros2 の -p と同じ書式に限る。'=' 1 つの打ち間違いを黙って通すと、failsafe が
+    # 起動時に失敗し、作動 0 回の再生が「正常」に見えてしまう。
+    key, sep, value = text.partition(':=')
+    if not sep or not key or not value:
+        raise argparse.ArgumentTypeError(f'expected KEY:=VALUE, got {text!r}')
+    return text
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -244,6 +262,10 @@ def main():
     ap.add_argument('--out', required=True, type=Path)
     ap.add_argument('--only', choices=['failsafe', 'localizer'])
     ap.add_argument('--no-compare', action='store_true', help='only measure')
+    ap.add_argument('--failsafe-param', action='append', default=[],
+                    metavar='KEY:=VALUE', type=_failsafe_param,
+                    help='extra -p for failsafe_node (repeatable), e.g. '
+                         'scan_silent_sec:=0.5')
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 

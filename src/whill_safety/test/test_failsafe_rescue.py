@@ -23,6 +23,7 @@ from sensor_msgs.msg import LaserScan
 from whill_safety.failsafe_node import (
     FORWARD_CLEAR_HYSTERESIS_S, PUBLISH_HZ, RESCUE_CMD_TIMEOUT_S,
     RESCUE_LAYER, RESCUE_MAX_REVERSE_MPS, RESCUE_MAX_WZ,
+    SCAN_SILENT_S_RECOMMENDED,
     TWIST_MUX_TELEOP_TIMEOUT_S, FailsafeNode, check_rescue_timing,
     rescue_command_ok, rescue_relay_allowed)
 
@@ -74,11 +75,15 @@ class _Clock:
         self.t = t
 
 
-@pytest.fixture
-def make_node(monkeypatch):
+# #193: run every test with the /scan silence monitor off (the shipped
+# default) and at its recommended value, so the relay is pinned for both.
+@pytest.fixture(params=[0.0, SCAN_SILENT_S_RECOMMENDED],
+                ids=['scan_silent_off', 'scan_silent_0.5'])
+def make_node(monkeypatch, request):
     made = []
 
     def _make(**params):
+        params.setdefault('scan_silent_sec', request.param)
         clock = _Clock(T0)
         monkeypatch.setattr(FailsafeNode, '_now_s', lambda self: clock.t)
         monkeypatch.setattr(FailsafeNode, '_steady_s', lambda self: clock.t)
@@ -116,6 +121,18 @@ def _block_d(node, clock, t):
     node._on_scan(_blocked_scan())
 
 
+def _clear_d(node, clock, t):
+    # Layer D clears on clear scans, not on /scan going quiet: with
+    # scan_silent_sec > 0 (#193) a quiet /scan is D:scan_silent, a stop of
+    # its own. Sending clear scans keeps the test valid for both settings.
+    clock.t = t
+    s = LaserScan()
+    s.angle_min = 0.0
+    s.angle_increment = 0.01
+    s.ranges = [5.0]                     # outside the 1-2 m sector
+    node._on_scan(s)
+
+
 def _teleop(node, clock, t, vx, wz=0.0):
     clock.t = t
     node._on_teleop(_twist(vx, wz))
@@ -151,7 +168,9 @@ def test_relay_only_for_layer_d_alone():
                   'C:perception_silent',
                   # #159 layers must also keep the zero once merged.
                   'B:pcl_pose_never_arrived', 'C:perception_never_arrived',
-                  'D:scan_never_arrived'):
+                  'D:scan_never_arrived',
+                  # #193: with /scan dead, Layer D cannot see the rescue path.
+                  'D:scan_silent'):
         assert not rescue_relay_allowed((RESCUE_LAYER, other), **fresh)
         assert not rescue_relay_allowed((other,), **fresh)
 
@@ -202,6 +221,7 @@ def test_default_zero_and_no_subscription(make_node):
     _block_d(node, clock, T0 + 1.0)
     _tick(node, clock, T0 + 1.0)
     assert pub.take() == [ZERO]
+    _clear_d(node, clock, T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01)
     _tick(node, clock, T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01)
     assert pub.take() == []                 # released: silent
 
@@ -270,6 +290,7 @@ def test_trailing_zero_after_layer_d_clears(make_node):
 
     # Layer D clears while the operator keeps backing: keep relaying.
     t = T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01
+    _clear_d(node, clock, t)
     _teleop(node, clock, t, -0.2)
     _tick(node, clock, t)
     assert node._active_layers() == ()
@@ -289,6 +310,7 @@ def test_trailing_zero_when_forward_after_layer_d_clears(make_node):
     _teleop(node, clock, T0 + 1.0, -0.2)
     _tick(node, clock, T0 + 1.0)
     t = T0 + 1.0 + FORWARD_CLEAR_HYSTERESIS_S + 0.01
+    _clear_d(node, clock, t)
     _teleop(node, clock, t, -0.2)
     _tick(node, clock, t)
     pub.take()

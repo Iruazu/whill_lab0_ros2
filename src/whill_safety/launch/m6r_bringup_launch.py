@@ -302,6 +302,13 @@ def generate_launch_description():
             description='Forwarded to safety_launch (Issue #159). 0.0 = '
                         'never-arrived inputs are only logged; > 0 = they '
                         'stop the chair after this many seconds.'),
+        DeclareLaunchArgument(
+            'failsafe_scan_silent_sec',
+            default_value='0.0',
+            description='Forwarded to safety_launch (Issue #193). /scan '
+                        'silent this long after its first message stops '
+                        'the chair (D:scan_silent); 0.0 (default) disables '
+                        'it. Recommended 0.5 after the #156 field check.'),
 
         # M4-R odom layer: sensors + driver + EKF.
         IncludeLaunchDescription(
@@ -330,5 +337,7 @@ def generate_launch_description():
                     LaunchConfiguration('failsafe_layer_d_rescue'),
                 'failsafe_startup_grace_sec':
                     LaunchConfiguration('failsafe_startup_grace_sec'),
+                'failsafe_scan_silent_sec':
+                    LaunchConfiguration('failsafe_scan_silent_sec'),
             }.items()),
     ])

@@ -88,5 +88,6 @@ teleop の鮮度は steady clock で測る。ROS 時刻は bag の `--clock` の
 後続:
 
 - 初回受信後の `/scan` 途絶を Layer D が監視しない既存の欠陥（`D:scan_silent` の追加）は、本 ADR を有効にする前に直す。`/scan` が途絶えると Layer D 自体が作動しなくなり、救援以前に停止の前提が崩れる
+  - 追記（2026-11-16）: #193 で実装（既定は無効）。救援を有効にするときは `failsafe_scan_silent_sec:=0.5` を併せて渡す。`D:scan_silent` の作動中は中継せずゼロを出す（`D:forward_blocked` 単独ではないため）。`layer_d_rescue_enabled` が true で `scan_silent_sec` が 0.0 のときは起動時に WARN を出す（動作は変えない）。詳細は ADR-0007 の 2026-11-16 追記
 - Collision Monitor（C3）をマージするときは別に決める。Humble の Collision Monitor は停止域に点があれば方向によらず止める。案としては、停止多角形を前方だけに置いて後退は `FootprintApproach`（指令の軌跡で判定）に任せる、救援中は停止多角形を無効にする、など。どちらも Humble での可否を確かめていない
 - Layer B・C の停止中の救援（自己位置を使わない手動操作）は、本 ADR の範囲外。必要なら案 B と合わせて別に決める

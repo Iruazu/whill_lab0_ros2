@@ -23,6 +23,8 @@ main を常にデモができる状態に保つための、マージ前の確認
 | failsafe | `/scan`、`/pcl_pose`、`/alignment_status`（全行程、2倍速） | 走行中の停止、作動の回数と時間 | 走行中の停止は基準で0回。回数と時間は再生ごとに揺れる（40〜42回） |
 | localizer | `/velodyne_points` ほか（走行中の240秒） | bag に記録された `/pcl_pose` との差 | 同じ入力なら結果がほぼ再現し、中央値の差は 0 mm |
 
+既定で無効の監視を有効にして測るときは、`replay_check.py --failsafe-param KEY:=VALUE`（繰り返し可）で failsafe_node に `-p` を渡す（例：#193 の `scan_silent_sec:=0.5`）。結果の `failsafe.params` に渡した値が、`engagements_with_scan_silent` に `D:scan_silent` を含む作動の回数が残る（どちらも基準とは比べない）。
+
 わざと壊して検出を確かめた（`scripts/tests/test_regression_compare.py` に実測値がある）。
 
 | 壊し方 | 結果 |
