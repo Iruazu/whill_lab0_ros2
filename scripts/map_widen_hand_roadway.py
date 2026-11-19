@@ -81,7 +81,8 @@ free に足しても機械の障害物は消えない。--free-policy evidence �
 
 2026-11-19 にこの既定の版を既定の地図に採用した（README 154w 節「採用」）。candidate_*_merged.png・
 v2/candidate_final.pgm・occupancy_candidate.yaml は広げた版になり、採用前の版は *_hand の名前で残した。
-入力と --baseline-map の既定はその *_hand を指す。
+入力と --baseline-map の既定はその *_hand を指す。採用した広げた roadway の置き場と sha256 は
+ADOPTED_ROADWAY_PATH・ADOPTED_ROADWAY_SHA256 に固定し、--out-dir・--work-dir に関係なく、それを入力にしたら止める。
 
 確かめて記録すること（レビュー SF-7。外れたら summary.json を書いた後で終了コード 1）：
   手塗りのまま合成した地図 == 手塗りのままの地図（--baseline-map）、増えた FREE == 帯、変わったセル ⊆ 帯、
@@ -113,6 +114,16 @@ from scipy.spatial import cKDTree
 REPO = pathlib.Path(__file__).resolve().parent.parent
 D = REPO / 'docs/maps/campus-m8'
 HOME = pathlib.Path.home()
+# 2026-11-19 に既定の地図へ採用した広げた roadway（R7）。置き場と sha256（summary.json の
+# outputs_sha256.roadway_widened と同じ）を固定し、これを入力にしたら止める（二重に広げない）。
+ADOPTED_ROADWAY_PATH = D / 'v2/candidates/candidate_roadway_merged.png'
+ADOPTED_ROADWAY_SHA256 = 'abcc68ba4cd0814625046a06b9d0a9191168da9e44f9345a6059cf34be0acdf4'
+# summary.json の params のパスを読む人向け。採用の前に書いた summary.json は、同じ名前のファイルが
+# 手塗りのままだった時のパスを記録している（中身の識別は inputs_sha256 で行う）。
+ADOPTED_NOTE = ('2026-11-19 に既定の版を既定の地図に採用した。v2/candidates/candidate_{roadway,free}_merged.png・'
+                'v2/candidate_final.pgm・occupancy_candidate.yaml は今は広げた版を持ち、手塗りのままは '
+                'candidate_{roadway,free}_merged_hand.png・v2/candidate_hand_final.pgm・occupancy_candidate_hand.yaml。'
+                'params の入力のパスがそれより前の名前なら、当時の手塗りのまま（inputs_sha256 で照合）を指す。')
 
 OCC, FREE, UNKNOWN = 0, 254, 205
 TRUSTED_KINDS = ('step', 'structure')
@@ -609,7 +620,17 @@ def cluster_list(mask, H, res, ox, oy, top=15):
 
 def guard_double_widen(args, hand, hw):
     """入力の手塗りが、前回このスクリプトが書いた広げた版と同じなら止める（MF-2）。"""
+    # 採用した版は、--out-dir・--work-dir を一時の所に変えると summary.json・roadway_widened.png の比較では
+    # 見つからない。採用した物の置き場と sha256 は固定なので、ここで先に止める（154w の採用のレビュー SF-6）。
+    if args.hand_roadway.resolve() == ADOPTED_ROADWAY_PATH.resolve():
+        raise SystemExit(f'{short_path(args.hand_roadway)} は 2026-11-19 から採用した広げた版の置き場。'
+                         '二重に広げないよう止める。手塗りのままは candidate_roadway_merged_hand.png'
+                         '（既定）を使う（README 154w 節「採用」）。')
     h_in = sha256(args.hand_roadway)
+    if h_in == ADOPTED_ROADWAY_SHA256:
+        raise SystemExit(f'{args.hand_roadway} は 2026-11-19 に採用した広げた版（sha256 {h_in[:8]}…）と同じ。'
+                         '二重に広げないよう止める。手塗りのままは candidate_roadway_merged_hand.png'
+                         '（既定）を使う（README 154w 節「採用」）。')
     prev_sum = args.out_dir / 'summary.json'
     if prev_sum.is_file():
         try:
@@ -976,6 +997,7 @@ def main(argv=None):
         print(f'[GIMP] {args.gimp_dir}/19_widened_candidate.png', flush=True)
 
     summary = {
+        'adopted_note': ADOPTED_NOTE,
         'params': {k_: (short_path(v) if isinstance(v, pathlib.Path) else v) for k_, v in vars(args).items()
                    if k_ != 'exclude_box'},
         'inputs_sha256': inputs_sha,

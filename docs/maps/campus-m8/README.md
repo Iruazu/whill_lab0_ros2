@@ -916,7 +916,7 @@ python3 -m pytest scripts/tests/test_gsi_edge_snap.py -q
 11. 合成：3 節の「再現」と同じ順（`gen_auto_free_mask.py` → `compose_occupancy.py`）。roadway = 手塗り ∪ 帯（6. の点を含む）、free = 手塗りの free ∪ 帯（6. の点を除く）、keepout は手塗りの候補のまま。帯を free にも足すのは、旧地図の直接の拡幅と同じ扱い。roadway だけに足すと、free_evidence（レイの通過）の無い 2,903 セル（7.3 m²、帯の 1.9%、`derived.band_cells_without_free_evidence`）が UNKNOWN のまま残り、帯がまだらになる（`--free-policy evidence` で比べられる）。
 12. 確かめること（外れたら終了コード 1、`checks`）：手塗りのまま同じ手順で合成した地図が今の既定の地図とバイト単位で同じ、増えた FREE が帯と一致（`--free-policy evidence` では帯の部分集合）、変わったセルが帯の中だけ、帯が手塗り・keepout・残した段・構造物と重ならない、合成の `free_mask_auto.png` の手塗りのままとの差分が 6. で戻した点と 1 セルも違わない（`band_salt_erased_by_auto_rule`）、drop のとき、落とした区間のセルが帯に 1 つも無い（`capped_segment_cells_absent_from_band`）、上限まで広がった区間が残らない（`capped_policy_drop_leaves_no_capped_segment`）。2026-11-19 の実行では、既定（gap 1）・gap 0 ともすべて成り立った。
     - 抜け穴：帯のセルが `--min-seg-cells`（4）未満の区間は「上限まで広がった区間」に数えないので、上限まで届いても R3 で落ちない。その数を `capped.small_segments_reaching_cap` に残す（2026-11-19 は両方の版で 0 区間）。
-13. 二重に広げない止め：入力の手塗りが、前回の出力の `roadway_widened.png` と同じ（`summary.json` の `outputs_sha256.roadway_widened` と sha256 が一致、または `~/bags/m8-experiments/154w/roadway_widened.png` と塗りが一致）なら、何も書かずに止まる。入力の sha256 は `inputs_sha256` に残す。
+13. 二重に広げない止め：入力の手塗りが、前回の出力の `roadway_widened.png` と同じ（`summary.json` の `outputs_sha256.roadway_widened` と sha256 が一致、または `~/bags/m8-experiments/154w/roadway_widened.png` と塗りが一致）なら、何も書かずに止まる。入力の sha256 は `inputs_sha256` に残す。2026-11-19 の採用の後は、採用した置き場（`v2/candidates/candidate_roadway_merged.png`）か、採用した sha256（`abcc68ba…`、スクリプトの `ADOPTED_ROADWAY_SHA256`）の入力も、`--out-dir`・`--work-dir` に関係なく止まる。
 
 除外の箱（Q2 の x の範囲と、広場・入口の y はユーザーの回答のまま。回答に y の無い所は、手塗りの map の −y 側の縁の外を覆い、道の反対側の帯に掛からない値を原寸の切り出しで決めた）と、その中の実測（`q2_boxes`。キーの名前は前の版のまま、R1・R5 の箱も入る。「箱が無いときの帯」は 6. の点の戻しを箱の後の候補で判定した値なので、箱の中の点は戻していない）：
 
@@ -1067,7 +1067,9 @@ runtime が読む物と変えた物：
 | `v2/candidates/candidate_free_merged_hand.png` | 広げる前の free（`inputs_sha256.hand_free`） | `ba775314a8df0980fefc5e856640accd833805272377acc006bff02a16c95207` |
 | `occupancy_candidate_hand.yaml` | `occupancy_candidate.yaml` と同じ値で、`image: v2/candidate_hand_final.pgm` | — |
 
-`candidate_keepout_mask.png` は空のままで変えていない。`*_hand` の 3 つは 1a4f327 の版とバイト単位で同じなので、Git の中身は増えない。`map_widen_hand_roadway.py` の入力と `--baseline-map` の既定は `*_hand` に変えた（入力の既定が広げた版のままだと、既定の実行が二重に広げる止めで止まる）。既定のまま実行して、出力の sha256 が 3 つとも `outputs_sha256` と同じで、`checks` が全て成り立つことを確かめた（`summary.json` の数字は、入力のパスの記録以外は変わらない。`summary.json` は差し替えていないので、`params.hand_roadway` などは採用前のパスのまま）。
+`candidate_keepout_mask.png` は空のままで変えていない。`*_hand` の 3 つは 1a4f327 の版とバイト単位で同じなので、Git の中身は増えない。`map_widen_hand_roadway.py` の入力と `--baseline-map` の既定は `*_hand` に変えた（入力の既定が広げた版のままだと、既定の実行が二重に広げる止めで止まる）。既定のまま実行して、出力の sha256 が 3 つとも `outputs_sha256` と同じで、`checks` が全て成り立つことを確かめた（`summary.json` の数字は、入力のパスの記録以外は変わらない。`summary.json` は作り直しておらず、`params.hand_roadway` などは採用前のパスのまま。その旨を `adopted_note` に足した。スクリプトも今後は `adopted_note` を書く）。
+
+`candidate_*_merged.png` を「手塗り」として既定で読んでいた他のスクリプト（`map_gsi_edge_snap.py` の `--hand-mask`、`map_roadway_from_curbs.py` の `--hand-free-mask`・`--hand-roadway-merged`、`map_georef_gsi.py report` の `--hand-merged-mask`）も、既定を `*_hand` に変えた。`map_georef_gsi.py report` を新しい既定で一時の出力先へ実行し、`v2/experiments/205/metrics.json` の `hand_merged`・`hand_candidate` と全ての値が一致することを確かめた。
 
 実行したコマンド（2026-11-19）：
 
@@ -1116,7 +1118,7 @@ python3 scripts/m7_make_web_map.py --yaml $D/occupancy_candidate.yaml --out-dir 
 python3 scripts/check_map_sync.py --web-dir src/whill_dispatch/web
 ```
 
-結果：5. は両方とも同一、`map_route_check.py` は両方とも `all_connected: true`（広げた版は成分 13 個、手塗りのままは 7 個）。6. は「前回の広げた版（summary.json の sha256）と同じ。二重に広げないよう止める」で止まり、何も書かなかった。7. は ok。
+結果：5. は両方とも同一、`map_route_check.py` は両方とも `all_connected: true`（広げた版は成分 13 個、手塗りのままは 7 個）。6. は二重に広げる止めで止まり、何も書かなかった（採用の時点では summary.json の sha256 で止まった。レビューの後は、採用した置き場を渡すと `ADOPTED_ROADWAY_PATH` で、中身が同じ別のファイルは `ADOPTED_ROADWAY_SHA256` で、先に止まる）。7. は ok。
 
 - `compose_occupancy.py` は `candidate_final.yaml` も書く（3 節の再現と同じ）が、中身は変わらない。`erased_by_free.png`・`clipped_by_roadway.png` は Git 管理外。
 - 差し替えた手塗りの roadway には、R6 で戻した 3 セル以下の点が入るので、手順 4. の `gen_auto_free_mask.py` が手塗りの内側と同じく消す（`compose/` の合成と同じ）。手塗りの free には入れていない。残る穴は 44 個、732 セル（`derived.new_holes_in_roadway_mask`。帯の中に残した点の格子・塊とその周りの 1 セル、うち OCC 104 セル）で、穴の OCC は合成でも OCC、残りは UNKNOWN になる。
@@ -1124,7 +1126,7 @@ python3 scripts/check_map_sync.py --web-dir src/whill_dispatch/web
 
 戻し方：
 
-- その場で一時的に戻す（ファイルは変えない）：Nav2 を `map_variant:=candidate_hand` で起動し、Web の背景を手塗りのままの版で作り直す。コマンドは [runbook](../../runbook-live-demo.md)「手塗りのままの地図（candidate_hand）に戻す」。
+- その場で一時的に戻す（地図のファイルは変えない。Web の背景 `src/whill_dispatch/web/map.png`・`map_meta.json` だけ作り直すので checkout の中で変わる。広げた版に戻すときは `git checkout -- src/whill_dispatch/web/map.png src/whill_dispatch/web/map_meta.json` で Git の版に戻してビルドする）：Nav2 を `map_variant:=candidate_hand` で起動し、Web の背景を手塗りのままの版で作り直す。コマンドは [runbook](../../runbook-live-demo.md)「手塗りのままの地図（candidate_hand）に戻す」。
 - 既定そのものを戻す（ファイルを差し替える。ブランチと PR で行う）：
 
 ```bash
@@ -1145,7 +1147,7 @@ scripts/map_route_check.py $D/occupancy_candidate.yaml $D/waypoints.yaml
 
 #### Nav2 の planner での確認（2026-11-19、オフライン）
 
-`scripts/nav2_plan_check.py` で、地図ごとに map_server と planner_server（global_costmap を内に持つ）だけを起動し、配車 4 地点の順序つきの 12 組で `ComputePathToPose`（`use_start: true`）を呼んだ。パラメータは `src/whill_navigation/config/nav2_params.yaml` をそのまま読む（NavFn、`tolerance` 0.5、`allow_unknown: false`、global_costmap は static_layer + inflation_layer、`robot_radius` 0.45 m、`inflation_radius` 0.6 m、`cost_scaling_factor` 4.0）。外した層は無い（global_costmap にはもともと obstacle_layer が無い）。map → base_link は static TF の恒等。controller・velocity_smoother・twist_mux は起動していないので cmd_vel は出ない。domain 87、`rmw_cyclonedds_cpp`、`configs/cyclonedds-runtime-min.xml`。smoother・controller（RPP）・local costmap・実機の自己位置は見ていない。
+`scripts/nav2_plan_check.py` で、地図ごとに map_server と planner_server（global_costmap を内に持つ）だけを起動し、配車 4 地点の順序つきの 12 組で `ComputePathToPose`（`use_start: true`）を呼んだ。パラメータは `src/whill_navigation/config/nav2_params.yaml` をそのまま読む（NavFn、`tolerance` 0.5、`allow_unknown: false`、global_costmap は static_layer + inflation_layer、`robot_radius` 0.45 m、`inflation_radius` 0.6 m、`cost_scaling_factor` 4.0）。外した層は無い（global_costmap にはもともと obstacle_layer が無い）。map → base_link は static TF の恒等。controller・velocity_smoother・twist_mux は起動していないので cmd_vel は出ない。起動の前に同じ domain に map_server・planner_server が居ないことを、計画の前に届いた global costmap が読ませた pgm と一致すること（OCC は全て LETHAL、FREE に NO_INFORMATION が無い）を確かめる（両方の地図で食い違い 0）。domain 87、`rmw_cyclonedds_cpp`、`configs/cyclonedds-runtime-min.xml`。smoother・controller（RPP）・local costmap・実機の自己位置は見ていない。
 
 ```bash
 cd ~/whill_lab0_ros2

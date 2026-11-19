@@ -400,3 +400,34 @@ def test_capped_drop_with_band_salt():
     assert not r2['salt'][14, 8] and r2['barrier_kept'][14, 8]
     assert r2['salt'][18, 30] and band2[18, 30]
     assert not (band2 & drop).any() and not (band2 & ~band1).any()
+
+
+def test_adopted_defaults_point_at_hand_files():
+    # 2026-11-19 の採用の後も、既定の入力は手塗りのまま（*_hand）を指す（154w の採用のレビュー SF-6）
+    import pytest
+    a = m.parse_args([])
+    assert a.hand_roadway.name == 'candidate_roadway_merged_hand.png'
+    assert a.hand_free.name == 'candidate_free_merged_hand.png'
+    assert a.baseline_map.name == 'occupancy_candidate_hand.yaml'
+    if not (a.hand_roadway.is_file() and a.hand_free.is_file() and a.baseline_map.is_file()):
+        pytest.skip('campus-m8 の手塗りの地図が無い')
+    assert m.sha256(a.hand_roadway) != m.ADOPTED_ROADWAY_SHA256
+
+
+def test_guard_stops_on_adopted_roadway(tmp_path):
+    # 採用した置き場を渡すと、--out-dir・--work-dir を一時の所に変えても止まる。中身が同じ別のファイルも止まる
+    import pytest
+    if not m.ADOPTED_ROADWAY_PATH.is_file():
+        pytest.skip('campus-m8 の採用した roadway が無い')
+    args = m.parse_args(['--hand-roadway', str(m.ADOPTED_ROADWAY_PATH),
+                         '--out-dir', str(tmp_path / 'o'), '--work-dir', str(tmp_path / 'w')])
+    with pytest.raises(SystemExit, match='二重に広げない'):
+        m.guard_double_widen(args, None, None)
+    if m.sha256(m.ADOPTED_ROADWAY_PATH) != m.ADOPTED_ROADWAY_SHA256:
+        pytest.skip('採用した roadway の中身が採用時と違う（差し替えた後の checkout）')
+    copy = tmp_path / 'copy.png'
+    copy.write_bytes(m.ADOPTED_ROADWAY_PATH.read_bytes())
+    args = m.parse_args(['--hand-roadway', str(copy),
+                         '--out-dir', str(tmp_path / 'o'), '--work-dir', str(tmp_path / 'w')])
+    with pytest.raises(SystemExit, match='二重に広げない'):
+        m.guard_double_widen(args, None, None)

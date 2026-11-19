@@ -185,11 +185,13 @@ def parse_args(argv=None):
     # --- 5. 合成 ---
     p.add_argument('--compose', action='store_true',
                    help='v2 の合成と map_route_check.py も回す（pgm は --work-dir へ）。')
+    # 2026-11-19 に candidate_*_merged.png は 154w で広げた版になった。「手塗り」の意味を保つため、
+    # 手塗りのままを残した *_hand を既定にする（#202 の試作を作った時の入力と同じ物）。
     p.add_argument('--hand-free-mask', type=pathlib.Path,
-                   default=D / 'v2/candidates/candidate_free_merged.png',
+                   default=D / 'v2/candidates/candidate_free_merged_hand.png',
                    help='合成の変種 B で使う手塗りの free（塩の消去）。')
     p.add_argument('--hand-roadway-merged', type=pathlib.Path,
-                   default=D / 'v2/candidates/candidate_roadway_merged.png',
+                   default=D / 'v2/candidates/candidate_roadway_merged_hand.png',
                    help='合成の変種 C（自動 ∪ 手塗り）で使う手塗りの roadway。')
     p.add_argument('--keepout-mask', type=pathlib.Path,
                    default=D / 'v2/candidates/candidate_keepout_mask.png')

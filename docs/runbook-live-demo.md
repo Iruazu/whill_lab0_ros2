@@ -214,9 +214,15 @@ python3 scripts/check_map_sync.py --variant candidate_hand --web-dir install/whi
 scripts/start_dispatch_demo.sh --variant candidate_hand
 ```
 
-個別に起動するときは、Nav2 だけ `map_variant:=candidate_hand` にする（bringup と dispatch はそのまま）:
+個別に起動するときは、Nav2 だけ `map_variant:=candidate_hand` にする（bringup と dispatch はそのまま。Web の背景は上のブロックの `m7_make_web_map.py` と `colcon build` で作り直しておく）。T2 のターミナルで、3 節と同じ共通環境から:
 
 ```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file://${PWD}/configs/cyclonedds-runtime-min.xml"
+export ROS_DOMAIN_ID=0
 ros2 launch whill_navigation nav_launch.py site:=campus-m8 map_variant:=candidate_hand speed:=normal
 ```
 

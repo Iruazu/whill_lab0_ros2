@@ -364,7 +364,12 @@ def generate_launch_description():
             default_value='',
             description='Which occupancy yaml to load. Empty (default) '
                         'uses the per-site default: campus-m8 → '
-                        'occupancy_candidate.yaml (v2/candidate_final.pgm); '
+                        'occupancy_candidate.yaml (v2/candidate_final.pgm, '
+                        'since 2026-11-19 the 154w widened map); '
+                        'campus-m8 map_variant:=candidate_hand loads the '
+                        'hand-painted map before widening '
+                        '(occupancy_candidate_hand.yaml, rebuild the web '
+                        'background too); '
                         'other sites → occupancy.yaml. For the fallback '
                         'site:=campus pass map_variant:=v2. '
                         '`map_variant:=cleaned` loads '

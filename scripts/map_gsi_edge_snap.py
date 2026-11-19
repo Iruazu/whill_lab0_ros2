@@ -96,8 +96,10 @@ def parse_args(argv=None):
     p.add_argument('--ground-npz', type=pathlib.Path,
                    default=home / 'bags/m8-experiments/202c/ground_raster.npz')
     p.add_argument('--hand-mask', type=pathlib.Path,
-                   default=D / 'v2/candidates/candidate_roadway_merged.png',
-                   help='比べる相手の手塗り（正解ではない。人の塗りの規則で狭めに塗られている）。')
+                   default=D / 'v2/candidates/candidate_roadway_merged_hand.png',
+                   help='比べる相手の手塗り（正解ではない。人の塗りの規則で狭めに塗られている）。'
+                        '2026-11-19 に candidate_roadway_merged.png は 154w で広げた版になったので、'
+                        '手塗りのままを残した *_hand を既定にする（202d を作った時の入力と同じ物）。')
     p.add_argument('--hand-candidate-mask', type=pathlib.Path,
                    default=D / 'v2/candidates/candidate_roadway_mask.png',
                    help='#205 の縁の距離（中央値 1.2 m、p90 2.3 m）を再現する確認用。')
