@@ -26,6 +26,8 @@
 ## 実機検証記録
 
 - [2026-10-14 統合起動・配車成功](reports/2026-10-14-dispatch-demo.md)
+- [2026-11-27 実機スタックの現状報告](reports/2026-11-27-stack-status.md)（詳細は [`reports/2026-11-27-stack-status-data/`](reports/2026-11-27-stack-status-data/)）
+- [2026-11-27 campus-m8 での実機走行](m8-bench-data/2026-11-27-drive-campus-m8/README.md)（現行構成での走行の実測。bag は `~/bags`）
 
 ## 研究テーマの検討
 
