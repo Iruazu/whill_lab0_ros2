@@ -181,6 +181,59 @@ check 0〜5。Layer D の検査では指示に従って人が前方約 1.5 m に
 
 `/cmd_vel_safety` が出ていないのは、入力未受信で監視が始まっていないだけのこともある。
 
+### 自己位置だけを確かめる
+
+上の `--once` は 1 回の値しか見ない。屋外の受入（#156）で、初期位置を与えてから止まっている間・走らせている間ずっと自己位置が保てているかは、`scripts/check_localization.py` で確かめる。このスクリプトは `/alignment_status`・`/pcl_pose`・`/whill/odom` を受けるだけで、何も publish しない（`/initialpose` も `/cmd_vel` も出さない）。
+
+Nav2（T2）と配車 Web（T3）は起動しない。bringup だけでは `/cmd_vel` を車体に渡す velocity_smoother（nav_launch の中）が無いので、自律の指令も failsafe のゼロ指令も車体に届かない。走らせるときは WHILL の手元のジョイスティックで人が操作する。failsafe も止めないので、止めるのは操作する人である。
+
+T1（3 節の共通環境の後）:
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file://${PWD}/configs/cyclonedds-runtime-min.xml"
+export ROS_DOMAIN_ID=0
+ros2 launch whill_safety m6r_bringup_launch.py site:=campus-m8
+```
+
+T4（RViz。Fixed Frame `map`、`/velodyne_points` を追加し、2D Pose Estimate で実際の車体の位置と向きを指定する。`/map` は map_server が無いので出ない。合わせ具合は `/velodyne_points` と、localizer が出す地図の点群 `/initial_map`（PointCloud2。transient_local で 1 回だけ出るので、表示の Durability Policy を Transient Local にする）で見る）:
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file://${PWD}/configs/cyclonedds-runtime-min.xml"
+export ROS_DOMAIN_ID=0
+rviz2
+```
+
+T5（初期位置の前に起動してよい。初期位置が来るまでは「未指定」と表示して待つ）:
+
+```bash
+cd ~/whill_lab0_ros2
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file://${PWD}/configs/cyclonedds-runtime-min.xml"
+export ROS_DOMAIN_ID=0
+python3 scripts/check_localization.py --duration 600
+result=$?
+printf 'check_localization 終了コード: %s\n' "$result"
+```
+
+- 1 秒ごとに fitness、has_converged、reject の連続数、recovery_state / failure_category、最後の姿勢からの経過（括弧は直近 1 秒の間隔の最大）、x y yaw、静止・走行、Layer B に掛かっている項目を出す。`--duration 0` は Ctrl-C まで
+- 出力は `log/localization-check-<日時>/`（`--out` で変える）の `samples.csv`・`poses.csv`・`summary.json`。summary には件数、fitness の p50 / p95 / 最大（静止・走行に分けた値も）、閾値超えと未収束の回数、reject の最大連続、姿勢の間隔の最大、git の版、site、static.pcd の sha256 と、07-24 の bag の NDT 再生の参考値を並べる
+- 終了コード 0 は PASS か WARN、1 は FAIL、2 は判定できない（受信なし・初期位置が未指定のまま・初期位置の後の `/alignment_status` が無い）。FAIL は、初期位置の後に failsafe の Layer B が止める状態（fitness > 1.0 が 2 秒、has_converged=false が 2 秒、`/pcl_pose` の間隔 > 1 秒）が 1 度でもあったこと。WARN は fitness の p95 が参考値の上端の 3 倍（0.195）を超えた・static.pcd の sha256 が metadata.yaml と違う・RMW が CycloneDDS でない・判定した区間が 10 秒未満、のどれか
+- 途中で 2D Pose Estimate を与え直すと、その前後の値も判定に入る。与え直した時刻を記録しておき、FAIL ならその時刻と照らす
+- sha256 を取るのは、このターミナルの checkout の `docs/maps/<site>/static.pcd`。bringup を別の checkout で起動していると一致しないことがある
+- fitness が小さいことは点群が地図に重なることを示すだけで、位置が正しいことの証明ではない。各地点での位置の照合は別に行う
+
+統合起動（`scripts/start_dispatch_demo.sh`）の最中にも、別ターミナルで同じように使える。スクリプトが設定する RMW・DDS・domain（既定 0、`--domain` を渡したときはその値）に合わせる。上の T5 のブロックをそのまま新しいターミナルで実行する（`--domain 21` で起動したときは `export ROS_DOMAIN_ID=21` に変える）。この場合は Nav2 が動いているので、走行は 9 節の配車か手動救出で行い、failsafe も効いている。
+
 ## 9. 配車と手動救出
 
 Web で目的地を選ぶか地図をタップして実行する。計画失敗と正常到着を区別して状態を見る。

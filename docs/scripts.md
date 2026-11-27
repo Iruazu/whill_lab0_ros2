@@ -28,6 +28,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | --- | --- |
 | `start_dispatch_demo.sh` | 実機bringup・Nav2・TLS配車Web・RVizの統合起動。既定は site campus-m8 / variant candidate（旧地図は --site campus）。--dry-run / --preflight対応。Ctrl-C・SIGTERM・端末の終了（HUP）のどれでも、起動したlaunchとノードをsessionごと止めて残りを表示する（#194）。残ったときは起動時に表示するsession IDで `pgrep -a -s <sid,...>`、分からなければ `pgrep -af -- 'ros2 launch\|--ros-args'` で探してSIGTERM（後者は別ターミナルのbag再生などのノードも出るのでPIDを確かめる） |
 | `m6r_preflight.sh` | check 0〜5の走行前検査 |
+| `check_localization.py` | 実機の NDT localizer の `/alignment_status`・`/pcl_pose`（と `/whill/odom` の速度で静止・走行の区別）を受け続け、1 秒ごとに状態を表示し、終わりに `samples.csv`・`poses.csv`・`summary.json` を `log/localization-check-<日時>/` に書く（#156）。何も publish しない。初期位置の後に failsafe の Layer B が止める状態（fitness > 1.0 が 2 s・未収束が 2 s・`/pcl_pose` の間隔 > 1 s）が 1 度でもあれば FAIL（終了コード 1）、fitness の p95 が NDT 再生の参考値の上端の 3 倍を超えるなどは WARN（0）、初期位置が未指定のまま・受信なしは 2。手順は [runbook](runbook-live-demo.md) の「自己位置だけを確かめる」 |
 | `m6r_smoke_test.sh` | bag再生でlocalizer等を検証する入口 |
 | `m6r_record_calib_bag.sh` | 校正用bagの記録 |
 | `record_avoidance_bag.sh` | 屋外試験の bag を mcap で `~/bags/<run>/` に記録する。`--profile static`（#149 静止確認、D435 必須）/ `drive`（#156 受け入れ・比較、既定）。RMW・DDS XML・NIC・governor・入力トピックを録画前に確かめる |
@@ -95,6 +96,7 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `tests/test_lidar_yaw_from_drive.py` | `lidar_yaw_from_drive.py` の符号・蛇行と前後の揺れへの頑健さ・後退・停止の組を、合成の走行で確かめるテスト（ROS 不要） |
 | `tests/test_record_avoidance_bag.py` | `record_avoidance_bag.sh` の録画前の確認と記録後の確認のテスト（偽の ros2・ip。実機不要） |
 | `tests/test_dispatch_demo_launcher.py` | `start_dispatch_demo.sh` の引数・static.pcd の有無と sha256 の検査・終了処理のテスト（ROS・車体は起動しない） |
+| `tests/test_check_localization.py` | `check_localization.py` の判定（Layer B の窓・pose の間隔・初期位置前の除外・WARN）と集計・出力のテスト。Layer B の定数の写しが `failsafe_node.py` と、既定の site が bringup と一致することも確かめる（ROS 不要） |
 | `tests/test_default_site_consistency.py` | 既定の site と variant が 3 つの launch・起動スクリプト・`check_map_sync.py` で揃っているかのテスト（ROS は使わない） |
 
 地図生成は成果物を書き換える。現用地図を再生成する前に入力・出力先・mask を確認する。
