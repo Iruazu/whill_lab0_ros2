@@ -30,8 +30,8 @@ labels: 'type:fix'
 
 ## 関連フェーズ
 
-`docs/plans/2026-06-11-platform-pivot.md` のフェーズ (M4-R / M5-R / M6-R / M7 / M8 / M9 / chore) と、
-該当する問題 ID (P1〜P5) があれば併記する。
+`docs/plans/2026-10-30-roadmap-m8.md` に対応する GitHub のマイルストーン (M8-core / M8-4 最小版 / M8-later / R0〜R2 / chore) と、
+関連する Issue 番号があれば併記する。
 
 ## 仮説 (任意)
 
