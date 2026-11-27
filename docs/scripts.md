@@ -9,7 +9,6 @@
 | ファイル | 用途 |
 | --- | --- |
 | `install_ros2_humble.sh` | ROS 2環境の導入 |
-| `setup_workspace.sh` | workspace準備・rosdep・bashrc追記。既定workspaceは `~/ros2_ws` |
 | `import_upstream.sh` | `whill_lab.repos` の取得、Patchwork++除外設定、rosdep |
 | `install_udev_rules.sh` | `/dev/whill` / `/dev/imu` のudev規則 |
 | `grant_serial_access.sh` | serialアクセス権の設定 |
@@ -46,7 +45,6 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 
 | ファイル | 用途 |
 | --- | --- |
-| `m5r3_fix_imu_bag.py` | オフライン用IMU bag補正 |
 | `m5r3_run_glim.sh` | GLIMのオフライン実行 |
 | `velodyne_reproject_bag.py` | 誤った校正で記録した点群を、ring を使って正しい校正へ補正した bag を作る（入力は読むだけ） |
 | `velodyne_reproject_verify.sh`, `velodyne_compare_clouds.py` | 上の補正を、パケットのある bag でドライバ（velodyne_transform_node）の出力と点ごとに比べる（[手順](maps/campus-m8/README.md)） |
@@ -66,7 +64,6 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 
 | ファイル | 用途 |
 | --- | --- |
-| `pcd_to_occupancy_grid.py`, `m5r_pcd_to_occupancy.py` | PCDから占有格子を生成 |
 | `pcd_to_occupancy_v2.py` | v2用レイヤ・占有格子生成 |
 | `clean_isolated_occupancy.py` | 孤立セルの除去 |
 | `init_v2_sidecars.py` | v2マスクの初期化 |
@@ -83,7 +80,6 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `map_ground_raster_from_bag.py` | bag の各スキャンを GLIM の軌跡（`traj_lidar.txt`）で直接地図に重ね、正本の DUFOMap のボクセルに入る点だけで、v2 の 5 cm の格子に点数・最小・下位百分位・最大・地面の強度の平均の面（npz）を作る（#202、202c）。GLIM は回し直さない。キャッシュで中断から再開できる。出力は `~/bags/m8-experiments/202c/` と確認画像の `docs/maps/<site>/v2/experiments/202c/` |
 | `map_georef_gsi.py` | 国土地理院の地理院タイル（写真 z18、ベクトル z16）を取得し（`fetch`）、構造物層を GSI の建物に合わせて map → 平面直角座標系第IX系・緯度経度の変換を求め（`align`、`docs/maps/campus-m8/georef.yaml`）、写真の重ね絵と GSI の道路の面に対する IoU を出す（`report`）（#205、[説明](maps/campus-m8/reference-gsi.md)）。タイルは `~/bags/m8-experiments/205/raw/`。既定の地図は変えない |
 | `audit_free_leaks.py` | free領域の漏れ解析 |
-| `pcd_to_traversability.py` | traversability生成 |
 | `check_dds_nic.py` | DDS の XML の NIC と、LiDAR のサブネットを持つ実機の NIC の一致を確かめる |
 | `check_device_aliases.sh` | `/dev/whill` `/dev/imu` が在り、udev 規則の VID:PID の機器を指すかを確かめる（preflight の check 0b） |
 | `check_failsafe_inputs.sh` | failsafe の入力が届いているかを、同じ QoS で確かめる |
@@ -98,3 +94,14 @@ OS・権限・ネットワークを変えるものがある。中身を確認し
 | `tests/test_default_site_consistency.py` | 既定の site と variant が 3 つの launch・起動スクリプト・`check_map_sync.py` で揃っているかのテスト（ROS は使わない） |
 
 地図生成は成果物を書き換える。現用地図を再生成する前に入力・出力先・mask を確認する。
+
+## 退避したスクリプト（`scripts/archive/`）
+
+現行の手順では使わない。旧地図の出所として残している。
+
+| スクリプト | 用途 |
+| --- | --- |
+| `archive/pcd_to_occupancy_grid.py` | FAST-LIO が保存した PCD から占有格子を作る（旧 M5-b、`lab-legacy-m5b` の出所） |
+| `archive/m5r_pcd_to_occupancy.py` | DUFOMap の PCD から占有格子を作る旧版（2026-07 の旧地図の出所）。現行は `pcd_to_occupancy_v2.py` |
+
+2026-11-27 に削除したスクリプト：`setup_workspace.sh`、`pcd_to_traversability.py`、`m5r3_fix_imu_bag.py`。`git show 64f7a49:scripts/<名前>` で読める。

@@ -61,7 +61,7 @@ GLIM 出力 → PCD 変換のみで橋渡しできる (本 Issue で converter �
 
 DUFOMap パラメータの既定値は上流 `KTH-RPL/dufomap/assets/config.toml`
 そのまま (`resolution=0.1`, `inflate_hits_dist=0.2`, `inflate_unknown=2`)。
-チューニング指針は [`../m5r-pipeline.md`](../m5r-pipeline.md) を参照。
+チューニング指針は [`../m5r-pipeline.md`](../archive/m5r-pipeline.md) を参照。
 
 本 ADR は親方針 §3.3 の選定表のうち「動的物体除去」行を上書きする。
 親方針本体の書き換えは行わず、本 ADR を参照する形で運用する (親方針は
@@ -151,6 +151,6 @@ DUFOMap パラメータの既定値は上流 `KTH-RPL/dufomap/assets/config.toml
   [`0005-maps-spec.md`](0005-maps-spec.md) (`docs/maps/<site>/` 規約、
   本 ADR の出力先 `static.pcd` を規定)
 - 関連 Issue: #49 (本 ADR の起点)、#50 (M5R-6 占有格子)、#51 (M5R-7 統合)
-- パイプライン文書: [`../m5r-pipeline.md`](../m5r-pipeline.md)
+- パイプライン文書: [`../m5r-pipeline.md`](../archive/m5r-pipeline.md)
 - DUFOMap 上流: [KTH-RPL/dufomap](https://github.com/KTH-RPL/dufomap)
   (BSD-3-Clause, ROS 非依存 Python API)

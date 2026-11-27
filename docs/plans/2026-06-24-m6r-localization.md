@@ -31,7 +31,7 @@
   1. 大域ループ閉合精度 (<1%) を M6-R ゲートに **含めない**。運用 localizer
      (lidar_localization_ros2, NDT scan-to-map, 既定 `use_imu: false`) は
      保存地図に連続再アンカーするため、地図が大域的に多少歪んでいても
-     局所整合していれば走行できる。根拠: [`docs/m5r-imu-diagnostic.md`](../m5r-imu-diagnostic.md)
+     局所整合していれば走行できる。根拠: [`docs/archive/m5r-imu-diagnostic.md`](../archive/m5r-imu-diagnostic.md)
      の IMU ON/OFF 比較 (loop error 3.99 → 3.97 m でほぼ不変、translation は
      LiDAR ICP 支配) と [`docs/m5r-bench-data/2026-06-21-loop-outdoor/glim-out/manifest.yaml`](../m5r-bench-data/2026-06-21-loop-outdoor/glim-out/manifest.yaml)
      の loop closure 未発火 (直進往復ジオメトリが原因)

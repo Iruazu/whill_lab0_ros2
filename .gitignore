@@ -151,7 +151,9 @@ docs/maps/**/v2/erased_by_free.png
 docs/maps/**/v2/conflict.png
 docs/maps/**/v2/free_mask_auto.png
 docs/maps/**/v2/salt_candidates_2to3.csv
-# Traversability generator caches (Task #22, scripts/pcd_to_traversability.py).
+# Traversability generator caches (Task #22). The generator
+# scripts/pcd_to_traversability.py was removed on 2026-11-27 (superseded by
+# v2); the patterns stay so leftover local caches are not picked up.
 # The .npz keeps per-cell (count, ground_z, roughness) so threshold sweeps
 # rerun in ~5 s. ~500 MB per site — regenerable from static.pcd in ~10 s.
 docs/maps/**/.trav_cache.npz

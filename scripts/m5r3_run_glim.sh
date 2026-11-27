@@ -47,7 +47,7 @@ Usage: ${0##*/} <bag-dir> <out-dir> [--force]
   <out-dir>  directory to write GLIM outputs into (created if missing)
   --force    overwrite existing <out-dir> contents
 
-Companion document: docs/m5r3-comparison-protocol.md
+Companion document: docs/archive/m5r3-comparison-protocol.md
 EOF
   exit 2
 }
@@ -238,7 +238,8 @@ select_glim_config() {
     # Auto-detect which IMU topic the bag carries. Bags recorded after
     # Issue #56 (whill_sensors_bringup/imu_sign_corrector) publish
     # /imu/data_rep145 in REP-145 specific-force convention; older bags
-    # (or the m5r3_fix_imu_bag.py rewrite) carry /imu/data_raw.
+    # (or bags rewritten by the removed m5r3_fix_imu_bag.py, see git history)
+    # carry /imu/data_raw.
     if grep -q '/imu/data_rep145' "${BAG_DIR}/metadata.yaml"; then
       imu_topic='/imu/data_rep145'
     elif grep -q '/imu/data_raw' "${BAG_DIR}/metadata.yaml"; then
@@ -543,7 +544,7 @@ Next:
 
 For the formal B1 criterion (start/end wall 3-point mean), open the
 generated PCD (${OUT_DIR}/dump.pcd or map.pcd, depending on glim_ros
-release) in CloudCompare and follow docs/m5r3-comparison-protocol.md
+release) in CloudCompare and follow docs/archive/m5r3-comparison-protocol.md
 §"ループ誤差計測".
 
 Transcribe the manifest.yaml + traj_lidar.txt loop-error result into the

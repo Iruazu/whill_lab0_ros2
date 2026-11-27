@@ -30,7 +30,7 @@ model: opus
 
 ### ファイル冒頭の docstring
 
-Python launch / スクリプトには必ずモジュール docstring を書く。既存の `scripts/pcd_to_occupancy_grid.py` などのスタイルを踏襲:
+Python launch / スクリプトには必ずモジュール docstring を書く。既存の `scripts/pcd_to_occupancy_v2.py` などのスタイルを踏襲:
 - 何をするスクリプトか
 - 使い方の例
 - 重要な前提条件

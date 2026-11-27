@@ -1,6 +1,6 @@
 # M5-R マップ作成パイプライン
 
-> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
 
 
 
@@ -34,7 +34,7 @@
     docs/m5r-bench-data/<run-id>/dufomap-out/static.pcd   (gitignored)
 
 [4] 占有格子変換 (Nav2 互換)
-        | scripts/m5r_pcd_to_occupancy.py <static.pcd> <output-dir>
+        | scripts/archive/m5r_pcd_to_occupancy.py <static.pcd> <output-dir>
         v
     <output-dir>/occupancy.pgm + occupancy.yaml
     (典型: docs/m5r-bench-data/<run-id>/dufomap-out/ に出して
@@ -108,7 +108,7 @@ zstd 圧縮された `bag_0.db3.zstd` を sqlite3 として直接開こうとし
 `ros2 bag convert` で別ディレクトリに書き出すか、外部圧縮で archive する。
 
 `docs/m5r-bench-data/` 配下の `<run-id>` ディレクトリ命名規約と gitignore
-規約は [`m5r-bench-data/README.md`](m5r-bench-data/README.md)
+規約は [`m5r-bench-data/README.md`](../m5r-bench-data/README.md)
 を正本とする。
 
 ### 録画後の bag 検証
@@ -132,14 +132,14 @@ governor を確認して再録画する。
 
 ## SLAM 実行 (ステップ 2): GLIM
 
-ADR-0003 で **GLIM** に確定 ([`decisions/0003-mapping-slam-choice.md`](decisions/0003-mapping-slam-choice.md))。
+ADR-0003 で **GLIM** に確定 ([`decisions/0003-mapping-slam-choice.md`](../decisions/0003-mapping-slam-choice.md))。
 FAST-LIO SAM は upstream LICENSE 不在のため棄却。
 
 ### 前提
 - M5R-1 (#45) の CUDA 12.4 + cuDNN セットアップ完了
-  ([`m5r-cuda-setup.md`](m5r-cuda-setup.md) 参照)
+  ([`m5r-cuda-setup.md`](../m5r-cuda-setup.md) 参照)
 - GLIM 母艦ビルド完了 (`ros2 pkg list | grep glim_ros` で確認)
-  ([`m5r-glim-setup.md`](m5r-glim-setup.md) 参照)
+  ([`m5r-glim-setup.md`](../m5r-glim-setup.md) 参照)
 
 ### 実行コマンド
 
@@ -193,7 +193,7 @@ python3 scripts/m5r3_loop_error.py <out-dir>/traj_lidar.txt
 
 ### 採用理由
 
-[ADR-0004](decisions/0004-dynamic-removal-choice.md) を参照。要約:
+[ADR-0004](../decisions/0004-dynamic-removal-choice.md) を参照。要約:
 ERASOR 系 (GPL-3.0 + ROS 1 専用) と Removert (LICENSE 不在) を棄却し、
 DUFOMap (BSD-3-Clause, `pip install dufomap`, ROS 非依存) を採用。
 
@@ -315,13 +315,13 @@ scripts/m5r_dufomap_diff.py --before <raw>.pcd --after <static>.pcd \
 ## 占有格子変換 (Nav2 互換)
 
 DUFOMap が出力した `static.pcd` を Nav2 `map_server` がそのまま読める
-`occupancy.pgm` + `occupancy.yaml` に変換する。`scripts/m5r_pcd_to_occupancy.py`
+`occupancy.pgm` + `occupancy.yaml` に変換する。`scripts/archive/m5r_pcd_to_occupancy.py`
 が担当 (Issue #50 / M5R-6)。
 
-旧 `scripts/pcd_to_occupancy_grid.py` (M5-b 時代) はそのまま残してある
+旧 `scripts/archive/pcd_to_occupancy_grid.py` (M5-b 時代) はそのまま残してある
 (`docs/maps/lab-legacy-m5b/` を `nav_launch.py` がまだ参照しているため)。
 新規スクリプトは別ファイルで作っており、旧スクリプトとは独立に動く。
-両者の差分の詳細は `scripts/m5r_pcd_to_occupancy.py` モジュール docstring
+両者の差分の詳細は `scripts/archive/m5r_pcd_to_occupancy.py` モジュール docstring
 参照。要旨:
 
 - XY 範囲は入力 PCD の bbox から自動算出 (旧スクリプトは ±20 m ハードコード)
@@ -334,13 +334,13 @@ DUFOMap が出力した `static.pcd` を Nav2 `map_server` がそのまま読め
 ### 使い方
 
 ```bash
-scripts/m5r_pcd_to_occupancy.py <input.pcd> <output-dir> [options]
+scripts/archive/m5r_pcd_to_occupancy.py <input.pcd> <output-dir> [options]
 ```
 
 例 (#49 で作った static.pcd を変換):
 
 ```bash
-scripts/m5r_pcd_to_occupancy.py \
+scripts/archive/m5r_pcd_to_occupancy.py \
   /tmp/m5r49_dufomap/static.pcd \
   docs/maps/lab-loop \
   --force
@@ -414,7 +414,7 @@ mv path/to/occupancy.yaml docs/maps/<site>/
 # 3. occupancy.pgm を出力先と同じ dir に置く前提なので、
 #    再生成する場合は m5r_pcd_to_occupancy.py の <output-dir> に直接
 #    docs/maps/<site>/ を渡す方が手数が少ない
-scripts/m5r_pcd_to_occupancy.py \
+scripts/archive/m5r_pcd_to_occupancy.py \
   docs/maps/<site>/static.pcd \
   docs/maps/<site>/ \
   --force
@@ -425,8 +425,8 @@ ${EDITOR:-vi} docs/maps/<site>/metadata.yaml
 
 ### `metadata.yaml` 記入要領
 
-スキーマは [`maps/README.md`](maps/README.md) §「`metadata.yaml`
-スキーマ」が正本 (ADR-0005 [`decisions/0005-maps-spec.md`](decisions/0005-maps-spec.md))。
+スキーマは [`maps/README.md`](../maps/README.md) §「`metadata.yaml`
+スキーマ」が正本 (ADR-0005 [`decisions/0005-maps-spec.md`](../decisions/0005-maps-spec.md))。
 M5-R パイプライン由来の値は次の手順で埋める:
 
 | フィールド | 値の取り方 |
@@ -437,7 +437,7 @@ M5-R パイプライン由来の値は次の手順で埋める:
 | `slam_method` | `glim` 固定 (ADR-0003 確定) |
 | `slam_params` | 既定設定なら省略可。カスタム config を使った場合のみ `docs/m5r-bench-data/<run-id>/glim-out/config/` への相対パス |
 | `erasor_params` | DUFOMap パラメータを inline (`resolution`, `d_s`, `d_p` を非デフォルト時のみ) |
-| `source_bag` | `~/bags/<run-id>`。過去の地図の値は移動前のパス（[置き場](bags.md)） |
+| `source_bag` | `~/bags/<run-id>`。過去の地図の値は移動前のパス（[置き場](../bags.md)） |
 | `commit` | `git rev-parse HEAD` の出力 (40 文字 SHA) |
 
 `erasor_params` キー名は ADR-0005 起案時の歴史的事情で残しているが、
@@ -482,14 +482,14 @@ M6-R 担当が前提にしてよいこと:
 
 M6-R が前提にできないこと (本フェーズで未対応、別 Issue が必要):
 - per-scan ray-cast による正確な occlusion (現状は anchor 1 点近似で
-  星形アーチファクトあり、`scripts/m5r_pcd_to_occupancy.py` docstring 参照)
+  星形アーチファクトあり、`scripts/archive/m5r_pcd_to_occupancy.py` docstring 参照)
 - 屋外連続性 (M5-R 検証は研究室内 + キャンパス 1 site 規模で完了、
   キャンパス全域マップは M6-R 着手と同時に再撮影する運用判断)
 
 ## ADR-0003 ステータス
 
 ADR-0003 (SLAM 選定) は #48 で起案、Phase A〜B の比較計測完了後に
-**accepted** 化済 ([`decisions/0003-mapping-slam-choice.md`](decisions/0003-mapping-slam-choice.md))。
+**accepted** 化済 ([`decisions/0003-mapping-slam-choice.md`](../decisions/0003-mapping-slam-choice.md))。
 本 Issue 開始時点で既に `Status: accepted` のため追加承認手順なし。
 将来 SLAM 選定を変更する場合は新規 ADR (例: ADR-00NN: SLAM 再選定) を
 起案する (既存 ADR の改編ではなく追記が ADR 規約)。

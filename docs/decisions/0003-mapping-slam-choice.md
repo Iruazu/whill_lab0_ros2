@@ -20,7 +20,7 @@ M5-R 実行計画 [`../plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m
 | SLAM | 上流 | ライセンス | 本リポでの整備状態 |
 |---|---|---|---|
 | GLIM | `koide3/glim`（当時の参照先 `https://github.com/koide3/glim` は現在のcheckoutに存在しない） + `koide3/glim_ros2`（当時の参照先 `https://github.com/koide3/glim_ros2` は現在のcheckoutに存在しない） | MIT | M5R-1 (#45) で源ビルド完了。CUDA 12.4 + cuDNN 8 で母艦インストール済。詳細 [`../m5r-glim-setup.md`](../m5r-glim-setup.md) |
-| FAST-LIO SAM | `RightTr/FAST-LIO-SAM`（当時の参照先 `https://github.com/RightTr/FAST-LIO-SAM` は現在のcheckoutに存在しない） | **LICENSE 不在** (上流に LICENSE ファイルなし、`package.xml` のみ `BSD` を自己申告)。派生元 FAST-LIO (HKU-MaRS) は **GPL-2.0** で copyleft 伝播の可能性あり | M5R-2 (#46) で clone-on-demand 経路を整備。`FASTLIO_SAM_LICENSE_ACK=yes` ガード付き。詳細 [`../m5r-fastlio-sam-eval.md`](../m5r-fastlio-sam-eval.md) |
+| FAST-LIO SAM | `RightTr/FAST-LIO-SAM`（当時の参照先 `https://github.com/RightTr/FAST-LIO-SAM` は現在のcheckoutに存在しない） | **LICENSE 不在** (上流に LICENSE ファイルなし、`package.xml` のみ `BSD` を自己申告)。派生元 FAST-LIO (HKU-MaRS) は **GPL-2.0** で copyleft 伝播の可能性あり | M5R-2 (#46) で clone-on-demand 経路を整備。`FASTLIO_SAM_LICENSE_ACK=yes` ガード付き。詳細 `m5r-fastlio-sam-eval.md`（2026-11-27 に削除。`git show 64f7a49:docs/m5r-fastlio-sam-eval.md` で読める） |
 
 ### 評価条件
 
@@ -32,7 +32,7 @@ M5-R 実行計画 [`../plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m
 - 操作性: Iridescence (GLIM) / RViz (FAST-LIO SAM) を観察し、manual relocalization の要否、keyframe 発行密度、ループクロージャ発火タイミングを記録
 - GTSAM 競合: GLIM 用 4.3a0 (`/usr/local/lib`) と FAST-LIO SAM 用 4.1.1 (`/usr/lib`) の共存状態を `gtsam_env.log` に snapshot
 
-詳細手順は [`../m5r3-comparison-protocol.md`](../m5r3-comparison-protocol.md) を参照。
+詳細手順は [`../m5r3-comparison-protocol.md`](../archive/m5r3-comparison-protocol.md) を参照。
 
 ### Phase 構造
 
@@ -178,8 +178,8 @@ GLIM を回して品質を実測した。
 
 - 親方針: [`../plans/2026-06-11-platform-pivot.md`](../plans/2026-06-11-platform-pivot.md) §3.3 (採用候補)、§3.4 (ライセンス方針)、§7 (本 ADR の起案要請)
 - M5-R 実行計画: [`../plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m5r-execution.md) §M5R-3 (本 Issue)、§6 (受け入れ基準 B1〜B5)
-- 比較プロトコル: [`../m5r3-comparison-protocol.md`](../m5r3-comparison-protocol.md) — Phase B 実行手順書
+- 比較プロトコル: [`../m5r3-comparison-protocol.md`](../archive/m5r3-comparison-protocol.md) — Phase B 実行手順書
 - 前置 ADR: [`0005-maps-spec.md`](0005-maps-spec.md) — 採用 SLAM の出力先 `docs/maps/<site>/` の規約
-- 前置文書: [`../m5r-glim-setup.md`](../m5r-glim-setup.md) (GLIM source build)、[`../m5r-fastlio-sam-eval.md`](../m5r-fastlio-sam-eval.md) (FAST-LIO SAM clone-on-demand)
+- 前置文書: [`../m5r-glim-setup.md`](../m5r-glim-setup.md) (GLIM source build)、`m5r-fastlio-sam-eval.md`（2026-11-27 に削除。`git show 64f7a49:docs/m5r-fastlio-sam-eval.md` で読める） (FAST-LIO SAM clone-on-demand)
 - スクリプト: [`../../scripts/m5r3_run_glim.sh`](../../scripts/m5r3_run_glim.sh)、`../../../scripts/m5r3_run_fastlio_sam.sh`（当時の参照先 `../../../scripts/m5r3_run_fastlio_sam.sh` は現在のcheckoutに存在しない）、[`../../scripts/m5r3_loop_error.py`](../../scripts/m5r3_loop_error.py)
 - 関連 Issue: #48 (本 Issue、M5R-3)、#45 (M5R-1 GLIM)、#46 (M5R-2 FAST-LIO SAM)、#47 (M5R-5 maps 規約)、#49 (M5R-4 ERASOR)、#50 (M5R-6 占有格子)、#51 (M5R-7 統合)

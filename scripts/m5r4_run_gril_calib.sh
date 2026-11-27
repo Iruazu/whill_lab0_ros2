@@ -4,7 +4,7 @@
 # Issue #64 M5-R4: run GRIL-Calib over a rosbag2 to estimate T_lidar_imu and
 # diagnose the GLIM "IMU prediction is not good" warning.
 #
-# Automates docs/m5r-imu-diagnostic.md appendix A:
+# Automates docs/archive/m5r-imu-diagnostic.md appendix A:
 #   1. Patch GRIL-Calib's velodyne32.yaml for WHILL/VLP-16 (topics, scan_line,
 #      sensor height, initial T_IL guess from noetic).
 #   2. Source whill_lab0_ros2 + calib_ws installs.
@@ -119,7 +119,7 @@ if [[ ! -f "${CONFIG_SRC}" ]]; then
   exit 1
 fi
 
-# Patches (rationale tracked in docs/m5r-imu-diagnostic.md appendix A):
+# Patches (rationale tracked in docs/archive/m5r-imu-diagnostic.md appendix A):
 #   imu_topic      "/imu/data" -> "/imu/data_rep145"  (PR #56 REP-145 topic)
 #   scan_line      32 -> 16                          (VLP-16, not VLP-32)
 #   imu_sensor_height 0.73 -> 0.47                   (PR #61 measured base_link->imu_link.z)
@@ -316,7 +316,7 @@ else
   echo "    GRIL-Calib did not reach data sufficiency before watchdog fired."
   echo "    This is the expected outcome for outdoor loop bags lacking the"
   echo "    motion excitation required by data_sufficiency_assess()."
-  echo "    See docs/m5r-imu-diagnostic.md §2 for the motion bag protocol."
+  echo "    See docs/archive/m5r-imu-diagnostic.md §2 for the motion bag protocol."
   STATUS="insufficient_motion"
 fi
 
@@ -356,7 +356,7 @@ else
   cat >> "${OUT_DIR}/SUMMARY.md" <<EOF
 - Result file: not produced (insufficient motion excitation)
 - Required next step: record a motion bag per
-  \`docs/m5r-imu-diagnostic.md\` §2 (figure-8 + accel/decel + in-place
+  \`docs/archive/m5r-imu-diagnostic.md\` §2 (figure-8 + accel/decel + in-place
   rotation, indoor flat floor, 3-5 min)
 EOF
 fi

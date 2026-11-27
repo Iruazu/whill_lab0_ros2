@@ -215,7 +215,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
     明示。親方針 §3.4 の「GPL 系は分離プロセス利用に限定」が遵守されている
     ことを文章で確認
 - [ ] **B6: M6-R 引き渡し条件の明文化**
-  - `docs/m5r-pipeline.md` (新設、Issue M5R-7) に「M6-R の scan-to-map
+  - `docs/archive/m5r-pipeline.md` (新設、Issue M5R-7) に「M6-R の scan-to-map
     localizer はこの規約の `docs/maps/<site>/static.pcd` を入力前提とする」と
     明記。占有格子は Nav2 obstacle layer 復活 (M6-R) の入力前提
 
@@ -302,7 +302,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   - [ ] 動的物体ありの bag (1 本以上) で除去前後の PCD を `scripts/m5r_erasor_diff.py`
     (新規) で重ね、歩行者軌跡が消えていることを目視確認
   - [ ] ERASOR パラメータ (voxel size、PR / RR の閾値等) が
-    `docs/m5r-pipeline.md` (Issue M5R-7 で作成) に記録
+    `docs/archive/m5r-pipeline.md` (Issue M5R-7 で作成) に記録
   - [ ] B2 (動的物体除去) の検証が成立
 - **スコープ外**: 占有格子変換 (M5R-6)
 - **担当 agent**: `research-analyst` (ERASOR の代替検討 Removert を含めた最終判定)
@@ -341,7 +341,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   スクリプト。旧 M5-b の `pcd_to_occupancy_grid.py` 系統が `docs/m5-maps/lab.yaml`
   を生んだ実績があるため、これを参照しつつ `docs/maps/<site>/` 規約に出力する
 - **受け入れ基準**:
-  - [ ] `scripts/m5r_pcd_to_occupancy.py` (新規、または旧 M5-b 由来の改修):
+  - [ ] `scripts/archive/m5r_pcd_to_occupancy.py` (新規、または旧 M5-b 由来の改修):
     入力 `static.pcd`、出力 `occupancy.pgm` + `occupancy.yaml` (Nav2 map_server
     互換: `image` / `resolution` / `origin` / `negate` / `occupied_thresh` /
     `free_thresh`)
@@ -349,7 +349,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
     で許可、デフォルトは abort
   - [ ] M5R-3 で採用 SLAM が出した 1 つ以上の bag に対し、エンドツーエンドで
     `static.pcd → occupancy.pgm + .yaml` 変換が成功
-  - [ ] `docs/m5r-pipeline.md` (M5R-7) にパラメータ解説 (`resolution`、
+  - [ ] `docs/archive/m5r-pipeline.md` (M5R-7) にパラメータ解説 (`resolution`、
     `z_clip` の上下限など) を追記
 - **スコープ外**: 動的除去 (M5R-4)、地図品質の Nav2 動作確認 (M6-R)
 - **担当 agent**: `ros2-implementer`
@@ -361,7 +361,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   `docs/maps/<site>/` 格納」の一連パイプライン文書としてまとめる。M6-R への
   引き渡し条件を明文化
 - **受け入れ基準**:
-  - [ ] `docs/m5r-pipeline.md` / `docs/m5r-pipeline.md` (新規、二言語化
+  - [ ] `docs/archive/m5r-pipeline.md` / `docs/archive/m5r-pipeline.md` (新規、二言語化
     ADR-0001 準拠) に次を記載:
     - bag 取得手順 (M4-R bringup launch を立ててから何を録るか)
     - SLAM 実行コマンド (採用 SLAM ごと)
@@ -377,7 +377,7 @@ bag 取得時にはこの launch で TF を立てた状態で `/velodyne_points`
   - [ ] CLAUDE.md の「進行中の既知課題」P5 (地図品質側) の解消をマーク
     (commit 別、本 Issue では下書きまで)
   - [ ] `0003-mapping-slam-choice.md` を `accepted` 化するユーザー承認手順を
-    `docs/m5r-pipeline.md` 末尾に明記
+    `docs/archive/m5r-pipeline.md` 末尾に明記
 - **スコープ外**: scan-to-map localizer の実装 (M6-R)、Nav2 への costmap 流し込み
   (M6-R)
 - **担当 agent**: `pm-orchestrator` → `ros2-implementer` (文書化)
@@ -457,7 +457,7 @@ M5R-3 着手直前にまとめて行うのが効率的。M5R-1 / M5R-2 はソフ
   `/velodyne_points` 全てが録れている」smoke test を user に依頼
 - **FAST-LIO SAM のライセンスが GPL 系で運用パッケージへの link 禁止が制約**:
   親方針 §3.4 で許容範囲。ただし採用したら「永続的に運用スタックから分離する」
-  契約が発生するため、M5R-2 の Alternatives 節と M5R-7 の `docs/m5r-pipeline.md`
+  契約が発生するため、M5R-2 の Alternatives 節と M5R-7 の `docs/archive/m5r-pipeline.md`
   で明示
 - **採用 SLAM が 1 ヶ月以内に上流変更される**: GLIM / FAST-LIO SAM とも活発に
   開発が続いており、API 変更で再ビルド失敗のリスク。緩和策: 採用版を ADR-0003
@@ -489,7 +489,7 @@ M5-R 完了時点で次が確定する:
 - 採用動的除去手法 (ERASOR または代替。M5R-4 で確定)
 - `docs/maps/<site>/` 規約 (static.pcd + occupancy.pgm + occupancy.yaml +
   metadata.yaml)
-- パイプライン文書 `docs/m5r-pipeline.md`
+- パイプライン文書 `docs/archive/m5r-pipeline.md`
 - bag 取得規約 `docs/m5r-bench-data/README.md`
 - 研究室内テスト site 1 つ分の完成成果物 (例: `docs/maps/lab-loop/`)
 

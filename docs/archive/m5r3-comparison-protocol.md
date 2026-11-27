@@ -1,12 +1,12 @@
 # M5R-3: GLIM vs FAST-LIO SAM 実 bag 比較プロトコル
 
-> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
 
 
 
 ## 目的
 
-M5R-3 (Issue #48) の Phase B (実 bag による比較計測) を、評価担当者が再現できる形で一元化する。本文書の到達点は次の 4 点を **ADR-0003 ([`decisions/0003-mapping-slam-choice.md`](decisions/0003-mapping-slam-choice.md)) の Context / Alternatives 節に転記できる形で揃える** こと:
+M5R-3 (Issue #48) の Phase B (実 bag による比較計測) を、評価担当者が再現できる形で一元化する。本文書の到達点は次の 4 点を **ADR-0003 ([`decisions/0003-mapping-slam-choice.md`](../decisions/0003-mapping-slam-choice.md)) の Context / Alternatives 節に転記できる形で揃える** こと:
 
 - 同一の bag に対する GLIM と FAST-LIO SAM の生成 PCD
 - 各 SLAM のループクロージャ誤差 (B1 公式評価 = CloudCompare による壁面 3 点平均、補完指標 = trajectory 始終点距離)
@@ -15,7 +15,7 @@ M5R-3 (Issue #48) の Phase B (実 bag による比較計測) を、評価担当
 
 これらが揃った時点で、別 commit で ADR-0003 の Decision 節を埋めて Phase A の PR を ready 化する。本文書は Phase B 実行マニュアルであり、Phase A 着地時点では数値部分は空欄で merge される。
 
-採択経緯と要件のひもづけは [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) §3.3 と §7、Issue 構造は [`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §M5R-3 を参照。
+採択経緯と要件のひもづけは [`plans/2026-06-11-platform-pivot.md`](../plans/2026-06-11-platform-pivot.md) §3.3 と §7、Issue 構造は [`plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m5r-execution.md) §M5R-3 を参照。
 
 ## 前提環境
 
@@ -41,7 +41,7 @@ M5R-3 (Issue #48) の Phase B (実 bag による比較計測) を、評価担当
 - FAST-LIO SAM 側で症状が出たら `LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH` を強制してから再実行する (4.1 を優先させる)
 - `scripts/m5r3_run_fastlio_sam.sh` は走行前に `ldconfig -p | grep libgtsam` を `gtsam_env.log` に dump し、両バージョンが見える状態なら警告を出す。この状態は ADR-0003 Alternatives の row として記録する
 
-詳細は [`m5r-fastlio-sam-eval.md`](m5r-fastlio-sam-eval.md) §3 を参照。
+詳細は `m5r-fastlio-sam-eval.md`（2026-11-27 に削除。`git show 64f7a49:docs/m5r-fastlio-sam-eval.md` で読める） §3 を参照。
 
 ## LiDAR の差異 (GLIM の config 切替)
 
@@ -178,7 +178,7 @@ python3 scripts/m5r3_loop_error.py docs/m5r-bench-data/<run>/glim-out/traj_lidar
 
 #### 4.2 公式指標 (B1): CloudCompare 壁面 3 点平均
 
-[`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §6 B1 で「始終点の同一壁面 3 点平均で ≤ 0.5 m」と定めた指標は、生成 PCD に対する物理位置計測で評価する。
+[`plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m5r-execution.md) §6 B1 で「始終点の同一壁面 3 点平均で ≤ 0.5 m」と定めた指標は、生成 PCD に対する物理位置計測で評価する。
 
 **先に merged PLY を作る (2026-07-10 追記)**: 現行の koide3/glim_ros2 は
 `${RUN_DIR}/glim-out/` 直下に merged `dump.pcd` / `map.pcd` を吐かない
@@ -270,9 +270,9 @@ bag が複数本ある場合は各 bag を独立の row として記録し、最
 
 ## 関連
 
-- 開発方針: [`plans/2026-06-11-platform-pivot.md`](plans/2026-06-11-platform-pivot.md) §3.3 (SLAM 候補)、§3.4 (ライセンス)、§7 (ADR-0003 起案要請)
-- M5-R 実行計画: [`plans/2026-06-21-m5r-execution.md`](plans/2026-06-21-m5r-execution.md) §M5R-3、§6 (受け入れ基準 B1〜B5)
-- 前置文書: [`m5r-glim-setup.md`](m5r-glim-setup.md) (GLIM source build)、[`m5r-fastlio-sam-eval.md`](m5r-fastlio-sam-eval.md) (FAST-LIO SAM clone-on-demand)
-- スクリプト: [`scripts/m5r3_run_glim.sh`](../scripts/m5r3_run_glim.sh)、`scripts/m5r3_run_fastlio_sam.sh`（当時の参照先 `../../scripts/m5r3_run_fastlio_sam.sh` は現在のcheckoutに存在しない）、[`scripts/m5r3_loop_error.py`](../scripts/m5r3_loop_error.py)
-- ADR: [`decisions/0003-mapping-slam-choice.md`](decisions/0003-mapping-slam-choice.md) — Phase B 完了後にデータを反映
+- 開発方針: [`plans/2026-06-11-platform-pivot.md`](../plans/2026-06-11-platform-pivot.md) §3.3 (SLAM 候補)、§3.4 (ライセンス)、§7 (ADR-0003 起案要請)
+- M5-R 実行計画: [`plans/2026-06-21-m5r-execution.md`](../plans/2026-06-21-m5r-execution.md) §M5R-3、§6 (受け入れ基準 B1〜B5)
+- 前置文書: [`m5r-glim-setup.md`](../m5r-glim-setup.md) (GLIM source build)、`m5r-fastlio-sam-eval.md`（2026-11-27 に削除。`git show 64f7a49:docs/m5r-fastlio-sam-eval.md` で読める） (FAST-LIO SAM clone-on-demand)
+- スクリプト: [`scripts/m5r3_run_glim.sh`](../../scripts/m5r3_run_glim.sh)、`scripts/m5r3_run_fastlio_sam.sh`（当時の参照先 `../../scripts/m5r3_run_fastlio_sam.sh` は現在のcheckoutに存在しない）、[`scripts/m5r3_loop_error.py`](../../scripts/m5r3_loop_error.py)
+- ADR: [`decisions/0003-mapping-slam-choice.md`](../decisions/0003-mapping-slam-choice.md) — Phase B 完了後にデータを反映
 - 関連 Issue: #48 (本 Issue、M5R-3)、#45 (M5R-1)、#46 (M5R-2)、#47 (M5R-5)、#49 (M5R-4 = 採用 SLAM の出力を ERASOR に流す後続)

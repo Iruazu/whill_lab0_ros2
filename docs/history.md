@@ -10,13 +10,13 @@
 - [M3 — ROS 2 humble でのセンサスタック](m3-sensors.md)
 - [M4-R 前置: ModelCr2State の単位曖昧性を実機で確定する](m4r-whill-units.md)
 - [M5-R 前置: CUDA Toolkit 12.4 と cuDNN 8 のセットアップ](m5r-cuda-setup.md)
-- [M5-R 前置: FAST-LIO SAM 評価候補化 (clone-on-demand 運用)](m5r-fastlio-sam-eval.md)
+- M5-R 前置: FAST-LIO SAM 評価候補化 (clone-on-demand 運用)（2026-11-27 に削除。`git show 64f7a49:docs/m5r-fastlio-sam-eval.md` で読める）
 - [M5-R 前置: GLIM のソースビルドによるセットアップ](m5r-glim-setup.md)
-- [M5-R: GLIM IMU integration 警告の原因切り分けと対処方針](m5r-imu-diagnostic.md)
-- [M5-R マップ作成パイプライン](m5r-pipeline.md)
+- [M5-R: GLIM IMU integration 警告の原因切り分けと対処方針](archive/m5r-imu-diagnostic.md)
+- [M5-R マップ作成パイプライン](archive/m5r-pipeline.md)
 - [M5-R: `/velodyne_points` 1 Hz 病の原因切り分けと RMW 選定](m5r-rmw-cyclonedds.md)
-- [M5R-3: GLIM vs FAST-LIO SAM 実 bag 比較プロトコル](m5r3-comparison-protocol.md)
-- [M6-R デモ準備チェックリスト](m6r-demo-prep-checklist.md)
+- [M5R-3: GLIM vs FAST-LIO SAM 実 bag 比較プロトコル](archive/m5r3-comparison-protocol.md)
+- [M6-R デモ準備チェックリスト](archive/m6r-demo-prep-checklist.md)
 - [Indoor calibration bag 収録プロトコル (M6-R / Issue #64 解消用)](m6r-indoor-calib-bag-protocol.md)
 - [開発方針: 配車プラットフォーム化に向けたアーキテクチャ再編](plans/2026-06-11-platform-pivot.md)
 - [M4-R 実行計画: odom 基盤の再構築](plans/2026-06-13-m4r-execution.md)
@@ -36,3 +36,8 @@
 - `m5-navigation.md` — 旧 M5 計画。現行は `src/whill_navigation/README.md`
 - `migration-plan.md` — noetic → humble 初期移植計画。旧リポの対応は [旧リポインデックス](legacy-index.md)
 - `session-2026-05-06.md` / `-07.md` / `-08.md` — M2〜M4 のセッションログ
+
+2026-11-27 に削除・退避（処置と理由の表はこの変更の PR を参照）。
+
+- 削除：`m5r-fastlio-sam-eval.md`（依存するスクリプトが存在しない。FAST-LIO は復活させない）、`maps/campus/occupancy_trav.yaml` と `trav_*.png` 4 枚（指す画像が無く、生成元のスクリプトは廃止）。`git show 64f7a49:docs/<パス>` で読める
+- 退避（`docs/archive/`）：`m5r3-comparison-protocol.md`、`m5r-imu-diagnostic.md`、`m6r-demo-prep-checklist.md`、`m5r-pipeline.md`

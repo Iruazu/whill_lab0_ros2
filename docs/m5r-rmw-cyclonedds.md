@@ -7,7 +7,7 @@
 2026-06-24 の録画セッション中に発生した「`/velodyne_points` が公称
 10 Hz から 1 Hz 前後に落ちる」事象の診断レポート。実測値の根拠と恒久対策
 (RMW=CycloneDDS) を確定する 1 次史料。CLAUDE.md の「ランタイム環境の前提」
-節と `docs/m5r-pipeline.md` §録画 はここを参照する。
+節と `docs/archive/m5r-pipeline.md` §録画 はここを参照する。
 
 ## 背景
 
@@ -124,7 +124,7 @@ ros2 bag info <bag-dir> | grep -E "velodyne_points|imu/data_rep145"
 
 ## 影響範囲
 
-- M5-R 録画ワークフロー (`docs/m5r-pipeline.md` §録画)
+- M5-R 録画ワークフロー (`docs/archive/m5r-pipeline.md` §録画)
 - M6-R bringup (`whill_localization/launch/odom_bringup_launch.py` 起動時)
 - M6-R フェイルセーフ検証 (`/velodyne_points` レートを安全閾値として
   使う設計が出てくる場合、その閾値は CycloneDDS 前提で設定する)
@@ -148,6 +148,6 @@ ros2 bag info <bag-dir> | grep -E "velodyne_points|imu/data_rep145"
 
 ## 参考
 
-- 既存の関連診断: `docs/m5r-imu-diagnostic.md` (Issue #64、GLIM IMU 警告)
-- M5-R パイプライン本文: `docs/m5r-pipeline.md`
+- 既存の関連診断: `docs/archive/m5r-imu-diagnostic.md` (Issue #64、GLIM IMU 警告)
+- M5-R パイプライン本文: `docs/archive/m5r-pipeline.md`
 - CLAUDE.md「ランタイム環境の前提」節
