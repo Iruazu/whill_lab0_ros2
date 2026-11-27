@@ -11,7 +11,7 @@
 「IMU prediction is not good」だけから「IMU が効いていない」とは判断できない。
 既存の300秒 CPU 試行では、最後に表示された回転・速度の予測誤差は
 等速予測より小さく、並進の better ratio のみが警告閾値を下回る。
-旧 [M5-R 診断](../m5r-imu-diagnostic.md) の回転外部校正への原因断定と
+旧 [M5-R 診断](../archive/m5r-imu-diagnostic.md) の回転外部校正への原因断定と
 バイアス・雑音設定の除外は、#147 の確定事項として引き継がない。
 
 共通区間の再解析では Hi-Res 補正によって IMU と ICP の不一致が小さくなる。

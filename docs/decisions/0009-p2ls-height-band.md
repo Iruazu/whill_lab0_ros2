@@ -121,7 +121,7 @@ SetRemap('/scan' → '/scan_raw')` で velodyne 側の出力を rename。p2ls �
     「デモ運用領域の白の検収 + ホワイトリスト回廊化」の面塗り運用に拡大。
     `occupancy_cleaned.pgm` に GIMP で「走行可能な回廊」を確定させ、
     回廊外の疑わしい white は大胆に occupied 化する。経路踏査結果と
-    塗り込み手順は [デモ準備チェックリスト](../m6r-demo-prep-checklist.md)
+    塗り込み手順は [デモ準備チェックリスト](../archive/m6r-demo-prep-checklist.md)
     に記録
   - **中期対策 (post-demo, 検討)**: Nav2 Keepout Filter の正式導入で
     「pgm 塗り込みではなく filter layer として経路制約を宣言」する
@@ -132,7 +132,7 @@ SetRemap('/scan' → '/scan_raw')` で velodyne 側の出力を rename。p2ls �
 - **人の脚 (立位・歩行)** は 0.05 m カットで常時 ~4 点捕捉、`local_costmap`
   で lethal 化する — costmap 用途に十分な情報量 (2026-07-15 A/B 実測)
 - **背の高い雑草** は両値で lethal 化する。コード側で分離不能なため、
-  デモ前の経路整備 (刈る / 迂回路選定) を [デモ準備チェックリスト](../m6r-demo-prep-checklist.md)
+  デモ前の経路整備 (刈る / 迂回路選定) を [デモ準備チェックリスト](../archive/m6r-demo-prep-checklist.md)
   に運用手順として残す
 - **operator-in-the-loop 前提**: ADR-0007 §Demo-scope reduction と併せて、
   デモは operator 随伴・ジョイスティック介入可能な運用で成立させる

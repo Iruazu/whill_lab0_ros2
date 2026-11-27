@@ -11,7 +11,8 @@
   上流ドライバ (rt_usb_9axisimu_driver) は USB バイト列を 1:1 で
   msgs にコピーするだけで、この反転を補正していない。
 
-  本来は M5R-3 の bag リライト (scripts/m5r3_fix_imu_bag.py) と同じ
+  本来は M5R-3 の bag リライト (scripts/m5r3_fix_imu_bag.py、2026-11-27 に
+  削除。git 履歴を参照) と同じ
   処理だが、それは「過去 bag を後追いで直す」用途。本ノードは
   runtime で /imu/data_raw → /imu/data_rep145 にリパブリッシュし、
   EKF / 将来の scan-to-map localizer / 新規録画 bag が REP-145 準拠の

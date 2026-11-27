@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """m5r3_b1_numeric.py — B1 相当のループ閉合誤差を数値で判定する。
 
-CloudCompare の GUI 3 点ピック (`m5r3-comparison-protocol.md §4.2`) が
+CloudCompare の GUI 3 点ピック (`docs/archive/m5r3-comparison-protocol.md §4.2`) が
 使えない/難航する場合の代替。原点付近 (走行始点と終点が重なる領域) の
 点群を Z 方向に射影して、地面と壁の 2 層化を機械的に検出する。
 

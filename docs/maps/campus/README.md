@@ -21,7 +21,7 @@ DUFOMap 経由で生成した静的マップ。
   外周を反時計回り 1 周)
 - **採用 SLAM**: GLIM (ADR-0003)
 - **動的除去**: DUFOMap (ADR-0004)
-- **占有格子生成**: `scripts/m5r_pcd_to_occupancy.py` — trajectory-anchor
+- **占有格子生成**: `scripts/archive/m5r_pcd_to_occupancy.py` — trajectory-anchor
   raycast + relative z-slice + r=2m 無条件 free (commit `7a9924a` の
   デフォルト設定で実行)
 
@@ -169,7 +169,7 @@ GLIM/DUFOMap → occupancy に再投入して salt-free マップを再生成 (�
 
 ### 4. Occupancy grid は relative z-slice + trajectory anchor + r=2m free
 
-`scripts/m5r_pcd_to_occupancy.py` (commit `7a9924a`) のデフォルト設定
+`scripts/archive/m5r_pcd_to_occupancy.py` (commit `7a9924a`) のデフォルト設定
 での生成物。従来の "fixed z-slice + single anchor" 版とは意味的に別物
 なので、他マップとの比較時は注意:
 
@@ -189,7 +189,7 @@ GLIM/DUFOMap → occupancy に再投入して salt-free マップを再生成 (�
 ### 占有格子の再生成 (traj + static.pcd から、~43 s)
 
 ```bash
-python3 scripts/m5r_pcd_to_occupancy.py \
+python3 scripts/archive/m5r_pcd_to_occupancy.py \
   docs/maps/campus/static.pcd docs/maps/campus/ --force
 ```
 

@@ -19,7 +19,7 @@ so this script:
   6. Writes a PGM (binary P5) and the matching nav2_map_server YAML.
 
 Usage:
-    python3 scripts/pcd_to_occupancy_grid.py docs/maps/<site>/static.pcd \\
+    python3 scripts/archive/pcd_to_occupancy_grid.py docs/maps/<site>/static.pcd \\
         /tmp/<site>_occ            # → /tmp/<site>_occ.pgm + .yaml
 
 Optional flags:

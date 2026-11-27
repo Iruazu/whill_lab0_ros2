@@ -8,7 +8,7 @@
   bag を取得する
 - 呼出元: `docs/plans/2026-06-24-m6r-localization.md` R5 緩和 (drift 主因は
   Issue #64 の T_lidar_imu 未計測回転)
-- 根拠: [`docs/m5r-imu-diagnostic.md`](m5r-imu-diagnostic.md) §2 を運用可能な
+- 根拠: [`docs/archive/m5r-imu-diagnostic.md`](archive/m5r-imu-diagnostic.md) §2 を運用可能な
   形に落とし込んだもの
 - 対象 script: [`scripts/m6r_record_calib_bag.sh`](../scripts/m6r_record_calib_bag.sh) (録画),
   [`scripts/m5r4_run_gril_calib.sh`](../scripts/m5r4_run_gril_calib.sh) (校正実行)
@@ -205,6 +205,6 @@ EOF
 ## 関連文書
 
 - 親: [`docs/plans/2026-06-24-m6r-localization.md`](plans/2026-06-24-m6r-localization.md) §9.1 R5
-- Issue #64 診断: [`docs/m5r-imu-diagnostic.md`](m5r-imu-diagnostic.md)
+- Issue #64 診断: [`docs/archive/m5r-imu-diagnostic.md`](archive/m5r-imu-diagnostic.md)
 - 前回 GRIL-Calib dry-run: `docs/m5r-bench-data/2026-06-24-loop-outdoor-ext/gril-calib-out/SUMMARY.md`（当時の参照先 `../m5r-bench-data/2026-06-24-loop-outdoor-ext/gril-calib-out/SUMMARY.md` は現在のcheckoutに存在しない）
 - CycloneDDS 環境: [`docs/m5r-rmw-cyclonedds.md`](m5r-rmw-cyclonedds.md)

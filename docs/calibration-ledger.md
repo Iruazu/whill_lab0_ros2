@@ -241,7 +241,7 @@ z・roll・pitch の候補：
 | `src/whill_perception/config/patchworkpp.yaml:32` | sensor_height 0.771 | §2.1 z 0.771 | **一致**（#192 で 0.79 から変更、食い違いは解消）。`scripts/regression/patchwork_height_compare.py` で 0.79 と 0.771 を同じフレームに同時にかけ、no_ground は全フレームで 1 点も変わらなかった：2026-07-24 走行 bag（Hi-Res、73 秒から 180 秒）1774 フレーム、2026-11-16 屋外静止 bag の物なし 117・コーン 3 m 116 フレーム。平均は走行で ground 7862 / no_ground 11088 点、床の漏れ 10.6 %・物の保持 88.1 %（1〜8 m、入力の床平面基準）。コアが sensor_height を初期値としてしか使わず毎フレーム更新するため（0.55 にしても物なし bag で no_ground の平均の差 3 点）。未確認：着座（§2.1 B の pitch −0.75°）の bag での地面除去 |
 | `src/whill_navigation/config/pointcloud_to_laserscan.yaml:46-49` | 高さの帯 0.05〜1.6 m（base_link 系。ADR-0009、2026-07-15 に旧 TF・旧校正表で調整） | §2.1 | 台帳の写しではないが、旧 TF 前提の値。新しい TF で点の高さが 2 m 先で約 0.28 m 変わるので再検証が要る。担当 Issue なし（起票案あり） |
 | failsafe の Layer D（`/scan`）・Layer C（no_ground） | しきい値 | §2.1 | 同上。再検証が要る。担当 Issue なし（起票案あり） |
-| `scripts/m5r_pcd_to_occupancy.py:486` | `--lidar-mount-height` 既定 0.79 | §2.1 z 0.777 | **食い違い**（旧スクリプト。現用は v2 か要確認） |
+| `scripts/archive/m5r_pcd_to_occupancy.py:486` | `--lidar-mount-height` 既定 0.79 | §2.1 z 0.771 | **食い違い**。旧スクリプトで、2026-11-27 に `scripts/archive/` へ退避した（現用は `pcd_to_occupancy_v2.py`）。値は直していない |
 | `scripts/m5r3_run_glim.sh:294-301`、`:335-342` | T_lidar_imu baseline / audit | §4.3 | **食い違い**（pitch 1.47° ほか）。#147 → #153 |
 | `scripts/m5r4_run_gril_calib.sh:150` | imu_sensor_height 0.47 | §4.1 z 0.47 | 一致 |
 | `docs/m3-extrinsics-from-noetic.md:78-79`、`:114-171` | velodyne・camera_link の旧値と導出 | §2.1、§3 | 旧値の導出記録。冒頭に「過去の記録」の注記あり。維持 |

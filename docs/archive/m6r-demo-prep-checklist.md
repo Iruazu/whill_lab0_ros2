@@ -1,6 +1,6 @@
 # M6-R デモ準備チェックリスト
 
-> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
+> 過去の計画・調査・検証記録です。現在の起動手順は [実機 runbook](../runbook-live-demo.md) を参照してください。未着手・予定・設定値は執筆当時の状態です。
 
 
 
@@ -32,7 +32,7 @@
 
 ## デモ当日の起動前チェック
 
-環境前提は [CLAUDE.md §ランタイム環境の前提](../CLAUDE.md) を参照
+環境前提は [CLAUDE.md §ランタイム環境の前提](../../CLAUDE.md) を参照
 (RMW, CPU governor, sysctl, NVIDIA suspend fix)。ここでは M6-R 統合
 デモに固有の項目のみを列挙する。
 
@@ -158,7 +158,7 @@ ros2 launch whill_dispatch dispatch_launch.py use_mock:=false
 
 Web UI は Nav2 の `/navigate_to_pose` を直接叩かない。goal 発行も車両位置の
 配信も dispatch_node が境界として一元化する (platform-pivot §5 #4)。詳細は
-[`../src/whill_dispatch/README.md`](../src/whill_dispatch/README.md)。
+[`../src/whill_dispatch/README.md`](../../src/whill_dispatch/README.md)。
 
 ### RealSense (opt-in、通常 off)
 
@@ -193,9 +193,9 @@ ros2 bag record \
 
 ## 関連
 
-- [ADR-0009: p2ls 高さ帯 + QoS bridge](decisions/0009-p2ls-height-band.md)
-- [ADR-0011: 地面除去手法選定](decisions/0011-ground-removal-choice.md)
-- [ADR-0007: failsafe / twist_mux](decisions/0007-failsafe-design.md)
+- [ADR-0009: p2ls 高さ帯 + QoS bridge](../decisions/0009-p2ls-height-band.md)
+- [ADR-0011: 地面除去手法選定](../decisions/0011-ground-removal-choice.md)
+- [ADR-0007: failsafe / twist_mux](../decisions/0007-failsafe-design.md)
   §Demo-scope reduction
-- [`maps/campus/README.md`](maps/campus/README.md) §3 (map salt
+- [`maps/campus/README.md`](../maps/campus/README.md) §3 (map salt
   の焼き込み経緯と対策)

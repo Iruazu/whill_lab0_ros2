@@ -399,7 +399,7 @@ ros2 topic hz /cmd_vel_safety
 # 期待: 遮断中は 20 Hz publish
 ```
 
-デモ準備チェックリストに追記済 (`docs/m6r-demo-prep-checklist.md`)。
+デモ準備チェックリストに追記済 (`docs/archive/m6r-demo-prep-checklist.md`)。
 
 ### Incident 2026-07-16 late: サイレント QoS 非互換
 

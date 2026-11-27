@@ -180,7 +180,7 @@ def print_human(metrics: dict, path: Path) -> None:
     print('Reminder: this is the SLAM-internal end-to-start distance, NOT')
     print('the formal B1 acceptance metric. B1 = mean of 3 wall points at')
     print('start vs end, measured in CloudCompare on the generated PCD.')
-    print('See docs/m5r3-comparison-protocol.md §"ループ誤差計測".')
+    print('See docs/archive/m5r3-comparison-protocol.md §"ループ誤差計測".')
 
 
 def main() -> int:

@@ -49,7 +49,7 @@ Usage: ${0##*/} <glim-out-dir> <output-dir> [--force] [--resolution M] [--output
   -h, --help      Show this message
 
 Companion docs:
-  docs/m5r-pipeline.md  (parameters, troubleshooting)
+  docs/archive/m5r-pipeline.md  (parameters, troubleshooting)
   docs/decisions/0004-dynamic-removal-choice.md  (why DUFOMap)
 EOF
   exit 2
@@ -105,7 +105,7 @@ ERROR: dufomap is not importable from python3.
     sudo apt install -y python3-pip   # Ubuntu 22.04 default lacks pip
     pip install dufomap
 
-  See docs/m5r-pipeline.md "DUFOMap セットアップ" for the verified
+  See docs/archive/m5r-pipeline.md "DUFOMap セットアップ" for the verified
   Ubuntu 22.04 + Python 3.10 setup recipe.
 EOF
     exit 1

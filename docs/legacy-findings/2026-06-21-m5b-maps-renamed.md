@@ -66,7 +66,7 @@ active コード / 設定の 3 箇所が旧パスを参照していたため、�
 - `docs/{ja,en}/plans/2026-06-21-m5r-execution.md` §3.2 / §M5R-5 (本リネームを
   予告する計画書。「予告 → 実施」の関係を残すため計画書自身の予告部分は
   変更しない)
-- `scripts/pcd_to_occupancy_grid.py:22-23` (旧 M5-b 期のスクリプト docstring。
+- `scripts/archive/pcd_to_occupancy_grid.py:22-23` (旧 M5-b 期のスクリプト docstring。
   Issue #50 / M5R-6 で新スクリプトに置き換える計画のため、現スクリプトの
   docstring 例を本 Issue では触らない)
 
