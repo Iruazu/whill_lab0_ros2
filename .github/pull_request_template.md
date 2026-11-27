@@ -8,11 +8,11 @@ Closes #
 |---------|---------|
 |         |         |
 
-## 方針適合チェック (docs/plans/2026-06-11-platform-pivot.md 5 章)
+## 方針適合チェック (CLAUDE.md の現行方針、docs/plans/2026-10-30-roadmap-m8.md)
 
-- [ ] `tf_bridge_launch.py` の identity 構成を前提とした機能追加ではない
-- [ ] FAST-LIO のランタイム localizer 強化ではない (マップ作成品質目的の調整は可)
-- [ ] `use_collision_detection: false` のまま自律走行系の機能を増やしていない
+- [ ] FAST-LIO の runtime launch と identity TF を復活させていない
+- [ ] failsafe / twist_mux を外した構成で cmd_vel を出す機能を増やしていない
+- [ ] 下の層の値（実測値、TF、校正）が未確定のまま、上の層のパラメータで打ち消していない
 - [ ] 配車 / Web ロジックを Nav2 / localization ノードに密結合させていない
 - [ ] `src/third_party/` 非編集・GPL コードのコピペなし
 
